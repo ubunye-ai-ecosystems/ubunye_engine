@@ -27,10 +27,12 @@ ubunye = "ubunye.cli.main:app"
 [project.entry-points."ubunye.readers"]
 hive = "ubunye.plugins.readers.hive:HiveReader"
 jdbc = "ubunye.plugins.readers.jdbc:JdbcReader"
+unity = "ubunye.plugins.readers.unity:UnityTableReader"   
 
 [project.entry-points."ubunye.writers"]
 s3 = "ubunye.plugins.writers.s3:S3Writer"
 jdbc = "ubunye.plugins.writers.jdbc:JdbcWriter"  
+unity  = "ubunye.plugins.writers.unity:UnityTableWriter"  
 
 [project.entry-points."ubunye.transforms"]
 noop = "ubunye.plugins.transforms.noop:NoOpTransform"
