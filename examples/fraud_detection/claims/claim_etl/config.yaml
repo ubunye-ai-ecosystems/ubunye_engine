@@ -1,0 +1,24 @@
+MODEL: "etl"
+VERSION: "0.1.0"
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "50"
+  profiles:
+    dev:
+      spark_conf:
+        spark.sql.shuffle.partitions: "8"
+
+CONFIG:
+  inputs:
+    raw_claims:
+      format: hive
+      db_name: fraud_db
+      tbl_name: raw_claims
+  transform:
+    type: noop
+  outputs:
+    bronze:
+      format: s3
+      path: "s3a://fraud-bronze/claims/{{ ds | default('2025-01-01') }}"
+      mode: overwrite
+      format: parquet

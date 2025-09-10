@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ubunye-engine"
+version = "0.1.0"
+description = "Config-first, Spark-native ETL/ML engine with a modular plugin system"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{name="Ubunye Team"}]
+dependencies = [
+  "pyyaml>=6",
+  "jinja2>=3",
+  "pydantic>=2",
+  "typer[all]>=0.12",
+  # pyspark is large; declare as optional so users can choose version
+]
+
+[project.optional-dependencies]
+spark = ["pyspark>=3.3"]
+dev = ["pytest", "black", "ruff", "build"]
+
+[project.scripts]
+ubunye = "ubunye.cli.main:app"
+
+[project.entry-points."ubunye.readers"]
+hive = "ubunye.plugins.readers.hive:HiveReader"
+
+[project.entry-points."ubunye.writers"]
+s3 = "ubunye.plugins.writers.s3:S3Writer"
+
+[project.entry-points."ubunye.transforms"]
+noop = "ubunye.plugins.transforms.noop:NoOpTransform"
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+select = ["E","F","I"]
