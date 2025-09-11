@@ -1,7 +1,7 @@
 # Ubunye Engine
 
 <p align="center">
-  <img src="ubunye_engine/docs/assets/ubunye-logo-white v2.png?" alt="tfilterspy logo"/>
+  <img src="ubunye_engine/docs/assets/ubunye-logo-white-v2.png?" alt="tfilterspy logo"/>
 </p>
 
 Ubunye Engine is a **Spark-native, config-first ETL/ML framework** with a modular plugin system.
