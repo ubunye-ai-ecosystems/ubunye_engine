@@ -4,10 +4,18 @@
   <img src="docs/assets/ubunye-logo-white-v2.png?" alt="tfilterspy logo"/>
 </p>
 
-Ubunye Engine is a **Spark-native, config-first ETL/ML framework** with a modular plugin system.
-It lets you define **inputs/outputs** in YAML, write **Spark transformations** in `feature_class.py`,
-and run **locally, on-prem (YARN/K8s), or on Databricks**.
 
+---
+
+**Ubunye Engine** is a **Spark-based framework** for running **machine learning and ETL pipelines** at scale.
+
+* You set up your **inputs and outputs** in a simple YAML file.
+* You write your **data transformations** in `feature_class.py`.
+* You can run it **locally, on-prem (YARN/K8s), or on Databricks** without worrying about setup details.
+
+Because everything is **config-driven**, data scientists can easily use the **same code in production and in notebooks**, making development and deployment seamless.
+
+---
 
 
 ## Install (dev)
