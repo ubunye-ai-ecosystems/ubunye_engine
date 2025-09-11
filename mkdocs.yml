@@ -1,0 +1,84 @@
+site_name: Ubunye Engine
+site_description: Config-first, Spark-native ETL + ML framework
+site_url: https://ubunye-ai-ecosystems.github.io/ubunye-engine
+repo_url: https://github.com/ubunye-ai-ecosystems//ubunye-engine
+repo_name: ubunye-ai-ecosystems/ubunye-engine
+copyright: "© {{ year }} Ubunye"
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tracking
+    - toc.follow
+    - content.code.copy
+    - content.tabs.link
+    - content.action.edit
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  logo: assets/logo.svg
+  favicon: assets/favicon.ico
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: installation.md
+      - Overview: overview.md
+  - Usage:
+      - CLI: cli.md
+      - Config Reference: config_reference.md
+      - Plugins: plugins.md
+  - API: api.md
+  - Contributing: contributing.md       # stub linking to ../CONTRIBUTING.md
+  - Code of Conduct: code_of_conduct.md # stub linking to ../CODE_OF_CONDUCT.md
+  - Security Policy: security.md        # stub linking to ../SECURITY.md
+  - Changelog: changelog.md             # stub linking to ../CHANGELOG.md
+  - Developer Guide: dev_guide.md
+  
+markdown_extensions:
+  - admonition
+  - def_list
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: false
+            docstring_style: google
+            separate_signature: true
+            show_root_toc_entry: false
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ubunye-ai-ecosystems//ubunye-engine
+    - icon: fontawesome/brands/slack
+      link: https://your-slack-invite
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
