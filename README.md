@@ -1,7 +1,7 @@
 # Ubunye Engine
 
 <p align="center">
-  <img src="ubunye_engine/docs/assets/ubunye-logo-white-v2.png?" alt="tfilterspy logo"/>
+  <img src="docs/assets/ubunye-logo-white-v2.png?" alt="tfilterspy logo"/>
 </p>
 
 Ubunye Engine is a **Spark-native, config-first ETL/ML framework** with a modular plugin system.
@@ -9,7 +9,6 @@ It lets you define **inputs/outputs** in YAML, write **Spark transformations** i
 and run **locally, on-prem (YARN/K8s), or on Databricks**.
 
 
-ubunye_engine\docs\assets\ubunye-logo-white v2.png
 
 ## Install (dev)
 ```bash
