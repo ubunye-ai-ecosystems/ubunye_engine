@@ -11,7 +11,7 @@
 
 * You set up your **inputs and outputs** in a simple YAML file.
 * You write your **data transformations** in `feature_class.py`.
-* You can run it **locally, on-prem (YARN/K8s), or on Databricks** without worrying about setup details.
+* You can run it **locally, on-prem (YARN/K8s), or on cloud(Databricks, aws)** without worrying about setup details.
 
 Because everything is **config-driven**, data scientists can easily use the **same code in production and in notebooks**, making development and deployment seamless.
 
