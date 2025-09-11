@@ -233,4 +233,4 @@ nav:
   - Developer Guide: dev_guide.md
 ````
 
-That’s it — you’ll have a tidy docs site with contributor and developer guidance built in.
+
