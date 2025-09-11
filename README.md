@@ -4,6 +4,9 @@ Ubunye Engine is a **Spark-native, config-first ETL/ML framework** with a modula
 It lets you define **inputs/outputs** in YAML, write **Spark transformations** in `feature_class.py`,
 and run **locally, on-prem (YARN/K8s), or on Databricks**.
 
+
+ubunye_engine\docs\assets\ubunye-logo-white v2.png
+
 ## Install (dev)
 ```bash
 pip install -e .
