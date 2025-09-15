@@ -1,5 +1,4 @@
-# `docs/dev_guide.md`
-```markdown
+
 # Developer Guide
 
 This guide covers local setup, architecture deep-dive, and how to extend Ubunye with plugins and ML components.
