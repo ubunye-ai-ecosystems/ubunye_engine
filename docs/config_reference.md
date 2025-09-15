@@ -1,8 +1,4 @@
 
----
-
-# 📄 `docs/config_reference.md`
-```markdown
 # Config Reference
 
 Ubunye configs are YAML files with the following sections:
