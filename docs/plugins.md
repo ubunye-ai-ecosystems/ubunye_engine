@@ -1,8 +1,5 @@
 
----
 
-# 📄 `docs/plugins.md`
-```markdown
 # Plugins
 
 Ubunye plugins extend the engine by adding new readers, writers, transforms, and ML backends.
