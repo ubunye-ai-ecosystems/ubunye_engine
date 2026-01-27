@@ -29,7 +29,7 @@ Ubunye plugins extend the engine by adding new readers, writers, transforms, and
 
 ### Transforms
 - **noop** – pass-through (identity)
-- Custom: user-defined `feature_class.py`
+- Custom: user-defined `transformations.py`
 
 ### ML
 - **sklearn** – wrap scikit-learn estimators

@@ -4,7 +4,7 @@ Welcome to **Ubunye Engine**, a modular, Spark-first ETL and ML framework evolvi
 
 ## Migration Principles
 
-- **Stable Touchpoints**: Retain config + `feature_class.py` shapes during transition.
+- **Stable Touchpoints**: Retain config + `transformations.py` shapes during transition.
 - **Implementation Shift**: Move Readers/Writers/Transforms to plugins; centralize task lifecycle in `core/`.
 - **Compatibility Shim**: Use `ubunye.compat.analytics_engine_shim` to run existing projects during migration.
 
