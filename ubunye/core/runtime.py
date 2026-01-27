@@ -19,6 +19,7 @@ from ubunye.telemetry.prometheus import (
     start_prometheus_http_server,
 )
 from ubunye.telemetry.otel import span, init_tracer
+from ubunye.telemetry.monitors import load_monitors, safe_call
 
 
 @dataclass(frozen=True)
@@ -148,9 +149,22 @@ class Engine:
         logger = EventLogger(task=task_name, profile=profile, run_id=self.context.run_id)
         if _TELEMETRY_ENABLED:
             logger.task_start()
+        monitors = load_monitors(cfg)
+        for monitor in monitors:
+            safe_call(monitor, "task_start", context=self.context, config=cfg)
 
         if dry_run:
             # Intentionally do not start backend on dry runs
+            for monitor in monitors:
+                safe_call(
+                    monitor,
+                    "task_end",
+                    context=self.context,
+                    config=cfg,
+                    outputs=None,
+                    status="success",
+                    duration_sec=0.0,
+                )
             if _TELEMETRY_ENABLED:
                 logger.task_end(status="success", duration_sec=0.0)
                 observe_task(task=task_name, profile=profile, status="success")
@@ -158,6 +172,7 @@ class Engine:
 
         # Execute
         self.backend.start()
+        task_start = time.perf_counter()
         try:
             # -------- READ --------
             sources: Dict[str, Any] = {}
@@ -256,9 +271,31 @@ class Engine:
             if _TELEMETRY_ENABLED:
                 observe_task(task=task_name, profile=profile, status="success")
                 logger.task_end(status="success")
+            duration = time.perf_counter() - task_start
+            for monitor in monitors:
+                safe_call(
+                    monitor,
+                    "task_end",
+                    context=self.context,
+                    config=cfg,
+                    outputs=outputs_map,
+                    status="success",
+                    duration_sec=duration,
+                )
             return outputs_map
 
         except Exception:
+            duration = time.perf_counter() - task_start
+            for monitor in monitors:
+                safe_call(
+                    monitor,
+                    "task_end",
+                    context=self.context,
+                    config=cfg,
+                    outputs=None,
+                    status="error",
+                    duration_sec=duration,
+                )
             if _TELEMETRY_ENABLED:
                 observe_task(task=task_name, profile=profile, status="error")
                 # task_end(status="error") already emitted inside failing step block,

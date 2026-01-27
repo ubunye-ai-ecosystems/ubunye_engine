@@ -160,7 +160,30 @@ model.save("models/logreg")
 
 ---
 
-## 5) Orchestration exporters
+## 5) Monitoring hooks (MLflow, drift, etc.)
+
+You can attach monitoring backends via `CONFIG.monitors`. Each monitor is a plugin loaded
+from the `ubunye.monitors` entry point group.
+
+```yaml
+CONFIG:
+  monitors:
+    - type: mlflow
+      params:
+        experiment: "ubunye"
+        run_name: "claim_etl"
+        metrics_path: "CONFIG.monitoring.metrics"
+  monitoring:
+    metrics:
+      drift_psi: 0.12
+      precision_at_10: 0.91
+```
+
+The MLflow monitor will log task params/metrics at run completion (when MLflow is installed).
+
+---
+
+## 6) Orchestration exporters
 
 ### Airflow
 
@@ -191,7 +214,7 @@ model.save("models/logreg")
 
 ---
 
-## 6) Telemetry in local runs
+## 7) Telemetry in local runs
 
 ```bash
 UBUNYE_TELEMETRY=1 UBUNYE_PROM_PORT=8000 ubunye run -c config.yaml --profile dev
@@ -201,7 +224,7 @@ UBUNYE_TELEMETRY=1 UBUNYE_PROM_PORT=8000 ubunye run -c config.yaml --profile dev
 
 ---
 
-## 7) Tips & best practices
+## 8) Tips & best practices
 
 * Keep configs small; compose via includes/templates if needed.
 * Avoid calling `count()` just for metrics; piggyback on existing actions.
@@ -231,5 +254,4 @@ nav:
   - Contributing: contributing.md
   - Developer Guide: dev_guide.md
 ````
-
 
