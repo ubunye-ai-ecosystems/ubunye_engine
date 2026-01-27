@@ -1,7 +1,7 @@
 """Ubunye CLI implemented with Typer.
 
 Commands:
-- init: scaffold a new usecase/package/task
+- init: scaffold a new usecase/pipeline/task
 - run: run a task by coordinates or config path
 - plugins: list discovered plugins
 - config: show/validate config
@@ -10,32 +10,36 @@ Commands:
 """
 from __future__ import annotations
 import sys
+import time
+import uuid
 from pathlib import Path
 from typing import Optional, Dict, Any
 import typer
 
 from ubunye.config import load_config
-from ubunye.core.runtime import Engine, Registry
+from ubunye.core.runtime import Engine, Registry, EngineContext
 from ubunye.backends.spark_backend import SparkBackend
+from ubunye.telemetry.monitors import load_monitors, safe_call
 
 app = typer.Typer(add_completion=False, help="Ubunye Engine CLI")
 
 
-def _task_path(usecase: str, package: str, task: str) -> Path:
-    return Path(usecase) / package / task
+def _task_path(base_dir: Path, usecase: str, pipeline: str, task: str) -> Path:
+    return base_dir / usecase / pipeline / task
 
 
 @app.command()
 def init(
+    base_dir: Path = typer.Option(..., "-d", "--dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    pipeline: str = typer.Option(..., "-p", "--pipeline"),
     task: str = typer.Option(..., "-t", "--task"),
     overwrite: bool = typer.Option(False, help="Overwrite existing files"),
 ):
-    """Scaffold a task folder with config.yaml and feature_class.py."""
-    target = _task_path(usecase, package, task)
+    """Scaffold a task folder with config.yaml and transformations.py."""
+    target = _task_path(base_dir, usecase, pipeline, task)
     cfg_file = target / "config.yaml"
-    feat_file = target / "feature_class.py"
+    feat_file = target / "transformations.py"
     target.mkdir(parents=True, exist_ok=True)
 
     if cfg_file.exists() and not overwrite:
@@ -58,7 +62,7 @@ CONFIG:
   outputs:
     output:
       format: s3
-      path: "s3a://your-bucket/{usecase}/{package}/{task}/{{{{ ds | default('2025-01-01') }}}}"
+      path: "s3a://your-bucket/{usecase}/{pipeline}/{task}/{{{{ ds | default('2025-01-01') }}}}"
       mode: overwrite
       format: parquet
 """
@@ -120,17 +124,18 @@ def config(
 
 @app.command()
 def plan(
+    base_dir: Optional[Path] = typer.Option(None, "-d", "--dir"),
     usecase: Optional[str] = typer.Option(None, "-u", "--usecase"),
-    package: Optional[str] = typer.Option(None, "-p", "--package"),
+    pipeline: Optional[str] = typer.Option(None, "-p", "--pipeline"),
     task: Optional[str] = typer.Option(None, "-t", "--task"),
     config_path: Optional[Path] = typer.Option(None, "-c", "--config"),
 ):
     """Print the planned inputs → transform → outputs for a task."""
     if not config_path:
-        if not (usecase and package and task):
-            typer.echo("Provide either -c CONFIG or -u/-p/-t coordinates")
+        if not (base_dir and usecase and pipeline and task):
+            typer.echo("Provide either -c CONFIG or -d/-u/-p/-t coordinates")
             raise typer.Exit(code=2)
-        config_path = _task_path(usecase, package, task) / "config.yaml"
+        config_path = _task_path(base_dir, usecase, pipeline, task) / "config.yaml"
 
     cfg = load_config(str(config_path))
     inputs = cfg.CONFIG.get("inputs", {}) or {}
@@ -149,33 +154,38 @@ def plan(
 
 @app.command()
 def run(
+    base_dir: Optional[Path] = typer.Option(None, "-d", "--dir"),
     usecase: Optional[str] = typer.Option(None, "-u", "--usecase"),
-    package: Optional[str] = typer.Option(None, "-p", "--package"),
+    pipeline: Optional[str] = typer.Option(None, "-p", "--pipeline"),
     task: Optional[str] = typer.Option(None, "-t", "--task"),
     config_path: Optional[Path] = typer.Option(None, "-c", "--config"),
     profile: Optional[str] = typer.Option(None, "--profile", "-P", help="Engine profile"),
 ):
     """Run a single task by coordinates or config path."""
     if not config_path:
-        if not (usecase and package and task):
-            typer.echo("Provide either -c CONFIG or -u/-p/-t coordinates")
+        if not (base_dir and usecase and pipeline and task):
+            typer.echo("Provide either -c CONFIG or -d/-u/-p/-t coordinates")
             raise typer.Exit(code=2)
-        config_path = _task_path(usecase, package, task) / "config.yaml"
+        config_path = _task_path(base_dir, usecase, pipeline, task) / "config.yaml"
 
     task_dir = config_path.parent
-    sys.path.insert(0, str(task_dir))  # allow importing feature_class from task dir
+    sys.path.insert(0, str(task_dir))  # allow importing transformations from task dir
 
     cfg = load_config(str(config_path))
     spark_conf = cfg.merged_spark_conf(profile)
     backend = SparkBackend(app_name=f"ubunye:{task_dir}", conf=spark_conf)
+    context = EngineContext(run_id=str(uuid.uuid4()), profile=profile, task_name=str(task_dir))
+    monitors = load_monitors(cfg.model_dump())
+    for monitor in monitors:
+        safe_call(monitor, "task_start", context=context, config=cfg.model_dump())
 
-    # Load user-defined Task from feature_class.py
+    # Load user-defined Task from transformations.py
     import importlib.util
-    fc_path = task_dir / "feature_class.py"
+    fc_path = task_dir / "transformations.py"
     if not fc_path.exists():
-        typer.echo(f"❌ Missing feature_class.py at {fc_path}", err=True)
+        typer.echo(f"❌ Missing transformations.py at {fc_path}", err=True)
         raise typer.Exit(code=1)
-    spec = importlib.util.spec_from_file_location("feature_class", str(fc_path))
+    spec = importlib.util.spec_from_file_location("transformations", str(fc_path))
     mod = importlib.util.module_from_spec(spec)  # type: ignore
     assert spec and spec.loader
     spec.loader.exec_module(mod)  # load module
@@ -188,7 +198,7 @@ def run(
             task_cls = attr
             break
     if not task_cls:
-        typer.echo("❌ No Task subclass found in feature_class.py", err=True)
+        typer.echo("❌ No Task subclass found in transformations.py", err=True)
         raise typer.Exit(code=1)
 
     # Instantiate and run
@@ -204,6 +214,7 @@ def run(
 
     # Monkey-patch: run read, call user.transform, then write (reuse Engine internals idea).
     backend.start()
+    task_start = time.perf_counter()
     try:
         inputs_cfg = cfg.CONFIG.get("inputs", {}) or {}
         sources = {}
@@ -222,7 +233,31 @@ def run(
             if df is None:
                 raise KeyError(f"Transform did not return output '{name}'")
             writer_cls().write(df, ocfg, backend)
+        duration = time.perf_counter() - task_start
+        for monitor in monitors:
+            safe_call(
+                monitor,
+                "task_end",
+                context=context,
+                config=cfg.model_dump(),
+                outputs=outputs_map,
+                status="success",
+                duration_sec=duration,
+            )
         typer.echo("✅ Run complete")
+    except Exception:
+        duration = time.perf_counter() - task_start
+        for monitor in monitors:
+            safe_call(
+                monitor,
+                "task_end",
+                context=context,
+                config=cfg.model_dump(),
+                outputs=None,
+                status="error",
+                duration_sec=duration,
+            )
+        raise
     finally:
         backend.stop()
 

@@ -51,7 +51,7 @@ class Transform(ABC):
 
 
 class Task(ABC):
-    """User-defined task contract (lives in feature_class.py)."""
+    """User-defined task contract (lives in transformations.py)."""
 
     def __init__(self, config: dict):
         self.config = config
