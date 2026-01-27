@@ -36,9 +36,9 @@ ubunye-engine/
 │   └── plugins.md
 │
 ├── examples/
-│   ├── fraud_detection/claims/claim_etl/
+│   ├── pipelines/fraud_detection/ingestion/claim_etl/
 │   │   ├── config.yaml
-│   │   └── feature_class.py
+│   │   └── transformations.py
 │   └── README.md
 │
 ├── tests/
@@ -98,32 +98,32 @@ ubunye --help
 ### Commands
 
 - **`init`**  
-  Scaffold a new usecase/package/task with config and feature class.  
+  Scaffold a new usecase/pipeline/task with config and transformations module.  
   ```bash
-  ubunye init -u <usecase> -p <package> -t <task>
+  ubunye init -d <dir> -u <usecase> -p <pipeline> -t <task>
   ```
   - Options: `--with-ml sklearn|xgboost|h2o`, `--overwrite`
-  - Creates: `<usecase>/<package>/<task>/config.yaml`, `<usecase>/<package>/<task>/feature_class.py`
+  - Creates: `<dir>/<usecase>/<pipeline>/<task>/config.yaml`, `<dir>/<usecase>/<pipeline>/<task>/transformations.py`
 
 - **`run`**  
   Execute tasks locally, on-prem, or in the cloud.  
   ```bash
-  ubunye run -u fraudetection -p claims -t claim_etl --profile dev
+  ubunye run -d ./pipelines -u fraudetection -p ingestion -t claim_etl --profile dev
   ```
-  - Options: `-u, --usecase`, `-p, --package`, `-t, --task`, `--all-packages`, `--all-tasks`, `--profile dev|prod|staging`, `--spark-conf key=value`, `--dry-run`, `--backend spark|pandas`
+  - Options: `-d, --dir`, `-u, --usecase`, `-p, --pipeline`, `-t, --task`, `--all-packages`, `--all-tasks`, `--profile dev|prod|staging`, `--spark-conf key=value`, `--dry-run`, `--backend spark|pandas`
 
 - **`plan`**  
   Visualize the resolved DAG (inputs → transform → outputs).  
   ```bash
-  ubunye plan -u fraudetection -p claims -t claim_etl
+  ubunye plan -d ./pipelines -u fraudetection -p ingestion -t claim_etl
   ```
   - Example output:
     ```
-    Task: fraudetection/claims/claim_etl
+    Task: pipelines/fraudetection/ingestion/claim_etl
     Inputs:
       - hive: fraud_db.raw_claims
       - jdbc: insurance.policy_dim
-    Transform: feature_class.ClaimEtl
+    Transform: transformations.ClaimEtl
     Outputs:
       - s3: s3a://fraud-bronze/claims/{{ ds }}
       - iceberg: cur_fraud.claim_curated
@@ -132,17 +132,17 @@ ubunye --help
 - **`export`**  
   Generate orchestrator artifacts.  
   ```bash
-  ubunye export airflow   -u fraudetection -p claims -t claim_etl -o dag.py
-  ubunye export dagster   -u fraudetection -p claims --all-tasks -o job.py
-  ubunye export prefect   -u fraudetection --all-packages --all-tasks -o flow.py
-  ubunye export databricks -u fraudetection -p claims -t claim_etl -o job.json
+  ubunye export airflow   -d ./pipelines -u fraudetection -p ingestion -t claim_etl -o dag.py
+  ubunye export dagster   -d ./pipelines -u fraudetection -p ingestion --all-tasks -o job.py
+  ubunye export prefect   -d ./pipelines -u fraudetection --all-packages --all-tasks -o flow.py
+  ubunye export databricks -d ./pipelines -u fraudetection -p ingestion -t claim_etl -o job.json
   ```
 
 - **`config`**  
   Inspect or validate configs.  
   ```bash
-  ubunye config show fraudetection/claims/claim_etl/config.yaml
-  ubunye config validate fraudetection/claims/claim_etl/config.yaml
+  ubunye config show pipelines/fraudetection/ingestion/claim_etl/config.yaml
+  ubunye config validate pipelines/fraudetection/ingestion/claim_etl/config.yaml
   ```
 
 - **`plugins`**  

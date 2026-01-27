@@ -19,6 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 spark = ["pyspark>=3.3"]
+ml = ["scikit-learn", "torch", "mlflow"]
 dev = ["pytest", "black", "ruff", "build"]
 
 [project.scripts]
@@ -36,6 +37,13 @@ unity  = "ubunye.plugins.writers.unity:UnityTableWriter"
 
 [project.entry-points."ubunye.transforms"]
 noop = "ubunye.plugins.transforms.noop:NoOpTransform"
+
+[project.entry-points."ubunye.ml"]
+sklearn = "ubunye.plugins.ml.sklearn:SklearnModel"
+sparkml = "ubunye.plugins.ml.pysparkml:SparkMLModel"
+
+[project.entry-points."ubunye.monitors"]
+mlflow = "ubunye.telemetry.mlflow:MLflowMonitor"
 
 [tool.black]
 line-length = 100

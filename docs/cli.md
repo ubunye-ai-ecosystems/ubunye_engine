@@ -9,24 +9,24 @@ The Ubunye CLI (`ubunye`) is built with [Typer](https://typer.tiangolo.com/).
 ---
 
 ## 🔨 `init`
-Scaffold a new usecase/package/task with config + feature_class.py.
+Scaffold a new usecase/pipeline/task with config + transformations.py.
 
 ```bash
-ubunye init -u fraud_detection -p claims -t claim_etl
+ubunye init -d ./pipelines -u fraud_detection -p ingestion -t claim_etl
 ### Creates:
-fraud_detection/claims/claim_etl/
+pipelines/fraud_detection/ingestion/claim_etl/
     config.yaml
-    feature_class.py
+    transformations.py
 ```
 
 ## Commands
 
 ```bash
 # Run a task locally or in Spark cluster
-    ubunye run -u fraud_detection -p claims -t claim_etl --profile dev
+    ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl --profile dev
 
 # Visualize the DAG of inputs → transforms → outputs.
-    ubunye plan -c fraud_detection/claims/claim_etl/config.yaml
+    ubunye plan -c pipelines/fraud_detection/ingestion/claim_etl/config.yaml
 
 # Export orchestration artifacts.
     ubunye export airflow -c path/to/config.yaml -o dags/claim_etl.py
