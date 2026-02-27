@@ -1,0 +1,19 @@
+MODEL: "etl"
+VERSION: "0.1.0"
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "50"
+
+CONFIG:
+  inputs:
+    tx_data:
+      format: unity
+      db_name: raw_db
+      tbl_name: feature_eng_1_input
+  transform:
+    type: noop
+  outputs:
+    output_features:
+      format: s3
+      path: "s3a://your-bucket/fraud_detection/risk_scoring/feature_eng_1/{{ dt | default('1970-01-01') }}"
+      mode: overwrite
