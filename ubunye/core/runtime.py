@@ -40,8 +40,10 @@ class Registry:
 
     @staticmethod
     def _load(group: str) -> Dict[str, Any]:
-        # On Python 3.10+, md.entry_points(group=...) returns mapping for that group.
-        return {ep.name: ep.load() for ep in md.entry_points(group=group)}
+        eps = md.entry_points()
+        # Handle dict (Python <3.10) or SelectableGroups (Python >=3.10)
+        group_eps = eps.get(group, []) if hasattr(eps, "get") else eps.select(group=group)
+        return {ep.name: ep.load() for ep in group_eps}
 
     @classmethod
     def from_entrypoints(cls) -> "Registry":

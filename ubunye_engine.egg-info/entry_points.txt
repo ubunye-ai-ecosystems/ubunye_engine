@@ -1,0 +1,22 @@
+[console_scripts]
+ubunye = ubunye.cli.main:app
+
+[ubunye.ml]
+sklearn = ubunye.plugins.ml.sklearn:SklearnModel
+sparkml = ubunye.plugins.ml.pysparkml:SparkMLModel
+
+[ubunye.monitors]
+mlflow = ubunye.telemetry.mlflow:MLflowMonitor
+
+[ubunye.readers]
+hive = ubunye.plugins.readers.hive:HiveReader
+jdbc = ubunye.plugins.readers.jdbc:JdbcReader
+unity = ubunye.plugins.readers.unity:UnityTableReader
+
+[ubunye.transforms]
+noop = ubunye.plugins.transforms.noop:NoOpTransform
+
+[ubunye.writers]
+jdbc = ubunye.plugins.writers.jdbc:JdbcWriter
+s3 = ubunye.plugins.writers.s3:S3Writer
+unity = ubunye.plugins.writers.unity:UnityTableWriter
