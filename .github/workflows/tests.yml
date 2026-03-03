@@ -62,7 +62,9 @@ jobs:
           java-version: "17"
 
       - name: Install dependencies (with Spark)
-        run: pip install -e ".[dev,spark]"
+        run: |
+          pip install -e ".[dev,spark]"
+          pip install "pandas>=2.2.0"
 
       - name: Run integration tests
         run: |
