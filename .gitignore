@@ -1,2 +1,114 @@
+# =========================
+# Python
+# =========================
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+
+# =========================
+# Distribution / Packaging
+# =========================
+build/
+dist/
+*.egg-info/
+*.egg
+eggs/
+*.whl
+sdist/
+
+# =========================
+# Virtual Environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# IDE / Editors
+# =========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+*.iml
+
+# =========================
+# Claude Code
+# =========================
+.claude/settings.local.json
+
+# =========================
+# Testing / Coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# =========================
+# Spark / Java
+# =========================
+derby.log
+metastore_db/
+spark-warehouse/
+*.jar
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Ubunye Engine
+# =========================
+.ubunye/
+*.lineage.json
+
+# =========================
+# Docs
+# =========================
+site/
+
+# =========================
+# Misc
+# =========================
+*.log
+*.tmp
+*.bak
+
+
+# =========================
+# IDE / Editors
+# =========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+*.iml
+
+# =========================
+# Claude Code
+# =========================
+.claude/settings.local.json

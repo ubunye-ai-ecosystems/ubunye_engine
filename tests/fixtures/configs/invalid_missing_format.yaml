@@ -1,0 +1,12 @@
+# Invalid: 'source' input is missing the required 'format' field.
+MODEL: "etl"
+VERSION: "0.1.0"
+CONFIG:
+  inputs:
+    source:
+      db_name: raw_db
+      tbl_name: claims
+  outputs:
+    sink:
+      format: s3
+      path: "s3a://bucket/out/"
