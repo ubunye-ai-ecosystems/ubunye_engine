@@ -10,6 +10,7 @@ Usage
     ubunye test run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl --profile dev
     ubunye test run -d ./pipelines -u fraud_detection -p ingestion -t task1 -t task2
 """
+
 from __future__ import annotations
 
 import sys
@@ -103,7 +104,8 @@ def run_test(
         from ubunye.lineage.recorder import LineageRecorder
 
         lineage_recorder = LineageRecorder(
-            store="filesystem", base_dir=str(usecase_dir / lineage_dir),
+            store="filesystem",
+            base_dir=str(usecase_dir / lineage_dir),
         )
 
     run_id = str(uuid.uuid4())

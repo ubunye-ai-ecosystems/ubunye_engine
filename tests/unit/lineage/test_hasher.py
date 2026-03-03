@@ -1,4 +1,5 @@
 """Unit tests for the lineage hasher module (no Spark required)."""
+
 import pytest
 
 from ubunye.lineage.hasher import _sha256, hash_dataframe, hash_file, hash_schema

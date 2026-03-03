@@ -7,6 +7,7 @@ Defines a unified contract for model training/inference and common utilities:
 - HasSchema: feature/target schema handling
 - MLflowLoggingMixin: optional MLflow logging (no hard dep)
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -40,23 +41,18 @@ class HasSchema(ABC):
 # --------- Data interchange (duck typing) ---------
 @runtime_checkable
 class PandasLike(Protocol):
-    def __getitem__(self, cols: Iterable[str]):
-        ...
+    def __getitem__(self, cols: Iterable[str]): ...
 
-    def to_numpy(self):
-        ...
+    def to_numpy(self): ...
 
 
 @runtime_checkable
 class SparkDataFrameLike(Protocol):
-    def select(self, *cols):
-        ...
+    def select(self, *cols): ...
 
-    def withColumn(self, name: str, col):
-        ...
+    def withColumn(self, name: str, col): ...
 
-    def schema(self):
-        ...
+    def schema(self): ...
 
 
 # --------- BaseModel contract ---------
@@ -116,20 +112,16 @@ class BaseModel(HasSchema, ABC):
 
     # ---- subclass hooks ----
     @abstractmethod
-    def _fit_core(self, X: Any, y: Optional[Any]) -> None:
-        ...
+    def _fit_core(self, X: Any, y: Optional[Any]) -> None: ...
 
     @abstractmethod
-    def _predict_core(self, X: Any, proba: bool = False) -> Any:
-        ...
+    def _predict_core(self, X: Any, proba: bool = False) -> Any: ...
 
     @abstractmethod
-    def _save_core(self, path: Path) -> None:
-        ...
+    def _save_core(self, path: Path) -> None: ...
 
     @abstractmethod
-    def _load_core(self, path: Path) -> None:
-        ...
+    def _load_core(self, path: Path) -> None: ...
 
     # ---- internals ----
     def _save_meta(self, path: Path) -> None:

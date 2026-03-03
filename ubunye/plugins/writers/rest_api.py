@@ -24,6 +24,7 @@ The writer POSTs each batch as: {"records": [<row>, <row>, ...]}
 
 Success and failure counts are logged at INFO level.
 """
+
 from __future__ import annotations
 
 import logging
@@ -74,7 +75,10 @@ def _build_session(cfg: Dict[str, Any]) -> requests.Session:
         pass  # injected per-request in _post_batch
 
     elif auth_type == "basic":
-        session.auth = HTTPBasicAuth(auth_cfg.get("username", ""), auth_cfg.get("password", ""),)
+        session.auth = HTTPBasicAuth(
+            auth_cfg.get("username", ""),
+            auth_cfg.get("password", ""),
+        )
 
     return session
 
@@ -116,7 +120,7 @@ def _post_batch(
 
         if resp.status_code in retry_on:
             if attempt < max_retries:
-                wait = _DEFAULT_BACKOFF_BASE * (2 ** attempt)
+                wait = _DEFAULT_BACKOFF_BASE * (2**attempt)
                 log.warning(
                     "HTTP %s posting to %s — retrying in %.1fs (attempt %d/%d)",
                     resp.status_code,

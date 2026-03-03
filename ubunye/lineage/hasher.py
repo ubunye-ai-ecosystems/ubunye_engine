@@ -12,6 +12,7 @@ Usage
     data_h   = hash_dataframe(df, sample_fraction=0.01, seed=42)
     file_h   = hash_file("/tmp/output.parquet")
 """
+
 from __future__ import annotations
 
 import hashlib

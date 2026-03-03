@@ -31,7 +31,7 @@ ENGINE:
         spark.master: "yarn"
 ```
 1. CONFIG
-   
+
 ```yaml
 CONFIG:
   inputs:

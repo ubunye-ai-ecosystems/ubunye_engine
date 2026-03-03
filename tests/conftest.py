@@ -1,4 +1,5 @@
 """Shared pytest fixtures used across all test modules."""
+
 from __future__ import annotations
 
 import sys
@@ -46,9 +47,13 @@ _VALID_CONFIG = {
     "MODEL": "etl",
     "VERSION": "0.1.0",
     "CONFIG": {
-        "inputs": {"source": {"format": "hive", "db_name": "raw_db", "tbl_name": "claims"},},
+        "inputs": {
+            "source": {"format": "hive", "db_name": "raw_db", "tbl_name": "claims"},
+        },
         "transform": {"type": "noop"},
-        "outputs": {"sink": {"format": "s3", "path": "s3a://bucket/out/", "mode": "overwrite"},},
+        "outputs": {
+            "sink": {"format": "s3", "path": "s3a://bucket/out/", "mode": "overwrite"},
+        },
     },
 }
 

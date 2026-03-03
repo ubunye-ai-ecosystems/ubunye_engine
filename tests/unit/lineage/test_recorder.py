@@ -1,4 +1,5 @@
 """Unit tests for LineageRecorder (Monitor protocol integration)."""
+
 import pytest
 
 from ubunye.lineage.recorder import LineageRecorder
@@ -22,8 +23,12 @@ _BASE_CONFIG = {
     "MODEL": "etl",
     "VERSION": "0.1.0",
     "CONFIG": {
-        "inputs": {"source": {"format": "hive", "db_name": "raw", "tbl_name": "claims"},},
-        "outputs": {"sink": {"format": "s3", "path": "s3a://bucket/out"},},
+        "inputs": {
+            "source": {"format": "hive", "db_name": "raw", "tbl_name": "claims"},
+        },
+        "outputs": {
+            "sink": {"format": "s3", "path": "s3a://bucket/out"},
+        },
     },
 }
 
@@ -105,7 +110,11 @@ class TestLineageRecorderEnd:
         ctx = FakeContext()
         recorder.task_start(context=ctx, config=_BASE_CONFIG)
         recorder.task_end(
-            context=ctx, config=_BASE_CONFIG, outputs=outputs, status=status, duration_sec=3.7,
+            context=ctx,
+            config=_BASE_CONFIG,
+            outputs=outputs,
+            status=status,
+            duration_sec=3.7,
         )
         return store.load("fraud/ingestion/claim_etl", "run-abc")
 
@@ -149,7 +158,11 @@ class TestLineageRecorderEnd:
         recorder.task_start(context=ctx, config=_BASE_CONFIG)
         assert ctx.run_id in recorder._runs
         recorder.task_end(
-            context=ctx, config=_BASE_CONFIG, outputs=None, status="success", duration_sec=1.0,
+            context=ctx,
+            config=_BASE_CONFIG,
+            outputs=None,
+            status="success",
+            duration_sec=1.0,
         )
         assert ctx.run_id not in recorder._runs
 
@@ -158,7 +171,11 @@ class TestLineageRecorderEnd:
         ctx = FakeContext(run_id="orphan")
         # Must not raise
         recorder.task_end(
-            context=ctx, config=_BASE_CONFIG, outputs=None, status="success", duration_sec=0.0,
+            context=ctx,
+            config=_BASE_CONFIG,
+            outputs=None,
+            status="success",
+            duration_sec=0.0,
         )
 
     def test_same_config_same_config_hash(self, tmp_path):

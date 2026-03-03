@@ -12,6 +12,7 @@ Commands::
     ubunye models archive  --use-case fraud --model FraudRiskModel --version 1.0.0 --store ...
     ubunye models compare  --use-case fraud --model FraudRiskModel --store ... --versions 1.1.0 1.2.0
 """
+
 from __future__ import annotations
 
 import json
@@ -45,7 +46,9 @@ _version_opt = typer.Option(..., "--version", "-v", help="Version string.")
 
 @models_app.command("list")
 def list_versions(
-    use_case: str = _use_case_opt, model: str = _model_opt, store: str = _store_opt,
+    use_case: str = _use_case_opt,
+    model: str = _model_opt,
+    store: str = _store_opt,
 ):
     """List all registered versions for a model (newest first)."""
     registry = ModelRegistry(store)
@@ -125,7 +128,8 @@ def promote(
     try:
         mv = registry.promote(use_case, model, version, target_stage, promoted_by=promoted_by)
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}", fg=typer.colors.GREEN,
+            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}",
+            fg=typer.colors.GREEN,
         )
     except (FileNotFoundError, ValueError) as e:
         typer.secho(f"[ERROR] {e}", fg=typer.colors.RED, err=True)
@@ -160,7 +164,8 @@ def demote(
     try:
         mv = registry.demote(use_case, model, version, target_stage)
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}", fg=typer.colors.GREEN,
+            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}",
+            fg=typer.colors.GREEN,
         )
     except (FileNotFoundError, ValueError) as e:
         typer.secho(f"[ERROR] {e}", fg=typer.colors.RED, err=True)
@@ -209,7 +214,8 @@ def archive(
     try:
         mv = registry.archive(use_case, model, version)
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} archived.", fg=typer.colors.YELLOW,
+            f"[OK] {use_case}/{model} v{mv.version} archived.",
+            fg=typer.colors.YELLOW,
         )
     except (FileNotFoundError, ValueError) as e:
         typer.secho(f"[ERROR] {e}", fg=typer.colors.RED, err=True)
@@ -231,7 +237,9 @@ def compare(
     """Compare metrics between two model versions."""
     if len(versions) != 2:
         typer.secho(
-            "[ERROR] Provide exactly two --versions values.", fg=typer.colors.RED, err=True,
+            "[ERROR] Provide exactly two --versions values.",
+            fg=typer.colors.RED,
+            err=True,
         )
         raise typer.Exit(code=1)
 

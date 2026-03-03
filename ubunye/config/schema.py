@@ -3,6 +3,7 @@
 All models use strict validation. Enums inherit from `str` so they can be used
 directly as dict keys and compared to plain strings throughout the codebase.
 """
+
 from __future__ import annotations
 
 import re

@@ -1,4 +1,5 @@
 """ubunye.models — library-independent model registry and lifecycle management."""
+
 from ubunye.models.base import UbunyeModel
 from ubunye.models.gates import GateResult, PromotionGate
 from ubunye.models.loader import load_model_class

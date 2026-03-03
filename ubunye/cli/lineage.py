@@ -8,6 +8,7 @@ Mounted on the main app as a sub-command group:
     ubunye lineage search  -d DIR [--status error] [--since 2025-01-01]
     ubunye lineage trace   -d DIR -u USECASE -p PKG -t TASK
 """
+
 from __future__ import annotations
 
 import json

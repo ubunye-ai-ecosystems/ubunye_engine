@@ -8,6 +8,7 @@ See also:
     ubunye.plugins.ml.base.BaseModel — the internal base class for ubunye's own
     sklearn/spark wrappers (not user-facing; uses _fit_core/_predict_core hooks).
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

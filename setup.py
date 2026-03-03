@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # Read long description from README.md
 with open("README.md", "r", encoding="utf-8") as f:
@@ -9,8 +9,8 @@ setup(
     version="0.1.0",
     author="Ubunye AI Team",
     author_email=["uaie@gmail.com"],
-    maintainer=['Thabang Mashinini-Sekgoto'],
-    maintainer_email=['thaangline@gmail.com'],
+    maintainer=["Thabang Mashinini-Sekgoto"],
+    maintainer_email=["thaangline@gmail.com"],
     description="Config-first, Spark-native ETL + ML framework",
     long_description=long_description,
     long_description_content_type="text/markdown",

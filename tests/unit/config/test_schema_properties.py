@@ -1,4 +1,5 @@
 """Property-based tests using Hypothesis for config schema edge cases."""
+
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -102,7 +103,10 @@ def test_invalid_write_modes_rejected(mode):
 # ---------------------------------------------------------------------------
 
 _valid_name = st.text(
-    alphabet=st.characters(whitelist_categories=("Ll", "Lu", "Nd"), whitelist_characters="_",),
+    alphabet=st.characters(
+        whitelist_categories=("Ll", "Lu", "Nd"),
+        whitelist_characters="_",
+    ),
     min_size=1,
     max_size=30,
 ).filter(lambda s: s[0].isalpha())
@@ -126,7 +130,10 @@ def _valid_full_config(draw) -> dict:
     return {
         "MODEL": draw(st.sampled_from(["etl", "ml"])),
         "VERSION": draw(st.from_regex(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}", fullmatch=True)),
-        "CONFIG": {"inputs": {"src": draw(_io_cfg())}, "outputs": {"snk": draw(_io_cfg())},},
+        "CONFIG": {
+            "inputs": {"src": draw(_io_cfg())},
+            "outputs": {"snk": draw(_io_cfg())},
+        },
     }
 
 
@@ -166,7 +173,11 @@ def test_multiple_inputs_outputs_accepted(num_in, num_out):
         f"snk_{i}": {"format": "hive", "db_name": "db", "tbl_name": f"out_{i}"}
         for i in range(num_out)
     }
-    cfg = UbunyeConfig(MODEL="etl", VERSION="1.0.0", CONFIG={"inputs": inputs, "outputs": outputs},)
+    cfg = UbunyeConfig(
+        MODEL="etl",
+        VERSION="1.0.0",
+        CONFIG={"inputs": inputs, "outputs": outputs},
+    )
     assert len(cfg.CONFIG.inputs) == num_in
     assert len(cfg.CONFIG.outputs) == num_out
 

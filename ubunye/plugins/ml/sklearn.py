@@ -1,6 +1,7 @@
 """
 Scikit-learn model wrapper implementing BaseModel.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

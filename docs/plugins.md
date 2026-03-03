@@ -62,4 +62,3 @@ mongo = "my_pkg.mongo_reader:MongoReader"
 ```bash
 ubunye plugins
 ```
-

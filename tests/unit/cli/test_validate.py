@@ -1,4 +1,5 @@
 """Unit tests for the ubunye validate CLI command."""
+
 import yaml
 from typer.testing import CliRunner
 
@@ -47,7 +48,17 @@ class TestValidateCLI:
         _scaffold_task(tmp_path, "fraud", "ingestion", "claim_etl", _VALID_CONFIG)
         result = runner.invoke(
             app,
-            ["validate", "-d", str(tmp_path), "-u", "fraud", "-p", "ingestion", "-t", "claim_etl",],
+            [
+                "validate",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "fraud",
+                "-p",
+                "ingestion",
+                "-t",
+                "claim_etl",
+            ],
         )
         assert result.exit_code == 0
         assert "[OK]" in result.output
@@ -56,7 +67,17 @@ class TestValidateCLI:
         _scaffold_task(tmp_path, "fraud", "ingestion", "bad_etl", _INVALID_CONFIG)
         result = runner.invoke(
             app,
-            ["validate", "-d", str(tmp_path), "-u", "fraud", "-p", "ingestion", "-t", "bad_etl",],
+            [
+                "validate",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "fraud",
+                "-p",
+                "ingestion",
+                "-t",
+                "bad_etl",
+            ],
         )
         assert result.exit_code != 0
         assert "[FAIL]" in result.output
@@ -65,7 +86,17 @@ class TestValidateCLI:
         _scaffold_task(tmp_path, "fraud", "ingestion", "bad_etl", _INVALID_CONFIG)
         result = runner.invoke(
             app,
-            ["validate", "-d", str(tmp_path), "-u", "fraud", "-p", "ingestion", "-t", "bad_etl",],
+            [
+                "validate",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "fraud",
+                "-p",
+                "ingestion",
+                "-t",
+                "bad_etl",
+            ],
         )
         # Error details should mention hive and the missing fields
         assert "hive" in result.output
@@ -95,7 +126,17 @@ class TestValidateCLI:
         for task in ("task_a", "task_b"):
             _scaffold_task(tmp_path, "fraud", "ingestion", task, _VALID_CONFIG)
         result = runner.invoke(
-            app, ["validate", "-d", str(tmp_path), "-u", "fraud", "-p", "ingestion", "--all",]
+            app,
+            [
+                "validate",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "fraud",
+                "-p",
+                "ingestion",
+                "--all",
+            ],
         )
         assert result.exit_code == 0
         assert "task_a" in result.output
@@ -105,7 +146,17 @@ class TestValidateCLI:
         _scaffold_task(tmp_path, "fraud", "ingestion", "good_task", _VALID_CONFIG)
         _scaffold_task(tmp_path, "fraud", "ingestion", "bad_task", _INVALID_CONFIG)
         result = runner.invoke(
-            app, ["validate", "-d", str(tmp_path), "-u", "fraud", "-p", "ingestion", "--all",]
+            app,
+            [
+                "validate",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "fraud",
+                "-p",
+                "ingestion",
+                "--all",
+            ],
         )
         assert result.exit_code != 0
         # Both tasks should appear in output
@@ -116,7 +167,17 @@ class TestValidateCLI:
         for task in ("claim_etl", "policy_etl"):
             _scaffold_task(tmp_path, "fraud", "ingestion", task, _VALID_CONFIG)
         result = runner.invoke(
-            app, ["validate", "-d", str(tmp_path), "-u", "fraud", "-p", "ingestion", "--all",]
+            app,
+            [
+                "validate",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "fraud",
+                "-p",
+                "ingestion",
+                "--all",
+            ],
         )
         assert "claim_etl" in result.output
         assert "policy_etl" in result.output
@@ -125,7 +186,17 @@ class TestValidateCLI:
         empty_pkg = tmp_path / "fraud" / "ingestion"
         empty_pkg.mkdir(parents=True)
         result = runner.invoke(
-            app, ["validate", "-d", str(tmp_path), "-u", "fraud", "-p", "ingestion", "--all",]
+            app,
+            [
+                "validate",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "fraud",
+                "-p",
+                "ingestion",
+                "--all",
+            ],
         )
         # Should not crash — either exits 0 with a warning or non-zero
         assert result.exit_code in (0, 1)
@@ -189,7 +260,17 @@ class TestValidateCLI:
         _scaffold_task(tmp_path, "fraud", "ingestion", "task_a", _VALID_CONFIG)
         result = runner.invoke(
             app,
-            ["validate", "-d", str(tmp_path), "-u", "fraud", "-p", "ingestion", "-t", "task_a",],
+            [
+                "validate",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "fraud",
+                "-p",
+                "ingestion",
+                "-t",
+                "task_a",
+            ],
         )
         assert "passed" in result.output.lower() or "1" in result.output
 
@@ -197,6 +278,16 @@ class TestValidateCLI:
         _scaffold_task(tmp_path, "fraud", "ingestion", "bad_task", _INVALID_CONFIG)
         result = runner.invoke(
             app,
-            ["validate", "-d", str(tmp_path), "-u", "fraud", "-p", "ingestion", "-t", "bad_task",],
+            [
+                "validate",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "fraud",
+                "-p",
+                "ingestion",
+                "-t",
+                "bad_task",
+            ],
         )
         assert "failed" in result.output.lower() or "1" in result.output

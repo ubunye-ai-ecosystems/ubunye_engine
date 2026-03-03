@@ -18,6 +18,7 @@ Usage
     runs  = store.list_runs("fraud/ingest/etl", n=10)
     errs  = store.search(status="error", since="2025-01-01")
 """
+
 from __future__ import annotations
 
 import json
@@ -114,7 +115,8 @@ class FileSystemLineageStore(LineageStore):
         record_path = self._record_path(ctx)
         record_path.parent.mkdir(parents=True, exist_ok=True)
         record_path.write_text(
-            json.dumps(ctx.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8",
+            json.dumps(ctx.to_dict(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
         )
 
     def load(self, task_path: str, run_id: str) -> RunContext:

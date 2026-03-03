@@ -1,6 +1,9 @@
 """User-defined Spark transformations for the 'claim_etl' task."""
+
 from typing import Dict
+
 from ubunye.core.interfaces import Task
+
 
 class ClaimEtl(Task):
     """Example task that simply forwards sources to outputs.

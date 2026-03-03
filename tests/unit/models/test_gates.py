@@ -2,6 +2,7 @@
 
 All tests are pure Python — no filesystem or Spark dependency.
 """
+
 from ubunye.models.gates import GateResult, PromotionGate
 
 

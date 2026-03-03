@@ -1,8 +1,11 @@
-from typing import Dict, Any
+from typing import Any, Dict
+
 from ubunye.core.interfaces import Task
+
 
 class FeatureEng1(Task):
     """User-defined Spark transformation task."""
+
     def setup(self) -> None:
         pass
 

@@ -22,6 +22,7 @@ Config keys:
   - vacuum:
       hours: 168                             # Databricks only; default retention if omitted
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List

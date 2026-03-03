@@ -16,7 +16,7 @@ We release security patches for the following versions:
 If you discover a security vulnerability in Ubunye Engine:
 
 1. **Do not** open a public issue.
-2. Email the maintainers at: **uaie@gmail.com**  
+2. Email the maintainers at: **uaie@gmail.com**
    or use GitHub’s [private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-security-advisories).
 3. Include as much detail as possible:
    - Steps to reproduce
