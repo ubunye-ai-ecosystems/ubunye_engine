@@ -3,6 +3,8 @@
 Connectors are the I/O layer of Ubunye. Each connector is a **Reader** or **Writer** plugin
 registered under the `ubunye.readers` or `ubunye.writers` entry point group.
 
+![Input readers → engine transform → output writers](../assets/ubunye_etl.png)
+
 ---
 
 ## Built-in connectors

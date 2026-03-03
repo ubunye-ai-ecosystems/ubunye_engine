@@ -3,6 +3,8 @@
 A typical Ubunye project lays out pipelines by **use-case → pipeline → task**,
 mirroring how `ubunye init` and `ubunye run` address tasks.
 
+![Use-case → pipeline → task folder hierarchy](../assets/ubunye_usecases.png)
+
 ---
 
 ## Recommended layout
