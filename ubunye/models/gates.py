@@ -47,9 +47,7 @@ class PromotionGate:
         self.config = gate_config or {}
 
     def evaluate(
-        self,
-        metrics: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None,
+        self, metrics: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None,
     ) -> List[GateResult]:
         """Evaluate all configured gates against the provided metrics.
 
@@ -68,70 +66,78 @@ class PromotionGate:
                 metric_name = gate_name[4:]
                 actual = metrics.get(metric_name)
                 if actual is None:
-                    results.append(GateResult(
-                        gate_name=gate_name,
-                        passed=False,
-                        message=f"Metric '{metric_name}' not found in model metrics.",
-                        actual_value=None,
-                        threshold=threshold,
-                    ))
+                    results.append(
+                        GateResult(
+                            gate_name=gate_name,
+                            passed=False,
+                            message=f"Metric '{metric_name}' not found in model metrics.",
+                            actual_value=None,
+                            threshold=threshold,
+                        )
+                    )
                 else:
                     passed = float(actual) >= float(threshold)
-                    results.append(GateResult(
-                        gate_name=gate_name,
-                        passed=passed,
-                        message=(
-                            f"{metric_name}: {actual:.4f} "
-                            f"{'≥' if passed else '<'} {threshold} (min threshold)"
-                        ),
-                        actual_value=actual,
-                        threshold=threshold,
-                    ))
+                    results.append(
+                        GateResult(
+                            gate_name=gate_name,
+                            passed=passed,
+                            message=(
+                                f"{metric_name}: {actual:.4f} "
+                                f"{'≥' if passed else '<'} {threshold} (min threshold)"
+                            ),
+                            actual_value=actual,
+                            threshold=threshold,
+                        )
+                    )
 
             elif gate_name.startswith("max_"):
                 metric_name = gate_name[4:]
                 actual = metrics.get(metric_name)
                 if actual is None:
-                    results.append(GateResult(
-                        gate_name=gate_name,
-                        passed=False,
-                        message=f"Metric '{metric_name}' not found in model metrics.",
-                        actual_value=None,
-                        threshold=threshold,
-                    ))
+                    results.append(
+                        GateResult(
+                            gate_name=gate_name,
+                            passed=False,
+                            message=f"Metric '{metric_name}' not found in model metrics.",
+                            actual_value=None,
+                            threshold=threshold,
+                        )
+                    )
                 else:
                     passed = float(actual) <= float(threshold)
-                    results.append(GateResult(
-                        gate_name=gate_name,
-                        passed=passed,
-                        message=(
-                            f"{metric_name}: {actual:.4f} "
-                            f"{'≤' if passed else '>'} {threshold} (max threshold)"
-                        ),
-                        actual_value=actual,
-                        threshold=threshold,
-                    ))
+                    results.append(
+                        GateResult(
+                            gate_name=gate_name,
+                            passed=passed,
+                            message=(
+                                f"{metric_name}: {actual:.4f} "
+                                f"{'≤' if passed else '>'} {threshold} (max threshold)"
+                            ),
+                            actual_value=actual,
+                            threshold=threshold,
+                        )
+                    )
 
             elif gate_name == "require_drift_check":
                 if threshold:
                     drift_passed = (metadata or {}).get("drift_check_passed", False)
-                    results.append(GateResult(
-                        gate_name=gate_name,
-                        passed=bool(drift_passed),
-                        message=(
-                            "Drift check: passed"
-                            if drift_passed
-                            else "Drift check: not found or failed in metadata."
-                        ),
-                    ))
+                    results.append(
+                        GateResult(
+                            gate_name=gate_name,
+                            passed=bool(drift_passed),
+                            message=(
+                                "Drift check: passed"
+                                if drift_passed
+                                else "Drift check: not found or failed in metadata."
+                            ),
+                        )
+                    )
                 # if threshold is False, gate is disabled — skip silently
 
         return results
 
     def all_passed(
-        self,
-        metrics: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None,
+        self, metrics: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Return ``True`` only if every configured gate passes.
 
@@ -142,9 +148,7 @@ class PromotionGate:
         return all(r.passed for r in self.evaluate(metrics, metadata))
 
     def failed_gates(
-        self,
-        metrics: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None,
+        self, metrics: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None,
     ) -> List[GateResult]:
         """Return only the gates that did not pass."""
         return [r for r in self.evaluate(metrics, metadata) if not r.passed]

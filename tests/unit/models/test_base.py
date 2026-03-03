@@ -15,6 +15,7 @@ from ubunye.models.base import UbunyeModel
 # Test helpers
 # ---------------------------------------------------------------------------
 
+
 class MockDF:
     """Minimal duck-typed DataFrame stand-in — no PySpark needed."""
 
@@ -47,8 +48,7 @@ class DummyModel(UbunyeModel):
         p = Path(path)
         p.mkdir(parents=True, exist_ok=True)
         (p / "model.json").write_text(
-            json.dumps({"trained": self._trained, "row_count": self._row_count}),
-            encoding="utf-8",
+            json.dumps({"trained": self._trained, "row_count": self._row_count}), encoding="utf-8",
         )
 
     @classmethod
@@ -72,8 +72,8 @@ class DummyModel(UbunyeModel):
 # Contract tests
 # ---------------------------------------------------------------------------
 
-class TestUbunyeModelContract:
 
+class TestUbunyeModelContract:
     def test_is_ubunye_model_subclass(self):
         assert isinstance(DummyModel(), UbunyeModel)
         assert issubclass(DummyModel, UbunyeModel)
@@ -154,9 +154,11 @@ class TestUbunyeModelContract:
 
     def test_partial_implementation_not_instantiable(self):
         """A class missing any abstract method must not be instantiable."""
+
         class Partial(UbunyeModel):
             def train(self, df):
                 return {}
+
             # missing predict, save, load, metadata
 
         with pytest.raises(TypeError):

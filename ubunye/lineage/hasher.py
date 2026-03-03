@@ -22,6 +22,7 @@ from typing import Any
 # Internal helper
 # ---------------------------------------------------------------------------
 
+
 def _sha256(data: bytes) -> str:
     """Return ``"sha256:<hex>"`` for the given bytes."""
     return "sha256:" + hashlib.sha256(data).hexdigest()
@@ -30,6 +31,7 @@ def _sha256(data: bytes) -> str:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def hash_schema(df: Any) -> str:
     """Return a deterministic hash of a Spark DataFrame's schema.

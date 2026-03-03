@@ -47,9 +47,7 @@ def load_model_class(task_dir: Optional[str], class_name: str) -> Type[UbunyeMod
     """
     parts = class_name.rsplit(".", 1)
     if len(parts) == 1:
-        raise ImportError(
-            f"class_name must be in the form 'module.ClassName', got '{class_name}'."
-        )
+        raise ImportError(f"class_name must be in the form 'module.ClassName', got '{class_name}'.")
     module_path_str, cls_name = parts
 
     if task_dir is not None:
@@ -76,6 +74,7 @@ def load_model_class(task_dir: Optional[str], class_name: str) -> Type[UbunyeMod
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_from_file(task_dir: str, module_path_str: str, full_class_name: str):
     """Load a module from a .py file in task_dir (handles nested paths like models/risk)."""

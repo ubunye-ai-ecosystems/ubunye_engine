@@ -109,10 +109,7 @@ def _build_session(cfg: Dict[str, Any]) -> requests.Session:
         pass
 
     elif auth_type == "basic":
-        session.auth = HTTPBasicAuth(
-            auth_cfg.get("username", ""),
-            auth_cfg.get("password", ""),
-        )
+        session.auth = HTTPBasicAuth(auth_cfg.get("username", ""), auth_cfg.get("password", ""),)
 
     return session
 
@@ -161,10 +158,7 @@ def _fetch_page(
             time.sleep(1.0 / rps)
 
         resp = session.request(
-            method=method.upper(),
-            url=url,
-            params=params or None,
-            json=body or None,
+            method=method.upper(), url=url, params=params or None, json=body or None,
         )
 
         if resp.status_code in retry_on:
@@ -172,7 +166,11 @@ def _fetch_page(
                 wait = _DEFAULT_BACKOFF_BASE * (2 ** attempt)
                 log.warning(
                     "HTTP %s from %s — retrying in %.1fs (attempt %d/%d)",
-                    resp.status_code, url, wait, attempt + 1, max_retries,
+                    resp.status_code,
+                    url,
+                    wait,
+                    attempt + 1,
+                    max_retries,
                 )
                 time.sleep(wait)
                 continue
@@ -217,15 +215,12 @@ def _extract_records(response_json: Any, root_key: Optional[str]) -> List[Dict[s
         raise ValueError(f"Cannot extract records from response of type {type(response_json)}")
 
     if not isinstance(records, list):
-        raise ValueError(
-            f"Extracted value at root_key='{root_key}' is not a list: {type(records)}"
-        )
+        raise ValueError(f"Extracted value at root_key='{root_key}' is not a list: {type(records)}")
     return records
 
 
 def _paginate(
-    cfg: Dict[str, Any],
-    session: requests.Session,
+    cfg: Dict[str, Any], session: requests.Session,
 ) -> Generator[List[Dict[str, Any]], None, None]:
     """Yield pages of records using the configured pagination strategy.
 
@@ -327,8 +322,7 @@ def _paginate(
 
     else:
         raise ValueError(
-            f"Unknown pagination type '{pag_type}'. "
-            "Expected one of: offset, cursor, next_link"
+            f"Unknown pagination type '{pag_type}'. " "Expected one of: offset, cursor, next_link"
         )
 
 
@@ -415,12 +409,7 @@ class RestApiReader(Reader):
 
         return self._to_dataframe(all_records, cfg, backend)
 
-    def _to_dataframe(
-        self,
-        records: List[Dict[str, Any]],
-        cfg: Dict[str, Any],
-        backend,
-    ) -> Any:
+    def _to_dataframe(self, records: List[Dict[str, Any]], cfg: Dict[str, Any], backend,) -> Any:
         """Convert a list of record dicts to a Spark DataFrame.
 
         Uses an explicit schema if cfg['schema'] is provided; otherwise infers.
@@ -435,6 +424,7 @@ class RestApiReader(Reader):
         if not records:
             # Return empty DataFrame with a single string column as placeholder
             from pyspark.sql.types import StructType
+
             return spark.createDataFrame([], StructType([]))
 
         return spark.createDataFrame(records)

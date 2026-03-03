@@ -75,6 +75,7 @@ class LineageStore(ABC):
 # FileSystem implementation
 # ---------------------------------------------------------------------------
 
+
 class FileSystemLineageStore(LineageStore):
     """Stores lineage records as JSON files in a local directory tree.
 
@@ -113,8 +114,7 @@ class FileSystemLineageStore(LineageStore):
         record_path = self._record_path(ctx)
         record_path.parent.mkdir(parents=True, exist_ok=True)
         record_path.write_text(
-            json.dumps(ctx.to_dict(), indent=2, ensure_ascii=False),
-            encoding="utf-8",
+            json.dumps(ctx.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8",
         )
 
     def load(self, task_path: str, run_id: str) -> RunContext:
@@ -151,7 +151,9 @@ class FileSystemLineageStore(LineageStore):
             return []
 
         results: List[RunContext] = []
-        for json_file in sorted(root.rglob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        for json_file in sorted(
+            root.rglob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
             try:
                 ctx = self._load_file(json_file)
             except Exception:
@@ -170,6 +172,7 @@ class FileSystemLineageStore(LineageStore):
 # ---------------------------------------------------------------------------
 # S3 stub
 # ---------------------------------------------------------------------------
+
 
 class S3LineageStore(LineageStore):
     """Stub S3 lineage store — raises ``NotImplementedError`` on all operations.

@@ -32,6 +32,7 @@ from ubunye.lineage.storage import FileSystemLineageStore  # noqa: E402
 # Session-scoped Spark fixture
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def spark() -> SparkSession:
     s = (
@@ -50,11 +51,13 @@ def spark() -> SparkSession:
 # Helpers
 # ---------------------------------------------------------------------------
 
-_SCHEMA = StructType([
-    StructField("id", IntegerType(), True),
-    StructField("claim_ref", StringType(), True),
-    StructField("amount", DoubleType(), True),
-])
+_SCHEMA = StructType(
+    [
+        StructField("id", IntegerType(), True),
+        StructField("claim_ref", StringType(), True),
+        StructField("amount", DoubleType(), True),
+    ]
+)
 
 _ROWS_A = [(1, "CLM-001", 1000.50), (2, "CLM-002", 2500.00), (3, "CLM-003", 500.75)]
 _ROWS_B = [(10, "CLM-010", 9999.99), (11, "CLM-011", 1.00)]
@@ -78,13 +81,7 @@ def _build_config(input_path: str, output_path: str) -> dict:
                 }
             },
             "transform": {"type": "noop"},
-            "outputs": {
-                "source": {
-                    "format": "s3",
-                    "path": output_path,
-                    "mode": "overwrite",
-                }
-            },
+            "outputs": {"source": {"format": "s3", "path": output_path, "mode": "overwrite",}},
         },
     }
 
@@ -104,13 +101,11 @@ def _run_with_lineage(cfg: dict, spark_session: SparkSession, lineage_base: str)
         engine.backend._spark = spark_session
         result = engine.run(cfg)
         recorder.task_end(
-            context=context, config=cfg,
-            outputs=result, status="success", duration_sec=0.1,
+            context=context, config=cfg, outputs=result, status="success", duration_sec=0.1,
         )
     except Exception:
         recorder.task_end(
-            context=context, config=cfg,
-            outputs=None, status="error", duration_sec=0.0,
+            context=context, config=cfg, outputs=None, status="error", duration_sec=0.0,
         )
         raise
     finally:
@@ -122,9 +117,9 @@ def _run_with_lineage(cfg: dict, spark_session: SparkSession, lineage_base: str)
 # Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 class TestReproducibility:
-
     def test_same_input_same_schema_hash(self, spark, tmp_path):
         """Running the same pipeline twice produces identical output schema hashes."""
         csv_path = str(tmp_path / "input.csv")
@@ -150,8 +145,12 @@ class TestReproducibility:
         lineage_base = str(tmp_path / "lineage")
         _write_csv(spark, _ROWS_A, csv_path)
 
-        run_id1 = _run_with_lineage(_build_config(csv_path, str(tmp_path / "o1")), spark, lineage_base)
-        run_id2 = _run_with_lineage(_build_config(csv_path, str(tmp_path / "o2")), spark, lineage_base)
+        run_id1 = _run_with_lineage(
+            _build_config(csv_path, str(tmp_path / "o1")), spark, lineage_base
+        )
+        run_id2 = _run_with_lineage(
+            _build_config(csv_path, str(tmp_path / "o2")), spark, lineage_base
+        )
 
         store = FileSystemLineageStore(lineage_base)
         ctx1 = store.load("test/pipeline/etl", run_id1)
@@ -184,8 +183,12 @@ class TestReproducibility:
         _write_csv(spark, _ROWS_A, csv_a)
         _write_csv(spark, _ROWS_B, csv_b)
 
-        run_id_a = _run_with_lineage(_build_config(csv_a, str(tmp_path / "out_a")), spark, lineage_base)
-        run_id_b = _run_with_lineage(_build_config(csv_b, str(tmp_path / "out_b")), spark, lineage_base)
+        run_id_a = _run_with_lineage(
+            _build_config(csv_a, str(tmp_path / "out_a")), spark, lineage_base
+        )
+        run_id_b = _run_with_lineage(
+            _build_config(csv_b, str(tmp_path / "out_b")), spark, lineage_base
+        )
 
         store = FileSystemLineageStore(lineage_base)
         ctx_a = store.load("test/pipeline/etl", run_id_a)

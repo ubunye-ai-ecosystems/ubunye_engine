@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _location_from_io_cfg(io_cfg: Dict[str, Any]) -> str:
     """Derive a human-readable location string from an IOConfig dict."""
     fmt = io_cfg.get("format", "")
@@ -56,17 +57,18 @@ def _location_from_io_cfg(io_cfg: Dict[str, Any]) -> str:
 # StepRecord
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class StepRecord:
     """Captures lineage metadata for a single input or output step."""
 
-    name: str               # logical name in config, e.g. "source", "sink"
-    direction: str          # "input" | "output"
-    format: str             # "hive", "s3", "jdbc", ...
-    location: str           # human-readable pointer to the data (db.tbl, path, url)
+    name: str  # logical name in config, e.g. "source", "sink"
+    direction: str  # "input" | "output"
+    format: str  # "hive", "s3", "jdbc", ...
+    location: str  # human-readable pointer to the data (db.tbl, path, url)
     row_count: Optional[int] = None
     schema_hash: Optional[str] = None  # "sha256:<hex>" of JSON-serialised schema
-    data_hash: Optional[str] = None    # "sha256:<hex>" of sampled rows
+    data_hash: Optional[str] = None  # "sha256:<hex>" of sampled rows
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -98,20 +100,21 @@ class StepRecord:
 # RunContext
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RunContext:
     """Full lineage record for one task execution."""
 
     run_id: str
-    task_path: str          # "usecase/package/task_name"
+    task_path: str  # "usecase/package/task_name"
     usecase: str
     package: str
     task_name: str
     profile: str
-    model: str              # "etl" | "ml"
+    model: str  # "etl" | "ml"
     version: str
-    config_hash: str        # "sha256:<hex>" of the raw config.yaml bytes
-    started_at: str         # ISO-8601 UTC timestamp
+    config_hash: str  # "sha256:<hex>" of the raw config.yaml bytes
+    started_at: str  # ISO-8601 UTC timestamp
 
     # Populated at task_end
     ended_at: Optional[str] = None

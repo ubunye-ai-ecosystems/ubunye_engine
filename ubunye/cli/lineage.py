@@ -51,13 +51,18 @@ def _fmt_row(ctx: RunContext) -> str:
 # show
 # ---------------------------------------------------------------------------
 
+
 @lineage_app.command("show")
 def show(
-    usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", help="Root directory of pipelines."),
+    usecase_dir: Path = typer.Option(
+        ..., "-d", "--usecase-dir", help="Root directory of pipelines."
+    ),
     usecase: str = typer.Option(..., "-u", "--usecase"),
     package: str = typer.Option(..., "-p", "--package"),
     task: str = typer.Option(..., "-t", "--task"),
-    run_id: Optional[str] = typer.Option(None, "--run-id", help="Specific run ID (default: latest)."),
+    run_id: Optional[str] = typer.Option(
+        None, "--run-id", help="Specific run ID (default: latest)."
+    ),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
 ):
     """Show a run record as formatted JSON (latest or specific run)."""
@@ -84,6 +89,7 @@ def show(
 # list
 # ---------------------------------------------------------------------------
 
+
 @lineage_app.command("list")
 def list_runs(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
@@ -108,8 +114,10 @@ def list_runs(
     typer.echo(f"{'RUN_ID':9}  {'STARTED':19}  {'STATUS':<8}  {'DUR':>7}  ROWS")
     typer.echo(_LINE)
     for ctx in runs:
-        color = typer.colors.GREEN if ctx.status == "success" else (
-            typer.colors.RED if ctx.status == "error" else typer.colors.YELLOW
+        color = (
+            typer.colors.GREEN
+            if ctx.status == "success"
+            else (typer.colors.RED if ctx.status == "error" else typer.colors.YELLOW)
         )
         typer.secho(_fmt_row(ctx), fg=color)
 
@@ -117,6 +125,7 @@ def list_runs(
 # ---------------------------------------------------------------------------
 # compare
 # ---------------------------------------------------------------------------
+
 
 @lineage_app.command("compare")
 def compare(
@@ -172,14 +181,23 @@ def compare(
 # search
 # ---------------------------------------------------------------------------
 
+
 @lineage_app.command("search")
 def search(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     task: Optional[str] = typer.Option(None, "-t", "--task", help="Restrict to this task name."),
-    usecase: Optional[str] = typer.Option(None, "-u", "--usecase", help="Restrict to this usecase."),
-    package: Optional[str] = typer.Option(None, "-p", "--package", help="Restrict to this package."),
-    status: Optional[str] = typer.Option(None, "--status", help="Filter by status: success|error|running."),
-    since: Optional[str] = typer.Option(None, "--since", help="Only runs started on or after this ISO date."),
+    usecase: Optional[str] = typer.Option(
+        None, "-u", "--usecase", help="Restrict to this usecase."
+    ),
+    package: Optional[str] = typer.Option(
+        None, "-p", "--package", help="Restrict to this package."
+    ),
+    status: Optional[str] = typer.Option(
+        None, "--status", help="Filter by status: success|error|running."
+    ),
+    since: Optional[str] = typer.Option(
+        None, "--since", help="Only runs started on or after this ISO date."
+    ),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
 ):
     """Search all recorded runs across tasks with optional filters."""
@@ -203,8 +221,10 @@ def search(
     typer.echo(f"{'RUN_ID':9}  {'TASK PATH':40}  {'STARTED':19}  {'STATUS':<8}  DUR")
     typer.echo(_LINE)
     for ctx in runs:
-        color = typer.colors.GREEN if ctx.status == "success" else (
-            typer.colors.RED if ctx.status == "error" else typer.colors.YELLOW
+        color = (
+            typer.colors.GREEN
+            if ctx.status == "success"
+            else (typer.colors.RED if ctx.status == "error" else typer.colors.YELLOW)
         )
         duration = f"{ctx.duration_sec:.1f}s" if ctx.duration_sec is not None else "-"
         typer.secho(
@@ -217,6 +237,7 @@ def search(
 # ---------------------------------------------------------------------------
 # trace
 # ---------------------------------------------------------------------------
+
 
 @lineage_app.command("trace")
 def trace(

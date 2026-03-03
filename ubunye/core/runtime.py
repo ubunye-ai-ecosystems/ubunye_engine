@@ -25,6 +25,7 @@ from ubunye.telemetry.prometheus import (
 @dataclass(frozen=True)
 class EngineContext:
     """Lightweight context passed around for observability and debugging."""
+
     run_id: str
     profile: Optional[str] = None
     task_name: Optional[str] = None  # e.g., "fraud_detection/claims/claim_etl"
@@ -139,12 +140,8 @@ class Engine:
         self._validate_transforms_exist(transforms)
 
         # Resolve context for telemetry
-        task_name = (self.context.task_name
-                     or cfg.get("TASK_NAME")
-                     or "unknown_task")
-        profile = (self.context.profile
-                   or cfg.get("ENGINE", {}).get("active_profile")
-                   or "default")
+        task_name = self.context.task_name or cfg.get("TASK_NAME") or "unknown_task"
+        profile = self.context.profile or cfg.get("ENGINE", {}).get("active_profile") or "default"
 
         # Init telemetry (no-op if disabled)
         _maybe_init_telemetry()
@@ -197,15 +194,27 @@ class Engine:
                     sources[name] = df
                     dur = time.perf_counter() - t0
                     if _TELEMETRY_ENABLED:
-                        observe_step(task=task_name, profile=profile, step=step,
-                                     status="success", duration_sec=dur)
+                        observe_step(
+                            task=task_name,
+                            profile=profile,
+                            step=step,
+                            status="success",
+                            duration_sec=dur,
+                        )
                         logger.step_end(step, status="success", duration_sec=dur)
                 except Exception as e:
                     dur = time.perf_counter() - t0
                     if _TELEMETRY_ENABLED:
-                        observe_step(task=task_name, profile=profile, step=step,
-                                     status="error", duration_sec=dur)
-                        logger.step_end(step, status="error", duration_sec=dur, extra={"error": repr(e)})
+                        observe_step(
+                            task=task_name,
+                            profile=profile,
+                            step=step,
+                            status="error",
+                            duration_sec=dur,
+                        )
+                        logger.step_end(
+                            step, status="error", duration_sec=dur, extra={"error": repr(e)}
+                        )
                     raise
 
             # -------- TRANSFORM(S) --------
@@ -226,15 +235,27 @@ class Engine:
                         )
                     dur = time.perf_counter() - t0
                     if _TELEMETRY_ENABLED:
-                        observe_step(task=task_name, profile=profile, step=step,
-                                     status="success", duration_sec=dur)
+                        observe_step(
+                            task=task_name,
+                            profile=profile,
+                            step=step,
+                            status="success",
+                            duration_sec=dur,
+                        )
                         logger.step_end(step, status="success", duration_sec=dur)
                 except Exception as e:
                     dur = time.perf_counter() - t0
                     if _TELEMETRY_ENABLED:
-                        observe_step(task=task_name, profile=profile, step=step,
-                                     status="error", duration_sec=dur)
-                        logger.step_end(step, status="error", duration_sec=dur, extra={"error": repr(e)})
+                        observe_step(
+                            task=task_name,
+                            profile=profile,
+                            step=step,
+                            status="error",
+                            duration_sec=dur,
+                        )
+                        logger.step_end(
+                            step, status="error", duration_sec=dur, extra={"error": repr(e)}
+                        )
                     raise
 
             # -------- WRITE --------
@@ -258,15 +279,27 @@ class Engine:
                         writer_cls().write(outputs_map[name], ocfg, self.backend)
                     dur = time.perf_counter() - t0
                     if _TELEMETRY_ENABLED:
-                        observe_step(task=task_name, profile=profile, step=step,
-                                     status="success", duration_sec=dur)
+                        observe_step(
+                            task=task_name,
+                            profile=profile,
+                            step=step,
+                            status="success",
+                            duration_sec=dur,
+                        )
                         logger.step_end(step, status="success", duration_sec=dur)
                 except Exception as e:
                     dur = time.perf_counter() - t0
                     if _TELEMETRY_ENABLED:
-                        observe_step(task=task_name, profile=profile, step=step,
-                                     status="error", duration_sec=dur)
-                        logger.step_end(step, status="error", duration_sec=dur, extra={"error": repr(e)})
+                        observe_step(
+                            task=task_name,
+                            profile=profile,
+                            step=step,
+                            status="error",
+                            duration_sec=dur,
+                        )
+                        logger.step_end(
+                            step, status="error", duration_sec=dur, extra={"error": repr(e)}
+                        )
                     raise
 
             # Success

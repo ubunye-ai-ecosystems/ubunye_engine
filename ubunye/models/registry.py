@@ -30,6 +30,7 @@ from ubunye.models.gates import PromotionGate
 # Enums and Dataclasses
 # ---------------------------------------------------------------------------
 
+
 class ModelStage(str, Enum):
     DEVELOPMENT = "development"
     STAGING = "staging"
@@ -83,6 +84,7 @@ class ModelRecord:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class ModelRegistry:
     """Manages model versions and lifecycle transitions.
@@ -197,9 +199,7 @@ class ModelRegistry:
             failed = gate.failed_gates(mv.metrics, mv.metadata)
             if failed:
                 details = "\n".join(f"  - {r.gate_name}: {r.message}" for r in failed)
-                raise ValueError(
-                    f"Promotion blocked — {len(failed)} gate(s) failed:\n{details}"
-                )
+                raise ValueError(f"Promotion blocked — {len(failed)} gate(s) failed:\n{details}")
 
         now = _utcnow()
 
@@ -224,11 +224,7 @@ class ModelRegistry:
         return mv
 
     def demote(
-        self,
-        use_case: str,
-        model_name: str,
-        version: str,
-        to_stage: ModelStage,
+        self, use_case: str, model_name: str, version: str, to_stage: ModelStage,
     ) -> ModelVersion:
         """Demote a model version to a lower stage.
 
@@ -244,12 +240,7 @@ class ModelRegistry:
         self._save_record(record)
         return mv
 
-    def rollback(
-        self,
-        use_case: str,
-        model_name: str,
-        to_version: str,
-    ) -> ModelVersion:
+    def rollback(self, use_case: str, model_name: str, to_version: str,) -> ModelVersion:
         """Roll back production to a specific previous version.
 
         1. Archives the current production version.
@@ -334,18 +325,10 @@ class ModelRegistry:
             FileNotFoundError: Model not found in registry.
         """
         record = self._load_record(use_case, model_name)
-        return sorted(
-            record.versions.values(),
-            key=lambda v: v.registered_at,
-            reverse=True,
-        )
+        return sorted(record.versions.values(), key=lambda v: v.registered_at, reverse=True,)
 
     def compare_versions(
-        self,
-        use_case: str,
-        model_name: str,
-        version_a: str,
-        version_b: str,
+        self, use_case: str, model_name: str, version_a: str, version_b: str,
     ) -> Dict[str, Dict[str, Any]]:
         """Compare metrics between two versions.
 
@@ -388,18 +371,12 @@ class ModelRegistry:
         path = self._registry_path(use_case, model_name)
         if not path.exists():
             raise FileNotFoundError(
-                f"No registry found for '{use_case}/{model_name}'. "
-                f"Expected: {path}"
+                f"No registry found for '{use_case}/{model_name}'. " f"Expected: {path}"
             )
         data = json.loads(path.read_text(encoding="utf-8"))
-        versions = {
-            k: ModelVersion(**v)
-            for k, v in data.get("versions", {}).items()
-        }
+        versions = {k: ModelVersion(**v) for k, v in data.get("versions", {}).items()}
         return ModelRecord(
-            model_name=data["model_name"],
-            use_case=data["use_case"],
-            versions=versions,
+            model_name=data["model_name"], use_case=data["use_case"], versions=versions,
         )
 
     def _save_record(self, record: ModelRecord) -> None:
@@ -408,9 +385,7 @@ class ModelRegistry:
         data = {
             "model_name": record.model_name,
             "use_case": record.use_case,
-            "versions": {
-                k: asdict(v) for k, v in record.versions.items()
-            },
+            "versions": {k: asdict(v) for k, v in record.versions.items()},
         }
         # Convert ModelStage enum values to strings for JSON serialisation
         for v_dict in data["versions"].values():
@@ -451,6 +426,7 @@ class ModelRegistry:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()

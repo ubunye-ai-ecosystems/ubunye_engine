@@ -20,6 +20,7 @@ from typing import Dict, Optional
 _TRACING_ENABLED = False
 _tracer = None
 
+
 def init_tracer(service_name: str = "ubunye") -> None:
     """
     Initialize OpenTelemetry tracing if the SDK is available.
@@ -79,6 +80,7 @@ def span(name: str, attrs: Optional[Dict[str, object]] = None):
         return
 
     from opentelemetry import trace
+
     current_span = None
     try:
         current_span = _tracer.start_span(name)

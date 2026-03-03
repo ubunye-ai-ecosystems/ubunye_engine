@@ -5,10 +5,13 @@ from ubunye.lineage.context import RunContext, StepRecord, _location_from_io_cfg
 # _location_from_io_cfg helper
 # ---------------------------------------------------------------------------
 
-class TestLocationHelper:
 
+class TestLocationHelper:
     def test_hive_uses_db_and_tbl(self):
-        assert _location_from_io_cfg({"format": "hive", "db_name": "raw", "tbl_name": "claims"}) == "raw.claims"
+        assert (
+            _location_from_io_cfg({"format": "hive", "db_name": "raw", "tbl_name": "claims"})
+            == "raw.claims"
+        )
 
     def test_unity_uses_db_and_tbl(self):
         assert _location_from_io_cfg({"format": "unity", "db_name": "d", "tbl_name": "t"}) == "d.t"
@@ -18,12 +21,17 @@ class TestLocationHelper:
         assert loc == "my_table"
 
     def test_jdbc_url_with_table(self):
-        loc = _location_from_io_cfg({"format": "jdbc", "url": "jdbc:pg://host/db", "table": "claims"})
+        loc = _location_from_io_cfg(
+            {"format": "jdbc", "url": "jdbc:pg://host/db", "table": "claims"}
+        )
         assert "jdbc:pg://host/db" in loc
         assert "claims" in loc
 
     def test_s3_uses_path(self):
-        assert _location_from_io_cfg({"format": "s3", "path": "s3a://bucket/key"}) == "s3a://bucket/key"
+        assert (
+            _location_from_io_cfg({"format": "s3", "path": "s3a://bucket/key"})
+            == "s3a://bucket/key"
+        )
 
     def test_binary_uses_path(self):
         assert _location_from_io_cfg({"format": "binary", "path": "/tmp/file"}) == "/tmp/file"
@@ -32,7 +40,10 @@ class TestLocationHelper:
         assert _location_from_io_cfg({"format": "delta", "path": "/delta/table"}) == "/delta/table"
 
     def test_rest_api_uses_url(self):
-        assert _location_from_io_cfg({"format": "rest_api", "url": "https://api.example.com/v1"}) == "https://api.example.com/v1"
+        assert (
+            _location_from_io_cfg({"format": "rest_api", "url": "https://api.example.com/v1"})
+            == "https://api.example.com/v1"
+        )
 
     def test_unknown_format_falls_back_gracefully(self):
         loc = _location_from_io_cfg({"format": "custom", "path": "/some/path"})
@@ -43,8 +54,8 @@ class TestLocationHelper:
 # StepRecord
 # ---------------------------------------------------------------------------
 
-class TestStepRecord:
 
+class TestStepRecord:
     def _make(self, **kwargs):
         defaults = dict(name="src", direction="input", format="hive", location="raw.claims")
         defaults.update(kwargs)
@@ -117,7 +128,6 @@ _MINIMAL = dict(
 
 
 class TestRunContext:
-
     def test_basic_creation(self):
         ctx = RunContext(**_MINIMAL)
         assert ctx.run_id == "run-123"
@@ -129,9 +139,21 @@ class TestRunContext:
     def test_to_dict_has_all_required_keys(self):
         ctx = RunContext(**_MINIMAL)
         d = ctx.to_dict()
-        for key in ("run_id", "task_path", "usecase", "package", "task_name",
-                    "profile", "model", "version", "config_hash", "started_at",
-                    "status", "inputs", "outputs"):
+        for key in (
+            "run_id",
+            "task_path",
+            "usecase",
+            "package",
+            "task_name",
+            "profile",
+            "model",
+            "version",
+            "config_hash",
+            "started_at",
+            "status",
+            "inputs",
+            "outputs",
+        ):
             assert key in d, f"Missing key: {key}"
 
     def test_to_dict_inputs_outputs_are_lists(self):

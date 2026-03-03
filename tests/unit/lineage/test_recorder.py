@@ -8,8 +8,10 @@ from ubunye.lineage.storage import FileSystemLineageStore
 # Minimal stubs
 # ---------------------------------------------------------------------------
 
+
 class FakeContext:
     """Minimal stand-in for EngineContext."""
+
     def __init__(self, run_id="run-abc", task_name="fraud/ingestion/claim_etl", profile="dev"):
         self.run_id = run_id
         self.task_name = task_name
@@ -20,12 +22,8 @@ _BASE_CONFIG = {
     "MODEL": "etl",
     "VERSION": "0.1.0",
     "CONFIG": {
-        "inputs": {
-            "source": {"format": "hive", "db_name": "raw", "tbl_name": "claims"},
-        },
-        "outputs": {
-            "sink": {"format": "s3", "path": "s3a://bucket/out"},
-        },
+        "inputs": {"source": {"format": "hive", "db_name": "raw", "tbl_name": "claims"},},
+        "outputs": {"sink": {"format": "s3", "path": "s3a://bucket/out"},},
     },
 }
 
@@ -33,6 +31,7 @@ _BASE_CONFIG = {
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_recorder(tmp_path) -> tuple[LineageRecorder, FileSystemLineageStore, str]:
     base = str(tmp_path / "lineage")
@@ -45,8 +44,8 @@ def _make_recorder(tmp_path) -> tuple[LineageRecorder, FileSystemLineageStore, s
 # task_start
 # ---------------------------------------------------------------------------
 
-class TestLineageRecorderStart:
 
+class TestLineageRecorderStart:
     def test_task_start_creates_running_record(self, tmp_path):
         recorder, store, _ = _make_recorder(tmp_path)
         ctx = FakeContext()
@@ -99,18 +98,14 @@ class TestLineageRecorderStart:
 # task_end
 # ---------------------------------------------------------------------------
 
-class TestLineageRecorderEnd:
 
+class TestLineageRecorderEnd:
     def _run(self, tmp_path, status="success", outputs=None):
         recorder, store, _ = _make_recorder(tmp_path)
         ctx = FakeContext()
         recorder.task_start(context=ctx, config=_BASE_CONFIG)
         recorder.task_end(
-            context=ctx,
-            config=_BASE_CONFIG,
-            outputs=outputs,
-            status=status,
-            duration_sec=3.7,
+            context=ctx, config=_BASE_CONFIG, outputs=outputs, status=status, duration_sec=3.7,
         )
         return store.load("fraud/ingestion/claim_etl", "run-abc")
 
@@ -154,8 +149,7 @@ class TestLineageRecorderEnd:
         recorder.task_start(context=ctx, config=_BASE_CONFIG)
         assert ctx.run_id in recorder._runs
         recorder.task_end(
-            context=ctx, config=_BASE_CONFIG,
-            outputs=None, status="success", duration_sec=1.0,
+            context=ctx, config=_BASE_CONFIG, outputs=None, status="success", duration_sec=1.0,
         )
         assert ctx.run_id not in recorder._runs
 
@@ -164,8 +158,7 @@ class TestLineageRecorderEnd:
         ctx = FakeContext(run_id="orphan")
         # Must not raise
         recorder.task_end(
-            context=ctx, config=_BASE_CONFIG,
-            outputs=None, status="success", duration_sec=0.0,
+            context=ctx, config=_BASE_CONFIG, outputs=None, status="success", duration_sec=0.0,
         )
 
     def test_same_config_same_config_hash(self, tmp_path):

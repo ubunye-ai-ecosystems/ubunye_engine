@@ -7,6 +7,7 @@ from ubunye.lineage.hasher import _sha256, hash_dataframe, hash_file, hash_schem
 # Mock DataFrame (Spark-free)
 # ---------------------------------------------------------------------------
 
+
 class MockField:
     def __init__(self, name, dtype="string", nullable=True):
         self.name = name
@@ -22,8 +23,7 @@ class MockSchema:
         return {
             "type": "struct",
             "fields": [
-                {"name": f.name, "type": f.dataType, "nullable": f.nullable}
-                for f in self._fields
+                {"name": f.name, "type": f.dataType, "nullable": f.nullable} for f in self._fields
             ],
         }
 
@@ -56,6 +56,7 @@ class MockDF:
 # _sha256
 # ---------------------------------------------------------------------------
 
+
 class TestSha256:
     def test_returns_prefix(self):
         assert _sha256(b"hello").startswith("sha256:")
@@ -75,6 +76,7 @@ class TestSha256:
 # ---------------------------------------------------------------------------
 # hash_schema
 # ---------------------------------------------------------------------------
+
 
 class TestHashSchema:
     def test_returns_sha256_string(self):
@@ -102,6 +104,7 @@ class TestHashSchema:
 # ---------------------------------------------------------------------------
 # hash_dataframe
 # ---------------------------------------------------------------------------
+
 
 class TestHashDataframe:
     def test_returns_sha256_string(self):
@@ -144,6 +147,7 @@ class TestHashDataframe:
 # ---------------------------------------------------------------------------
 # hash_file
 # ---------------------------------------------------------------------------
+
 
 class TestHashFile:
     def test_returns_sha256_string(self, tmp_path):

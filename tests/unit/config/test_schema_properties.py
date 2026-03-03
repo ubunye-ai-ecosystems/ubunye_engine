@@ -18,15 +18,14 @@ _MINIMAL_CONFIG = {
 # FormatType enum
 # ---------------------------------------------------------------------------
 
+
 @given(fmt=st.sampled_from(list(_KNOWN_FORMATS)))
 def test_known_formats_accepted(fmt):
     """Every known format string should be accepted by FormatType."""
     assert FormatType(fmt).value == fmt
 
 
-@given(
-    fmt=st.text(min_size=1, max_size=20).filter(lambda s: s not in _KNOWN_FORMATS)
-)
+@given(fmt=st.text(min_size=1, max_size=20).filter(lambda s: s not in _KNOWN_FORMATS))
 def test_unknown_formats_rejected(fmt):
     """Format strings not in the enum should be rejected."""
     with pytest.raises(Exception):
@@ -36,6 +35,7 @@ def test_unknown_formats_rejected(fmt):
 # ---------------------------------------------------------------------------
 # Hive IOConfig
 # ---------------------------------------------------------------------------
+
 
 @given(
     db=st.text(min_size=1, max_size=50).filter(str.strip),
@@ -53,6 +53,7 @@ def test_valid_hive_always_parses(db, tbl):
 # ---------------------------------------------------------------------------
 # VERSION semver
 # ---------------------------------------------------------------------------
+
 
 @given(version=st.from_regex(r"[0-9]+\.[0-9]+\.[0-9]+", fullmatch=True))
 @settings(max_examples=50)
@@ -78,6 +79,7 @@ def test_invalid_semver_rejected(version):
 # WriteMode
 # ---------------------------------------------------------------------------
 
+
 @given(mode=st.sampled_from(["overwrite", "append", "merge"]))
 def test_valid_write_modes_accepted(mode):
     io = IOConfig(format="hive", db_name="db", tbl_name="t", mode=mode)
@@ -100,10 +102,7 @@ def test_invalid_write_modes_rejected(mode):
 # ---------------------------------------------------------------------------
 
 _valid_name = st.text(
-    alphabet=st.characters(
-        whitelist_categories=("Ll", "Lu", "Nd"),
-        whitelist_characters="_",
-    ),
+    alphabet=st.characters(whitelist_categories=("Ll", "Lu", "Nd"), whitelist_characters="_",),
     min_size=1,
     max_size=30,
 ).filter(lambda s: s[0].isalpha())
@@ -127,16 +126,14 @@ def _valid_full_config(draw) -> dict:
     return {
         "MODEL": draw(st.sampled_from(["etl", "ml"])),
         "VERSION": draw(st.from_regex(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}", fullmatch=True)),
-        "CONFIG": {
-            "inputs": {"src": draw(_io_cfg())},
-            "outputs": {"snk": draw(_io_cfg())},
-        },
+        "CONFIG": {"inputs": {"src": draw(_io_cfg())}, "outputs": {"snk": draw(_io_cfg())},},
     }
 
 
 # ---------------------------------------------------------------------------
 # Full-config property tests
 # ---------------------------------------------------------------------------
+
 
 @given(config=_valid_full_config())
 @settings(max_examples=200)
@@ -163,18 +160,13 @@ def test_parsed_config_is_idempotent(config):
 def test_multiple_inputs_outputs_accepted(num_in, num_out):
     """TaskConfig accepts 1–4 inputs and 1–4 outputs."""
     inputs = {
-        f"src_{i}": {"format": "hive", "db_name": "db", "tbl_name": f"t_{i}"}
-        for i in range(num_in)
+        f"src_{i}": {"format": "hive", "db_name": "db", "tbl_name": f"t_{i}"} for i in range(num_in)
     }
     outputs = {
         f"snk_{i}": {"format": "hive", "db_name": "db", "tbl_name": f"out_{i}"}
         for i in range(num_out)
     }
-    cfg = UbunyeConfig(
-        MODEL="etl",
-        VERSION="1.0.0",
-        CONFIG={"inputs": inputs, "outputs": outputs},
-    )
+    cfg = UbunyeConfig(MODEL="etl", VERSION="1.0.0", CONFIG={"inputs": inputs, "outputs": outputs},)
     assert len(cfg.CONFIG.inputs) == num_in
     assert len(cfg.CONFIG.outputs) == num_out
 

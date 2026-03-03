@@ -5,7 +5,6 @@ from ubunye.config.resolver import resolve_config
 
 
 class TestJinjaResolver:
-
     def test_env_var_resolution(self, monkeypatch):
         monkeypatch.setenv("DB_USER", "admin")
         raw = {"user": "{{ env.DB_USER }}"}

@@ -28,6 +28,7 @@ from ubunye.core.interfaces import Reader, Transform, Writer
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _chain_mock() -> MagicMock:
     """A MagicMock where every chained call returns another MagicMock.
 
@@ -58,6 +59,7 @@ def _make_df() -> MagicMock:
 # ---------------------------------------------------------------------------
 # Base contract ABC
 # ---------------------------------------------------------------------------
+
 
 class PluginContractTest(ABC):
     """Inherit this for each reader+writer pair.
@@ -115,10 +117,11 @@ class PluginContractTest(ABC):
 # HiveReader + (stub) HiveWriter
 # ---------------------------------------------------------------------------
 
-class TestHivePlugin(PluginContractTest):
 
+class TestHivePlugin(PluginContractTest):
     def make_reader(self):
         from ubunye.plugins.readers.hive import HiveReader
+
         return HiveReader()
 
     def make_writer(self):
@@ -160,6 +163,7 @@ class TestHivePlugin(PluginContractTest):
 
     def test_reader_is_reader_subclass(self):
         from ubunye.plugins.readers.hive import HiveReader
+
         assert issubclass(HiveReader, Reader)
 
     def test_writer_is_writer_subclass(self):
@@ -167,6 +171,7 @@ class TestHivePlugin(PluginContractTest):
 
     def test_reader_has_read_method(self):
         from ubunye.plugins.readers.hive import HiveReader
+
         assert callable(HiveReader().read)
 
     def test_writer_has_write_method(self):
@@ -177,14 +182,16 @@ class TestHivePlugin(PluginContractTest):
 # JdbcReader + JdbcWriter
 # ---------------------------------------------------------------------------
 
-class TestJdbcPlugin(PluginContractTest):
 
+class TestJdbcPlugin(PluginContractTest):
     def make_reader(self):
         from ubunye.plugins.readers.jdbc import JdbcReader
+
         return JdbcReader()
 
     def make_writer(self):
         from ubunye.plugins.writers.jdbc import JdbcWriter
+
         return JdbcWriter()
 
     def valid_read_cfg(self):
@@ -212,7 +219,9 @@ class TestJdbcPlugin(PluginContractTest):
 
     def test_write_requires_table(self):
         with pytest.raises(ValueError):
-            self.make_writer().write(_make_df(), {"format": "jdbc", "url": "jdbc:x"}, _make_backend())
+            self.make_writer().write(
+                _make_df(), {"format": "jdbc", "url": "jdbc:x"}, _make_backend()
+            )
 
     def test_read_calls_spark_jdbc_load(self):
         spark = MagicMock()
@@ -244,8 +253,8 @@ class TestJdbcPlugin(PluginContractTest):
 # S3Writer (path-based)
 # ---------------------------------------------------------------------------
 
-class TestS3Plugin(PluginContractTest):
 
+class TestS3Plugin(PluginContractTest):
     def make_reader(self):
         # No dedicated S3Reader in the codebase; return a mock for base-class compliance
         m = MagicMock(spec=Reader)
@@ -253,6 +262,7 @@ class TestS3Plugin(PluginContractTest):
 
     def make_writer(self):
         from ubunye.plugins.writers.s3 import S3Writer
+
         return S3Writer()
 
     def valid_read_cfg(self):
@@ -294,6 +304,7 @@ class TestS3Plugin(PluginContractTest):
 
     def test_writer_is_writer_subclass(self):
         from ubunye.plugins.writers.s3 import S3Writer
+
         assert issubclass(S3Writer, Writer)
 
     def test_reader_is_reader_subclass(self):
@@ -310,14 +321,16 @@ class TestS3Plugin(PluginContractTest):
 # UnityTableReader + UnityTableWriter
 # ---------------------------------------------------------------------------
 
-class TestUnityPlugin(PluginContractTest):
 
+class TestUnityPlugin(PluginContractTest):
     def make_reader(self):
         from ubunye.plugins.readers.unity import UnityTableReader
+
         return UnityTableReader()
 
     def make_writer(self):
         from ubunye.plugins.writers.unity import UnityTableWriter
+
         return UnityTableWriter()
 
     def valid_read_cfg(self):
@@ -367,14 +380,16 @@ class TestUnityPlugin(PluginContractTest):
 # NoOpTransform
 # ---------------------------------------------------------------------------
 
-class TestNoOpTransform:
 
+class TestNoOpTransform:
     def _make(self):
         from ubunye.plugins.transforms.noop import NoOpTransform
+
         return NoOpTransform()
 
     def test_is_transform_subclass(self):
         from ubunye.plugins.transforms.noop import NoOpTransform
+
         assert issubclass(NoOpTransform, Transform)
 
     def test_has_apply_method(self):
@@ -400,14 +415,16 @@ class TestNoOpTransform:
 # RestApiReader + RestApiWriter
 # ---------------------------------------------------------------------------
 
-class TestRestApiPlugin(PluginContractTest):
 
+class TestRestApiPlugin(PluginContractTest):
     def make_reader(self):
         from ubunye.plugins.readers.rest_api import RestApiReader
+
         return RestApiReader()
 
     def make_writer(self):
         from ubunye.plugins.writers.rest_api import RestApiWriter
+
         return RestApiWriter()
 
     def valid_read_cfg(self):

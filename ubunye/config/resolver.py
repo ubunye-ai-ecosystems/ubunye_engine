@@ -32,9 +32,7 @@ _ENV_REF_RE = re.compile(r"\{\{[^}]*env\.(\w+)([^}]*)\}\}")
 
 
 def resolve_config(
-    raw: Any,
-    cli_vars: Optional[Dict[str, Any]] = None,
-    _env: Optional[Dict[str, str]] = None,
+    raw: Any, cli_vars: Optional[Dict[str, Any]] = None, _env: Optional[Dict[str, str]] = None,
 ) -> Any:
     """Recursively resolve Jinja2 templates in a nested structure.
 
@@ -70,10 +68,7 @@ def resolve_config(
 
 
 def _resolve_node(
-    node: Any,
-    jinja_env: Environment,
-    variables: Dict[str, Any],
-    env_source: Dict[str, str],
+    node: Any, jinja_env: Environment, variables: Dict[str, Any], env_source: Dict[str, str],
 ) -> Any:
     """Recursively walk the config structure and resolve string values."""
     if isinstance(node, dict):
@@ -90,10 +85,7 @@ def _resolve_node(
 
 
 def _render_string(
-    value: str,
-    jinja_env: Environment,
-    variables: Dict[str, Any],
-    env_source: Dict[str, str],
+    value: str, jinja_env: Environment, variables: Dict[str, Any], env_source: Dict[str, str],
 ) -> str:
     """Render a single string value as a Jinja2 template.
 

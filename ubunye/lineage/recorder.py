@@ -144,8 +144,7 @@ class LineageRecorder:
 
         # --- Build input StepRecords (no DataFrame hashing — inputs were read) ---
         ctx.inputs = [
-            StepRecord.from_io_cfg(name, "input", io_cfg)
-            for name, io_cfg in inputs_cfg.items()
+            StepRecord.from_io_cfg(name, "input", io_cfg) for name, io_cfg in inputs_cfg.items()
         ]
 
         # --- Build output StepRecords with optional DataFrame hashes ---
@@ -157,6 +156,7 @@ class LineageRecorder:
                 if df is not None:
                     try:
                         from ubunye.lineage.hasher import hash_dataframe, hash_schema
+
                         step.schema_hash = hash_schema(df)
                         step.data_hash = hash_dataframe(df, sample_fraction=self._sample_fraction)
                         step.row_count = int(df.count())
