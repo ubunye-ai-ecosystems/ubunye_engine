@@ -1,9 +1,9 @@
 site_name: Ubunye Engine
-site_description: Config-first, Spark-native ETL + ML framework
-site_url: https://ubunye-ai-ecosystems.github.io/ubunye-engine
-repo_url: https://github.com/ubunye-ai-ecosystems//ubunye-engine
-repo_name: ubunye-ai-ecosystems/ubunye-engine
-copyright: "© {{ year }} Ubunye"
+site_description: Config-first, Spark-native framework for ETL + ML pipelines powering intelligent systems
+site_url: https://ubunye-ai-ecosystems.github.io/ubunye_engine
+repo_url: https://github.com/ubunye-ai-ecosystems/ubunye_engine
+repo_name: ubunye-ai-ecosystems/ubunye_engine
+copyright: "© 2026 Ubunye"
 
 theme:
   name: material
@@ -12,6 +12,8 @@ theme:
     - navigation.instant
     - navigation.tabs
     - navigation.tracking
+    - navigation.sections
+    - navigation.expand
     - toc.follow
     - content.code.copy
     - content.tabs.link
@@ -25,25 +27,44 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-  logo: assets/logo.svg
+  logo: assets/ubunye-logo-black-v3.png
   favicon: assets/favicon.ico
 
 nav:
   - Home: index.md
   - Getting Started:
-      - Installation: installation.md
-      - Overview: overview.md
-  - Usage:
-      - CLI: cli.md
-      - Config Reference: config_reference.md
-      - Plugins: plugins.md
-  - API: api.md
-  - Contributing: contributing.md       # stub linking to ../CONTRIBUTING.md
-  - Code of Conduct: code_of_conduct.md # stub linking to ../CODE_OF_CONDUCT.md
-  - Security Policy: security.md        # stub linking to ../SECURITY.md
-  - Changelog: changelog.md             # stub linking to ../CHANGELOG.md
+      - Installation: getting_started/install.md
+      - Quickstart: getting_started/quickstart.md
+      - Project Structure: getting_started/structure.md
+  - Config Reference:
+      - Overview: config/overview.md
+      - Inputs & Outputs: config/io.md
+      - Engine & Profiles: config/engine.md
+      - Transform: config/transform.md
+      - Orchestration: config/orchestration.md
+      - Jinja Templating: config/jinja.md
+  - Connectors:
+      - Overview: connectors/overview.md
+      - Hive: connectors/hive.md
+      - JDBC: connectors/jdbc.md
+      - Unity Catalog: connectors/unity.md
+      - S3 / Delta: connectors/s3.md
+      - REST API: connectors/rest_api.md
+      - Writing a Plugin: connectors/plugin_guide.md
+  - Patterns:
+      - RAG Document Pipeline: patterns/rag.md
+      - Feature Store: patterns/features.md
+      - Drift Detection: patterns/drift.md
+      - REST API Ingestion: patterns/rest_api.md
+  - ML:
+      - Model Contract: ml/model_contract.md
+      - Model Registry: ml/registry.md
+  - CLI Reference: cli.md
+  - API Reference: api.md
   - Developer Guide: dev_guide.md
-  
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+
 markdown_extensions:
   - admonition
   - def_list
@@ -51,17 +72,25 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.details
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.superfences
   - pymdownx.snippets
   - pymdownx.tabbed:
       alternate_style: true
-  - pymdownx.emoji:
-      emoji_generator: !!python/name:materialx.emoji.to_svg
+  # - pymdownx.emoji:
+  #     emoji_index: !!python/name:material.extensions.emoji.twemoji
+  #     emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 plugins:
   - search
+  - macros:
+      on_error_fail: false
+      j2_block_start_string: "[%"
+      j2_block_end_string: "%]"
+      j2_variable_start_string: "[["
+      j2_variable_end_string: "]]"
   - git-revision-date-localized:
       enable_creation_date: true
   - mkdocstrings:
@@ -76,9 +105,4 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/ubunye-ai-ecosystems//ubunye-engine
-    - icon: fontawesome/brands/slack
-      link: https://your-slack-invite
-  analytics:
-    provider: google
-    property: G-XXXXXXXXXX
+      link: https://github.com/ubunye-ai-ecosystems/ubunye_engine

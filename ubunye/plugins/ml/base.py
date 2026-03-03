@@ -7,12 +7,13 @@ Defines a unified contract for model training/inference and common utilities:
 - HasSchema: feature/target schema handling
 - MLflowLoggingMixin: optional MLflow logging (no hard dep)
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Tuple, Protocol, runtime_checkable
+from typing import Any, Dict, Iterable, Optional, Protocol, runtime_checkable
 
 
 # --------- Schemas ---------
@@ -41,13 +42,16 @@ class HasSchema(ABC):
 @runtime_checkable
 class PandasLike(Protocol):
     def __getitem__(self, cols: Iterable[str]): ...
+
     def to_numpy(self): ...
 
 
 @runtime_checkable
 class SparkDataFrameLike(Protocol):
     def select(self, *cols): ...
+
     def withColumn(self, name: str, col): ...
+
     def schema(self): ...
 
 
@@ -131,6 +135,7 @@ class BaseModel(HasSchema, ABC):
 
     def _load_meta(self, path: Path) -> None:
         import json
+
         meta = json.loads((path / "ubunye_model.json").read_text())
         sch = meta.get("schema")
         if sch:
@@ -147,7 +152,11 @@ class BatchPredictMixin:
     """Utility mixin for efficient batch inference on Spark or pandas."""
 
     def predict_on_spark(
-        self, sdf: SparkDataFrameLike, *, output_col: str = "prediction", proba_col: Optional[str] = None
+        self,
+        sdf: SparkDataFrameLike,
+        *,
+        output_col: str = "prediction",
+        proba_col: Optional[str] = None,
     ):
         """
         Apply predict() to a Spark DataFrame in a UDF/ Pandas UDF style.
@@ -156,11 +165,14 @@ class BatchPredictMixin:
         from pyspark.sql import functions as F
         from pyspark.sql.types import DoubleType
 
-        features = self.schema.features if self.schema else [c for c in sdf.columns if c != output_col]
+        features = (
+            self.schema.features if self.schema else [c for c in sdf.columns if c != output_col]
+        )
 
         # Simple (non-vectorized) UDF baseline:
         def _predict_row(*cols):
             import numpy as np
+
             X = np.array(cols).reshape(1, -1)
             yhat = self.predict(X, proba=False)
             # yhat may be array-like
@@ -171,8 +183,10 @@ class BatchPredictMixin:
 
         # Optional probabilities
         if proba_col:
+
             def _predict_proba_row(*cols):
                 import numpy as np
+
                 X = np.array(cols).reshape(1, -1)
                 _, p = self.predict(X, proba=True)
                 return float(p[0] if hasattr(p, "__len__") else p)

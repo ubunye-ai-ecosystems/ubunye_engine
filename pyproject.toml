@@ -28,22 +28,33 @@ ubunye = "ubunye.cli.main:app"
 [project.entry-points."ubunye.readers"]
 hive = "ubunye.plugins.readers.hive:HiveReader"
 jdbc = "ubunye.plugins.readers.jdbc:JdbcReader"
-unity = "ubunye.plugins.readers.unity:UnityTableReader"   
+s3 = "ubunye.plugins.readers.s3:S3Reader"
+unity = "ubunye.plugins.readers.unity:UnityTableReader"
+rest_api = "ubunye.plugins.readers.rest_api:RestApiReader"
 
 [project.entry-points."ubunye.writers"]
 s3 = "ubunye.plugins.writers.s3:S3Writer"
-jdbc = "ubunye.plugins.writers.jdbc:JdbcWriter"  
-unity  = "ubunye.plugins.writers.unity:UnityTableWriter"  
+jdbc = "ubunye.plugins.writers.jdbc:JdbcWriter"
+unity = "ubunye.plugins.writers.unity:UnityTableWriter"
+rest_api = "ubunye.plugins.writers.rest_api:RestApiWriter"
 
 [project.entry-points."ubunye.transforms"]
-noop = "ubunye.plugins.transforms.noop:NoOpTransform"
+noop  = "ubunye.plugins.transforms.noop:NoOpTransform"
+model = "ubunye.plugins.transforms.model_transform:ModelTransform"
 
 [project.entry-points."ubunye.ml"]
 sklearn = "ubunye.plugins.ml.sklearn:SklearnModel"
 sparkml = "ubunye.plugins.ml.pysparkml:SparkMLModel"
 
 [project.entry-points."ubunye.monitors"]
-mlflow = "ubunye.telemetry.mlflow:MLflowMonitor"
+mlflow  = "ubunye.telemetry.mlflow:MLflowMonitor"
+lineage = "ubunye.lineage.recorder:LineageRecorder"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: requires a local Spark session and Java 11",
+]
 
 [tool.black]
 line-length = 100

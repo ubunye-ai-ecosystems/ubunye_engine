@@ -1,0 +1,4 @@
+# file: C:\Users\thabanglukhetho\Documents\anti_gravity\ubunye_engine\ubunye\telemetry\events.py
+# hypothesis_version: 6.141.1
+
+[0.0, '+00:00', 'Z', 'bytes', 'default', 'duration_sec', 'event', 'milliseconds', 'profile', 'rows', 'run_id', 'status', 'step', 'step_end', 'step_start', 'success', 'task', 'task_end', 'task_start', 'ts']
