@@ -63,7 +63,7 @@ nav:
   - API Reference: api.md
   - Developer Guide: dev_guide.md
   - Contributing: contributing.md
-  - Changelog: CHANGELOG.md
+  - Changelog: changelog.md
 
 markdown_extensions:
   - admonition

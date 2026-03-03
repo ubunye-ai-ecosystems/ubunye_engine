@@ -34,7 +34,9 @@
       "Bash(python -m pytest tests/integration/ -v --co -m integration)",
       "Bash(python -c \"import tests.integration.test_reproducibility\")",
       "Bash(python -m pytest tests/unit/lineage/test_hasher.py -v)",
-      "Bash(python -m pytest tests/unit/ -v --tb=short)"
+      "Bash(python -m pytest tests/unit/ -v --tb=short)",
+      "Bash(mkdocs build --strict)",
+      "Bash(python -m mkdocs build --strict)"
     ]
   }
 }
