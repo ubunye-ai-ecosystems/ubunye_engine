@@ -3,7 +3,7 @@ site_description: Config-first, Spark-native framework for ETL + ML pipelines po
 site_url: https://ubunye-ai-ecosystems.github.io/ubunye_engine
 repo_url: https://github.com/ubunye-ai-ecosystems/ubunye_engine
 repo_name: ubunye-ai-ecosystems/ubunye_engine
-copyright: "© 2025 Ubunye"
+copyright: "© 2026 Ubunye"
 
 theme:
   name: material
@@ -27,7 +27,7 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-  logo: assets/logo.svg
+  logo: assets/ubunye-logo-black-v3.png
   favicon: assets/favicon.ico
 
 nav:
@@ -85,6 +85,12 @@ markdown_extensions:
 
 plugins:
   - search
+  - macros:
+      on_error_fail: false
+      j2_block_start_string: "[%"
+      j2_block_end_string: "%]"
+      j2_variable_start_string: "[["
+      j2_variable_end_string: "]]"
   - git-revision-date-localized:
       enable_creation_date: true
   - mkdocstrings:

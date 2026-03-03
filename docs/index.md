@@ -5,6 +5,8 @@ that run everywhere — locally, on-prem, or in the cloud (Databricks, EMR, Glue
 
 Define your pipeline in YAML. Write a Python class. Run it.
 
+![Ubunye Engine deployment overview](assets/ubunye_deployment.png)
+
 ---
 
 [**Get started in 5 minutes →**](getting_started/quickstart.md){ .md-button .md-button--primary }
