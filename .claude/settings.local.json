@@ -23,7 +23,8 @@
       "Bash(ruff check tests/ ubunye/ --fix)",
       "Bash(python -m pytest tests/unit/ -q --tb=short -m \"not integration\")",
       "Bash(python -m pytest tests/unit/connectors/test_connector_contract.py -q --tb=short)",
-      "Bash(python -m pytest tests/unit/ -q --tb=short)"
+      "Bash(python -m pytest tests/unit/ -q --tb=short)",
+      "Bash(ruff check tests/integration/)"
     ]
   }
 }

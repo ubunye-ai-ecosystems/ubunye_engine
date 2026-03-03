@@ -71,6 +71,7 @@ def _good_cfg(input_path: str, output_path: str) -> dict:
             "inputs": {
                 "source": {
                     "format": "s3",
+                    "file_format": "csv",
                     "path": input_path,
                     "options": {"header": "true", "inferSchema": "true"},
                 }
