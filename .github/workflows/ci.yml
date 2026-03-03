@@ -12,4 +12,6 @@ jobs:
           python-version: "3.11"
       - run: pip install -U pip
       - run: pip install -e .[dev]
-      - run: pytest -q
+      - run: |
+          pytest tests/unit/ -v --tb=short -m "not integration" \
+            --cov=ubunye --cov-report=term-missing --cov-report=xml

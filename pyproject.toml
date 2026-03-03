@@ -20,7 +20,7 @@ dependencies = [
 [project.optional-dependencies]
 spark = ["pyspark>=3.3"]
 ml = ["scikit-learn", "torch", "mlflow"]
-dev = ["pytest", "black", "ruff", "build"]
+dev = ["pytest", "pytest-cov", "black", "ruff", "build"]
 
 [project.scripts]
 ubunye = "ubunye.cli.main:app"
@@ -50,4 +50,9 @@ line-length = 100
 
 [tool.ruff]
 line-length = 100
-select = ["E","F","I"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = [
+  "E501",   # line too long — handled by Black; long help strings in CLI are acceptable
+]
