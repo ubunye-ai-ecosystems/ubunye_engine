@@ -26,8 +26,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e ".[dev]
-          pip install pandas>=2.2.0
+          pip install -e ".[dev]"
+          pip install "pandas>=2.2.0"
 
       - name: Run unit tests
         run: |
