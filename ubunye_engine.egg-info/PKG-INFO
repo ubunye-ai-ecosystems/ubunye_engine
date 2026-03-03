@@ -20,11 +20,15 @@ Provides-Extra: ml
 Requires-Dist: scikit-learn; extra == "ml"
 Requires-Dist: torch; extra == "ml"
 Requires-Dist: mlflow; extra == "ml"
+Provides-Extra: rest
+Requires-Dist: requests>=2.28; extra == "rest"
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: black; extra == "dev"
 Requires-Dist: ruff; extra == "dev"
 Requires-Dist: build; extra == "dev"
+Requires-Dist: requests>=2.28; extra == "dev"
+Requires-Dist: hypothesis>=6; extra == "dev"
 Dynamic: author-email
 Dynamic: home-page
 Dynamic: license-file

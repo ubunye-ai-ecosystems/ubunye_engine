@@ -11,6 +11,7 @@ mlflow = ubunye.telemetry.mlflow:MLflowMonitor
 [ubunye.readers]
 hive = ubunye.plugins.readers.hive:HiveReader
 jdbc = ubunye.plugins.readers.jdbc:JdbcReader
+rest_api = ubunye.plugins.readers.rest_api:RestApiReader
 unity = ubunye.plugins.readers.unity:UnityTableReader
 
 [ubunye.transforms]
@@ -18,5 +19,6 @@ noop = ubunye.plugins.transforms.noop:NoOpTransform
 
 [ubunye.writers]
 jdbc = ubunye.plugins.writers.jdbc:JdbcWriter
+rest_api = ubunye.plugins.writers.rest_api:RestApiWriter
 s3 = ubunye.plugins.writers.s3:S3Writer
 unity = ubunye.plugins.writers.unity:UnityTableWriter
