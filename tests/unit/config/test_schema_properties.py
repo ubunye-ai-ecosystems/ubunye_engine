@@ -1,6 +1,7 @@
 """Property-based tests using Hypothesis for config schema edge cases."""
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from hypothesis.strategies import composite
 
 from ubunye.config.schema import FormatType, IOConfig, UbunyeConfig

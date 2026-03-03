@@ -1,5 +1,6 @@
 """Broken fixture pipeline — raises intentionally to test error handling."""
-from typing import Dict, Any
+from typing import Any, Dict
+
 from ubunye.core.interfaces import Task
 
 

@@ -4,9 +4,10 @@ Tests use unittest.mock to simulate HTTP calls — no Spark or live network need
 """
 from __future__ import annotations
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 import requests
-from unittest.mock import MagicMock, patch, call
 
 from ubunye.plugins.readers.rest_api import (
     RestApiReader,
@@ -16,7 +17,6 @@ from ubunye.plugins.readers.rest_api import (
     _paginate,
 )
 from ubunye.plugins.writers.rest_api import RestApiWriter, _post_batch
-
 
 # ---------------------------------------------------------------------------
 # Helpers

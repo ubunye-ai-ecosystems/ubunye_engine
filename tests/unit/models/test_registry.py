@@ -10,8 +10,7 @@ from typing import Any, Dict
 import pytest
 
 from ubunye.models.base import UbunyeModel
-from ubunye.models.registry import ModelRegistry, ModelStage, ModelVersion
-
+from ubunye.models.registry import ModelRegistry, ModelStage
 
 # ---------------------------------------------------------------------------
 # DummyModel

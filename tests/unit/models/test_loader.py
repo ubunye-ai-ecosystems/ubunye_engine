@@ -4,7 +4,6 @@ All tests are Spark-free. Real Python model files are written to tmp_path
 and loaded dynamically, matching the production pattern.
 """
 import sys
-from pathlib import Path
 
 import pytest
 

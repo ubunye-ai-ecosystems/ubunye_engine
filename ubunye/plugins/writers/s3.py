@@ -3,7 +3,9 @@
 Writes a DataFrame to a given path using the configured format/mode.
 """
 from __future__ import annotations
+
 from typing import Any
+
 from ubunye.core.interfaces import Writer
 
 

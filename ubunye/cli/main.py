@@ -13,20 +13,22 @@ Commands:
 - version:  show version
 """
 from __future__ import annotations
+
 import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any, List, Optional
+
 import typer
 
-from ubunye.config import load_config
-from ubunye.core.runtime import Engine, Registry, EngineContext
 from ubunye.backends.spark_backend import SparkBackend
-from ubunye.telemetry.monitors import load_monitors, safe_call
 from ubunye.cli.lineage import lineage_app
 from ubunye.cli.models import models_app
 from ubunye.cli.test_cmd import test_app
+from ubunye.config import load_config
+from ubunye.core.runtime import EngineContext, Registry
+from ubunye.telemetry.monitors import load_monitors, safe_call
 
 app = typer.Typer(add_completion=False, help="Ubunye Engine CLI")
 app.add_typer(lineage_app)

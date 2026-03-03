@@ -1,11 +1,8 @@
 """Unit tests for LineageRecorder (Monitor protocol integration)."""
-import json
-
 import pytest
 
 from ubunye.lineage.recorder import LineageRecorder
 from ubunye.lineage.storage import FileSystemLineageStore
-
 
 # ---------------------------------------------------------------------------
 # Minimal stubs

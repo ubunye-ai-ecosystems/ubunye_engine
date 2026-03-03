@@ -20,9 +20,9 @@ from typing import List, Optional
 
 import typer
 
+from ubunye.backends.spark_backend import SparkBackend
 from ubunye.config import load_config
 from ubunye.core.runtime import EngineContext, Registry
-from ubunye.backends.spark_backend import SparkBackend
 from ubunye.telemetry.monitors import load_monitors, safe_call
 
 test_app = typer.Typer(name="test", help="Run task(s) in test mode and report PASS/FAIL.", add_completion=False)
@@ -176,7 +176,7 @@ def _run_task(backend: SparkBackend, task_dir: Path, cfg, monitors: list, contex
                 raise KeyError(f"Transform did not return output '{name}'")
             writer_cls().write(df, ocfg.model_dump(mode="json"), backend)
 
-        duration = time.perf_counter()  # placeholder — actual duration tracked in caller
+        _duration = time.perf_counter()  # placeholder — actual duration tracked in caller
         for monitor in monitors:
             safe_call(monitor, "task_end", context=context, config=cfg.model_dump(mode="json"),
                       outputs=outputs_map, status="success", duration_sec=0.0)

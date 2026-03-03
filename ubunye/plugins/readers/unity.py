@@ -14,7 +14,9 @@ Config keys:
 Returns a Spark DataFrame.
 """
 from __future__ import annotations
+
 from typing import Any, Dict
+
 from ubunye.core.interfaces import Reader
 
 

@@ -1,5 +1,4 @@
 """Unit tests for the ubunye validate CLI command."""
-import pytest
 import yaml
 from typer.testing import CliRunner
 

@@ -1,7 +1,6 @@
 """Tests for the ``ubunye test run`` CLI command."""
 from __future__ import annotations
 
-import pytest
 import yaml
 from typer.testing import CliRunner
 

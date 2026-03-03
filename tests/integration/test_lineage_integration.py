@@ -8,21 +8,25 @@ Run with: pytest tests/integration -m integration
 """
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 pyspark = pytest.importorskip("pyspark", reason="pyspark not installed")
 
-import uuid
-from pathlib import Path
+from pyspark.sql import SparkSession  # noqa: E402
+from pyspark.sql.types import (  # noqa: E402
+    DoubleType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
+)
 
-from pyspark.sql import SparkSession
-from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType
-
-from ubunye.backends.spark_backend import SparkBackend
-from ubunye.core.runtime import Engine, EngineContext
-from ubunye.lineage.recorder import LineageRecorder
-from ubunye.lineage.storage import FileSystemLineageStore
-
+from ubunye.backends.spark_backend import SparkBackend  # noqa: E402
+from ubunye.core.runtime import Engine, EngineContext  # noqa: E402
+from ubunye.lineage.recorder import LineageRecorder  # noqa: E402
+from ubunye.lineage.storage import FileSystemLineageStore  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures

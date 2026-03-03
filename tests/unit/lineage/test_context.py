@@ -1,8 +1,5 @@
 """Unit tests for RunContext and StepRecord dataclasses."""
-import pytest
-
 from ubunye.lineage.context import RunContext, StepRecord, _location_from_io_cfg
-
 
 # ---------------------------------------------------------------------------
 # _location_from_io_cfg helper

@@ -1,7 +1,9 @@
 # ubunye/orchestration/airflow_exporter.py
 from __future__ import annotations
+
 from pathlib import Path
-from typing import Mapping, Any
+from typing import Any, Mapping
+
 from .base import OrchestratorExporter
 
 _AIRFLOW_TEMPLATE = """\
