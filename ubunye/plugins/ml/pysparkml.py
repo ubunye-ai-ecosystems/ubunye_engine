@@ -1,6 +1,7 @@
 """
 Spark MLlib wrapper.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,7 +21,7 @@ class SparkMLModel(BaseModel):
         estimator: Optional[Estimator] = None,
         *,
         schema: Optional[FeatureSchema] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(schema=schema, **kwargs)
         self.estimator = estimator

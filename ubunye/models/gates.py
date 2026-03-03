@@ -16,6 +16,7 @@ Example::
       max_loss: 0.5
       require_drift_check: true
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -47,7 +48,9 @@ class PromotionGate:
         self.config = gate_config or {}
 
     def evaluate(
-        self, metrics: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None,
+        self,
+        metrics: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> List[GateResult]:
         """Evaluate all configured gates against the provided metrics.
 
@@ -137,7 +140,9 @@ class PromotionGate:
         return results
 
     def all_passed(
-        self, metrics: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None,
+        self,
+        metrics: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Return ``True`` only if every configured gate passes.
 
@@ -148,7 +153,9 @@ class PromotionGate:
         return all(r.passed for r in self.evaluate(metrics, metadata))
 
     def failed_gates(
-        self, metrics: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None,
+        self,
+        metrics: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> List[GateResult]:
         """Return only the gates that did not pass."""
         return [r for r in self.evaluate(metrics, metadata) if not r.passed]

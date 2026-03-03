@@ -2,6 +2,7 @@
 
 Reads from a Hive table or runs a SQL query using Spark.
 """
+
 from __future__ import annotations
 
 from typing import Any

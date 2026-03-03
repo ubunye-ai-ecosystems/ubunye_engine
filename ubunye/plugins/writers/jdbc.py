@@ -20,6 +20,7 @@ Example config (config.yaml):
         batchsize: 5000
         isolationLevel: "READ_COMMITTED"
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict

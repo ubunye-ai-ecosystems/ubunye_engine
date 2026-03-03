@@ -12,6 +12,7 @@ Usage:
     with span("Reader:hive", attrs={"task": "fraud/claims/claim_etl", "run_id": rid}):
         df = reader.read(cfg, backend)
 """
+
 from __future__ import annotations
 
 import contextlib

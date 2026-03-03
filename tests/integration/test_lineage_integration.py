@@ -6,6 +6,7 @@ execution (full Engine.run() with a real Spark session).
 Skipped automatically if pyspark is not installed.
 Run with: pytest tests/integration -m integration
 """
+
 from __future__ import annotations
 
 import uuid
@@ -75,7 +76,9 @@ def _good_cfg(input_path: str, output_path: str) -> dict:
                 }
             },
             "transform": {"type": "noop"},
-            "outputs": {"source": {"format": "s3", "path": output_path, "mode": "overwrite"},},
+            "outputs": {
+                "source": {"format": "s3", "path": output_path, "mode": "overwrite"},
+            },
         },
     }
 
@@ -109,11 +112,19 @@ def _run(
         engine = Engine(backend=backend, context=context)
         result = engine.run(cfg)
         recorder.task_end(
-            context=context, config=cfg, outputs=result, status="success", duration_sec=0.1,
+            context=context,
+            config=cfg,
+            outputs=result,
+            status="success",
+            duration_sec=0.1,
         )
     except Exception:
         recorder.task_end(
-            context=context, config=cfg, outputs=None, status="error", duration_sec=0.0,
+            context=context,
+            config=cfg,
+            outputs=None,
+            status="error",
+            duration_sec=0.0,
         )
         if not fail:
             raise
@@ -188,7 +199,12 @@ class TestLineageIntegration:
     def test_failed_run_records_error_status(self, spark, tmp_path):
         """A pipeline that fails should still write a lineage record with status=error."""
         bad_path = str(tmp_path / "does_not_exist.csv")
-        run_id, store = _run(_broken_cfg(bad_path), spark, str(tmp_path / "lineage"), fail=True,)
+        run_id, store = _run(
+            _broken_cfg(bad_path),
+            spark,
+            str(tmp_path / "lineage"),
+            fail=True,
+        )
         ctx = store.load("test/suite/etl", run_id)
         assert ctx.status == "error"
 

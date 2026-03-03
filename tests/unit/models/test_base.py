@@ -3,6 +3,7 @@
 All tests are Spark-free. A MockDF is used as a duck-typed stand-in for a
 PySpark DataFrame anywhere the contract calls for a DataFrame argument.
 """
+
 import json
 from pathlib import Path
 from typing import Any, Dict
@@ -48,7 +49,8 @@ class DummyModel(UbunyeModel):
         p = Path(path)
         p.mkdir(parents=True, exist_ok=True)
         (p / "model.json").write_text(
-            json.dumps({"trained": self._trained, "row_count": self._row_count}), encoding="utf-8",
+            json.dumps({"trained": self._trained, "row_count": self._row_count}),
+            encoding="utf-8",
         )
 
     @classmethod

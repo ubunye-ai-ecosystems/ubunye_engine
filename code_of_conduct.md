@@ -41,7 +41,7 @@ Instances of abusive, harassing, or otherwise unacceptable behavior may be repor
 
 **conduct@your-org.com**
 
-All complaints will be reviewed and investigated promptly and fairly.  
+All complaints will be reviewed and investigated promptly and fairly.
 All project team members are obligated to respect the privacy and security of the reporter of any incident.
 
 ---
@@ -49,20 +49,20 @@ All project team members are obligated to respect the privacy and security of th
 ## Enforcement Guidelines
 Project maintainers will follow these Community Impact Guidelines in determining the consequences for any action they deem in violation of this Code of Conduct:
 
-1. **Correction**  
-   - *Impact*: Use of inappropriate language or other behavior deemed unprofessional.  
+1. **Correction**
+   - *Impact*: Use of inappropriate language or other behavior deemed unprofessional.
    - *Consequence*: A private, written warning and clarification of expected behavior.
 
-2. **Warning**  
-   - *Impact*: A violation through a single incident or series of actions.  
+2. **Warning**
+   - *Impact*: A violation through a single incident or series of actions.
    - *Consequence*: A warning with consequences for continued behavior.
 
-3. **Temporary Ban**  
-   - *Impact*: A serious violation of community standards, including sustained inappropriate behavior.  
+3. **Temporary Ban**
+   - *Impact*: A serious violation of community standards, including sustained inappropriate behavior.
    - *Consequence*: A temporary ban from interaction and contribution for a defined period.
 
-4. **Permanent Ban**  
-   - *Impact*: Demonstrating a pattern of violation or harassment, or aggression toward others.  
+4. **Permanent Ban**
+   - *Impact*: Demonstrating a pattern of violation or harassment, or aggression toward others.
    - *Consequence*: A permanent ban from any sort of interaction within the project community.
 
 ---

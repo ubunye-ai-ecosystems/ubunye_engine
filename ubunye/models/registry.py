@@ -14,6 +14,7 @@ Lifecycle stages (ModelStage): development → staging → production → archiv
 When a new version is promoted to production, the current production version is
 automatically archived to ensure there is only one production version at a time.
 """
+
 from __future__ import annotations
 
 import json
@@ -224,7 +225,11 @@ class ModelRegistry:
         return mv
 
     def demote(
-        self, use_case: str, model_name: str, version: str, to_stage: ModelStage,
+        self,
+        use_case: str,
+        model_name: str,
+        version: str,
+        to_stage: ModelStage,
     ) -> ModelVersion:
         """Demote a model version to a lower stage.
 
@@ -240,7 +245,12 @@ class ModelRegistry:
         self._save_record(record)
         return mv
 
-    def rollback(self, use_case: str, model_name: str, to_version: str,) -> ModelVersion:
+    def rollback(
+        self,
+        use_case: str,
+        model_name: str,
+        to_version: str,
+    ) -> ModelVersion:
         """Roll back production to a specific previous version.
 
         1. Archives the current production version.
@@ -325,10 +335,18 @@ class ModelRegistry:
             FileNotFoundError: Model not found in registry.
         """
         record = self._load_record(use_case, model_name)
-        return sorted(record.versions.values(), key=lambda v: v.registered_at, reverse=True,)
+        return sorted(
+            record.versions.values(),
+            key=lambda v: v.registered_at,
+            reverse=True,
+        )
 
     def compare_versions(
-        self, use_case: str, model_name: str, version_a: str, version_b: str,
+        self,
+        use_case: str,
+        model_name: str,
+        version_a: str,
+        version_b: str,
     ) -> Dict[str, Dict[str, Any]]:
         """Compare metrics between two versions.
 
@@ -376,7 +394,9 @@ class ModelRegistry:
         data = json.loads(path.read_text(encoding="utf-8"))
         versions = {k: ModelVersion(**v) for k, v in data.get("versions", {}).items()}
         return ModelRecord(
-            model_name=data["model_name"], use_case=data["use_case"], versions=versions,
+            model_name=data["model_name"],
+            use_case=data["use_case"],
+            versions=versions,
         )
 
     def _save_record(self, record: ModelRecord) -> None:

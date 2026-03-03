@@ -123,6 +123,4 @@ _____________________________________
 
 - Build & publish: ```python -m build && twine upload dist/*``.
 
-Thanks again for contributing! 
-
-
+Thanks again for contributing!

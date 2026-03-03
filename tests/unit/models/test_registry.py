@@ -3,6 +3,7 @@
 All tests are Spark-free. DummyModel writes a simple JSON file as its artifact.
 A real filesystem (tmp_path) is used so CRUD operations are verified end-to-end.
 """
+
 import json
 from pathlib import Path
 from typing import Any, Dict

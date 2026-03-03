@@ -16,6 +16,7 @@ Usage:
     ...
     logger.task_end(status="success", duration_sec=45.7)
 """
+
 from __future__ import annotations
 
 import json

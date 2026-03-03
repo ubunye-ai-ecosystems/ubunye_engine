@@ -32,6 +32,7 @@ Note on model_dir:
   by ``_run_single_task`` before transforms run. This means ``model.py`` imports
   work automatically even when ``model_dir`` is not set.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -48,7 +49,12 @@ class ModelTransform(Transform):
     existing engine dispatch with zero changes to the core runtime.
     """
 
-    def apply(self, inputs: Dict[str, Any], cfg: dict, backend: Backend,) -> Dict[str, Any]:
+    def apply(
+        self,
+        inputs: Dict[str, Any],
+        cfg: dict,
+        backend: Backend,
+    ) -> Dict[str, Any]:
         """Dispatch to train or predict based on ``cfg["action"]``.
 
         Args:
@@ -142,7 +148,9 @@ class ModelTransform(Transform):
 
             registry = ModelRegistry(store)
             artifact_path, _ = registry.get_model(
-                use_case=use_case, model_name=model_name, stage=use_stage,
+                use_case=use_case,
+                model_name=model_name,
+                stage=use_stage,
             )
             model = cls.load(artifact_path)
         else:

@@ -13,6 +13,7 @@ Usage
     # With CLI variables and a deploy profile
     cfg = load_config(task_dir, variables={"dt": "2025-01-01"}, profile="dev")
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,7 +27,9 @@ from .schema import UbunyeConfig
 
 
 def load_config(
-    path: str, variables: Optional[Dict[str, Any]] = None, profile: Optional[str] = None,
+    path: str,
+    variables: Optional[Dict[str, Any]] = None,
+    profile: Optional[str] = None,
 ) -> UbunyeConfig:
     """Load, resolve, and validate a Ubunye task config.
 

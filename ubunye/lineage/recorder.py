@@ -23,6 +23,7 @@ monitor chain. It can be:
 The recorder creates a ``"running"`` record at ``task_start``, then updates it
 with final status, duration, and per-step hashes at ``task_end``.
 """
+
 from __future__ import annotations
 
 import hashlib

@@ -1,4 +1,5 @@
 """Unit tests for Pydantic config schema models."""
+
 import pytest
 from pydantic import ValidationError
 

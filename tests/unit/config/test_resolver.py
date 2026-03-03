@@ -1,4 +1,5 @@
 """Unit tests for the Jinja2 config resolver."""
+
 import pytest
 
 from ubunye.config.resolver import resolve_config

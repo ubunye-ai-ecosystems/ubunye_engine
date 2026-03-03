@@ -1,4 +1,5 @@
 """Engine runtime and plugin registry."""
+
 from __future__ import annotations
 
 import importlib.metadata as md

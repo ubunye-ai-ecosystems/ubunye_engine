@@ -6,6 +6,7 @@ This catches non-determinism bugs in transforms or writers.
 Requires PySpark — the entire module is skipped gracefully if pyspark is not
 installed. Run with: pytest tests/integration -m integration
 """
+
 from __future__ import annotations
 
 import uuid
@@ -81,7 +82,13 @@ def _build_config(input_path: str, output_path: str) -> dict:
                 }
             },
             "transform": {"type": "noop"},
-            "outputs": {"source": {"format": "s3", "path": output_path, "mode": "overwrite",}},
+            "outputs": {
+                "source": {
+                    "format": "s3",
+                    "path": output_path,
+                    "mode": "overwrite",
+                }
+            },
         },
     }
 
@@ -101,11 +108,19 @@ def _run_with_lineage(cfg: dict, spark_session: SparkSession, lineage_base: str)
         engine.backend._spark = spark_session
         result = engine.run(cfg)
         recorder.task_end(
-            context=context, config=cfg, outputs=result, status="success", duration_sec=0.1,
+            context=context,
+            config=cfg,
+            outputs=result,
+            status="success",
+            duration_sec=0.1,
         )
     except Exception:
         recorder.task_end(
-            context=context, config=cfg, outputs=None, status="error", duration_sec=0.0,
+            context=context,
+            config=cfg,
+            outputs=None,
+            status="error",
+            duration_sec=0.0,
         )
         raise
     finally:

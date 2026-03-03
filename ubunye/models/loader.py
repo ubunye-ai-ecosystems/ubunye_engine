@@ -3,6 +3,7 @@
 Mirrors the pattern used in ubunye/cli/main.py (_run_single_task) for loading
 user Task subclasses from transformations.py via importlib.util.spec_from_file_location.
 """
+
 from __future__ import annotations
 
 import importlib

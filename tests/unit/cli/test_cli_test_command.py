@@ -1,4 +1,5 @@
 """Tests for the ``ubunye test run`` CLI command."""
+
 from __future__ import annotations
 
 import yaml
@@ -76,14 +77,36 @@ class TestUbunyeTestConfigValidation:
     def test_missing_task_dir_exits_nonzero(self, tmp_path):
         result = runner.invoke(
             app,
-            ["test", "run", "-d", str(tmp_path), "-u", "no_uc", "-p", "no_pkg", "-t", "no_task",],
+            [
+                "test",
+                "run",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "no_uc",
+                "-p",
+                "no_pkg",
+                "-t",
+                "no_task",
+            ],
         )
         assert result.exit_code != 0
 
     def test_missing_task_dir_reports_config_fail(self, tmp_path):
         result = runner.invoke(
             app,
-            ["test", "run", "-d", str(tmp_path), "-u", "no_uc", "-p", "no_pkg", "-t", "no_task",],
+            [
+                "test",
+                "run",
+                "-d",
+                str(tmp_path),
+                "-u",
+                "no_uc",
+                "-p",
+                "no_pkg",
+                "-t",
+                "no_task",
+            ],
         )
         assert "[CONFIG FAIL]" in result.output
 

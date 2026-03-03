@@ -1,4 +1,5 @@
 """Monitoring hooks for optional logging backends (e.g., MLflow)."""
+
 from __future__ import annotations
 
 import importlib.metadata as md

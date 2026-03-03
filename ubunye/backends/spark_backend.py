@@ -6,6 +6,7 @@ Spark backend implementation for Ubunye.
 - Supports context-manager usage: `with SparkBackend(...) as backend: ...`
 - Guards against double-starts and exposes the effective Spark conf for debugging.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Optional

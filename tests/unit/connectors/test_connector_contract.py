@@ -13,6 +13,7 @@ Concrete test classes:
   - TestNoOpTransform
   - TestRestApiPlugin
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

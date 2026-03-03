@@ -21,4 +21,3 @@ CONFIG:
       format: s3
       path: "s3a://fraud-bronze/claims/{{ ds | default('2025-01-01') }}"
       mode: overwrite
-      format: parquet

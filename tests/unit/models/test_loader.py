@@ -3,6 +3,7 @@
 All tests are Spark-free. Real Python model files are written to tmp_path
 and loaded dynamically, matching the production pattern.
 """
+
 import sys
 
 import pytest
@@ -105,7 +106,8 @@ class TestLoadModelClass:
         # Write model.py and add tmp_path to sys.path manually
         mod_name = "ubunye_test_dynamic_model_xyz"
         (tmp_path / f"{mod_name}.py").write_text(
-            _VALID_MODEL_CODE.replace("class MyModel", "class DynModel"), encoding="utf-8",
+            _VALID_MODEL_CODE.replace("class MyModel", "class DynModel"),
+            encoding="utf-8",
         )
         sys.path.insert(0, str(tmp_path))
         try:

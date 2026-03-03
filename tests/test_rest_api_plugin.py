@@ -2,6 +2,7 @@
 
 Tests use unittest.mock to simulate HTTP calls — no Spark or live network needed.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -244,7 +245,9 @@ def test_paginate_cursor_stops_when_no_cursor():
     }
     session = MagicMock()
     session.request.side_effect = [
-        _mock_response({"items": [{"id": 1}], "next_cursor": "tok123"},),
+        _mock_response(
+            {"items": [{"id": 1}], "next_cursor": "tok123"},
+        ),
         _mock_response({"items": [{"id": 2}], "next_cursor": None}),
     ]
     # Override to use root_key
@@ -329,7 +332,8 @@ def test_writer_raises_on_batch_failure():
     cfg = {"url": "https://api.test/v1/alerts"}
 
     with patch(
-        "ubunye.plugins.writers.rest_api._post_batch", side_effect=requests.HTTPError("500"),
+        "ubunye.plugins.writers.rest_api._post_batch",
+        side_effect=requests.HTTPError("500"),
     ):
         with pytest.raises(RuntimeError, match="failed posting"):
             writer.write(df, cfg, backend)
