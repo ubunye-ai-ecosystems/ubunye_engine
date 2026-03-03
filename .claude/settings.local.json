@@ -24,7 +24,17 @@
       "Bash(python -m pytest tests/unit/ -q --tb=short -m \"not integration\")",
       "Bash(python -m pytest tests/unit/connectors/test_connector_contract.py -q --tb=short)",
       "Bash(python -m pytest tests/unit/ -q --tb=short)",
-      "Bash(ruff check tests/integration/)"
+      "Bash(ruff check tests/integration/)",
+      "Bash(python -m pytest tests/integration/test_reproducibility.py::TestReproducibility::test_different_input_different_data_hash -v --timeout=300)",
+      "Bash(pip install pytest-timeout -q)",
+      "Bash(python -m pytest tests/integration/test_reproducibility.py::TestReproducibility::test_different_input_different_data_hash -v -m integration)",
+      "Bash(python -m pytest \"tests/integration/test_reproducibility.py::TestReproducibility::test_different_input_different_data_hash\" -v)",
+      "Bash(python -m pytest tests/integration/test_reproducibility.py -v --co)",
+      "Bash(python -m pytest tests/integration/ -v --co)",
+      "Bash(python -m pytest tests/integration/ -v --co -m integration)",
+      "Bash(python -c \"import tests.integration.test_reproducibility\")",
+      "Bash(python -m pytest tests/unit/lineage/test_hasher.py -v)",
+      "Bash(python -m pytest tests/unit/ -v --tb=short)"
     ]
   }
 }

@@ -144,6 +144,43 @@ class TestHashDataframe:
         h = hash_dataframe(df, sample_fraction=0.0001)
         assert h.startswith("sha256:")
 
+    def test_empty_sample_falls_back_to_collect_not_schema(self):
+        """Regression: PySpark .sample(0.01) on 2-3 rows often returns [].
+        hash_dataframe must fall back to df.collect(), not hash_schema(), so
+        DataFrames with different data (same schema) get different hashes.
+        """
+
+        class EmptySampleDF:
+            """Mock where sample() always returns [] but collect() has rows."""
+
+            def __init__(self, rows):
+                self._rows = rows
+                self.schema = MockSchema([MockField("id"), MockField("val")])
+
+            def count(self):
+                return len(self._rows)
+
+            def sample(self, **_kwargs):
+                return EmptySampleDF([])  # always empty, like tiny fraction on small df
+
+            def collect(self):
+                return self._rows
+
+        rows_a = [MockRow(id=1, val="x"), MockRow(id=2, val="y"), MockRow(id=3, val="z")]
+        rows_b = [MockRow(id=10, val="p"), MockRow(id=20, val="q")]
+
+        df_a = EmptySampleDF(rows_a)
+        df_b = EmptySampleDF(rows_b)
+
+        hash_a = hash_dataframe(df_a)
+        hash_b = hash_dataframe(df_b)
+
+        # Must differ — different data, same schema
+        assert hash_a != hash_b, (
+            "hash_dataframe fell back to schema hash instead of collecting rows; "
+            f"both returned {hash_a}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # hash_file

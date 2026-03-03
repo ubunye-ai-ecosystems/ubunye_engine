@@ -98,6 +98,10 @@ def hash_dataframe(df: Any, sample_fraction: float = 0.01, seed: int = 42) -> st
         sample_rows = df.sample(fraction=fraction, seed=seed).collect()
 
         if not sample_rows:
+            # Small DataFrame: sample returned nothing — collect all rows instead
+            sample_rows = df.collect()
+
+        if not sample_rows:
             return hash_schema(df)
 
         parts = [str(count)]
