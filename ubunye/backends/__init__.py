@@ -1,1 +1,1 @@
-from .spark_backend import SparkBackend
+from .spark_backend import SparkBackend as SparkBackend

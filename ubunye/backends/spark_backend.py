@@ -8,7 +8,8 @@ Spark backend implementation for Ubunye.
 """
 from __future__ import annotations
 
-from typing import Dict, Optional, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional
+
 from ubunye.core.interfaces import Backend
 
 if TYPE_CHECKING:  # only for type checkers; no runtime dependency on pyspark
