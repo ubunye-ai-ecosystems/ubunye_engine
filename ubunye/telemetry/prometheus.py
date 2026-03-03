@@ -26,6 +26,7 @@ _PROM_ENABLED = False
 try:
     from prometheus_client import Counter, Histogram
     from prometheus_client import start_http_server as _prom_start
+
     _PROM_ENABLED = True
 except Exception:  # pragma: no cover
     Counter = Histogram = object  # type: ignore
@@ -33,9 +34,7 @@ except Exception:  # pragma: no cover
 
 if _PROM_ENABLED:
     UBUNYE_TASK_RUNS = Counter(
-        "ubunye_task_runs_total",
-        "Total Ubunye task runs",
-        ["task", "profile", "status"],
+        "ubunye_task_runs_total", "Total Ubunye task runs", ["task", "profile", "status"],
     )
     UBUNYE_STEP_DURATION = Histogram(
         "ubunye_step_duration_seconds",
@@ -44,19 +43,13 @@ if _PROM_ENABLED:
         buckets=(0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120, 300),
     )
     UBUNYE_ROWS = Counter(
-        "ubunye_rows_total",
-        "Rows processed per step",
-        ["task", "profile", "step"],
+        "ubunye_rows_total", "Rows processed per step", ["task", "profile", "step"],
     )
     UBUNYE_BYTES = Counter(
-        "ubunye_bytes_total",
-        "Bytes processed per step",
-        ["task", "profile", "step"],
+        "ubunye_bytes_total", "Bytes processed per step", ["task", "profile", "step"],
     )
     UBUNYE_ERRORS = Counter(
-        "ubunye_errors_total",
-        "Errors by task/step",
-        ["task", "profile", "step"],
+        "ubunye_errors_total", "Errors by task/step", ["task", "profile", "step"],
     )
 else:
     UBUNYE_TASK_RUNS = UBUNYE_STEP_DURATION = UBUNYE_ROWS = UBUNYE_BYTES = UBUNYE_ERRORS = None  # type: ignore

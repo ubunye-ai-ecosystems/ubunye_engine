@@ -31,11 +31,13 @@ with DAG(
     )
 """
 
+
 class AirflowExporter(OrchestratorExporter):
-    def export(self, config_path: Path, *, output_path: Path,
-               options: Mapping[str, Any] | None = None) -> Path:
+    def export(
+        self, config_path: Path, *, output_path: Path, options: Mapping[str, Any] | None = None
+    ) -> Path:
         opts = options or {}
-        dag_id  = opts.get("dag_id", self._dag_id_from(config_path))
+        dag_id = opts.get("dag_id", self._dag_id_from(config_path))
         task_id = opts.get("task_id", "run_task")
         start_date = opts.get("start_date", "2025-01-01")
         schedule = opts.get("schedule", "@daily")
@@ -45,15 +47,22 @@ class AirflowExporter(OrchestratorExporter):
         tags = opts.get("tags", ["ubunye"])
 
         # Command uses the same CLI the developer runs locally
-        profile  = opts.get("profile", "prod")
+        profile = opts.get("profile", "prod")
         bash_cmd = f"ubunye run -c {config_path} --profile {profile}"
 
         env = opts.get("env", {})  # e.g. JDBC creds via Airflow connections or env
 
         dag_py = _AIRFLOW_TEMPLATE.format(
-            owner=owner, retries=retries, dag_id=dag_id, task_id=task_id,
-            start_date=start_date, schedule=schedule, catchup=str(catchup),
-            tags=tags, bash_cmd=bash_cmd, env=env
+            owner=owner,
+            retries=retries,
+            dag_id=dag_id,
+            task_id=task_id,
+            start_date=start_date,
+            schedule=schedule,
+            catchup=str(catchup),
+            tags=tags,
+            bash_cmd=bash_cmd,
+            env=env,
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(dag_py, encoding="utf-8")

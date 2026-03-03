@@ -11,9 +11,13 @@ def to_numpy_from_pandas(pdf, features):
     X = pdf[features].to_numpy(copy=False)
     return X
 
+
 def to_numpy_from_spark(sdf, features):
-    rows = sdf.select(*features).toPandas()  # simple baseline; for large data prefer vectorized UDFs
+    rows = sdf.select(
+        *features
+    ).toPandas()  # simple baseline; for large data prefer vectorized UDFs
     return rows.to_numpy(copy=False)
+
 
 def ensure_Xy_numpy(data, features, target=None) -> Tuple:
     if hasattr(data, "toPandas"):  # spark

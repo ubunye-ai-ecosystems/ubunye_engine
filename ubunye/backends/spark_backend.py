@@ -93,7 +93,9 @@ class SparkBackend(Backend):
             If `start()` has not been called.
         """
         if self._spark is None:
-            raise RuntimeError("Spark session not started. Call start() first or use context manager.")
+            raise RuntimeError(
+                "Spark session not started. Call start() first or use context manager."
+            )
         return self._spark
 
     @property

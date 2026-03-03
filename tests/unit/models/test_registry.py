@@ -16,6 +16,7 @@ from ubunye.models.registry import ModelRegistry, ModelStage
 # DummyModel
 # ---------------------------------------------------------------------------
 
+
 class DummyModel(UbunyeModel):
     def __init__(self):
         self._trained = False
@@ -30,9 +31,7 @@ class DummyModel(UbunyeModel):
     def save(self, path: str) -> None:
         p = Path(path)
         p.mkdir(parents=True, exist_ok=True)
-        (p / "model.json").write_text(
-            json.dumps({"trained": self._trained}), encoding="utf-8"
-        )
+        (p / "model.json").write_text(json.dumps({"trained": self._trained}), encoding="utf-8")
 
     @classmethod
     def load(cls, path: str) -> "DummyModel":
@@ -53,6 +52,7 @@ class DummyModel(UbunyeModel):
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def registry(tmp_path) -> ModelRegistry:
     return ModelRegistry(str(tmp_path / "model_store"))
@@ -69,8 +69,8 @@ def model() -> DummyModel:
 # register
 # ---------------------------------------------------------------------------
 
-class TestRegister:
 
+class TestRegister:
     def test_register_creates_development_version(self, registry, model):
         mv = registry.register("fraud", "RiskModel", "1.0.0", model, {"auc": 0.9})
         assert mv.version == "1.0.0"
@@ -78,9 +78,7 @@ class TestRegister:
 
     def test_register_saves_model_artifacts(self, registry, model, tmp_path):
         registry.register("fraud", "RiskModel", "1.0.0", model, {"auc": 0.9})
-        model_dir = (
-            tmp_path / "model_store" / "fraud" / "RiskModel" / "versions" / "1.0.0"
-        )
+        model_dir = tmp_path / "model_store" / "fraud" / "RiskModel" / "versions" / "1.0.0"
         assert (model_dir / "model" / "model.json").exists()
         assert (model_dir / "metadata.json").exists()
         assert (model_dir / "metrics.json").exists()
@@ -123,8 +121,8 @@ class TestRegister:
 # promote
 # ---------------------------------------------------------------------------
 
-class TestPromote:
 
+class TestPromote:
     def test_promote_to_staging(self, registry, model):
         registry.register("fraud", "RiskModel", "1.0.0", model, {"auc": 0.9})
         mv = registry.promote("fraud", "RiskModel", "1.0.0", ModelStage.STAGING)
@@ -153,8 +151,7 @@ class TestPromote:
     def test_promote_with_passing_gates_succeeds(self, registry, model):
         registry.register("fraud", "RiskModel", "1.0.0", model, {"auc": 0.92})
         mv = registry.promote(
-            "fraud", "RiskModel", "1.0.0", ModelStage.STAGING,
-            gates={"min_auc": 0.85}
+            "fraud", "RiskModel", "1.0.0", ModelStage.STAGING, gates={"min_auc": 0.85}
         )
         assert mv.stage == ModelStage.STAGING
 
@@ -162,8 +159,7 @@ class TestPromote:
         registry.register("fraud", "RiskModel", "1.0.0", model, {"auc": 0.70})
         with pytest.raises(ValueError, match="gate"):
             registry.promote(
-                "fraud", "RiskModel", "1.0.0", ModelStage.STAGING,
-                gates={"min_auc": 0.85}
+                "fraud", "RiskModel", "1.0.0", ModelStage.STAGING, gates={"min_auc": 0.85}
             )
 
     def test_promote_nonexistent_version_raises(self, registry, model):
@@ -173,7 +169,9 @@ class TestPromote:
 
     def test_promote_sets_promoted_by(self, registry, model):
         registry.register("fraud", "RiskModel", "1.0.0", model, {})
-        mv = registry.promote("fraud", "RiskModel", "1.0.0", ModelStage.STAGING, promoted_by="alice")
+        mv = registry.promote(
+            "fraud", "RiskModel", "1.0.0", ModelStage.STAGING, promoted_by="alice"
+        )
         assert mv.promoted_by == "alice"
 
 
@@ -181,8 +179,8 @@ class TestPromote:
 # demote / archive
 # ---------------------------------------------------------------------------
 
-class TestDemoteArchive:
 
+class TestDemoteArchive:
     def test_demote_changes_stage(self, registry, model):
         registry.register("fraud", "RiskModel", "1.0.0", model, {})
         registry.promote("fraud", "RiskModel", "1.0.0", ModelStage.STAGING)
@@ -199,8 +197,8 @@ class TestDemoteArchive:
 # rollback
 # ---------------------------------------------------------------------------
 
-class TestRollback:
 
+class TestRollback:
     def test_rollback_restores_production(self, registry, model):
         registry.register("fraud", "RiskModel", "1.0.0", model, {})
         registry.promote("fraud", "RiskModel", "1.0.0", ModelStage.PRODUCTION)
@@ -228,8 +226,8 @@ class TestRollback:
 # list / compare
 # ---------------------------------------------------------------------------
 
-class TestListAndCompare:
 
+class TestListAndCompare:
     def test_list_versions_returns_all(self, registry, model):
         for v in ["1.0.0", "1.1.0", "1.2.0"]:
             registry.register("fraud", "RiskModel", v, model, {})
@@ -267,8 +265,8 @@ class TestListAndCompare:
 # get_model
 # ---------------------------------------------------------------------------
 
-class TestGetModel:
 
+class TestGetModel:
     def test_get_model_by_version(self, registry, model):
         registry.register("fraud", "RiskModel", "1.0.0", model, {})
         path, mv = registry.get_model("fraud", "RiskModel", version="1.0.0")

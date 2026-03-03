@@ -15,7 +15,13 @@ from .base import BaseModel, FeatureSchema
 class SparkMLModel(BaseModel):
     """Wrap a Spark ML Estimator or loaded PipelineModel."""
 
-    def __init__(self, estimator: Optional[Estimator] = None, *, schema: Optional[FeatureSchema] = None, **kwargs):
+    def __init__(
+        self,
+        estimator: Optional[Estimator] = None,
+        *,
+        schema: Optional[FeatureSchema] = None,
+        **kwargs
+    ):
         super().__init__(schema=schema, **kwargs)
         self.estimator = estimator
         self.pipeline_model: Optional[PipelineModel] = None

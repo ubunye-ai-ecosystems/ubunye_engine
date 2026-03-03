@@ -42,10 +42,16 @@ def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path
 
 @app.command()
 def init(
-    usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", help="Specifies the directory path for the use case."),
+    usecase_dir: Path = typer.Option(
+        ..., "-d", "--usecase-dir", help="Specifies the directory path for the use case."
+    ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Selects the desired use case."),
-    package: str = typer.Option(..., "-p", "--package", help="Selects a package from the specified use case."),
-    task_list: List[str] = typer.Option(..., "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."),
+    package: str = typer.Option(
+        ..., "-p", "--package", help="Selects a package from the specified use case."
+    ),
+    task_list: List[str] = typer.Option(
+        ..., "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."
+    ),
     overwrite: bool = typer.Option(False, help="Overwrite existing files"),
 ):
     """Scaffold task folders with config.yaml and transformations.py."""
@@ -138,12 +144,16 @@ def config(
 
 @app.command()
 def validate(
-    usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", help="Root directory of pipelines."),
+    usecase_dir: Path = typer.Option(
+        ..., "-d", "--usecase-dir", help="Root directory of pipelines."
+    ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Use case name."),
     package: str = typer.Option(..., "-p", "--package", help="Pipeline/package name."),
     task_list: List[str] = typer.Option(None, "-t", "--task-list", help="Task(s) to validate."),
     all_tasks: bool = typer.Option(False, "--all", help="Validate all tasks in the package."),
-    profile: Optional[str] = typer.Option(None, "--profile", help="Profile to validate against (e.g. dev, prod)."),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Profile to validate against (e.g. dev, prod)."
+    ),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
 ):
     """Validate config file(s) without executing the pipeline.
@@ -165,14 +175,19 @@ def validate(
     tasks_to_check: List[str] = list(task_list or [])
     if all_tasks:
         if not package_dir.exists():
-            typer.secho(f"[ERROR] Package directory not found: {package_dir}", fg=typer.colors.RED, err=True)
+            typer.secho(
+                f"[ERROR] Package directory not found: {package_dir}", fg=typer.colors.RED, err=True
+            )
             raise typer.Exit(code=1)
         tasks_to_check = [
-            d.name for d in sorted(package_dir.iterdir())
+            d.name
+            for d in sorted(package_dir.iterdir())
             if d.is_dir() and (d / "config.yaml").exists()
         ]
         if not tasks_to_check:
-            typer.secho(f"[WARN] No config.yaml files found under {package_dir}", fg=typer.colors.YELLOW)
+            typer.secho(
+                f"[WARN] No config.yaml files found under {package_dir}", fg=typer.colors.YELLOW
+            )
             return
 
     if not tasks_to_check:
@@ -196,7 +211,9 @@ def validate(
 
     typer.echo()
     if failed:
-        typer.secho(f"{failed}/{len(tasks_to_check)} task(s) failed validation.", fg=typer.colors.RED)
+        typer.secho(
+            f"{failed}/{len(tasks_to_check)} task(s) failed validation.", fg=typer.colors.RED
+        )
         raise typer.Exit(code=1)
     else:
         typer.secho(f"All {len(tasks_to_check)} task(s) passed validation.", fg=typer.colors.GREEN)
@@ -230,19 +247,20 @@ def plan(
 
 
 def _run_single_task(
-    backend: SparkBackend,
-    task_dir: Path,
-    cfg: Any,
-    monitors: list,
-    context: EngineContext
+    backend: SparkBackend, task_dir: Path, cfg: Any, monitors: list, context: EngineContext
 ):
     sys.path.insert(0, str(task_dir))
 
     # Load user-defined Task from transformations.py
     import importlib.util
+
     fc_path = task_dir / "transformations.py"
     if not fc_path.exists():
-        typer.secho(f"[ERROR] Missing transformations.py at {fc_path}. Transforms must live here.", fg=typer.colors.RED, err=True)
+        typer.secho(
+            f"[ERROR] Missing transformations.py at {fc_path}. Transforms must live here.",
+            fg=typer.colors.RED,
+            err=True,
+        )
         raise typer.Exit(code=1)
 
     spec = importlib.util.spec_from_file_location("transformations", str(fc_path))
@@ -251,6 +269,7 @@ def _run_single_task(
     spec.loader.exec_module(mod)
 
     from ubunye.core.interfaces import Task
+
     task_cls = None
     for attr in mod.__dict__.values():
         if isinstance(attr, type) and issubclass(attr, Task) and attr is not Task:
@@ -258,13 +277,18 @@ def _run_single_task(
             break
 
     if not task_cls:
-        typer.secho(f"[ERROR] No Task subclass found in {fc_path}. Define a class that subclasses Task in transformations.py.", fg=typer.colors.RED, err=True)
+        typer.secho(
+            f"[ERROR] No Task subclass found in {fc_path}. Define a class that subclasses Task in transformations.py.",
+            fg=typer.colors.RED,
+            err=True,
+        )
         raise typer.Exit(code=1)
 
     task_obj = task_cls(config=cfg.model_dump(mode="json"))
     task_obj.setup()
 
     from ubunye.core.runtime import Registry
+
     reg = Registry.from_entrypoints()
 
     task_start = time.perf_counter()
@@ -286,14 +310,28 @@ def _run_single_task(
 
         duration = time.perf_counter() - task_start
         for monitor in monitors:
-            safe_call(monitor, "task_end", context=context, config=cfg.model_dump(mode="json"),
-                      outputs=outputs_map, status="success", duration_sec=duration)
+            safe_call(
+                monitor,
+                "task_end",
+                context=context,
+                config=cfg.model_dump(mode="json"),
+                outputs=outputs_map,
+                status="success",
+                duration_sec=duration,
+            )
             typer.secho(f"[OK] Run complete for {task_dir.name}", fg=typer.colors.GREEN)
     except Exception as e:
         duration = time.perf_counter() - task_start
         for monitor in monitors:
-            safe_call(monitor, "task_end", context=context, config=cfg.model_dump(mode="json"),
-                      outputs=outputs_map, status="error", duration_sec=duration)
+            safe_call(
+                monitor,
+                "task_end",
+                context=context,
+                config=cfg.model_dump(mode="json"),
+                outputs=outputs_map,
+                status="error",
+                duration_sec=duration,
+            )
         typer.secho(f"[ERROR] Run failed for {task_dir.name}: {e}", fg=typer.colors.RED, err=True)
         raise
     finally:
@@ -303,16 +341,34 @@ def _run_single_task(
 
 @app.command()
 def run(
-    usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", help="Specifies the directory path for the use case."),
+    usecase_dir: Path = typer.Option(
+        ..., "-d", "--usecase-dir", help="Specifies the directory path for the use case."
+    ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Selects the desired use case."),
-    package: str = typer.Option(..., "-p", "--package", help="Selects a package from the specified use case."),
-    task_list: List[str] = typer.Option(..., "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."),
-    data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp", help="Provides a data timestamp in the specified format."),
-    data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format", help="Specifies the format for the data timestamp."),
+    package: str = typer.Option(
+        ..., "-p", "--package", help="Selects a package from the specified use case."
+    ),
+    task_list: List[str] = typer.Option(
+        ..., "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."
+    ),
+    data_timestamp: Optional[str] = typer.Option(
+        None, "-dt", "--data-timestamp", help="Provides a data timestamp in the specified format."
+    ),
+    data_timestamp_format: Optional[str] = typer.Option(
+        None, "-dtf", "--data-timestamp-format", help="Specifies the format for the data timestamp."
+    ),
     mode: str = typer.Option("DEV", "-m", "--mode", help="Selects the run mode (DEV/PROD)."),
-    deploy_mode: str = typer.Option("client", "--deploy-mode", help="Specifies the deployment mode (cluster/client). Defaults to client."),
-    lineage: bool = typer.Option(False, "--lineage", help="Record lineage for this run (stored as JSON under --lineage-dir)."),
-    lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir", help="Root directory for lineage records."),
+    deploy_mode: str = typer.Option(
+        "client",
+        "--deploy-mode",
+        help="Specifies the deployment mode (cluster/client). Defaults to client.",
+    ),
+    lineage: bool = typer.Option(
+        False, "--lineage", help="Record lineage for this run (stored as JSON under --lineage-dir)."
+    ),
+    lineage_dir: str = typer.Option(
+        ".ubunye/lineage", "--lineage-dir", help="Root directory for lineage records."
+    ),
 ):
     """Run one or more tasks within a package sequentially."""
     variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
@@ -322,12 +378,20 @@ def run(
     for task in task_list:
         task_dir = _task_path(usecase_dir, usecase, package, task)
         if not (task_dir / "config.yaml").exists():
-            typer.secho(f"[ERROR] Missing config at {task_dir / 'config.yaml'}", fg=typer.colors.RED, err=True)
+            typer.secho(
+                f"[ERROR] Missing config at {task_dir / 'config.yaml'}",
+                fg=typer.colors.RED,
+                err=True,
+            )
             raise typer.Exit(code=1)
         try:
             configs[task] = load_config(str(task_dir), variables)
         except (ValueError, FileNotFoundError) as e:
-            typer.secho(f"[ERROR] Config validation failed for '{task}':\n{e}", fg=typer.colors.RED, err=True)
+            typer.secho(
+                f"[ERROR] Config validation failed for '{task}':\n{e}",
+                fg=typer.colors.RED,
+                err=True,
+            )
             raise typer.Exit(code=1)
 
     first_cfg = configs[task_list[0]]
@@ -341,9 +405,9 @@ def run(
     lineage_recorder = None
     if lineage:
         from ubunye.lineage.recorder import LineageRecorder
+
         lineage_recorder = LineageRecorder(
-            store="filesystem",
-            base_dir=str(usecase_dir / lineage_dir),
+            store="filesystem", base_dir=str(usecase_dir / lineage_dir),
         )
 
     backend.start()
@@ -353,13 +417,17 @@ def run(
             cfg = configs[task]
             task_dir = _task_path(usecase_dir, usecase, package, task)
             # Include full path so LineageRecorder can parse usecase/package/task
-            context = EngineContext(run_id=run_id, profile=mode, task_name=f"{usecase}/{package}/{task}")
+            context = EngineContext(
+                run_id=run_id, profile=mode, task_name=f"{usecase}/{package}/{task}"
+            )
             monitors = load_monitors(cfg.model_dump(mode="json"))
             if lineage_recorder is not None:
                 monitors = [lineage_recorder] + monitors
 
             for monitor in monitors:
-                safe_call(monitor, "task_start", context=context, config=cfg.model_dump(mode="json"))
+                safe_call(
+                    monitor, "task_start", context=context, config=cfg.model_dump(mode="json")
+                )
 
             _run_single_task(backend, task_dir, cfg, monitors, context)
 
@@ -370,4 +438,5 @@ def run(
 @app.command()
 def version():
     from ubunye import __version__
+
     typer.echo(f"Ubunye Engine v{__version__}")

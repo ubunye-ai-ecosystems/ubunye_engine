@@ -24,7 +24,6 @@ _BASE = {
 
 
 class TestConfigLoader:
-
     def test_load_valid_config_from_directory(self, tmp_path):
         task_dir = _write_config(tmp_path, _BASE)
         result = load_config(task_dir)
@@ -109,7 +108,12 @@ class TestConfigLoader:
             "ENGINE": {
                 "spark_conf": {"spark.sql.shuffle.partitions": "50"},
                 "profiles": {
-                    "dev": {"spark_conf": {"spark.master": "local[*]", "spark.sql.shuffle.partitions": "8"}}
+                    "dev": {
+                        "spark_conf": {
+                            "spark.master": "local[*]",
+                            "spark.sql.shuffle.partitions": "8",
+                        }
+                    }
                 },
             },
             "CONFIG": {

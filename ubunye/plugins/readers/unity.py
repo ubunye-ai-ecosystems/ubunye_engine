@@ -35,7 +35,9 @@ class UnityTableReader(Reader):
             # allow split pieces
             catalog, schema, name = cfg.get("catalog"), cfg.get("schema"), cfg.get("tbl_name")
             if not (catalog and schema and name):
-                raise ValueError("Provide 'table' (catalog.schema.table) or catalog/schema/tbl_name, or 'sql'.")
+                raise ValueError(
+                    "Provide 'table' (catalog.schema.table) or catalog/schema/tbl_name, or 'sql'."
+                )
             table = f"{catalog}.{schema}.{name}"
 
         # options are rarely used here, but allow pass-through

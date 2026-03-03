@@ -6,7 +6,6 @@ from ubunye.models.gates import GateResult, PromotionGate
 
 
 class TestPromotionGate:
-
     def test_empty_config_always_passes(self):
         gate = PromotionGate({})
         assert gate.all_passed({"any_metric": 0.5}) is True

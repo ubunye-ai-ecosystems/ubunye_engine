@@ -15,14 +15,17 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class JobType(str, Enum):
     """Supported pipeline job types."""
+
     ETL = "etl"
     ML = "ml"
 
 
 class WriteMode(str, Enum):
     """Valid write modes for output connectors."""
+
     OVERWRITE = "overwrite"
     APPEND = "append"
     MERGE = "merge"
@@ -30,6 +33,7 @@ class WriteMode(str, Enum):
 
 class FormatType(str, Enum):
     """Registered connector format names."""
+
     HIVE = "hive"
     JDBC = "jdbc"
     UNITY = "unity"
@@ -41,6 +45,7 @@ class FormatType(str, Enum):
 
 class OrchestrationType(str, Enum):
     """Supported orchestration export targets."""
+
     AIRFLOW = "airflow"
     DATABRICKS = "databricks"
     PREFECT = "prefect"
@@ -51,13 +56,16 @@ class OrchestrationType(str, Enum):
 # ENGINE sub-models
 # ---------------------------------------------------------------------------
 
+
 class EngineProfile(BaseModel):
     """Profile-specific Spark configuration overrides."""
+
     spark_conf: Dict[str, str] = Field(default_factory=dict)
 
 
 class EngineConfig(BaseModel):
     """Spark/compute settings with optional per-profile overrides."""
+
     spark_conf: Dict[str, str] = Field(default_factory=dict)
     profiles: Dict[str, EngineProfile] = Field(default_factory=dict)
 
@@ -66,6 +74,7 @@ class EngineConfig(BaseModel):
 # CONFIG sub-models
 # ---------------------------------------------------------------------------
 
+
 class IOConfig(BaseModel):
     """Input or output connector configuration.
 
@@ -73,6 +82,7 @@ class IOConfig(BaseModel):
     ``auth``, ``pagination``, ``headers``) pass through to the plugin
     unchanged via ``model_dump()``.
     """
+
     model_config = ConfigDict(extra="allow")
 
     format: FormatType
@@ -98,9 +108,7 @@ class IOConfig(BaseModel):
         if fmt == FormatType.HIVE:
             has_table = self.db_name and self.tbl_name
             if not has_table and not self.sql:
-                errors.append(
-                    "format 'hive' requires either ('db_name' + 'tbl_name') or 'sql'"
-                )
+                errors.append("format 'hive' requires either ('db_name' + 'tbl_name') or 'sql'")
 
         elif fmt == FormatType.JDBC:
             if not self.url:
@@ -119,9 +127,7 @@ class IOConfig(BaseModel):
         elif fmt == FormatType.UNITY:
             has_table_parts = self.db_name and self.tbl_name
             if not has_table_parts and not self.table and not self.sql:
-                errors.append(
-                    "format 'unity' requires 'table', ('db_name' + 'tbl_name'), or 'sql'"
-                )
+                errors.append("format 'unity' requires 'table', ('db_name' + 'tbl_name'), or 'sql'")
 
         elif fmt == FormatType.REST_API:
             # url may come from the declared field or from model_extra (plugin-specific)
@@ -137,6 +143,7 @@ class IOConfig(BaseModel):
 
 class TransformConfig(BaseModel):
     """Transform plugin configuration."""
+
     type: str = "noop"
     params: Dict[str, Any] = Field(default_factory=dict)
 
@@ -145,8 +152,10 @@ class TransformConfig(BaseModel):
 # Model registry sub-models (informational — used by ModelTransform and CLI)
 # ---------------------------------------------------------------------------
 
+
 class RegistryConfig(BaseModel):
     """Configuration for model registry integration within a transform."""
+
     model_config = ConfigDict(extra="allow")
 
     store: str
@@ -160,6 +169,7 @@ class RegistryConfig(BaseModel):
 
 class ModelTransformParams(BaseModel):
     """Typed params for ``transform.type: model`` — for documentation and validation."""
+
     model_config = ConfigDict(extra="allow")
 
     action: Literal["train", "predict"]
@@ -172,6 +182,7 @@ class ModelTransformParams(BaseModel):
 
 class TaskConfig(BaseModel):
     """The ``CONFIG`` section of a task: inputs, transform, outputs."""
+
     inputs: Dict[str, IOConfig]
     transform: TransformConfig = Field(default_factory=TransformConfig)
     outputs: Dict[str, IOConfig]
@@ -189,8 +200,10 @@ class TaskConfig(BaseModel):
 # ORCHESTRATION sub-model
 # ---------------------------------------------------------------------------
 
+
 class OrchestrationConfig(BaseModel):
     """Orchestration export metadata."""
+
     model_config = ConfigDict(extra="allow")
 
     type: OrchestrationType
@@ -221,9 +234,7 @@ class UbunyeConfig(BaseModel):
     @classmethod
     def _validate_semver(cls, v: str) -> str:
         if not _SEMVER_RE.match(v):
-            raise ValueError(
-                f"VERSION must be a valid semver string (e.g. '1.0.0'), got: '{v}'"
-            )
+            raise ValueError(f"VERSION must be a valid semver string (e.g. '1.0.0'), got: '{v}'")
         return v
 
     def merged_spark_conf(self, profile: str | None = None) -> Dict[str, str]:

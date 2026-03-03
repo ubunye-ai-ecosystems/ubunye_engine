@@ -48,12 +48,7 @@ class ModelTransform(Transform):
     existing engine dispatch with zero changes to the core runtime.
     """
 
-    def apply(
-        self,
-        inputs: Dict[str, Any],
-        cfg: dict,
-        backend: Backend,
-    ) -> Dict[str, Any]:
+    def apply(self, inputs: Dict[str, Any], cfg: dict, backend: Backend,) -> Dict[str, Any]:
         """Dispatch to train or predict based on ``cfg["action"]``.
 
         Args:
@@ -72,17 +67,14 @@ class ModelTransform(Transform):
             return self._predict(inputs, cfg, backend)
         else:
             raise ValueError(
-                f"Unknown model action: '{action}'. "
-                f"Set params.action to 'train' or 'predict'."
+                f"Unknown model action: '{action}'. " f"Set params.action to 'train' or 'predict'."
             )
 
     # ------------------------------------------------------------------
     # Train
     # ------------------------------------------------------------------
 
-    def _train(
-        self, inputs: Dict[str, Any], cfg: dict, backend: Backend
-    ) -> Dict[str, Any]:
+    def _train(self, inputs: Dict[str, Any], cfg: dict, backend: Backend) -> Dict[str, Any]:
         model_class = cfg.get("model_class")
         if not model_class:
             raise ValueError("params.model_class is required for action='train'.")
@@ -130,9 +122,7 @@ class ModelTransform(Transform):
     # Predict
     # ------------------------------------------------------------------
 
-    def _predict(
-        self, inputs: Dict[str, Any], cfg: dict, backend: Backend
-    ) -> Dict[str, Any]:
+    def _predict(self, inputs: Dict[str, Any], cfg: dict, backend: Backend) -> Dict[str, Any]:
         model_class = cfg.get("model_class")
         if not model_class:
             raise ValueError("params.model_class is required for action='predict'.")
@@ -152,9 +142,7 @@ class ModelTransform(Transform):
 
             registry = ModelRegistry(store)
             artifact_path, _ = registry.get_model(
-                use_case=use_case,
-                model_name=model_name,
-                stage=use_stage,
+                use_case=use_case, model_name=model_name, stage=use_stage,
             )
             model = cls.load(artifact_path)
         else:
@@ -174,14 +162,14 @@ class ModelTransform(Transform):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_df(inputs: Dict[str, Any], input_name: Optional[str]) -> Any:
     if not inputs:
         raise ValueError("ModelTransform received no inputs.")
     if input_name:
         if input_name not in inputs:
             raise KeyError(
-                f"Requested input '{input_name}' not found. "
-                f"Available: {list(inputs)}"
+                f"Requested input '{input_name}' not found. " f"Available: {list(inputs)}"
             )
         return inputs[input_name]
     return next(iter(inputs.values()))

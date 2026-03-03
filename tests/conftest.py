@@ -18,12 +18,14 @@ if str(ROOT) not in sys.path:
 # MockBackend — lightweight Backend stub that requires no Spark
 # ---------------------------------------------------------------------------
 
+
 class MockBackend:
     """Backend stub wrapping a MagicMock spark object.
 
     Use in unit tests that exercise plugin logic without starting a real
     Spark session. Pass a custom ``spark_mock`` to control return values.
     """
+
     is_spark = True
 
     def __init__(self, spark_mock: Any = None) -> None:
@@ -44,13 +46,9 @@ _VALID_CONFIG = {
     "MODEL": "etl",
     "VERSION": "0.1.0",
     "CONFIG": {
-        "inputs": {
-            "source": {"format": "hive", "db_name": "raw_db", "tbl_name": "claims"},
-        },
+        "inputs": {"source": {"format": "hive", "db_name": "raw_db", "tbl_name": "claims"},},
         "transform": {"type": "noop"},
-        "outputs": {
-            "sink": {"format": "s3", "path": "s3a://bucket/out/", "mode": "overwrite"},
-        },
+        "outputs": {"sink": {"format": "s3", "path": "s3a://bucket/out/", "mode": "overwrite"},},
     },
 }
 
@@ -76,6 +74,7 @@ class NoOpTask(Task):
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_backend() -> MockBackend:

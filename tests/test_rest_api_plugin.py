@@ -22,21 +22,21 @@ from ubunye.plugins.writers.rest_api import RestApiWriter, _post_batch
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_response(json_data, status_code=200):
     resp = MagicMock()
     resp.status_code = status_code
     resp.json.return_value = json_data
     resp.raise_for_status = MagicMock()
     if status_code >= 400:
-        resp.raise_for_status.side_effect = requests.HTTPError(
-            response=resp
-        )
+        resp.raise_for_status.side_effect = requests.HTTPError(response=resp)
     return resp
 
 
 # ---------------------------------------------------------------------------
 # Config validation
 # ---------------------------------------------------------------------------
+
 
 def test_reader_requires_url():
     reader = RestApiReader()
@@ -57,6 +57,7 @@ def test_writer_requires_url():
 # Session / auth building
 # ---------------------------------------------------------------------------
 
+
 def test_build_session_bearer():
     cfg = {"auth": {"type": "bearer", "token": "my-secret-token"}}
     session = _build_session(cfg)
@@ -71,6 +72,7 @@ def test_build_session_api_key_header():
 
 def test_build_session_basic_auth():
     from requests.auth import HTTPBasicAuth
+
     cfg = {"auth": {"type": "basic", "username": "user", "password": "pass"}}
     session = _build_session(cfg)
     assert isinstance(session.auth, HTTPBasicAuth)
@@ -93,6 +95,7 @@ def test_build_session_no_auth():
 # ---------------------------------------------------------------------------
 # _extract_records
 # ---------------------------------------------------------------------------
+
 
 def test_extract_records_root_key():
     resp = {"data": [{"id": 1}, {"id": 2}], "meta": {"total": 2}}
@@ -122,6 +125,7 @@ def test_extract_records_missing_root_key_raises():
 # _fetch_page — retry behaviour
 # ---------------------------------------------------------------------------
 
+
 def test_fetch_page_success_on_first_attempt():
     session = MagicMock()
     session.request.return_value = _mock_response({"data": []})
@@ -138,7 +142,11 @@ def test_fetch_page_retries_on_429():
     ]
     with patch("ubunye.plugins.readers.rest_api.time.sleep"):
         result = _fetch_page(
-            session, "https://api.test/v1", "GET", {}, None,
+            session,
+            "https://api.test/v1",
+            "GET",
+            {},
+            None,
             {"retry_on": [429], "max_retries": 3},
             {},
         )
@@ -152,7 +160,11 @@ def test_fetch_page_raises_after_max_retries():
     with patch("ubunye.plugins.readers.rest_api.time.sleep"):
         with pytest.raises(requests.HTTPError):
             _fetch_page(
-                session, "https://api.test/v1", "GET", {}, None,
+                session,
+                "https://api.test/v1",
+                "GET",
+                {},
+                None,
                 {"retry_on": [429], "max_retries": 2},
                 {},
             )
@@ -171,6 +183,7 @@ def test_fetch_page_injects_api_key_query():
 # ---------------------------------------------------------------------------
 # _paginate — pagination strategies
 # ---------------------------------------------------------------------------
+
 
 def test_paginate_no_config_single_request():
     cfg = {"url": "https://api.test/v1", "method": "GET"}
@@ -231,8 +244,7 @@ def test_paginate_cursor_stops_when_no_cursor():
     }
     session = MagicMock()
     session.request.side_effect = [
-        _mock_response({"items": [{"id": 1}], "next_cursor": "tok123"},
-                       ),
+        _mock_response({"items": [{"id": 1}], "next_cursor": "tok123"},),
         _mock_response({"items": [{"id": 2}], "next_cursor": None}),
     ]
     # Override to use root_key
@@ -277,6 +289,7 @@ def test_paginate_unknown_type_raises():
 # RestApiWriter — batch posting
 # ---------------------------------------------------------------------------
 
+
 def test_writer_posts_in_batches():
     """250 rows with batch_size=100 should result in 3 POST calls."""
     writer = RestApiWriter()
@@ -316,8 +329,7 @@ def test_writer_raises_on_batch_failure():
     cfg = {"url": "https://api.test/v1/alerts"}
 
     with patch(
-        "ubunye.plugins.writers.rest_api._post_batch",
-        side_effect=requests.HTTPError("500"),
+        "ubunye.plugins.writers.rest_api._post_batch", side_effect=requests.HTTPError("500"),
     ):
         with pytest.raises(RuntimeError, match="failed posting"):
             writer.write(df, cfg, backend)

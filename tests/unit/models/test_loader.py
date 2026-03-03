@@ -55,13 +55,14 @@ class NestedModel(UbunyeModel):
 # Tests
 # ---------------------------------------------------------------------------
 
-class TestLoadModelClass:
 
+class TestLoadModelClass:
     def test_load_valid_model(self, tmp_path):
         """Loading a valid UbunyeModel subclass returns the class."""
         (tmp_path / "model.py").write_text(_VALID_MODEL_CODE, encoding="utf-8")
         cls = load_model_class(str(tmp_path), "model.MyModel")
         from ubunye.models.base import UbunyeModel
+
         assert issubclass(cls, UbunyeModel)
 
     def test_loaded_class_is_instantiable(self, tmp_path):
@@ -104,13 +105,13 @@ class TestLoadModelClass:
         # Write model.py and add tmp_path to sys.path manually
         mod_name = "ubunye_test_dynamic_model_xyz"
         (tmp_path / f"{mod_name}.py").write_text(
-            _VALID_MODEL_CODE.replace("class MyModel", "class DynModel"),
-            encoding="utf-8",
+            _VALID_MODEL_CODE.replace("class MyModel", "class DynModel"), encoding="utf-8",
         )
         sys.path.insert(0, str(tmp_path))
         try:
             cls = load_model_class(None, f"{mod_name}.DynModel")
             from ubunye.models.base import UbunyeModel
+
             assert issubclass(cls, UbunyeModel)
         finally:
             sys.path.remove(str(tmp_path))

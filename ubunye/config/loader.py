@@ -26,9 +26,7 @@ from .schema import UbunyeConfig
 
 
 def load_config(
-    path: str,
-    variables: Optional[Dict[str, Any]] = None,
-    profile: Optional[str] = None,
+    path: str, variables: Optional[Dict[str, Any]] = None, profile: Optional[str] = None,
 ) -> UbunyeConfig:
     """Load, resolve, and validate a Ubunye task config.
 
@@ -89,15 +87,14 @@ def load_config(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _resolve_config_path(path: str) -> Path:
     """Return Path to config.yaml, resolving directory or file paths."""
     p = Path(path)
     if p.is_dir():
         candidate = p / "config.yaml"
         if not candidate.exists():
-            raise FileNotFoundError(
-                f"No config.yaml found in task directory: {p}"
-            )
+            raise FileNotFoundError(f"No config.yaml found in task directory: {p}")
         return candidate
     if not p.exists():
         raise FileNotFoundError(f"Config file not found: {p}")

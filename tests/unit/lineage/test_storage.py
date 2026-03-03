@@ -8,7 +8,9 @@ from ubunye.lineage.context import RunContext, StepRecord
 from ubunye.lineage.storage import FileSystemLineageStore, S3LineageStore
 
 
-def _ctx(run_id="run-1", task="fraud/ingestion/etl", status="success", started="2025-03-01T10:00:00Z"):
+def _ctx(
+    run_id="run-1", task="fraud/ingestion/etl", status="success", started="2025-03-01T10:00:00Z"
+):
     parts = task.split("/")
     usecase, package, task_name = parts[0], parts[1], parts[2]
     return RunContext(
@@ -156,6 +158,7 @@ class TestFileSystemLineageStore:
 # ---------------------------------------------------------------------------
 # S3LineageStore stub
 # ---------------------------------------------------------------------------
+
 
 class TestS3LineageStoreStub:
     def test_save_raises_not_implemented(self):

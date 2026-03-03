@@ -74,10 +74,7 @@ def _build_session(cfg: Dict[str, Any]) -> requests.Session:
         pass  # injected per-request in _post_batch
 
     elif auth_type == "basic":
-        session.auth = HTTPBasicAuth(
-            auth_cfg.get("username", ""),
-            auth_cfg.get("password", ""),
-        )
+        session.auth = HTTPBasicAuth(auth_cfg.get("username", ""), auth_cfg.get("password", ""),)
 
     return session
 
@@ -122,7 +119,11 @@ def _post_batch(
                 wait = _DEFAULT_BACKOFF_BASE * (2 ** attempt)
                 log.warning(
                     "HTTP %s posting to %s — retrying in %.1fs (attempt %d/%d)",
-                    resp.status_code, url, wait, attempt + 1, max_retries,
+                    resp.status_code,
+                    url,
+                    wait,
+                    attempt + 1,
+                    max_retries,
                 )
                 time.sleep(wait)
                 continue
@@ -198,7 +199,9 @@ class RestApiWriter(Writer):
 
         log.info(
             "RestApiWriter: posted to %s — %d batches succeeded, %d failed",
-            url, success_count, failure_count,
+            url,
+            success_count,
+            failure_count,
         )
 
         if failure_count > 0:
@@ -228,7 +231,5 @@ class RestApiWriter(Writer):
             log.debug("RestApiWriter: batch of %d rows posted successfully", len(batch))
         except requests.HTTPError as exc:
             failure_count += 1
-            log.error(
-                "RestApiWriter: batch of %d rows failed — %s", len(batch), exc
-            )
+            log.error("RestApiWriter: batch of %d rows failed — %s", len(batch), exc)
         return success_count, failure_count

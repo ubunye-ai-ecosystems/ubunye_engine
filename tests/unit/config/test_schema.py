@@ -35,8 +35,8 @@ def _make_config(**overrides) -> dict:
 # UbunyeConfig — top-level
 # ---------------------------------------------------------------------------
 
-class TestUbunyeConfig:
 
+class TestUbunyeConfig:
     def test_valid_etl_config(self):
         cfg = UbunyeConfig(**_make_config())
         assert cfg.MODEL == JobType.ETL
@@ -85,39 +85,58 @@ class TestUbunyeConfig:
             UbunyeConfig(**_make_config(CONFIG=bad_config))
 
     def test_engine_profiles_valid(self):
-        cfg = UbunyeConfig(**_make_config(ENGINE={
-            "spark_conf": {"spark.sql.shuffle.partitions": "50"},
-            "profiles": {
-                "dev": {"spark_conf": {"spark.master": "local[*]"}},
-                "prod": {"spark_conf": {"spark.master": "yarn"}},
-            },
-        }))
+        cfg = UbunyeConfig(
+            **_make_config(
+                ENGINE={
+                    "spark_conf": {"spark.sql.shuffle.partitions": "50"},
+                    "profiles": {
+                        "dev": {"spark_conf": {"spark.master": "local[*]"}},
+                        "prod": {"spark_conf": {"spark.master": "yarn"}},
+                    },
+                }
+            )
+        )
         assert "dev" in cfg.ENGINE.profiles
         assert cfg.ENGINE.profiles["dev"].spark_conf["spark.master"] == "local[*]"
 
     def test_merged_spark_conf_applies_profile(self):
-        cfg = UbunyeConfig(**_make_config(ENGINE={
-            "spark_conf": {"spark.sql.shuffle.partitions": "50"},
-            "profiles": {
-                "dev": {"spark_conf": {"spark.sql.shuffle.partitions": "8", "spark.master": "local[*]"}},
-            },
-        }))
+        cfg = UbunyeConfig(
+            **_make_config(
+                ENGINE={
+                    "spark_conf": {"spark.sql.shuffle.partitions": "50"},
+                    "profiles": {
+                        "dev": {
+                            "spark_conf": {
+                                "spark.sql.shuffle.partitions": "8",
+                                "spark.master": "local[*]",
+                            }
+                        },
+                    },
+                }
+            )
+        )
         merged = cfg.merged_spark_conf("dev")
         assert merged["spark.sql.shuffle.partitions"] == "8"
         assert merged["spark.master"] == "local[*]"
 
     def test_merged_spark_conf_no_profile(self):
-        cfg = UbunyeConfig(**_make_config(ENGINE={"spark_conf": {"spark.sql.shuffle.partitions": "50"}}))
+        cfg = UbunyeConfig(
+            **_make_config(ENGINE={"spark_conf": {"spark.sql.shuffle.partitions": "50"}})
+        )
         assert cfg.merged_spark_conf()["spark.sql.shuffle.partitions"] == "50"
 
     def test_orchestration_valid(self):
-        cfg = UbunyeConfig(**_make_config(ORCHESTRATION={
-            "type": "airflow",
-            "schedule": "@daily",
-            "retries": 3,
-            "owner": "fraud-team",
-            "tags": ["fraud", "etl"],
-        }))
+        cfg = UbunyeConfig(
+            **_make_config(
+                ORCHESTRATION={
+                    "type": "airflow",
+                    "schedule": "@daily",
+                    "retries": 3,
+                    "owner": "fraud-team",
+                    "tags": ["fraud", "etl"],
+                }
+            )
+        )
         assert cfg.ORCHESTRATION.type == OrchestrationType.AIRFLOW
 
     def test_orchestration_invalid_type_raises(self):
@@ -134,8 +153,8 @@ class TestUbunyeConfig:
 # IOConfig
 # ---------------------------------------------------------------------------
 
-class TestIOConfig:
 
+class TestIOConfig:
     def test_hive_with_db_and_table(self):
         io = IOConfig(format="hive", db_name="fraud_db", tbl_name="claims")
         assert io.format == FormatType.HIVE
@@ -252,8 +271,8 @@ class TestIOConfig:
 # TransformConfig
 # ---------------------------------------------------------------------------
 
-class TestTransformConfig:
 
+class TestTransformConfig:
     def test_default_noop(self):
         t = TransformConfig()
         assert t.type == "noop"

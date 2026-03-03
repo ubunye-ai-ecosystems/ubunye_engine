@@ -42,11 +42,10 @@ _version_opt = typer.Option(..., "--version", "-v", help="Version string.")
 # list
 # ---------------------------------------------------------------------------
 
+
 @models_app.command("list")
 def list_versions(
-    use_case: str = _use_case_opt,
-    model: str = _model_opt,
-    store: str = _store_opt,
+    use_case: str = _use_case_opt, model: str = _model_opt, store: str = _store_opt,
 ):
     """List all registered versions for a model (newest first)."""
     registry = ModelRegistry(store)
@@ -67,6 +66,7 @@ def list_versions(
 # info
 # ---------------------------------------------------------------------------
 
+
 @models_app.command("info")
 def info(
     use_case: str = _use_case_opt,
@@ -86,7 +86,8 @@ def info(
     if mv is None:
         typer.secho(
             f"[ERROR] Version '{version}' not found for {use_case}/{model}.",
-            fg=typer.colors.RED, err=True,
+            fg=typer.colors.RED,
+            err=True,
         )
         raise typer.Exit(code=1)
 
@@ -98,6 +99,7 @@ def info(
 # ---------------------------------------------------------------------------
 # promote
 # ---------------------------------------------------------------------------
+
 
 @models_app.command("promote")
 def promote(
@@ -114,7 +116,8 @@ def promote(
     except ValueError:
         typer.secho(
             f"[ERROR] Unknown stage '{to}'. Choose: staging, production.",
-            fg=typer.colors.RED, err=True,
+            fg=typer.colors.RED,
+            err=True,
         )
         raise typer.Exit(code=1)
 
@@ -122,8 +125,7 @@ def promote(
     try:
         mv = registry.promote(use_case, model, version, target_stage, promoted_by=promoted_by)
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}",
-            fg=typer.colors.GREEN,
+            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}", fg=typer.colors.GREEN,
         )
     except (FileNotFoundError, ValueError) as e:
         typer.secho(f"[ERROR] {e}", fg=typer.colors.RED, err=True)
@@ -133,6 +135,7 @@ def promote(
 # ---------------------------------------------------------------------------
 # demote
 # ---------------------------------------------------------------------------
+
 
 @models_app.command("demote")
 def demote(
@@ -148,7 +151,8 @@ def demote(
     except ValueError:
         typer.secho(
             f"[ERROR] Unknown stage '{to}'. Choose: development, staging, archived.",
-            fg=typer.colors.RED, err=True,
+            fg=typer.colors.RED,
+            err=True,
         )
         raise typer.Exit(code=1)
 
@@ -156,8 +160,7 @@ def demote(
     try:
         mv = registry.demote(use_case, model, version, target_stage)
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}",
-            fg=typer.colors.GREEN,
+            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}", fg=typer.colors.GREEN,
         )
     except (FileNotFoundError, ValueError) as e:
         typer.secho(f"[ERROR] {e}", fg=typer.colors.RED, err=True)
@@ -167,6 +170,7 @@ def demote(
 # ---------------------------------------------------------------------------
 # rollback
 # ---------------------------------------------------------------------------
+
 
 @models_app.command("rollback")
 def rollback(
@@ -192,6 +196,7 @@ def rollback(
 # archive
 # ---------------------------------------------------------------------------
 
+
 @models_app.command("archive")
 def archive(
     use_case: str = _use_case_opt,
@@ -204,8 +209,7 @@ def archive(
     try:
         mv = registry.archive(use_case, model, version)
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} archived.",
-            fg=typer.colors.YELLOW,
+            f"[OK] {use_case}/{model} v{mv.version} archived.", fg=typer.colors.YELLOW,
         )
     except (FileNotFoundError, ValueError) as e:
         typer.secho(f"[ERROR] {e}", fg=typer.colors.RED, err=True)
@@ -215,6 +219,7 @@ def archive(
 # ---------------------------------------------------------------------------
 # compare
 # ---------------------------------------------------------------------------
+
 
 @models_app.command("compare")
 def compare(
@@ -226,8 +231,7 @@ def compare(
     """Compare metrics between two model versions."""
     if len(versions) != 2:
         typer.secho(
-            "[ERROR] Provide exactly two --versions values.",
-            fg=typer.colors.RED, err=True,
+            "[ERROR] Provide exactly two --versions values.", fg=typer.colors.RED, err=True,
         )
         raise typer.Exit(code=1)
 
@@ -275,9 +279,7 @@ _STAGE_COLORS = {
 
 
 def _print_versions_table(versions: List[ModelVersion]) -> None:
-    typer.echo(
-        f"\n  {'Version':<12} {'Stage':<14} {'Registered':<28} {'Key metrics'}"
-    )
+    typer.echo(f"\n  {'Version':<12} {'Stage':<14} {'Registered':<28} {'Key metrics'}")
     typer.echo(f"  {'-'*12} {'-'*14} {'-'*28} {'-'*30}")
     for mv in versions:
         stage_str = mv.stage.value

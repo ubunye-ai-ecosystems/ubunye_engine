@@ -85,22 +85,32 @@ class EventLogger:
         self._task_start_monotonic = time.monotonic()
         self.emit({"event": "task_start", **(extra or {})})
 
-    def task_end(self, status: str = "success", duration_sec: Optional[float] = None,
-                 extra: Optional[Dict[str, Any]] = None) -> None:
+    def task_end(
+        self,
+        status: str = "success",
+        duration_sec: Optional[float] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
         if duration_sec is None and self._task_start_monotonic is not None:
             duration_sec = max(0.0, time.monotonic() - self._task_start_monotonic)
-        self.emit({"event": "task_end", "status": status, "duration_sec": duration_sec, **(extra or {})})
+        self.emit(
+            {"event": "task_end", "status": status, "duration_sec": duration_sec, **(extra or {})}
+        )
 
     # -------- step-level --------
     def step_start(self, step: str, extra: Optional[Dict[str, Any]] = None) -> None:
         self._step_monotonic[step] = time.monotonic()
         self.emit({"event": "step_start", "step": step, **(extra or {})})
 
-    def step_end(self, step: str, status: str = "success",
-                 duration_sec: Optional[float] = None,
-                 rows: Optional[int] = None,
-                 bytes_: Optional[int] = None,
-                 extra: Optional[Dict[str, Any]] = None) -> None:
+    def step_end(
+        self,
+        step: str,
+        status: str = "success",
+        duration_sec: Optional[float] = None,
+        rows: Optional[int] = None,
+        bytes_: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
         if duration_sec is None and step in self._step_monotonic:
             duration_sec = max(0.0, time.monotonic() - self._step_monotonic[step])
         payload = {

@@ -8,5 +8,6 @@ from ubunye.core.interfaces import Backend, Transform
 
 class NoOpTransform(Transform):
     """Returns inputs unchanged."""
+
     def apply(self, inputs: Dict[str, Any], cfg: dict, backend: Backend) -> Dict[str, Any]:
         return inputs

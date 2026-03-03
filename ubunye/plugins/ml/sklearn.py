@@ -15,7 +15,9 @@ from .base import BaseModel, FeatureSchema
 class SklearnModel(BaseModel):
     """Wrap any sklearn estimator with a unified Ubunye interface."""
 
-    def __init__(self, estimator: Any, *, schema: Optional[FeatureSchema] = None, **kwargs: Any) -> None:
+    def __init__(
+        self, estimator: Any, *, schema: Optional[FeatureSchema] = None, **kwargs: Any
+    ) -> None:
         super().__init__(schema=schema, **kwargs)
         self.estimator = estimator
         self._last_metrics: Dict[str, float] = {}
