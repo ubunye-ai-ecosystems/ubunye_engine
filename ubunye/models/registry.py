@@ -21,11 +21,10 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple
 
 from ubunye.models.base import UbunyeModel
 from ubunye.models.gates import PromotionGate
-
 
 # ---------------------------------------------------------------------------
 # Enums and Dataclasses

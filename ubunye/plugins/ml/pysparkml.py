@@ -2,10 +2,11 @@
 Spark MLlib wrapper.
 """
 from __future__ import annotations
-from pathlib import Path
-from typing import Any, Optional, Dict
 
-from pyspark.ml import PipelineModel, Estimator
+from pathlib import Path
+from typing import Any, Optional
+
+from pyspark.ml import Estimator, PipelineModel
 from pyspark.sql import DataFrame as SparkDF
 
 from .base import BaseModel, FeatureSchema

@@ -16,7 +16,12 @@
       "Bash(python -m pytest tests/unit/ -v)",
       "Bash(pip install jinja2 pyyaml pydantic typer hypothesis --target \"c:/Users/thabanglukhetho/AppData/Local/Programs/Python/Python311/Lib/site-packages\" -q)",
       "Bash(python -m pytest tests/unit/ -v --tb=short -m \"not integration\")",
-      "Bash(python -m pytest tests/unit/models/ -v --tb=short)"
+      "Bash(python -m pytest tests/unit/models/ -v --tb=short)",
+      "Bash(python -m ruff check tests/ ubunye/ --select E,F,I)",
+      "Bash(ruff check tests/ ubunye/ --select E,F,I)",
+      "Bash(ruff check tests/ ubunye/)",
+      "Bash(ruff check tests/ ubunye/ --fix)",
+      "Bash(python -m pytest tests/unit/ -q --tb=short -m \"not integration\")"
     ]
   }
 }

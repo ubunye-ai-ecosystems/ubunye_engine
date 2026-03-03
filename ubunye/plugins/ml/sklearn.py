@@ -2,12 +2,14 @@
 Scikit-learn model wrapper implementing BaseModel.
 """
 from __future__ import annotations
-import joblib
-from pathlib import Path
-from typing import Any, Optional, Tuple, Dict
 
-from .base import BaseModel, FeatureSchema
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import joblib
+
 from .adapters import ensure_Xy_numpy
+from .base import BaseModel, FeatureSchema
 
 
 class SklearnModel(BaseModel):

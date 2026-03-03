@@ -6,20 +6,20 @@ import os
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Dict, Any, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
-from ubunye.core.interfaces import Reader, Writer, Transform, Backend
 from ubunye.backends.spark_backend import SparkBackend  # default backend
+from ubunye.core.interfaces import Backend, Reader, Transform, Writer
 
 # --- Optional telemetry (no-ops if libs not present / flag disabled) ---
 from ubunye.telemetry.events import EventLogger
+from ubunye.telemetry.monitors import load_monitors, safe_call
+from ubunye.telemetry.otel import init_tracer, span
 from ubunye.telemetry.prometheus import (
-    observe_task,
     observe_step,
+    observe_task,
     start_prometheus_http_server,
 )
-from ubunye.telemetry.otel import span, init_tracer
-from ubunye.telemetry.monitors import load_monitors, safe_call
 
 
 @dataclass(frozen=True)

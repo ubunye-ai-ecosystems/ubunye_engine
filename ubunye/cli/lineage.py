@@ -265,7 +265,7 @@ def trace(
     # TRANSFORM
     typer.echo()
     typer.secho("  TRANSFORM", fg=typer.colors.CYAN)
-    typer.echo(f"    (transformations.py)")
+    typer.echo("    (transformations.py)")
 
     # OUTPUTS
     typer.echo()

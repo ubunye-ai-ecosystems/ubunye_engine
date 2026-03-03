@@ -21,9 +21,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ubunye.core.interfaces import Reader, Transform, Writer
 from tests.conftest import MockBackend
-
+from ubunye.core.interfaces import Reader, Transform, Writer
 
 # ---------------------------------------------------------------------------
 # Helpers

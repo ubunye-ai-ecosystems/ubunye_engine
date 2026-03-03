@@ -337,7 +337,7 @@ def _build_schema(schema_cfg: List[Dict[str, str]]):
 
     Lazy-imports pyspark so the module can be imported without Spark installed.
     """
-    from pyspark.sql.types import StructType, StructField, StringType  # noqa: F401
+    from pyspark.sql.types import StringType, StructField, StructType  # noqa: F401
 
     type_map = {
         "string": "StringType",

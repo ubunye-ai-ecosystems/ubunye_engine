@@ -10,9 +10,9 @@ Defines a unified contract for model training/inference and common utilities:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Tuple, Protocol, runtime_checkable
+from typing import Any, Dict, Iterable, Optional, Protocol, runtime_checkable
 
 
 # --------- Schemas ---------

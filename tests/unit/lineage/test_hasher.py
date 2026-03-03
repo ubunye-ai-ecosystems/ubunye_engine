@@ -3,7 +3,6 @@ import pytest
 
 from ubunye.lineage.hasher import _sha256, hash_dataframe, hash_file, hash_schema
 
-
 # ---------------------------------------------------------------------------
 # Mock DataFrame (Spark-free)
 # ---------------------------------------------------------------------------

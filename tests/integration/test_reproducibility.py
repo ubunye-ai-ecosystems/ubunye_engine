@@ -8,23 +8,25 @@ installed. Run with: pytest tests/integration -m integration
 """
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 pyspark = pytest.importorskip("pyspark", reason="pyspark not installed")
 
-import json
-import uuid
-from pathlib import Path
+from pyspark.sql import SparkSession  # noqa: E402
+from pyspark.sql.types import (  # noqa: E402
+    DoubleType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
+)
 
-from pyspark.sql import SparkSession
-from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType
-
-from ubunye.core.runtime import Engine, EngineContext, Registry
-from ubunye.backends.spark_backend import SparkBackend
-from ubunye.lineage.hasher import hash_dataframe, hash_schema
-from ubunye.lineage.recorder import LineageRecorder
-from ubunye.lineage.storage import FileSystemLineageStore
-
+from ubunye.backends.spark_backend import SparkBackend  # noqa: E402
+from ubunye.core.runtime import Engine, EngineContext  # noqa: E402
+from ubunye.lineage.recorder import LineageRecorder  # noqa: E402
+from ubunye.lineage.storage import FileSystemLineageStore  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Session-scoped Spark fixture
@@ -105,7 +107,7 @@ def _run_with_lineage(cfg: dict, spark_session: SparkSession, lineage_base: str)
             context=context, config=cfg,
             outputs=result, status="success", duration_sec=0.1,
         )
-    except Exception as e:
+    except Exception:
         recorder.task_end(
             context=context, config=cfg,
             outputs=None, status="error", duration_sec=0.0,

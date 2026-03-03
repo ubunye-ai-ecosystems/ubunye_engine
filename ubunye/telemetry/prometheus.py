@@ -24,7 +24,8 @@ from typing import Optional
 
 _PROM_ENABLED = False
 try:
-    from prometheus_client import Counter, Histogram, start_http_server as _prom_start
+    from prometheus_client import Counter, Histogram
+    from prometheus_client import start_http_server as _prom_start
     _PROM_ENABLED = True
 except Exception:  # pragma: no cover
     Counter = Histogram = object  # type: ignore
