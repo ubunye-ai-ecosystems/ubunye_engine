@@ -44,10 +44,11 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, Generator, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 
-import requests
-from requests.auth import HTTPBasicAuth
+if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
+    import requests
+    from requests.auth import HTTPBasicAuth
 
 from ubunye.core.interfaces import Reader
 
@@ -87,6 +88,9 @@ def _build_session(cfg: Dict[str, Any]) -> requests.Session:
 
     Headers declared at the top-level cfg['headers'] are also applied to the session.
     """
+    import requests
+    from requests.auth import HTTPBasicAuth
+
     session = requests.Session()
 
     # Apply top-level headers (e.g. Authorization: Bearer ... already templated by engine)

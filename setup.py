@@ -21,6 +21,7 @@ setup(
         "pydantic>=1.10,<3",
         "pyyaml>=6.0",
         "typer>=0.9.0",
+        "requests>=2.28",
     ],
     extras_require={
         "dev": ["pytest", "black", "ruff"],
@@ -36,11 +37,13 @@ setup(
             "hive=ubunye.plugins.readers.hive:HiveReader",
             "jdbc=ubunye.plugins.readers.jdbc:JdbcReader",
             "unity=ubunye.plugins.readers.unity:UnityTableReader",
+            "rest_api=ubunye.plugins.readers.rest_api:RestApiReader",
         ],
         "ubunye.writers": [
             "s3=ubunye.plugins.writers.s3:S3Writer",
             "jdbc=ubunye.plugins.writers.jdbc:JdbcWriter",
             "unity=ubunye.plugins.writers.unity:UnityTableWriter",
+            "rest_api=ubunye.plugins.writers.rest_api:RestApiWriter",
         ],
         "ubunye.transforms": [
             "noop=ubunye.plugins.transforms.noop:NoOpTransform",
