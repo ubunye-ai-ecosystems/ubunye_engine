@@ -30,6 +30,7 @@ ubunye = "ubunye.cli.main:app"
 [project.entry-points."ubunye.readers"]
 hive = "ubunye.plugins.readers.hive:HiveReader"
 jdbc = "ubunye.plugins.readers.jdbc:JdbcReader"
+s3 = "ubunye.plugins.readers.s3:S3Reader"
 unity = "ubunye.plugins.readers.unity:UnityTableReader"
 rest_api = "ubunye.plugins.readers.rest_api:RestApiReader"
 

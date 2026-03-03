@@ -32,6 +32,7 @@ setup(
             "ubunye=ubunye.cli.main:app",
         ],
         "ubunye.readers": [
+            "s3=ubunye.plugins.readers.s3:S3Reader",
             "hive=ubunye.plugins.readers.hive:HiveReader",
             "jdbc=ubunye.plugins.readers.jdbc:JdbcReader",
             "unity=ubunye.plugins.readers.unity:UnityTableReader",

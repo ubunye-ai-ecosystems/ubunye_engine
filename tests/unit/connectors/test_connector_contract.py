@@ -257,9 +257,9 @@ class TestJdbcPlugin(PluginContractTest):
 
 class TestS3Plugin(PluginContractTest):
     def make_reader(self):
-        # No dedicated S3Reader in the codebase; return a mock for base-class compliance
-        m = MagicMock(spec=Reader)
-        return m
+        from ubunye.plugins.readers.s3 import S3Reader
+
+        return S3Reader()
 
     def make_writer(self):
         from ubunye.plugins.writers.s3 import S3Writer
@@ -275,7 +275,55 @@ class TestS3Plugin(PluginContractTest):
     def bad_read_cfg(self):
         return {"format": "s3"}  # no path
 
-    # --- S3-specific ---
+    # --- S3Reader-specific ---
+
+    def test_read_requires_path(self):
+        with pytest.raises(ValueError, match="path"):
+            self.make_reader().read({"format": "s3"}, _make_backend())
+
+    def test_read_calls_spark_read_format_load(self):
+        spark = MagicMock()
+        chain = MagicMock()
+        spark.read.format.return_value = chain
+        chain.load.return_value = MagicMock()
+
+        self.make_reader().read(self.valid_read_cfg(), _make_backend(spark))
+        spark.read.format.assert_called_once_with("parquet")  # default file_format
+        chain.load.assert_called_once_with("s3a://bucket/input/")
+
+    def test_read_respects_explicit_file_format(self):
+        spark = MagicMock()
+        chain = MagicMock()
+        spark.read.format.return_value = chain
+        chain.load.return_value = MagicMock()
+
+        cfg = {"format": "s3", "path": "/tmp/in", "file_format": "csv"}
+        self.make_reader().read(cfg, _make_backend(spark))
+        spark.read.format.assert_called_once_with("csv")
+
+    def test_read_passes_options(self):
+        spark = MagicMock()
+        chain = MagicMock()
+        spark.read.format.return_value = chain
+        chain.options.return_value = chain
+        chain.load.return_value = MagicMock()
+
+        cfg = {"format": "s3", "path": "/tmp/in", "options": {"header": "true"}}
+        self.make_reader().read(cfg, _make_backend(spark))
+        chain.options.assert_called_once_with(header="true")
+
+    def test_read_applies_schema_when_provided(self):
+        spark = MagicMock()
+        chain = MagicMock()
+        spark.read.format.return_value = chain
+        chain.schema.return_value = chain
+        chain.load.return_value = MagicMock()
+
+        cfg = {"format": "s3", "path": "/tmp/in", "schema": "id INT, name STRING"}
+        self.make_reader().read(cfg, _make_backend(spark))
+        chain.schema.assert_called_once_with("id INT, name STRING")
+
+    # --- S3Writer-specific ---
 
     def test_write_requires_path(self):
         with pytest.raises(ValueError, match="path"):
@@ -283,7 +331,6 @@ class TestS3Plugin(PluginContractTest):
 
     def test_write_calls_df_write_save(self):
         df = MagicMock()
-        # Set up fluent chain
         chain = MagicMock()
         df.write.mode.return_value = chain
         chain.format.return_value = chain
@@ -303,19 +350,15 @@ class TestS3Plugin(PluginContractTest):
         self.make_writer().write(df, {"format": "s3", "path": "/tmp/out"}, _make_backend())
         df.write.mode.assert_called_once_with("overwrite")
 
+    def test_reader_is_reader_subclass(self):
+        from ubunye.plugins.readers.s3 import S3Reader
+
+        assert issubclass(S3Reader, Reader)
+
     def test_writer_is_writer_subclass(self):
         from ubunye.plugins.writers.s3 import S3Writer
 
         assert issubclass(S3Writer, Writer)
-
-    def test_reader_is_reader_subclass(self):
-        pass  # No S3Reader
-
-    def test_reader_has_read_method(self):
-        pass  # No S3Reader
-
-    def test_bad_read_cfg_raises(self):
-        pass  # No S3Reader
 
 
 # ---------------------------------------------------------------------------
