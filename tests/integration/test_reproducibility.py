@@ -99,6 +99,7 @@ def _run_with_lineage(cfg: dict, spark_session: SparkSession, lineage_base: str)
     run_id = str(uuid.uuid4())
     backend = SparkBackend(app_name="test", conf={"spark.master": "local[1]"})
     backend._spark = spark_session  # reuse existing session
+    backend.stop = lambda: None  # engine calls stop(); don't kill the shared fixture session
 
     recorder = LineageRecorder(store="filesystem", base_dir=lineage_base)
     context = EngineContext(run_id=run_id, profile="test", task_name="test/pipeline/etl")
