@@ -105,6 +105,7 @@ def _run(
     run_id = str(uuid.uuid4())
     backend = SparkBackend(app_name="test")
     backend._spark = spark_session
+    backend.stop = lambda: None  # engine calls stop(); don't kill the shared fixture session
     recorder = LineageRecorder(store="filesystem", base_dir=lineage_base)
     context = EngineContext(run_id=run_id, profile="test", task_name="test/suite/etl")
 
