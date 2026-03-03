@@ -1,0 +1,15 @@
+# Broken fixture pipeline — transform always raises RuntimeError.
+MODEL: "etl"
+VERSION: "0.1.0"
+CONFIG:
+  inputs:
+    source:
+      format: s3
+      path: "{{ input_path | default('/tmp/does_not_exist') }}"
+  transform:
+    type: noop
+  outputs:
+    source:
+      format: s3
+      path: "{{ output_path | default('/tmp/broken_out') }}"
+      mode: overwrite

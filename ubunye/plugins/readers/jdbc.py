@@ -27,9 +27,11 @@ Example config (config.yaml):
 
 Returned object is a Spark DataFrame.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict
+
 from ubunye.core.interfaces import Reader
 
 

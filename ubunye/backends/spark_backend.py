@@ -6,6 +6,7 @@ Spark backend implementation for Ubunye.
 - Supports context-manager usage: `with SparkBackend(...) as backend: ...`
 - Guards against double-starts and exposes the effective Spark conf for debugging.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Optional
@@ -93,7 +94,9 @@ class SparkBackend(Backend):
             If `start()` has not been called.
         """
         if self._spark is None:
-            raise RuntimeError("Spark session not started. Call start() first or use context manager.")
+            raise RuntimeError(
+                "Spark session not started. Call start() first or use context manager."
+            )
         return self._spark
 
     @property

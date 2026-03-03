@@ -1,0 +1,196 @@
+"""Property-based tests using Hypothesis for config schema edge cases."""
+
+import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
+from hypothesis.strategies import composite
+
+from ubunye.config.schema import FormatType, IOConfig, UbunyeConfig
+
+_KNOWN_FORMATS = {f.value for f in FormatType}
+
+_MINIMAL_CONFIG = {
+    "inputs": {"s": {"format": "hive", "db_name": "db", "tbl_name": "t"}},
+    "outputs": {"s": {"format": "hive", "db_name": "db", "tbl_name": "t"}},
+}
+
+
+# ---------------------------------------------------------------------------
+# FormatType enum
+# ---------------------------------------------------------------------------
+
+
+@given(fmt=st.sampled_from(list(_KNOWN_FORMATS)))
+def test_known_formats_accepted(fmt):
+    """Every known format string should be accepted by FormatType."""
+    assert FormatType(fmt).value == fmt
+
+
+@given(fmt=st.text(min_size=1, max_size=20).filter(lambda s: s not in _KNOWN_FORMATS))
+def test_unknown_formats_rejected(fmt):
+    """Format strings not in the enum should be rejected."""
+    with pytest.raises(Exception):
+        IOConfig(format=fmt, path="/dummy")
+
+
+# ---------------------------------------------------------------------------
+# Hive IOConfig
+# ---------------------------------------------------------------------------
+
+
+@given(
+    db=st.text(min_size=1, max_size=50).filter(str.strip),
+    tbl=st.text(min_size=1, max_size=50).filter(str.strip),
+)
+@settings(max_examples=50)
+def test_valid_hive_always_parses(db, tbl):
+    """Any hive config with db_name and tbl_name should be valid."""
+    io = IOConfig(format="hive", db_name=db, tbl_name=tbl)
+    assert io.format == FormatType.HIVE
+    assert io.db_name == db
+    assert io.tbl_name == tbl
+
+
+# ---------------------------------------------------------------------------
+# VERSION semver
+# ---------------------------------------------------------------------------
+
+
+@given(version=st.from_regex(r"[0-9]+\.[0-9]+\.[0-9]+", fullmatch=True))
+@settings(max_examples=50)
+def test_valid_semver_accepted(version):
+    """Valid semver strings should always pass VERSION validation."""
+    cfg = UbunyeConfig(MODEL="etl", VERSION=version, CONFIG=_MINIMAL_CONFIG)
+    assert cfg.VERSION == version
+
+
+@given(
+    version=st.text(min_size=1, max_size=20).filter(
+        lambda s: not __import__("re").match(r"^\d+\.\d+\.\d+$", s)
+    )
+)
+@settings(max_examples=50)
+def test_invalid_semver_rejected(version):
+    """Strings that are not valid semver should be rejected."""
+    with pytest.raises(Exception):
+        UbunyeConfig(MODEL="etl", VERSION=version, CONFIG=_MINIMAL_CONFIG)
+
+
+# ---------------------------------------------------------------------------
+# WriteMode
+# ---------------------------------------------------------------------------
+
+
+@given(mode=st.sampled_from(["overwrite", "append", "merge"]))
+def test_valid_write_modes_accepted(mode):
+    io = IOConfig(format="hive", db_name="db", tbl_name="t", mode=mode)
+    assert io.mode.value == mode
+
+
+@given(
+    mode=st.text(min_size=1, max_size=20).filter(
+        lambda s: s not in ("overwrite", "append", "merge")
+    )
+)
+@settings(max_examples=30)
+def test_invalid_write_modes_rejected(mode):
+    with pytest.raises(Exception):
+        IOConfig(format="hive", db_name="db", tbl_name="t", mode=mode)
+
+
+# ---------------------------------------------------------------------------
+# Composite strategies for full-config property tests
+# ---------------------------------------------------------------------------
+
+_valid_name = st.text(
+    alphabet=st.characters(
+        whitelist_categories=("Ll", "Lu", "Nd"),
+        whitelist_characters="_",
+    ),
+    min_size=1,
+    max_size=30,
+).filter(lambda s: s[0].isalpha())
+
+
+@composite
+def _io_cfg(draw) -> dict:
+    """Generate a valid IOConfig dict for hive, s3, or delta."""
+    fmt = draw(st.sampled_from(["hive", "s3", "delta"]))
+    if fmt == "hive":
+        return {"format": "hive", "db_name": draw(_valid_name), "tbl_name": draw(_valid_name)}
+    if fmt == "s3":
+        return {"format": "s3", "path": "s3a://bucket/" + draw(_valid_name) + "/"}
+    # delta
+    return {"format": "delta", "path": "/tmp/" + draw(_valid_name)}
+
+
+@composite
+def _valid_full_config(draw) -> dict:
+    """Generate a complete, valid UbunyeConfig dict."""
+    return {
+        "MODEL": draw(st.sampled_from(["etl", "ml"])),
+        "VERSION": draw(st.from_regex(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}", fullmatch=True)),
+        "CONFIG": {
+            "inputs": {"src": draw(_io_cfg())},
+            "outputs": {"snk": draw(_io_cfg())},
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Full-config property tests
+# ---------------------------------------------------------------------------
+
+
+@given(config=_valid_full_config())
+@settings(max_examples=200)
+def test_valid_configs_always_parse(config):
+    """Any config generated by the valid strategy must parse without error."""
+    parsed = UbunyeConfig.model_validate(config)
+    assert parsed.MODEL in ("etl", "ml")
+    assert parsed.CONFIG.inputs
+    assert parsed.CONFIG.outputs
+
+
+@given(config=_valid_full_config())
+@settings(max_examples=100)
+def test_parsed_config_is_idempotent(config):
+    """model_validate → model_dump → model_validate round-trips identically."""
+    parsed1 = UbunyeConfig.model_validate(config)
+    dump = parsed1.model_dump(mode="json")
+    parsed2 = UbunyeConfig.model_validate(dump)
+    assert parsed1.model_dump(mode="json") == parsed2.model_dump(mode="json")
+
+
+@given(num_in=st.integers(1, 4), num_out=st.integers(1, 4))
+@settings(max_examples=50)
+def test_multiple_inputs_outputs_accepted(num_in, num_out):
+    """TaskConfig accepts 1–4 inputs and 1–4 outputs."""
+    inputs = {
+        f"src_{i}": {"format": "hive", "db_name": "db", "tbl_name": f"t_{i}"} for i in range(num_in)
+    }
+    outputs = {
+        f"snk_{i}": {"format": "hive", "db_name": "db", "tbl_name": f"out_{i}"}
+        for i in range(num_out)
+    }
+    cfg = UbunyeConfig(
+        MODEL="etl",
+        VERSION="1.0.0",
+        CONFIG={"inputs": inputs, "outputs": outputs},
+    )
+    assert len(cfg.CONFIG.inputs) == num_in
+    assert len(cfg.CONFIG.outputs) == num_out
+
+
+@given(
+    options=st.dictionaries(
+        keys=st.text(min_size=1, max_size=20).filter(str.isidentifier),
+        values=st.text(min_size=0, max_size=50),
+        max_size=10,
+    )
+)
+@settings(max_examples=50)
+def test_options_accepts_any_string_dict(options):
+    """options field should accept any Dict[str, str] without validation error."""
+    io = IOConfig(format="hive", db_name="db", tbl_name="t", options=options)
+    assert io.options == options

@@ -1,11 +1,13 @@
 """
 Spark MLlib wrapper.
 """
-from __future__ import annotations
-from pathlib import Path
-from typing import Any, Optional, Dict
 
-from pyspark.ml import PipelineModel, Estimator
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Optional
+
+from pyspark.ml import Estimator, PipelineModel
 from pyspark.sql import DataFrame as SparkDF
 
 from .base import BaseModel, FeatureSchema
@@ -14,7 +16,13 @@ from .base import BaseModel, FeatureSchema
 class SparkMLModel(BaseModel):
     """Wrap a Spark ML Estimator or loaded PipelineModel."""
 
-    def __init__(self, estimator: Optional[Estimator] = None, *, schema: Optional[FeatureSchema] = None, **kwargs):
+    def __init__(
+        self,
+        estimator: Optional[Estimator] = None,
+        *,
+        schema: Optional[FeatureSchema] = None,
+        **kwargs,
+    ):
         super().__init__(schema=schema, **kwargs)
         self.estimator = estimator
         self.pipeline_model: Optional[PipelineModel] = None

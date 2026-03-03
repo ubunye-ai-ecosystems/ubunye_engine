@@ -12,6 +12,7 @@ Usage:
     with span("Reader:hive", attrs={"task": "fraud/claims/claim_etl", "run_id": rid}):
         df = reader.read(cfg, backend)
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -19,6 +20,7 @@ from typing import Dict, Optional
 
 _TRACING_ENABLED = False
 _tracer = None
+
 
 def init_tracer(service_name: str = "ubunye") -> None:
     """
@@ -79,6 +81,7 @@ def span(name: str, attrs: Optional[Dict[str, object]] = None):
         return
 
     from opentelemetry import trace
+
     current_span = None
     try:
         current_span = _tracer.start_span(name)

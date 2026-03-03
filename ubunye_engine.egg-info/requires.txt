@@ -5,14 +5,27 @@ typer[all]>=0.12
 
 [dev]
 pytest
+pytest-cov>=4
+pytest-timeout
 black
 ruff
 build
+requests>=2.28
+hypothesis>=6
 
 [ml]
 scikit-learn
 torch
 mlflow
 
+[rest]
+requests>=2.28
+
 [spark]
 pyspark>=3.3
+
+[test]
+pytest>=7
+pytest-cov>=4
+hypothesis>=6
+pyspark>=3.4

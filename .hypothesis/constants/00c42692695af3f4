@@ -1,0 +1,4 @@
+# file: C:\Users\thabanglukhetho\Documents\anti_gravity\ubunye_engine\ubunye\cli\models.py
+# hypothesis_version: 6.141.1
+
+[', ', '--model', '--promoted-by', '--store', '--to', '--use-case', '--version', '--versions', '-m', '-s', '-u', '-v', 'Model name.', 'Model store path.', 'Use-case grouping.', 'Username.', 'Version string.', 'a', 'archive', 'archived', 'b', 'compare', 'delta', 'demote', 'development', 'info', 'list', 'models', 'n/a', 'production', 'promote', 'rollback', 'stage', 'staging']

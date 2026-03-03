@@ -97,23 +97,23 @@ ubunye --help
 
 ### Commands
 
-- **`init`**  
-  Scaffold a new usecase/pipeline/task with config and transformations module.  
+- **`init`**
+  Scaffold a new usecase/pipeline/task with config and transformations module.
   ```bash
   ubunye init -d <dir> -u <usecase> -p <pipeline> -t <task>
   ```
   - Options: `--with-ml sklearn|xgboost|h2o`, `--overwrite`
   - Creates: `<dir>/<usecase>/<pipeline>/<task>/config.yaml`, `<dir>/<usecase>/<pipeline>/<task>/transformations.py`
 
-- **`run`**  
-  Execute tasks locally, on-prem, or in the cloud.  
+- **`run`**
+  Execute tasks locally, on-prem, or in the cloud.
   ```bash
   ubunye run -d ./pipelines -u fraudetection -p ingestion -t claim_etl --profile dev
   ```
   - Options: `-d, --dir`, `-u, --usecase`, `-p, --pipeline`, `-t, --task`, `--all-packages`, `--all-tasks`, `--profile dev|prod|staging`, `--spark-conf key=value`, `--dry-run`, `--backend spark|pandas`
 
-- **`plan`**  
-  Visualize the resolved DAG (inputs → transform → outputs).  
+- **`plan`**
+  Visualize the resolved DAG (inputs → transform → outputs).
   ```bash
   ubunye plan -d ./pipelines -u fraudetection -p ingestion -t claim_etl
   ```
@@ -129,8 +129,8 @@ ubunye --help
       - iceberg: cur_fraud.claim_curated
     ```
 
-- **`export`**  
-  Generate orchestrator artifacts.  
+- **`export`**
+  Generate orchestrator artifacts.
   ```bash
   ubunye export airflow   -d ./pipelines -u fraudetection -p ingestion -t claim_etl -o dag.py
   ubunye export dagster   -d ./pipelines -u fraudetection -p ingestion --all-tasks -o job.py
@@ -138,15 +138,15 @@ ubunye --help
   ubunye export databricks -d ./pipelines -u fraudetection -p ingestion -t claim_etl -o job.json
   ```
 
-- **`config`**  
-  Inspect or validate configs.  
+- **`config`**
+  Inspect or validate configs.
   ```bash
   ubunye config show pipelines/fraudetection/ingestion/claim_etl/config.yaml
   ubunye config validate pipelines/fraudetection/ingestion/claim_etl/config.yaml
   ```
 
-- **`plugins`**  
-  List available plugins (readers, writers, transforms, ML).  
+- **`plugins`**
+  List available plugins (readers, writers, transforms, ML).
   ```bash
   ubunye plugins
   ```
@@ -158,15 +158,15 @@ ubunye --help
     ML: sklearn, xgboost, h2o, mlflow
     ```
 
-- **`doctor`**  
-  Run environment and connection checks.  
+- **`doctor`**
+  Run environment and connection checks.
   ```bash
   ubunye doctor
   ```
   - Checks: Spark availability, Python deps, JDBC connectivity, S3/HDFS/Iceberg access, plugin registration
 
-- **`version`**  
-  Show Ubunye version.  
+- **`version`**
+  Show Ubunye version.
   ```bash
   ubunye version
   ```

@@ -1,0 +1,63 @@
+MODEL: "etl"
+VERSION: "0.1.0"
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "8"
+  profiles:
+    dev:
+      spark_conf:
+        spark.master: "local[*]"
+        spark.sql.shuffle.partitions: "2"
+
+CONFIG:
+  inputs:
+    customer_data:
+      format: rest_api
+      url: "https://api.example.com/v1/customers"
+      method: GET
+      headers:
+        Content-Type: "application/json"
+      # Auth is declared separately so tokens are sourced from environment
+      auth:
+        type: bearer
+        token: "{{ env.API_TOKEN }}"
+      params:
+        since: "{{ ds | default('2025-01-01') }}"
+        limit: 1000
+      pagination:
+        type: offset          # offset | cursor | next_link
+        page_size: 100
+        max_pages: 50
+        offset_param: offset  # name of the query param that carries the offset value
+      response:
+        root_key: "data"      # extract records from response["data"]; omit for top-level list
+      rate_limit:
+        requests_per_second: 10
+        retry_on: [429, 503]
+        max_retries: 3
+      schema:
+        - name: customer_id
+          type: string
+        - name: email
+          type: string
+        - name: created_at
+          type: timestamp
+        - name: country_code
+          type: string
+
+  transform:
+    type: noop
+
+  outputs:
+    risk_alerts:
+      format: rest_api
+      url: "https://api.example.com/v1/alerts"
+      method: POST
+      auth:
+        type: bearer
+        token: "{{ env.API_TOKEN }}"
+      batch_size: 50
+      rate_limit:
+        requests_per_second: 5
+        retry_on: [429, 500, 503]
+        max_retries: 3

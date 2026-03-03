@@ -1,19 +1,24 @@
 """
 Scikit-learn model wrapper implementing BaseModel.
 """
-from __future__ import annotations
-import joblib
-from pathlib import Path
-from typing import Any, Optional, Tuple, Dict
 
-from .base import BaseModel, FeatureSchema
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import joblib
+
 from .adapters import ensure_Xy_numpy
+from .base import BaseModel, FeatureSchema
 
 
 class SklearnModel(BaseModel):
     """Wrap any sklearn estimator with a unified Ubunye interface."""
 
-    def __init__(self, estimator: Any, *, schema: Optional[FeatureSchema] = None, **kwargs: Any) -> None:
+    def __init__(
+        self, estimator: Any, *, schema: Optional[FeatureSchema] = None, **kwargs: Any
+    ) -> None:
         super().__init__(schema=schema, **kwargs)
         self.estimator = estimator
         self._last_metrics: Dict[str, float] = {}

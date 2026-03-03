@@ -1,0 +1,4 @@
+# file: C:\Users\thabanglukhetho\Documents\anti_gravity\ubunye_engine\ubunye\config\schema.py
+# hypothesis_version: 6.141.1
+
+['; ', 'IOConfig', 'TaskConfig', 'VERSION', '^\\d+\\.\\d+\\.\\d+$', 'after', 'airflow', 'allow', 'append', 'binary', 'dagster', 'databricks', 'delta', 'etl', 'hive', 'jdbc', 'merge', 'ml', 'noop', 'overwrite', 'prefect', 'rest_api', 's3', 'unity', 'url']

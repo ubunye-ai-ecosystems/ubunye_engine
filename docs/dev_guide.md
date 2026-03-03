@@ -1,257 +1,208 @@
-
 # Developer Guide
 
-This guide covers local setup, architecture deep-dive, and how to extend Ubunye with plugins and ML components.
+Architecture deep-dive and extension patterns for contributors and advanced users.
 
 ---
 
-## 1) Local setup
+## Architecture overview
+
+```
+CLI (Typer)
+    └── ubunye run
+            ↓
+        ConfigLoader          ← YAML + Jinja2 → Pydantic v2
+            ↓
+        Engine.run(cfg)
+            ├── SparkBackend.start()
+            ├── PluginRegistry.get_reader(format) → Reader.read()  [per input]
+            ├── PluginRegistry.get_transform(type) → Transform.apply()
+            ├── PluginRegistry.get_writer(format) → Writer.write() [per output]
+            └── SparkBackend.stop()
+                    ↓
+            LineageRecorder (if --lineage)
+```
+
+---
+
+## Config loading pipeline
+
+1. **Read raw YAML** — `ConfigLoader.load(path, variables)`.
+2. **Jinja2 render** — `ConfigResolver.resolve(raw_yaml, variables)` renders all string values.
+   Variables come from: `--var` flags, `os.environ` (as `env.*`), and any extra context.
+3. **Pydantic validation** — rendered YAML is parsed into `UbunyeConfig`.
+   Strict validation; unknown top-level keys raise an error.
+4. **Profile merge** — `UbunyeConfig.merged_spark_conf(profile)` merges base + profile Spark conf.
+
+Key files:
+
+- [ubunye/config/loader.py](../ubunye/config/loader.py) — `ConfigLoader`
+- [ubunye/config/resolver.py](../ubunye/config/resolver.py) — Jinja resolver
+- [ubunye/config/schema.py](../ubunye/config/schema.py) — all Pydantic models
+
+---
+
+## Plugin registry
+
+`ubunye.core.registry.PluginRegistry` discovers plugins at startup via `importlib.metadata.entry_points`.
+
+```python
+# Entry point groups
+ubunye.readers     →  Reader subclasses
+ubunye.writers     →  Writer subclasses
+ubunye.transforms  →  Transform subclasses
+ubunye.monitors    →  Monitor implementations
+```
+
+`registry.get_reader("hive")` looks up the `hive` key and returns the class.
+The class is instantiated fresh for each task run.
+
+---
+
+## Engine runtime
+
+`Engine.run(cfg)` in `ubunye/core/runtime.py`:
+
+1. Merge Spark conf (base + profile).
+2. Start `SparkBackend`.
+3. For each input in `cfg.CONFIG.inputs`: call `Reader.read(io_cfg_dict, backend)`.
+4. Call `Transform.apply(inputs_dict, transform_cfg_params, backend)`.
+5. For each output in `cfg.CONFIG.outputs`: call `Writer.write(df, io_cfg_dict, backend)`.
+6. Stop `SparkBackend`.
+7. If `LineageRecorder` is attached (via monitors): write run record.
+
+The `task_dir` is added to `sys.path` before step 4, so `transformations.py` and
+`model.py` can be imported without explicit path configuration.
+
+---
+
+## SparkBackend
+
+`ubunye/backends/spark_backend.py`:
+
+- Lazily imports `pyspark` — no import error if PySpark is not installed and Spark isn't used.
+- Implements context manager (`with SparkBackend(...) as be:`).
+- `be.spark` — the `SparkSession`.
+- `be.spark_conf` — dict of active configuration.
+- Safe for multiple `start()` calls (idempotent).
+
+---
+
+## Lineage system
+
+`ubunye/lineage/`:
+
+| Module | Responsibility |
+|---|---|
+| `context.py` | `RunContext` frozen dataclass — run ID, task metadata, timestamps |
+| `recorder.py` | `LineageRecorder` — implements `Monitor` protocol; writes step records |
+| `storage.py` | `FileSystemLineageStore` — reads/writes JSON under `.ubunye/lineage/` |
+| `hasher.py` | `hash_dataframe()` — SHA-256 of sampled rows + schema (Spark-optional) |
+
+The `LineageRecorder` is attached as a monitor and called at task start and end.
+On task end it writes a `RunRecord` JSON file keyed by `run_id`.
+
+---
+
+## Telemetry
+
+`ubunye/telemetry/` — all telemetry is opt-in via `UBUNYE_TELEMETRY=1`:
+
+| Module | Backend |
+|---|---|
+| `events.py` | JSON Lines log file |
+| `prometheus.py` | Prometheus counters and histograms (port `UBUNYE_PROM_PORT`) |
+| `otel.py` | OpenTelemetry spans (OTLP or console exporter) |
+| `mlflow.py` | MLflow run logging (experiment, metrics, params) |
+
+All monitors implement the `Monitor` protocol:
+
+```python
+class Monitor(Protocol):
+    def on_task_start(self, ctx: RunContext) -> None: ...
+    def on_task_end(self, ctx: RunContext, success: bool) -> None: ...
+```
+
+Monitors are wrapped with `safe_call()` — a failing monitor never crashes the task.
+
+---
+
+## ML architecture
+
+Two separate ML systems coexist:
+
+| System | Location | Purpose |
+|---|---|---|
+| Internal wrappers | `ubunye/plugins/ml/` | `SklearnModel`, `SparkMLModel` — engine-owned adapters |
+| User contract | `ubunye/models/` | `UbunyeModel` ABC — user-implemented; engine never imports ML libs |
+
+**`UbunyeModel`** (`ubunye/models/base.py`) is the only interface the engine calls.
+**`ModelTransform`** (`ubunye/plugins/transforms/model_transform.py`) loads the user's class
+dynamically via `load_model_class()` and calls `train()` or `predict()`.
+
+The `ModelRegistry` (`ubunye/models/registry.py`) stores artifacts and metadata on the
+filesystem. JSON serialization uses `dataclasses.asdict()`.
+
+---
+
+## Writing tests
+
+### Unit tests (Spark-free)
+
+Use `MockDF` for any test that would otherwise require PySpark:
+
+```python
+class MockDF:
+    def __init__(self, rows=None):
+        self._rows = rows or [{"id": 1, "val": 2.0}]
+    def count(self): return len(self._rows)
+    def toPandas(self):
+        import pandas as pd; return pd.DataFrame(self._rows)
+```
+
+All tests in `tests/unit/` must pass without `pyspark` installed.
+
+### Integration tests
+
+Mark with `@pytest.mark.integration` and use `SparkBackend`:
+
+```python
+import pytest
+from ubunye.backends.spark_backend import SparkBackend
+
+@pytest.fixture(scope="session")
+def spark():
+    with SparkBackend(app_name="test", spark_conf={"spark.sql.shuffle.partitions": "1"}) as be:
+        yield be.spark
+
+@pytest.mark.integration
+def test_hive_reader(spark):
+    ...
+```
+
+Run:
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -U pip
-pip install -e .[dev,spark,ml]
-pre-commit install
-````
-
-Run checks:
-
-```bash
-pytest -q
-ruff check .
-black --check .
+pytest tests/ -m integration
 ```
 
 ---
 
-## 2) Architecture deep-dive
+## Orchestration exporters
 
-### Engine runtime
+`ubunye/orchestration/`:
 
-* `Engine.run(cfg)`:
+- `base.py` — `OrchestrationExporter` ABC with `export(cfg, output_path)`.
+- `airflow.py` — generates an Airflow DAG Python file.
+- `databricks.py` — generates a Databricks Jobs API JSON.
 
-  1. Start backend (Spark).
-  2. Read inputs via **Reader** plugins.
-  3. Apply one or more **Transform** plugins.
-  4. Write outputs via **Writer** plugins.
-  5. Stop backend.
-* Deterministic ordering of inputs/outputs.
-* Transform pipelines supported (list of transforms).
-
-### Registry
-
-* Discovers plugins via entry points:
-
-  * `ubunye.readers`, `ubunye.writers`, `ubunye.transforms`, `ubunye.ml`.
-
-### Backends
-
-* `SparkBackend` lazily imports `pyspark`, supports context manager, multiple starts, and effective conf inspection.
-
-### Configs
-
-* YAML with `ENGINE`, `CONFIG`, optional `ORCHESTRATION`.
-* Pydantic models validate and merge profiles.
-* Jinja templating supported (env vars, dates).
-
-### Telemetry
-
-* Feature-flagged with `UBUNYE_TELEMETRY=1`.
-* `telemetry/events.py`: JSONL logs.
-* `telemetry/prometheus.py`: counters/histograms.
-* `telemetry/otel.py`: optional OpenTelemetry spans.
-
-### Orchestration
-
-* Exporters generate artifacts:
-
-  * Airflow: DAG `.py`
-  * Databricks: Jobs `job.json`
-* CLI: `ubunye export <airflow|databricks> -c config.yaml -o <out>`
+Exporters read from `cfg.ORCHESTRATION` and `cfg.ENGINE` (for profile-specific cluster settings).
+They do **not** interact with the running cluster — they only produce configuration artifacts.
 
 ---
 
-## 3) Creating plugins
+## Adding a new orchestration target
 
-### Reader
-
-```python
-from ubunye.core.interfaces import Reader
-class MyReader(Reader):
-    def read(self, cfg, backend):
-        spark = backend.spark
-        return spark.read.format("...").options(**cfg.get("options", {})).load(...)
-```
-
-Register in `pyproject.toml`:
-
-```toml
-[project.entry-points."ubunye.readers"]
-myreader = "my_pkg.my_reader:MyReader"
-```
-
-### Writer
-
-```python
-from ubunye.core.interfaces import Writer
-class MyWriter(Writer):
-    def write(self, df, cfg, backend):
-        df.write.format("...").mode(cfg.get("mode","append")).save(...)
-```
-
-### Transform
-
-```python
-from ubunye.core.interfaces import Transform
-class MyTransform(Transform):
-    def apply(self, inputs, cfg, backend):
-        df = inputs["in"]
-        out = df.filter("...").select("...")
-        return {"out": out}
-```
-
-### Testing plugins
-
-* Use Spark local mode:
-
-  ```python
-  from ubunye.backends.spark_backend import SparkBackend
-  with SparkBackend(app_name="test") as be:
-      spark = be.spark
-      # create tiny DataFrames and assert behavior
-  ```
-
----
-
-## 4) ML integration
-
-### Base API
-
-* `BaseModel` (`plugins/ml/base.py`) defines:
-
-  * `fit(X,y)`, `predict(X)`, `save(path)`, `load(path)`, `metrics()`, `params`.
-  * `FeatureSchema(features=[...], target="...")`.
-* Wrappers:
-
-  * `SklearnModel`, `TorchModel`, `SparkMLModel`.
-
-### Example (sklearn)
-
-```python
-from sklearn.linear_model import LogisticRegression
-from ubunye.plugins.ml.base import FeatureSchema
-from ubunye.plugins.ml.sklearn import SklearnModel
-
-schema = FeatureSchema(features=["f1","f2","f3"], target="label")
-model = SklearnModel(LogisticRegression(max_iter=200), schema=schema)
-model.fit(pdf)                      # pandas df or spark.toPandas()
-preds, probs = model.predict(pdf, proba=True)
-model.save("models/logreg")
-```
-
-### Batch scoring on Spark
-
-* Use `BatchPredictMixin.predict_on_spark(sdf)` for UDF-based inference.
-* For high throughput: port to pandas UDF / Arrow or native Spark ML when possible.
-
-### MLflow (optional)
-
-* Use `MLflowLoggingMixin.mlflow_log_all(...)` to log params/metrics/artifacts when MLflow is installed and configured.
-
----
-
-## 5) Monitoring hooks (MLflow, drift, etc.)
-
-You can attach monitoring backends via `CONFIG.monitors`. Each monitor is a plugin loaded
-from the `ubunye.monitors` entry point group.
-
-```yaml
-CONFIG:
-  monitors:
-    - type: mlflow
-      params:
-        experiment: "ubunye"
-        run_name: "claim_etl"
-        metrics_path: "CONFIG.monitoring.metrics"
-  monitoring:
-    metrics:
-      drift_psi: 0.12
-      precision_at_10: 0.91
-```
-
-The MLflow monitor will log task params/metrics at run completion (when MLflow is installed).
-
----
-
-## 6) Orchestration exporters
-
-### Airflow
-
-* Command:
-
-  ```bash
-  ubunye export airflow -c path/to/config.yaml -o dags/claim_etl.py --profile prod
-  ```
-* The exporter reads `ORCHESTRATION.airflow` (schedule, retries, owner) and emits a DAG that shells:
-
-  ```
-  ubunye run -c path/to/config.yaml --profile prod
-  ```
-
-### Databricks
-
-* Command:
-
-  ```bash
-  ubunye export databricks -c path/to/config.yaml -o job.json --profile prod
-  ```
-* Upload your wheel to DBFS, then:
-
-  ```bash
-  databricks jobs create --json-file job.json
-  databricks jobs run-now --job-id <ID>
-  ```
-
----
-
-## 7) Telemetry in local runs
-
-```bash
-UBUNYE_TELEMETRY=1 UBUNYE_PROM_PORT=8000 ubunye run -c config.yaml --profile dev
-# scrape http://localhost:8000/metrics (Prometheus)
-# spans go to console by default unless OTLP is configured
-```
-
----
-
-## 8) Tips & best practices
-
-* Keep configs small; compose via includes/templates if needed.
-* Avoid calling `count()` just for metrics; piggyback on existing actions.
-* Treat **plugins** as deployment boundaries: keep dependencies optional.
-* Prefer **Delta + Unity Catalog** on Databricks for governance and performance.
-* Use **partitioned** JDBC reads for large tables.
-
-````
-
----
-
-# 🔧 Add to your MkDocs nav
-
-Update `mkdocs.yml`:
-
-```yaml
-nav:
-  - Home: index.md
-  - Getting Started:
-      - Installation: installation.md
-      - Overview: overview.md
-  - Usage:
-      - CLI: cli.md
-      - Config Reference: config_reference.md
-      - Plugins: plugins.md
-  - API: api.md
-  - Contributing: contributing.md
-  - Developer Guide: dev_guide.md
-````
-
+1. Subclass `OrchestrationExporter`.
+2. Implement `export(cfg: UbunyeConfig, output_path: str, profile: str)`.
+3. Add a new value to `OrchestrationType` enum in `schema.py`.
+4. Register in the CLI `export` command.

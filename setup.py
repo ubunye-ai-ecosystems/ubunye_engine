@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # Read long description from README.md
 with open("README.md", "r", encoding="utf-8") as f:
@@ -9,8 +9,8 @@ setup(
     version="0.1.0",
     author="Ubunye AI Team",
     author_email=["uaie@gmail.com"],
-    maintainer=['Thabang Mashinini-Sekgoto'],
-    maintainer_email=['thaangline@gmail.com'],
+    maintainer=["Thabang Mashinini-Sekgoto"],
+    maintainer_email=["thaangline@gmail.com"],
     description="Config-first, Spark-native ETL + ML framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -21,6 +21,7 @@ setup(
         "pydantic>=1.10,<3",
         "pyyaml>=6.0",
         "typer>=0.9.0",
+        "requests>=2.28",
     ],
     extras_require={
         "dev": ["pytest", "black", "ruff"],
@@ -32,14 +33,17 @@ setup(
             "ubunye=ubunye.cli.main:app",
         ],
         "ubunye.readers": [
+            "s3=ubunye.plugins.readers.s3:S3Reader",
             "hive=ubunye.plugins.readers.hive:HiveReader",
             "jdbc=ubunye.plugins.readers.jdbc:JdbcReader",
             "unity=ubunye.plugins.readers.unity:UnityTableReader",
+            "rest_api=ubunye.plugins.readers.rest_api:RestApiReader",
         ],
         "ubunye.writers": [
             "s3=ubunye.plugins.writers.s3:S3Writer",
             "jdbc=ubunye.plugins.writers.jdbc:JdbcWriter",
             "unity=ubunye.plugins.writers.unity:UnityTableWriter",
+            "rest_api=ubunye.plugins.writers.rest_api:RestApiWriter",
         ],
         "ubunye.transforms": [
             "noop=ubunye.plugins.transforms.noop:NoOpTransform",

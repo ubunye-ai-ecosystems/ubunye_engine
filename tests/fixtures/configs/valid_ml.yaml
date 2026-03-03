@@ -1,0 +1,17 @@
+MODEL: "ml"
+VERSION: "0.2.0"
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "1"
+CONFIG:
+  inputs:
+    features:
+      format: s3
+      path: "s3a://bucket/features/"
+  transform:
+    type: noop
+  outputs:
+    predictions:
+      format: s3
+      path: "s3a://bucket/predictions/"
+      mode: overwrite

@@ -1,0 +1,26 @@
+# Fixture pipeline config — uses local filesystem paths rendered by Jinja.
+# The caller must pass output_path as a CLI variable.
+MODEL: "etl"
+VERSION: "0.1.0"
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "1"
+  profiles:
+    test:
+      spark_conf:
+        spark.sql.shuffle.partitions: "1"
+CONFIG:
+  inputs:
+    source:
+      format: s3
+      path: "{{ input_path }}"
+      options:
+        header: "true"
+        inferSchema: "true"
+  transform:
+    type: noop
+  outputs:
+    source:
+      format: s3
+      path: "{{ output_path }}"
+      mode: overwrite
