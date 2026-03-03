@@ -14,7 +14,9 @@
       "Bash(test -f /c/Users/thabanglukhetho/Documents/anti_gravity/ubunye_engine/ubunye/config/resolver.py)",
       "Bash(pip install -e . hypothesis -q)",
       "Bash(python -m pytest tests/unit/ -v)",
-      "Bash(pip install jinja2 pyyaml pydantic typer hypothesis --target \"c:/Users/thabanglukhetho/AppData/Local/Programs/Python/Python311/Lib/site-packages\" -q)"
+      "Bash(pip install jinja2 pyyaml pydantic typer hypothesis --target \"c:/Users/thabanglukhetho/AppData/Local/Programs/Python/Python311/Lib/site-packages\" -q)",
+      "Bash(python -m pytest tests/unit/ -v --tb=short -m \"not integration\")",
+      "Bash(python -m pytest tests/unit/models/ -v --tb=short)"
     ]
   }
 }

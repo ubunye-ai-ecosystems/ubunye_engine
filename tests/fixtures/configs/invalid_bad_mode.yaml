@@ -1,0 +1,14 @@
+# Invalid: 'sink' output uses an unrecognised write mode.
+MODEL: "etl"
+VERSION: "0.1.0"
+CONFIG:
+  inputs:
+    source:
+      format: hive
+      db_name: raw_db
+      tbl_name: claims
+  outputs:
+    sink:
+      format: s3
+      path: "s3a://bucket/out/"
+      mode: truncate   # not a valid WriteMode

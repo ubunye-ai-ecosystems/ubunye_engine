@@ -1,0 +1,11 @@
+id,claim_ref,amount,status,region
+1,CLM-001,1000.50,open,ZA
+2,CLM-002,2500.00,closed,ZA
+3,CLM-003,500.75,open,NG
+4,CLM-004,12000.00,closed,KE
+5,CLM-005,300.00,open,ZA
+6,CLM-006,8750.25,pending,GH
+7,CLM-007,450.00,closed,NG
+8,CLM-008,990.00,open,ZA
+9,CLM-009,3300.00,pending,KE
+10,CLM-010,175.50,closed,GH

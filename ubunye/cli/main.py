@@ -8,6 +8,8 @@ Commands:
 - config:   show/validate config
 - plan:     show resolved IO graph
 - lineage:  inspect run lineage records
+- models:   manage model versions and lifecycle
+- test:     run task(s) in test mode with PASS/FAIL reporting
 - version:  show version
 """
 from __future__ import annotations
@@ -23,9 +25,13 @@ from ubunye.core.runtime import Engine, Registry, EngineContext
 from ubunye.backends.spark_backend import SparkBackend
 from ubunye.telemetry.monitors import load_monitors, safe_call
 from ubunye.cli.lineage import lineage_app
+from ubunye.cli.models import models_app
+from ubunye.cli.test_cmd import test_app
 
 app = typer.Typer(add_completion=False, help="Ubunye Engine CLI")
 app.add_typer(lineage_app)
+app.add_typer(models_app)
+app.add_typer(test_app)
 
 
 def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path:

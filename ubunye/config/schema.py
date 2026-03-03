@@ -9,6 +9,8 @@ import re
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
@@ -140,6 +142,35 @@ class TransformConfig(BaseModel):
     """Transform plugin configuration."""
     type: str = "noop"
     params: Dict[str, Any] = Field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Model registry sub-models (informational — used by ModelTransform and CLI)
+# ---------------------------------------------------------------------------
+
+class RegistryConfig(BaseModel):
+    """Configuration for model registry integration within a transform."""
+    model_config = ConfigDict(extra="allow")
+
+    store: str
+    use_case: Optional[str] = "default"
+    version: Optional[str] = None
+    auto_version: bool = True
+    promote_to: Optional[Literal["development", "staging", "production"]] = None
+    use_stage: Literal["development", "staging", "production"] = "production"
+    promotion_gates: Optional[Dict[str, Any]] = None
+
+
+class ModelTransformParams(BaseModel):
+    """Typed params for ``transform.type: model`` — for documentation and validation."""
+    model_config = ConfigDict(extra="allow")
+
+    action: Literal["train", "predict"]
+    model_class: str
+    model_dir: Optional[str] = None
+    model_path: Optional[str] = None
+    input_name: Optional[str] = None
+    registry: Optional[RegistryConfig] = None
 
 
 class TaskConfig(BaseModel):
