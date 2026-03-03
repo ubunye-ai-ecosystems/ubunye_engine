@@ -53,11 +53,11 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Set up Java 11
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: "17"
 
       - name: Install dependencies (with Spark)
         run: pip install -e ".[dev,spark]"
