@@ -20,7 +20,8 @@ dependencies = [
 [project.optional-dependencies]
 spark = ["pyspark>=3.3"]
 ml = ["scikit-learn", "torch", "mlflow"]
-dev = ["pytest", "black", "ruff", "build"]
+rest = ["requests>=2.28"]
+dev = ["pytest", "black", "ruff", "build", "requests>=2.28", "hypothesis>=6"]
 
 [project.scripts]
 ubunye = "ubunye.cli.main:app"
@@ -28,12 +29,14 @@ ubunye = "ubunye.cli.main:app"
 [project.entry-points."ubunye.readers"]
 hive = "ubunye.plugins.readers.hive:HiveReader"
 jdbc = "ubunye.plugins.readers.jdbc:JdbcReader"
-unity = "ubunye.plugins.readers.unity:UnityTableReader"   
+unity = "ubunye.plugins.readers.unity:UnityTableReader"
+rest_api = "ubunye.plugins.readers.rest_api:RestApiReader"
 
 [project.entry-points."ubunye.writers"]
 s3 = "ubunye.plugins.writers.s3:S3Writer"
-jdbc = "ubunye.plugins.writers.jdbc:JdbcWriter"  
-unity  = "ubunye.plugins.writers.unity:UnityTableWriter"  
+jdbc = "ubunye.plugins.writers.jdbc:JdbcWriter"
+unity = "ubunye.plugins.writers.unity:UnityTableWriter"
+rest_api = "ubunye.plugins.writers.rest_api:RestApiWriter"
 
 [project.entry-points."ubunye.transforms"]
 noop = "ubunye.plugins.transforms.noop:NoOpTransform"
@@ -43,7 +46,8 @@ sklearn = "ubunye.plugins.ml.sklearn:SklearnModel"
 sparkml = "ubunye.plugins.ml.pysparkml:SparkMLModel"
 
 [project.entry-points."ubunye.monitors"]
-mlflow = "ubunye.telemetry.mlflow:MLflowMonitor"
+mlflow  = "ubunye.telemetry.mlflow:MLflowMonitor"
+lineage = "ubunye.lineage.recorder:LineageRecorder"
 
 [tool.black]
 line-length = 100

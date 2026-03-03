@@ -3,12 +3,14 @@ README.md
 pyproject.toml
 setup.py
 tests/test_config.py
+tests/test_rest_api_plugin.py
 tests/test_runtime.py
 ubunye/__init__.py
 ubunye/backends/__init__.py
 ubunye/backends/spark_backend.py
 ubunye/config/__init__.py
 ubunye/config/loader.py
+ubunye/config/resolver.py
 ubunye/config/schema.py
 ubunye/core/__init__.py
 ubunye/core/interfaces.py

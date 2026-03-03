@@ -1,0 +1,4 @@
+# file: C:\Users\thabanglukhetho\Documents\anti_gravity\ubunye_engine\ubunye\lineage\context.py
+# hypothesis_version: 6.141.1
+
+['RunContext', 'StepRecord', 'binary', 'config_hash', 'data_hash', 'db_name', 'delta', 'direction', 'duration_sec', 'ended_at', 'error', 'format', 'hive', 'inputs', 'jdbc', 'location', 'model', 'name', 'outputs', 'package', 'path', 'profile', 'rest_api', 'row_count', 'run_id', 'running', 's3', 'schema_hash', 'sql', 'started_at', 'status', 'table', 'task_name', 'task_path', 'tbl_name', 'unity', 'url', 'usecase', 'version']

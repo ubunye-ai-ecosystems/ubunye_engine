@@ -8,11 +8,16 @@ pytest
 black
 ruff
 build
+requests>=2.28
+hypothesis>=6
 
 [ml]
 scikit-learn
 torch
 mlflow
+
+[rest]
+requests>=2.28
 
 [spark]
 pyspark>=3.3

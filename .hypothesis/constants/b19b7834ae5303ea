@@ -1,0 +1,4 @@
+# file: C:\Users\thabanglukhetho\Documents\anti_gravity\ubunye_engine\ubunye\cli\lineage.py
+# hypothesis_version: 6.141.1
+
+['    data_hash', '    row_count', '    schema_hash', '  INPUTS', '  OUTPUTS', '  TRANSFORM', '-', '--lineage-dir', '--n', '--package', '--run-id', '--run-id1', '--run-id2', '--since', '--status', '--task', '--usecase', '--usecase-dir', '-d', '-n', '-p', '-t', '-u', '.ubunye/lineage', 'First run ID.', 'Second run ID.', 'compare', 'config_hash', 'duration_sec', 'error', 'lineage', 'list', 'search', 'show', 'status', 'success', 'trace']
