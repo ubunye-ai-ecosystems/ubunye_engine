@@ -29,10 +29,11 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-import requests
-from requests.auth import HTTPBasicAuth
+if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
+    import requests
+    from requests.auth import HTTPBasicAuth
 
 from ubunye.core.interfaces import Writer
 
@@ -56,6 +57,9 @@ def _build_session(cfg: Dict[str, Any]) -> requests.Session:
       - api_key_query  — key injected into query params per-request (not here)
       - basic          — HTTPBasicAuth(username, password)
     """
+    import requests
+    from requests.auth import HTTPBasicAuth
+
     session = requests.Session()
 
     for header, value in (cfg.get("headers") or {}).items():
@@ -228,12 +232,14 @@ class RestApiWriter(Writer):
 
         Returns updated (success_count, failure_count).
         """
+        import requests as _requests
+
         payload = {"records": batch}
         try:
             _post_batch(session, url, payload, rate_cfg, auth_cfg)
             success_count += 1
             log.debug("RestApiWriter: batch of %d rows posted successfully", len(batch))
-        except requests.HTTPError as exc:
+        except _requests.HTTPError as exc:
             failure_count += 1
             log.error("RestApiWriter: batch of %d rows failed — %s", len(batch), exc)
         return success_count, failure_count

@@ -36,7 +36,16 @@
       "Bash(python -m pytest tests/unit/lineage/test_hasher.py -v)",
       "Bash(python -m pytest tests/unit/ -v --tb=short)",
       "Bash(mkdocs build --strict)",
-      "Bash(python -m mkdocs build --strict)"
+      "Bash(python -m mkdocs build --strict)",
+      "Bash(python -c \":*)",
+      "Bash(/c/Users/thabanglukhetho/Anaconda3/python.exe -c \"from ubunye.plugins.readers.rest_api import RestApiReader; print\\(''OK:'', RestApiReader\\)\")",
+      "Bash(/c/Users/thabanglukhetho/Anaconda3/python.exe -c \":*)",
+      "Bash(/c/Users/thabanglukhetho/Anaconda3/python.exe -m mkdocstrings --version)",
+      "Bash(/c/Users/thabanglukhetho/Anaconda3/python.exe -c \"import mkdocstrings; print\\(''mkdocstrings:'', mkdocstrings.__version__\\)\")",
+      "Bash(for dir in ubunye/cli ubunye/compat ubunye/plugins/ml ubunye/plugins/readers ubunye/plugins/transforms ubunye/plugins/writers)",
+      "Bash(do touch \"$dir/__init__.py\")",
+      "Bash(echo \"created $dir/__init__.py\")",
+      "Bash(done)"
     ]
   }
 }
