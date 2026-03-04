@@ -50,6 +50,9 @@ sparkml = "ubunye.plugins.ml.pysparkml:SparkMLModel"
 mlflow  = "ubunye.telemetry.mlflow:MLflowMonitor"
 lineage = "ubunye.lineage.recorder:LineageRecorder"
 
+[tool.setuptools.packages.find]
+include = ["ubunye*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
