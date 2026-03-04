@@ -33,7 +33,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
     import requests
-    from requests.auth import HTTPBasicAuth
 
 from ubunye.core.interfaces import Writer
 
@@ -156,7 +155,7 @@ class RestApiWriter(Writer):
     failure counts per batch.
     """
 
-    def write(self, df: Any, cfg: Dict[str, Any], backend) -> None:
+    def write(self, df: Any, cfg: Dict[str, Any], _backend) -> None:
         """POST DataFrame rows to a REST endpoint in batches.
 
         Parameters

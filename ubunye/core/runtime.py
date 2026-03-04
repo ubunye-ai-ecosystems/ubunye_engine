@@ -92,9 +92,9 @@ class Engine:
     Executes a task by reading inputs, applying one or more transforms, and writing outputs.
 
     Minimal required config structure:
-      cfg["CONFIG"]["inputs"]   : mapping input_name -> reader cfg (must include "format")
-      cfg["CONFIG"]["outputs"]  : mapping output_name -> writer cfg (must include "format")
-      cfg["CONFIG"]["transform"]: EITHER a single transform dict with "type",
+      cfg[``CONFIG``][``inputs``]   : mapping input_name -> reader cfg (must include 'format')
+      cfg[``CONFIG``][``outputs``]  : mapping output_name -> writer cfg (must include 'format')
+      cfg[``CONFIG``][``transform``]: EITHER a single transform dict with 'type',
                                   OR a list of transform dicts to form a pipeline.
 
     Notes
