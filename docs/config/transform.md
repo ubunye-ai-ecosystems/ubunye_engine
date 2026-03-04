@@ -85,7 +85,7 @@ transform:
 | `model_dir` | string | `null` | Directory containing the model file; defaults to task dir |
 | `model_path` | string | `null` | Path to saved artifact (used for predict without registry) |
 | `input_name` | string | `null` | Key in `inputs` dict to use as training/scoring data |
-| `registry` | [RegistryConfig](#registryconfig) | `null` | Model registry settings |
+| `registry` | [RegistryConfig](#registryconfig-fields) | `null` | Model registry settings |
 
 #### `RegistryConfig` fields
 

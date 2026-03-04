@@ -35,9 +35,9 @@ CLI (Typer)
 
 Key files:
 
-- [ubunye/config/loader.py](../ubunye/config/loader.py) — `ConfigLoader`
-- [ubunye/config/resolver.py](../ubunye/config/resolver.py) — Jinja resolver
-- [ubunye/config/schema.py](../ubunye/config/schema.py) — all Pydantic models
+- `ubunye/config/loader.py` — `ConfigLoader`
+- `ubunye/config/resolver.py` — Jinja resolver
+- `ubunye/config/schema.py` — all Pydantic models
 
 ---
 
