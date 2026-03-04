@@ -6,6 +6,7 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "ubunye/**"
   workflow_dispatch:
 
 jobs:
@@ -17,6 +18,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history — required by git-revision-date-localized
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
