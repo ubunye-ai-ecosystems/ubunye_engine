@@ -1,7 +1,6 @@
 LICENSE
 README.md
 pyproject.toml
-setup.py
 tests/test_config.py
 tests/test_rest_api_plugin.py
 tests/test_runtime.py
@@ -66,6 +65,5 @@ ubunye_engine.egg-info/PKG-INFO
 ubunye_engine.egg-info/SOURCES.txt
 ubunye_engine.egg-info/dependency_links.txt
 ubunye_engine.egg-info/entry_points.txt
-ubunye_engine.egg-info/not-zip-safe
 ubunye_engine.egg-info/requires.txt
 ubunye_engine.egg-info/top_level.txt
