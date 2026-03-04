@@ -45,7 +45,8 @@
       "Bash(for dir in ubunye/cli ubunye/compat ubunye/plugins/ml ubunye/plugins/readers ubunye/plugins/transforms ubunye/plugins/writers)",
       "Bash(do touch \"$dir/__init__.py\")",
       "Bash(echo \"created $dir/__init__.py\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(python -m ruff check ubunye/plugins/readers/rest_api.py ubunye/plugins/writers/rest_api.py)"
     ]
   }
 }
