@@ -8,6 +8,10 @@ on:
 jobs:
   build-n-publish:
     runs-on: ubuntu-latest
+    environment: pypi          # protects releases with an approval gate
+    permissions:
+      contents: read
+      id-token: write          # required for OIDC Trusted Publishers
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
