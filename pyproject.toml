@@ -20,7 +20,7 @@ dependencies = [
 [project.optional-dependencies]
 spark = ["pyspark>=3.3"]
 ml = ["scikit-learn", "torch", "mlflow"]
-dev = ["pytest", "pytest-cov", "black", "ruff", "build"]
+dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build"]
 
 [project.scripts]
 ubunye = "ubunye.cli.main:app"
@@ -49,6 +49,9 @@ sparkml = "ubunye.plugins.ml.pysparkml:SparkMLModel"
 [project.entry-points."ubunye.monitors"]
 mlflow  = "ubunye.telemetry.mlflow:MLflowMonitor"
 lineage = "ubunye.lineage.recorder:LineageRecorder"
+
+[tool.setuptools.packages.find]
+include = ["ubunye*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

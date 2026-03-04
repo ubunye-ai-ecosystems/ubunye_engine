@@ -48,7 +48,6 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 
 if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
     import requests
-    from requests.auth import HTTPBasicAuth
 
 from ubunye.core.interfaces import Reader
 
@@ -343,8 +342,6 @@ def _build_schema(schema_cfg: List[Dict[str, str]]):
 
     Lazy-imports pyspark so the module can be imported without Spark installed.
     """
-    from pyspark.sql.types import StringType, StructField, StructType  # noqa: F401
-
     type_map = {
         "string": "StringType",
         "str": "StringType",

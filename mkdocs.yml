@@ -93,6 +93,7 @@ plugins:
       j2_variable_end_string: "]]"
   - git-revision-date-localized:
       enable_creation_date: true
+      enable_git_follow: false
   - mkdocstrings:
       handlers:
         python:

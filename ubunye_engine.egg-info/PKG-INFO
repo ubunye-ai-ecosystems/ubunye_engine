@@ -2,11 +2,7 @@ Metadata-Version: 2.4
 Name: ubunye-engine
 Version: 0.1.0
 Summary: Config-first, Spark-native ETL/ML engine with a modular plugin system
-Home-page: https://github.com/ubunye-ai-ecosystems/ubunye-engine
 Author: Ubunye Team
-Author-email: ['uaie@gmail.com']
-Maintainer: ['Thabang Mashinini-Sekgoto']
-Maintainer-email: ['thaangline@gmail.com']
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 License-File: LICENSE
@@ -20,28 +16,16 @@ Provides-Extra: ml
 Requires-Dist: scikit-learn; extra == "ml"
 Requires-Dist: torch; extra == "ml"
 Requires-Dist: mlflow; extra == "ml"
-Provides-Extra: rest
-Requires-Dist: requests>=2.28; extra == "rest"
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: pytest-cov>=4; extra == "dev"
 Requires-Dist: pytest-timeout; extra == "dev"
+Requires-Dist: hypothesis>=6; extra == "dev"
+Requires-Dist: requests>=2.28; extra == "dev"
 Requires-Dist: black; extra == "dev"
 Requires-Dist: ruff; extra == "dev"
 Requires-Dist: build; extra == "dev"
-Requires-Dist: requests>=2.28; extra == "dev"
-Requires-Dist: hypothesis>=6; extra == "dev"
-Provides-Extra: test
-Requires-Dist: pytest>=7; extra == "test"
-Requires-Dist: pytest-cov>=4; extra == "test"
-Requires-Dist: hypothesis>=6; extra == "test"
-Requires-Dist: pyspark>=3.4; extra == "test"
-Dynamic: author-email
-Dynamic: home-page
 Dynamic: license-file
-Dynamic: maintainer
-Dynamic: maintainer-email
-Dynamic: requires-python
 
 <p align="center">
   <img src="docs/assets/ubunye-logo-white-v2.png" alt="Ubunye Engine" width="400"/>
