@@ -1,0 +1,347 @@
+"""Public Python API for running Ubunye tasks without the CLI.
+
+Primary use case: Databricks notebooks and jobs where a SparkSession already
+exists and subprocess-based CLI execution is wasteful or awkward.
+
+Usage
+-----
+    import ubunye
+
+    # Run a single task
+    outputs = ubunye.run_task(
+        task_dir="pipelines/fraud_detection/ingestion/claim_etl",
+        mode="nonprod",
+        dt="202510",
+    )
+
+    # Run multiple tasks sequentially
+    results = ubunye.run_pipeline(
+        usecase_dir="pipelines",
+        usecase="fraud_detection",
+        package="ingestion",
+        tasks=["claim_etl", "feature_engineering"],
+        mode="nonprod",
+        dt="202510",
+    )
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import sys
+import uuid
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from ubunye.config import load_config
+from ubunye.core.catalog import set_catalog_and_schema
+from ubunye.core.interfaces import Backend, Task
+from ubunye.core.runtime import EngineContext, Registry
+from ubunye.telemetry.monitors import load_monitors, safe_call
+
+
+def _make_app_name(usecase: Optional[str] = None, package: Optional[str] = None,
+                    task: Optional[str] = None) -> str:
+    """Build a descriptive Spark app name: ``ubunye:<usecase>.<package>.<task>``."""
+    parts = [p for p in (usecase, package, task) if p]
+    return f"ubunye:{'.'.join(parts)}" if parts else "ubunye"
+
+
+def _detect_backend(
+    spark: Optional[Any] = None,
+    spark_conf: Optional[Dict[str, str]] = None,
+    app_name: str = "ubunye",
+) -> Backend:
+    """Pick the right backend: reuse an active session or create a new one.
+
+    Resolution order:
+    1. If *spark* is an explicit SparkSession, wrap it in DatabricksBackend.
+    2. If an active SparkSession exists (Databricks), use DatabricksBackend.
+    3. Otherwise fall back to SparkBackend with the given conf.
+    """
+    if spark is not None:
+        from ubunye.backends.databricks_backend import DatabricksBackend
+
+        return DatabricksBackend(spark=spark)
+
+    # Probe for an active session without importing pyspark at module level
+    try:
+        from pyspark.sql import SparkSession  # type: ignore
+
+        active = SparkSession.getActiveSession()
+        if active is not None:
+            from ubunye.backends.databricks_backend import DatabricksBackend
+
+            return DatabricksBackend(spark=active)
+    except ImportError:
+        pass
+
+    from ubunye.backends.spark_backend import SparkBackend
+
+    return SparkBackend(app_name=app_name, conf=spark_conf or {})
+
+
+def _load_task_class(task_dir: Path) -> type:
+    """Import transformations.py and return the first Task subclass."""
+    fc_path = task_dir / "transformations.py"
+    if not fc_path.exists():
+        raise FileNotFoundError(
+            f"Missing transformations.py at {fc_path}. "
+            "Each task directory must contain a transformations.py with a Task subclass."
+        )
+
+    spec = importlib.util.spec_from_file_location("transformations", str(fc_path))
+    mod = importlib.util.module_from_spec(spec)  # type: ignore
+    assert spec and spec.loader
+    spec.loader.exec_module(mod)
+
+    for attr in mod.__dict__.values():
+        if isinstance(attr, type) and issubclass(attr, Task) and attr is not Task:
+            return attr
+
+    raise RuntimeError(
+        f"No Task subclass found in {fc_path}. "
+        "Define a class that subclasses ubunye.core.interfaces.Task."
+    )
+
+
+def _execute_task(
+    backend: Backend,
+    task_dir: Path,
+    cfg: Any,
+    context: EngineContext,
+    lineage_recorder: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Run a single task: read → transform → write. Returns the outputs map."""
+    import time
+
+    reg = Registry.from_entrypoints()
+    monitors = load_monitors(cfg.model_dump(mode="json"))
+    if lineage_recorder is not None:
+        monitors = [lineage_recorder] + monitors
+
+    for monitor in monitors:
+        safe_call(monitor, "task_start", context=context, config=cfg.model_dump(mode="json"))
+
+    task_cls = _load_task_class(task_dir)
+    task_obj = task_cls(config=cfg.model_dump(mode="json"))
+    task_obj.setup()
+
+    task_start = time.perf_counter()
+    outputs_map: Dict[str, Any] = {}
+
+    old_path = str(task_dir) in sys.path
+    if not old_path:
+        sys.path.insert(0, str(task_dir))
+
+    try:
+        # Read
+        sources: Dict[str, Any] = {}
+        for name, icfg in cfg.CONFIG.inputs.items():
+            reader_cls = reg.readers[icfg.format]
+            sources[name] = reader_cls().read(icfg.model_dump(mode="json"), backend)
+
+        # Transform
+        outputs_map = task_obj.transform(sources)
+
+        # Write
+        for name, ocfg in cfg.CONFIG.outputs.items():
+            writer_cls = reg.writers[ocfg.format]
+            df = outputs_map.get(name)
+            if df is None:
+                raise KeyError(f"Transform did not return output '{name}'")
+            writer_cls().write(df, ocfg.model_dump(mode="json"), backend)
+
+        duration = time.perf_counter() - task_start
+        for monitor in monitors:
+            safe_call(
+                monitor,
+                "task_end",
+                context=context,
+                config=cfg.model_dump(mode="json"),
+                outputs=outputs_map,
+                status="success",
+                duration_sec=duration,
+            )
+
+        return outputs_map
+
+    except Exception:
+        duration = time.perf_counter() - task_start
+        for monitor in monitors:
+            safe_call(
+                monitor,
+                "task_end",
+                context=context,
+                config=cfg.model_dump(mode="json"),
+                outputs=outputs_map,
+                status="error",
+                duration_sec=duration,
+            )
+        raise
+    finally:
+        if not old_path and str(task_dir) in sys.path:
+            sys.path.remove(str(task_dir))
+
+
+def run_task(
+    task_dir: str,
+    *,
+    mode: str = "DEV",
+    dt: Optional[str] = None,
+    dtf: Optional[str] = None,
+    spark: Optional[Any] = None,
+    lineage: bool = False,
+    lineage_dir: str = ".ubunye/lineage",
+    profile: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Run a single Ubunye task and return the outputs map.
+
+    Parameters
+    ----------
+    task_dir : str
+        Path to the task directory containing ``config.yaml`` and
+        ``transformations.py``.
+    mode : str
+        Run mode, used for Spark profile merging. Default ``"DEV"``.
+    dt : str, optional
+        Data timestamp, injected as ``{{ dt }}`` in Jinja templates.
+    dtf : str, optional
+        Data timestamp format, injected as ``{{ dtf }}``.
+    spark : SparkSession, optional
+        Explicit SparkSession to reuse. If *None*, auto-detects an active
+        session (Databricks) or creates a new one.
+    lineage : bool
+        Record lineage for this run.
+    lineage_dir : str
+        Root directory for lineage records.
+    profile : str, optional
+        Config profile for validation (passed to ``load_config``).
+
+    Returns
+    -------
+    Dict[str, Any]
+        Mapping of output name → DataFrame.
+    """
+    task_path = Path(task_dir).resolve()
+    variables = {"dt": dt, "dtf": dtf, "mode": mode}
+
+    cfg = load_config(str(task_path), variables=variables, profile=profile)
+    spark_conf = cfg.merged_spark_conf(mode)
+
+    # Derive usecase/package/task from path for app naming
+    # Convention: <usecase_dir>/<usecase>/<package>/<task>
+    parts = task_path.parts
+    task_name = parts[-1] if len(parts) >= 1 else None
+    package_name = parts[-2] if len(parts) >= 2 else None
+    usecase_name = parts[-3] if len(parts) >= 3 else None
+    app_name = _make_app_name(usecase_name, package_name, task_name)
+
+    backend = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name)
+
+    lineage_recorder = None
+    if lineage:
+        from ubunye.lineage.recorder import LineageRecorder
+
+        lineage_recorder = LineageRecorder(
+            store="filesystem",
+            base_dir=str(task_path.parent / lineage_dir),
+        )
+
+    run_id = str(uuid.uuid4())
+    context = EngineContext(run_id=run_id, profile=mode, task_name=task_path.name)
+
+    backend.start()
+    set_catalog_and_schema(
+        backend,
+        catalog=cfg.resolved_catalog(mode),
+        schema=cfg.resolved_schema(mode),
+    )
+    try:
+        return _execute_task(backend, task_path, cfg, context, lineage_recorder)
+    finally:
+        backend.stop()
+
+
+def run_pipeline(
+    usecase_dir: str,
+    usecase: str,
+    package: str,
+    tasks: List[str],
+    *,
+    mode: str = "DEV",
+    dt: Optional[str] = None,
+    dtf: Optional[str] = None,
+    spark: Optional[Any] = None,
+    lineage: bool = False,
+    lineage_dir: str = ".ubunye/lineage",
+    profile: Optional[str] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Run multiple tasks sequentially and return all outputs.
+
+    Parameters
+    ----------
+    usecase_dir : str
+        Root directory for use cases (e.g. ``"./pipelines"``).
+    usecase : str
+        Use case name.
+    package : str
+        Package/pipeline name.
+    tasks : List[str]
+        Task names to run in order.
+    mode, dt, dtf, spark, lineage, lineage_dir, profile
+        Same as :func:`run_task`.
+
+    Returns
+    -------
+    Dict[str, Dict[str, Any]]
+        Mapping of task name → outputs map.
+    """
+    base = Path(usecase_dir).resolve()
+    variables = {"dt": dt, "dtf": dtf, "mode": mode}
+    run_id = str(uuid.uuid4())
+
+    # Validate all configs before starting backend
+    configs = {}
+    for task in tasks:
+        task_path = base / usecase / package / task
+        configs[task] = load_config(str(task_path), variables=variables, profile=profile)
+
+    # Use Spark conf from first task
+    first_cfg = configs[tasks[0]]
+    spark_conf = first_cfg.merged_spark_conf(mode)
+    app_name = _make_app_name(usecase, package, tasks[0])
+
+    backend = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name)
+
+    lineage_recorder = None
+    if lineage:
+        from ubunye.lineage.recorder import LineageRecorder
+
+        lineage_recorder = LineageRecorder(
+            store="filesystem",
+            base_dir=str(base / lineage_dir),
+        )
+
+    backend.start()
+    set_catalog_and_schema(
+        backend,
+        catalog=first_cfg.resolved_catalog(mode),
+        schema=first_cfg.resolved_schema(mode),
+    )
+    results: Dict[str, Dict[str, Any]] = {}
+    try:
+        for task in tasks:
+            task_path = base / usecase / package / task
+            cfg = configs[task]
+            context = EngineContext(
+                run_id=run_id,
+                profile=mode,
+                task_name=f"{usecase}/{package}/{task}",
+            )
+            results[task] = _execute_task(
+                backend, task_path, cfg, context, lineage_recorder
+            )
+        return results
+    finally:
+        backend.stop()

@@ -46,8 +46,10 @@ pipelines/
   fraud_detection/
     ingestion/
       claim_etl/
-        config.yaml           ← tell the engine what to do
-        transformations.py    ← your logic goes here
+        config.yaml               ← tell the engine what to do
+        transformations.py        ← your logic goes here
+        notebooks/
+          claim_etl_dev.ipynb     ← interactive dev notebook
 ```
 
 Open `config.yaml` and describe your pipeline:
@@ -92,10 +94,22 @@ def transform(df):
 Run it:
 
 ```bash
-ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl --profile dev
+ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl -m dev
 ```
 
-That's it. You just built and ran a pipeline. Same config runs in production — just swap `--profile prod`.
+Or from Python (Databricks notebooks, scripts):
+
+```python
+import ubunye
+
+outputs = ubunye.run_task(
+    task_dir="./pipelines/fraud_detection/ingestion/claim_etl",
+    mode="dev",
+)
+```
+
+That's it. You just built and ran a pipeline. Same config runs in production — just swap the mode.
+The Python API auto-detects and reuses an active SparkSession on Databricks.
 
 ---
 
@@ -176,12 +190,12 @@ Want to add one? See the [plugin guide](https://ubunye-ai-ecosystems.github.io/u
 
 Same pipeline, no changes:
 
-| Environment | Just set |
+| Environment | How |
 |---|---|
-| Local | `spark.master: "local[*]"` |
-| YARN / Hadoop | `spark.master: "yarn"` |
-| Kubernetes | `spark.master: "k8s://..."` |
-| Databricks | Via ORCHESTRATION config |
+| Local | `spark.master: "local[*]"` in config |
+| YARN / Hadoop | `spark.master: "yarn"` in config |
+| Kubernetes | `spark.master: "k8s://..."` in config |
+| Databricks | Python API (`ubunye.run_task()`) or Asset Bundles |
 | AWS EMR | Via EMR Steps |
 
 ---
@@ -207,8 +221,27 @@ path: "s3a://bucket/{{ ds | default('2025-01-01') }}/"
 
 ```bash
 ubunye init     -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # scaffold
-ubunye run      -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # execute
 ubunye validate -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # check config
+ubunye plan     -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # preview plan
+ubunye run      -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # execute
+ubunye test run -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # test mode
+ubunye lineage list -d ./pipelines -u <use_case> -p <pipeline> -t <task>  # run history
+ubunye models list -u <use_case> -m <model> -s <store>                 # model versions
+```
+
+## Python API
+
+```python
+import ubunye
+
+# Run from Databricks or any Python environment
+outputs = ubunye.run_task(task_dir="./pipelines/...", mode="DEV", dt="2024-06-01")
+
+# Multiple tasks
+results = ubunye.run_pipeline(
+    usecase_dir="./pipelines", usecase="fraud", package="etl",
+    tasks=["claim_etl", "features"], mode="DEV",
+)
 ```
 
 ---
@@ -230,11 +263,15 @@ Ubunye is the **standardization layer** between your data sources and your appli
 - [x] Jinja templating
 - [x] Plugin-based connectors
 - [x] CLI scaffolding and execution
-- [ ] Pydantic config validation
-- [ ] ML model contract
-- [ ] Model registry with versioning
+- [x] Pydantic config validation
+- [x] ML model contract
+- [x] Model registry with versioning
+- [x] Lineage tracking
+- [x] Python API for Databricks
+- [x] Databricks Asset Bundles deployment
+- [x] Dev notebook scaffolding
 - [ ] Data drift detection
-- [ ] Lineage tracking
+- [ ] `ubunye deploy` CLI command
 
 ---
 

@@ -11,6 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Python API** (`ubunye/api.py`) — `run_task()` and `run_pipeline()` for running Ubunye tasks
+  from Python code (Databricks notebooks, scripts, tests) without the CLI.
+  Auto-detects and reuses active SparkSessions. Exported from `ubunye.__init__`.
+
+- **DatabricksBackend** (`ubunye/backends/databricks_backend.py`) — backend that wraps an
+  existing SparkSession instead of creating one. `stop()` is a no-op since we don't own the session.
+
+- **Dev notebook scaffolding** — `ubunye init` now generates `notebooks/<task>_dev.ipynb`
+  alongside `config.yaml` and `transformations.py`. The notebook uses `DatabricksBackend`,
+  `dbutils.widgets`, and `display()`. The Load step is commented out by default.
+
+- **Deployment docs** — `docs/deployment.md` covering Databricks Asset Bundles pattern,
+  GitHub Actions CI/CD, and Python API on Databricks. DABs belong in the usecase repo,
+  not the engine.
+
+- **Deploy workflow** — `.github/workflows/deploy.yml` validates configs on PR and
+  runs unit tests. Bundle deployment is handled in the usecase repo.
+
+- **`ubunye test run`** CLI sub-command — runs tasks with a test profile and reports PASS/FAIL.
+
 - **Model Registry** (`ubunye/models/`) — library-independent ML lifecycle management.
   - `UbunyeModel` abstract contract: `train`, `predict`, `save`, `load`, `metadata`, `validate`.
   - `ModelRegistry` — filesystem-backed versioning with stages: development → staging → production → archived.
@@ -42,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `ubunye/config/schema.py` — added `RegistryConfig`, `ModelTransformParams`, `FormatType.REST_API`.
-- `ubunye/cli/main.py` — mounted `models_app` and `lineage_app` Typer sub-apps.
+- `ubunye/__init__.py` — exports `run_task` and `run_pipeline`.
+- `ubunye/cli/main.py` — mounted `models_app`, `lineage_app`, `test_app` Typer sub-apps; added notebook scaffolding to `init`.
 - `pyproject.toml` — added `model` entry point under `ubunye.transforms`.
 
 ### Fixed

@@ -22,8 +22,10 @@ This creates:
 
 ```
 pipelines/demo/etl/hello_world/
-    config.yaml          ← I/O and compute config
-    transformations.py   ← optional Python transform
+    config.yaml              ← I/O and compute config
+    transformations.py       ← your Python transform
+    notebooks/
+        hello_world_dev.ipynb  ← interactive dev notebook
 ```
 
 ---
@@ -125,12 +127,33 @@ ubunye lineage list
 
 ---
 
+---
+
+## 8. (Optional) Run from Python
+
+On Databricks or in a notebook, use the Python API instead of the CLI:
+
+```python
+import ubunye
+
+outputs = ubunye.run_task(
+    task_dir="pipelines/demo/etl/hello_world",
+    mode="DEV",
+)
+```
+
+The Python API auto-detects an active SparkSession (Databricks) and reuses it.
+
+---
+
 ## What's next?
 
 | Topic | Link |
 |---|---|
 | Full YAML schema | [Config Reference](../config/overview.md) |
 | All built-in connectors | [Connectors](../connectors/overview.md) |
+| Python API reference | [API Reference](../api.md) |
+| Deploying to Databricks | [Deployment](../deployment.md) |
 | Training and versioning ML models | [Model Contract](../ml/model_contract.md) |
 | CLI flags and sub-commands | [CLI Reference](../cli.md) |
 | Writing custom plugins | [Plugin Guide](../connectors/plugin_guide.md) |

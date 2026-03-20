@@ -11,8 +11,8 @@ All commands accept `--help` for full option details.
 |---|---|
 | `init` | Scaffold a new task folder |
 | `validate` | Validate a config file without running |
-| `plan` | Print the execution DAG |
-| `run` | Execute a task |
+| `plan` | Print the execution plan |
+| `run` | Execute one or more tasks |
 | `plugins` | List all discovered plugins |
 | `config` | Show the expanded (Jinja-rendered + validated) config |
 | `version` | Print the engine version |
@@ -23,6 +23,23 @@ All commands accept `--help` for full option details.
 |---|---|
 | `lineage` | Inspect run provenance records |
 | `models` | Manage model versions and lifecycle |
+| `test` | Run tasks in test mode and report PASS/FAIL |
+
+---
+
+## Common flags
+
+Most commands share a set of path and variable flags:
+
+| Flag | Short | Description |
+|---|---|---|
+| `--usecase-dir` | `-d` | Root pipelines directory |
+| `--usecase` | `-u` | Use-case name |
+| `--package` | `-p` | Package / pipeline name |
+| `--task-list` | `-t` | Task name(s) — repeatable |
+| `--data-timestamp` | `-dt` | Data timestamp, injected as `{{ dt }}` in Jinja |
+| `--data-timestamp-format` | `-dtf` | Timestamp format, injected as `{{ dtf }}` |
+| `--mode` | `-m` | Engine profile / run mode (default: `DEV`) |
 
 ---
 
@@ -44,7 +61,17 @@ Creates:
 pipelines/fraud_detection/ingestion/claim_etl/
     config.yaml
     transformations.py
+    notebooks/
+        claim_etl_dev.ipynb    ← interactive dev notebook (Databricks-ready)
 ```
+
+| Flag | Short | Required | Default | Description |
+|---|---|---|---|---|
+| `--usecase-dir` | `-d` | yes | — | Root directory |
+| `--usecase` | `-u` | yes | — | Use-case name |
+| `--package` | `-p` | yes | — | Package name |
+| `--task-list` | `-t` | yes | — | Task(s) to scaffold (repeatable) |
+| `--overwrite` | | no | `no-overwrite` | Overwrite existing files |
 
 ---
 
@@ -58,14 +85,36 @@ ubunye validate \
     -u fraud_detection \
     -p ingestion \
     -t claim_etl \
-    --var dt=2024-06-01
+    -dt 2024-06-01
 ```
+
+Validate all tasks in a package:
+
+```bash
+ubunye validate -d pipelines -u fraud_detection -p ingestion --all
+```
+
+Validate against a specific profile:
+
+```bash
+ubunye validate -d pipelines -u fraud_detection -p ingestion -t claim_etl --profile dev
+```
+
+| Flag | Short | Required | Default | Description |
+|---|---|---|---|---|
+| `--usecase-dir` | `-d` | yes | — | Root directory |
+| `--usecase` | `-u` | yes | — | Use-case name |
+| `--package` | `-p` | yes | — | Package name |
+| `--task-list` | `-t` | no | — | Task(s) to validate (repeatable) |
+| `--all` | | no | false | Validate all tasks in the package |
+| `--profile` | | no | — | Profile to validate against (e.g. dev, prod) |
+| `--data-timestamp` | `-dt` | no | — | Data timestamp |
 
 ---
 
 ## `ubunye plan`
 
-Print the execution DAG — inputs → transform → outputs — without running.
+Print the execution plan — inputs, transform, outputs — without running.
 
 ```bash
 ubunye plan \
@@ -79,7 +128,7 @@ ubunye plan \
 
 ## `ubunye run`
 
-Execute a task: read inputs → transform → write outputs.
+Execute one or more tasks sequentially: read inputs, transform, write outputs.
 
 ```bash
 ubunye run \
@@ -87,20 +136,53 @@ ubunye run \
     -u fraud_detection \
     -p ingestion \
     -t claim_etl \
-    --profile prod \
+    -m PROD \
     --lineage \
-    --var dt=2024-06-01
+    -dt 2024-06-01
 ```
 
-| Flag | Description |
-|---|---|
-| `-d, --dir` | Root pipelines directory |
-| `-u, --use-case` | Use-case name |
-| `-p, --pipeline` | Pipeline name |
-| `-t, --task` | Task name |
-| `--profile` | Engine profile to activate (dev / staging / prod) |
-| `--lineage` | Record run provenance to `.ubunye/lineage/` |
-| `--var KEY=VALUE` | Inject a Jinja variable (repeatable) |
+| Flag | Short | Required | Default | Description |
+|---|---|---|---|---|
+| `--usecase-dir` | `-d` | yes | — | Root pipelines directory |
+| `--usecase` | `-u` | yes | — | Use-case name |
+| `--package` | `-p` | yes | — | Package name |
+| `--task-list` | `-t` | yes | — | Task(s) to execute (repeatable) |
+| `--data-timestamp` | `-dt` | no | — | Data timestamp |
+| `--data-timestamp-format` | `-dtf` | no | — | Timestamp format |
+| `--mode` | `-m` | no | `DEV` | Run mode (DEV/PROD) |
+| `--deploy-mode` | | no | `client` | Spark deploy mode (cluster/client) |
+| `--lineage` | | no | false | Record lineage for this run |
+| `--lineage-dir` | | no | `.ubunye/lineage` | Root directory for lineage records |
+
+!!! note
+    The `run` command does not have `--all` or `--profile` flags.
+    Use `-m/--mode` for environment switching and list tasks explicitly with `-t`.
+
+---
+
+## `ubunye test run`
+
+Run one or more tasks with a test profile and report PASS/FAIL per task.
+Config is validated before Spark starts; invalid configs are reported as `[CONFIG FAIL]`.
+
+```bash
+ubunye test run \
+    -d pipelines \
+    -u fraud_detection \
+    -p ingestion \
+    -t claim_etl
+```
+
+| Flag | Short | Required | Default | Description |
+|---|---|---|---|---|
+| `--usecase-dir` | `-d` | yes | — | Root directory |
+| `--usecase` | `-u` | yes | — | Use-case name |
+| `--package` | `-p` | yes | — | Package name |
+| `--task-list` | `-t` | yes | — | Task(s) to test (repeatable) |
+| `--profile` | | no | `test` | Config profile to use |
+| `--data-timestamp` | `-dt` | no | — | Data timestamp |
+| `--lineage / --no-lineage` | | no | `lineage` | Record lineage (ON by default) |
+| `--lineage-dir` | | no | `.ubunye/lineage` | Lineage directory |
 
 ---
 
@@ -116,15 +198,15 @@ ubunye plugins
 
 ## `ubunye config`
 
-Show the fully expanded (Jinja-rendered, Pydantic-validated) config as JSON.
+Show the fully expanded (Jinja-rendered, Pydantic-validated) config.
 
 ```bash
-ubunye config show \
+ubunye config \
     -d pipelines \
     -u fraud_detection \
     -p ingestion \
     -t claim_etl \
-    --var dt=2024-06-01
+    -dt 2024-06-01
 ```
 
 ---
@@ -142,77 +224,92 @@ ubunye version
 
 Inspect run provenance records written by `ubunye run --lineage`.
 
-### `lineage list`
-
-```bash
-ubunye lineage list
-ubunye lineage list --use-case fraud_detection
-ubunye lineage list --limit 20
-```
+!!! note
+    Lineage sub-commands use `--task` (`-t` singular), not `--task-list`.
 
 ### `lineage show`
 
+Show a run record as formatted JSON (latest or specific run).
+
 ```bash
-ubunye lineage show --run-id <run_id>
+ubunye lineage show \
+    -d pipelines -u fraud_detection -p ingestion -t claim_etl
+
+ubunye lineage show \
+    -d pipelines -u fraud_detection -p ingestion -t claim_etl \
+    --run-id <run_id>
+```
+
+### `lineage list`
+
+List recent runs for a task (newest first).
+
+```bash
+ubunye lineage list \
+    -d pipelines -u fraud_detection -p ingestion -t claim_etl
+
+ubunye lineage list \
+    -d pipelines -u fraud_detection -p ingestion -t claim_etl -n 20
 ```
 
 ### `lineage compare`
 
+Diff two run records — highlight changes in hashes, row counts, and status.
+
 ```bash
-ubunye lineage compare --run-ids <id1> <id2>
+ubunye lineage compare \
+    -d pipelines -u fraud_detection -p ingestion -t claim_etl \
+    --run-id1 <id1> --run-id2 <id2>
 ```
 
 ### `lineage search`
 
+Search all recorded runs across tasks with optional filters.
+
 ```bash
-ubunye lineage search --task claim_etl
-ubunye lineage search --tag status=success
+ubunye lineage search -d pipelines -t claim_etl
+ubunye lineage search -d pipelines --status success --since 2024-06-01
 ```
 
 ### `lineage trace`
 
-```bash
-ubunye lineage trace --run-id <run_id>
-```
+Print the input, transform, output data flow graph for a run.
 
-Prints a full provenance chain: config hash, input data hashes, transform, outputs.
+```bash
+ubunye lineage trace \
+    -d pipelines -u fraud_detection -p ingestion -t claim_etl
+```
 
 ---
 
 ## `ubunye models`
 
 Manage ML model versions and lifecycle.
-Requires the `--use-case`, `--model`, and `--store` flags on all sub-commands.
+All sub-commands require: `--use-case` (`-u`), `--model` (`-m`), `--store` (`-s`).
+
+!!! warning
+    Note: `models` uses `--use-case` (hyphenated), while other commands use `--usecase`.
 
 ### `models list`
 
 ```bash
 ubunye models list \
-    --use-case fraud_detection \
-    --model FraudRiskModel \
-    --store .ubunye/model_store
+    -u fraud_detection -m FraudRiskModel -s .ubunye/model_store
 ```
 
 ### `models info`
 
 ```bash
 ubunye models info \
-    --use-case fraud_detection \
-    --model FraudRiskModel \
-    --version 1.3.0 \
-    --store .ubunye/model_store
+    -u fraud_detection -m FraudRiskModel -v 1.3.0 -s .ubunye/model_store
 ```
 
 ### `models promote`
 
 ```bash
 ubunye models promote \
-    --use-case fraud_detection \
-    --model FraudRiskModel \
-    --version 1.3.0 \
-    --to production \
-    --promoted-by alice \
-    --store .ubunye/model_store
+    -u fraud_detection -m FraudRiskModel -v 1.3.0 \
+    --to production --promoted-by alice -s .ubunye/model_store
 ```
 
 Target stages: `staging`, `production`.
@@ -221,11 +318,8 @@ Target stages: `staging`, `production`.
 
 ```bash
 ubunye models demote \
-    --use-case fraud_detection \
-    --model FraudRiskModel \
-    --version 1.3.0 \
-    --to staging \
-    --store .ubunye/model_store
+    -u fraud_detection -m FraudRiskModel -v 1.3.0 \
+    --to staging -s .ubunye/model_store
 ```
 
 Target stages: `development`, `staging`, `archived`.
@@ -234,10 +328,7 @@ Target stages: `development`, `staging`, `archived`.
 
 ```bash
 ubunye models rollback \
-    --use-case fraud_detection \
-    --model FraudRiskModel \
-    --version 1.2.0 \
-    --store .ubunye/model_store
+    -u fraud_detection -m FraudRiskModel -v 1.2.0 -s .ubunye/model_store
 ```
 
 Archives the current production version and restores `--version` to production.
@@ -246,18 +337,13 @@ Archives the current production version and restores `--version` to production.
 
 ```bash
 ubunye models archive \
-    --use-case fraud_detection \
-    --model FraudRiskModel \
-    --version 1.1.0 \
-    --store .ubunye/model_store
+    -u fraud_detection -m FraudRiskModel -v 1.1.0 -s .ubunye/model_store
 ```
 
 ### `models compare`
 
 ```bash
 ubunye models compare \
-    --use-case fraud_detection \
-    --model FraudRiskModel \
-    --versions 1.2.0 1.3.0 \
-    --store .ubunye/model_store
+    -u fraud_detection -m FraudRiskModel \
+    --versions 1.2.0 --versions 1.3.0 -s .ubunye/model_store
 ```

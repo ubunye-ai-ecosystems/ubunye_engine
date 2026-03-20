@@ -62,6 +62,8 @@ class EngineProfile(BaseModel):
     """Profile-specific Spark configuration overrides."""
 
     spark_conf: Dict[str, str] = Field(default_factory=dict)
+    catalog: Optional[str] = None
+    schema_name: Optional[str] = None
 
 
 class EngineConfig(BaseModel):
@@ -69,6 +71,8 @@ class EngineConfig(BaseModel):
 
     spark_conf: Dict[str, str] = Field(default_factory=dict)
     profiles: Dict[str, EngineProfile] = Field(default_factory=dict)
+    catalog: Optional[str] = None
+    schema_name: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -244,3 +248,19 @@ class UbunyeConfig(BaseModel):
         if profile and profile in self.ENGINE.profiles:
             conf.update(self.ENGINE.profiles[profile].spark_conf)
         return conf
+
+    def resolved_catalog(self, profile: str | None = None) -> Optional[str]:
+        """Return the catalog name, with profile override if available."""
+        if profile and profile in self.ENGINE.profiles:
+            override = self.ENGINE.profiles[profile].catalog
+            if override is not None:
+                return override
+        return self.ENGINE.catalog
+
+    def resolved_schema(self, profile: str | None = None) -> Optional[str]:
+        """Return the schema name, with profile override if available."""
+        if profile and profile in self.ENGINE.profiles:
+            override = self.ENGINE.profiles[profile].schema_name
+            if override is not None:
+                return override
+        return self.ENGINE.schema_name
