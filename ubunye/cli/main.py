@@ -119,7 +119,9 @@ def _build_dev_notebook(task: str, usecase: str, package: str) -> dict:
             '    print(f"--- {name}: {df.count()} rows ---")\n'
             "    display(df.limit(20))"
         ),
-        _md_cell("## Load (disabled by default)\nUncomment to write outputs. **Review carefully before running in prod.**"),
+        _md_cell(
+            "## Load (disabled by default)\nUncomment to write outputs. **Review carefully before running in prod.**"
+        ),
         _code_cell(
             "# WARNING: Uncomment to write outputs to the configured destinations.\n"
             "# for name, ocfg in cfg.CONFIG.outputs.items():\n"
