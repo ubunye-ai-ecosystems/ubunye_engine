@@ -16,14 +16,14 @@
         <link rel="prev" href="../cli/">
       
       
-        <link rel="next" href="../dev_guide/">
+        <link rel="next" href="../deployment/">
       
       
         
       
       
       <link rel="icon" href="../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -371,6 +371,25 @@
     
   
   API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../deployment/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Deployment
 
       </a>
     </li>
@@ -1520,6 +1539,101 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run_task
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="run_task">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_task--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_task--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run_pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="run_pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_pipeline--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_pipeline--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#core-engine" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1845,6 +1959,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#ubunye.config.schema.UbunyeConfig.resolved_catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolved_catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.config.schema.UbunyeConfig.resolved_schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolved_schema
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1911,15 +2047,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#spark-backend" class="md-nav__link">
+  <a href="#backends" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Spark Backend
+        Backends
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Spark Backend">
+    <nav class="md-nav" aria-label="Backends">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sparkbackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SparkBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SparkBackend">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2047,6 +2195,78 @@
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#databricksbackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DatabricksBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DatabricksBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DatabricksBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DatabricksBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend.start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend.stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -2810,6 +3030,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dev_guide/" class="md-nav__link">
         
   
@@ -2909,6 +3156,101 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run_task
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="run_task">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_task--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_task--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run_pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="run_pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_pipeline--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.api.run_pipeline--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#core-engine" class="md-nav__link">
@@ -3236,6 +3578,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#ubunye.config.schema.UbunyeConfig.resolved_catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolved_catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.config.schema.UbunyeConfig.resolved_schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolved_schema
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3302,15 +3666,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#spark-backend" class="md-nav__link">
+  <a href="#backends" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Spark Backend
+        Backends
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Spark Backend">
+    <nav class="md-nav" aria-label="Backends">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sparkbackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SparkBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SparkBackend">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3438,6 +3814,78 @@
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#databricksbackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DatabricksBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DatabricksBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DatabricksBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DatabricksBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend.start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend.stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -4214,6 +4662,105 @@
 <h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
 <p>Auto-generated from docstrings via <a href="https://mkdocstrings.github.io/">mkdocstrings</a>.</p>
 <hr />
+<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
+<p>The public Python API for running Ubunye tasks without the CLI.
+Primary use case: Databricks notebooks and jobs where a SparkSession already exists.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ubunye</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Run a single task</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">task_dir</span><span class="o">=</span><span class="s2">&quot;pipelines/fraud_detection/ingestion/claim_etl&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;nonprod&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">&quot;202510&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># Run multiple tasks sequentially</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">results</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_pipeline</span><span class="p">(</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">usecase_dir</span><span class="o">=</span><span class="s2">&quot;pipelines&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">usecase</span><span class="o">=</span><span class="s2">&quot;fraud_detection&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">package</span><span class="o">=</span><span class="s2">&quot;ingestion&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">tasks</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;claim_etl&quot;</span><span class="p">,</span> <span class="s2">&quot;feature_engineering&quot;</span><span class="p">],</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;nonprod&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">&quot;202510&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="p">)</span>
+</code></pre></div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ubunye.api.run_task" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ubunye.api.run_task</span>
+
+
+<a href="#ubunye.api.run_task" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_task</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DEV&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">&#39;.ubunye/lineage&#39;</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Run a single Ubunye task and return the outputs map.</p>
+<h5 id="ubunye.api.run_task--parameters">Parameters<a class="headerlink" href="#ubunye.api.run_task--parameters" title="Permanent link">&para;</a></h5>
+<p>task_dir : str
+    Path to the task directory containing <code>config.yaml</code> and
+    <code>transformations.py</code>.
+mode : str
+    Run mode, used for Spark profile merging. Default <code>"DEV"</code>.
+dt : str, optional
+    Data timestamp, injected as <code>{{ dt }}</code> in Jinja templates.
+dtf : str, optional
+    Data timestamp format, injected as <code>{{ dtf }}</code>.
+spark : SparkSession, optional
+    Explicit SparkSession to reuse. If <em>None</em>, auto-detects an active
+    session (Databricks) or creates a new one.
+lineage : bool
+    Record lineage for this run.
+lineage_dir : str
+    Root directory for lineage records.
+profile : str, optional
+    Config profile for validation (passed to <code>load_config</code>).</p>
+<h5 id="ubunye.api.run_task--returns">Returns<a class="headerlink" href="#ubunye.api.run_task--returns" title="Permanent link">&para;</a></h5>
+<p>Dict[str, Any]
+    Mapping of output name → DataFrame.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ubunye.api.run_pipeline" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ubunye.api.run_pipeline</span>
+
+
+<a href="#ubunye.api.run_pipeline" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_pipeline</span><span class="p">(</span><span class="n">usecase_dir</span><span class="p">,</span> <span class="n">usecase</span><span class="p">,</span> <span class="n">package</span><span class="p">,</span> <span class="n">tasks</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DEV&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">&#39;.ubunye/lineage&#39;</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Run multiple tasks sequentially and return all outputs.</p>
+<h5 id="ubunye.api.run_pipeline--parameters">Parameters<a class="headerlink" href="#ubunye.api.run_pipeline--parameters" title="Permanent link">&para;</a></h5>
+<p>usecase_dir : str
+    Root directory for use cases (e.g. <code>"./pipelines"</code>).
+usecase : str
+    Use case name.
+package : str
+    Package/pipeline name.
+tasks : List[str]
+    Task names to run in order.
+mode, dt, dtf, spark, lineage, lineage_dir, profile
+    Same as :func:<code>run_task</code>.</p>
+<h5 id="ubunye.api.run_pipeline--returns">Returns<a class="headerlink" href="#ubunye.api.run_pipeline--returns" title="Permanent link">&para;</a></h5>
+<p>Dict[str, Dict[str, Any]]
+    Mapping of task name → outputs map.</p>
+
+
+    </div>
+
+</div><hr />
 <h2 id="core-engine">Core Engine<a class="headerlink" href="#core-engine" title="Permanent link">&para;</a></h2>
 
 
@@ -4841,6 +5388,46 @@ transforms, and user-defined tasks.</p>
 
 </div>
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.config.schema.UbunyeConfig.resolved_catalog" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">resolved_catalog</span>
+
+
+<a href="#ubunye.config.schema.UbunyeConfig.resolved_catalog" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">resolved_catalog</span><span class="p">(</span><span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return the catalog name, with profile override if available.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.config.schema.UbunyeConfig.resolved_schema" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">resolved_schema</span>
+
+
+<a href="#ubunye.config.schema.UbunyeConfig.resolved_schema" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">resolved_schema</span><span class="p">(</span><span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return the schema name, with profile override if available.</p>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -5091,18 +5678,20 @@ unchanged via <code>model_dump()</code>.</p>
     </div>
 
 </div><hr />
-<h2 id="spark-backend">Spark Backend<a class="headerlink" href="#spark-backend" title="Permanent link">&para;</a></h2>
+<h2 id="backends">Backends<a class="headerlink" href="#backends" title="Permanent link">&para;</a></h2>
+<h3 id="sparkbackend">SparkBackend<a class="headerlink" href="#sparkbackend" title="Permanent link">&para;</a></h3>
+<p>Creates and manages a new SparkSession. Use for local development, CI, and non-Databricks environments.</p>
 
 
 <div class="doc doc-object doc-class">
 
 
 
-<h3 id="ubunye.backends.spark_backend.SparkBackend" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">ubunye.backends.spark_backend.SparkBackend</span>
 
 
-<a href="#ubunye.backends.spark_backend.SparkBackend" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.backends.spark_backend.SparkBackend" class="headerlink" title="Permanent link">&para;</a></h4>
 
 
     <div class="doc doc-contents first">
@@ -5112,12 +5701,12 @@ unchanged via <code>model_dump()</code>.</p>
 
 
         <p>Creates and manages a SparkSession for a Ubunye run.</p>
-<h5 id="ubunye.backends.spark_backend.SparkBackend--parameters">Parameters<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend--parameters" title="Permanent link">&para;</a></h5>
+<h6 id="ubunye.backends.spark_backend.SparkBackend--parameters">Parameters<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend--parameters" title="Permanent link">&para;</a></h6>
 <p>app_name : str
     Spark application name (appears in Spark UI/history server).
 conf : Optional[Dict[str, str]]
     Spark configuration key-values (e.g., {"spark.master": "yarn"}).</p>
-<h5 id="ubunye.backends.spark_backend.SparkBackend--notes">Notes<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend--notes" title="Permanent link">&para;</a></h5>
+<h6 id="ubunye.backends.spark_backend.SparkBackend--notes">Notes<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend--notes" title="Permanent link">&para;</a></h6>
 <ul>
 <li>pyspark is imported lazily inside <code>start()</code> to keep installation lightweight.</li>
 <li><code>spark</code> property is only valid after <code>start()</code> (or inside the context manager).</li>
@@ -5145,7 +5734,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h4 id="ubunye.backends.spark_backend.SparkBackend.app_name" class="doc doc-heading">
+<h5 id="ubunye.backends.spark_backend.SparkBackend.app_name" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">app_name</span>
 
 
@@ -5153,7 +5742,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.app_name" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.spark_backend.SparkBackend.app_name" class="headerlink" title="Permanent link">&para;</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">app_name</span>
 </code></pre></div>
 
@@ -5169,7 +5758,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h4 id="ubunye.backends.spark_backend.SparkBackend.conf_effective" class="doc doc-heading">
+<h5 id="ubunye.backends.spark_backend.SparkBackend.conf_effective" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">conf_effective</span>
 
 
@@ -5177,7 +5766,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.conf_effective" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.spark_backend.SparkBackend.conf_effective" class="headerlink" title="Permanent link">&para;</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">conf_effective</span>
 </code></pre></div>
 
@@ -5194,7 +5783,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h4 id="ubunye.backends.spark_backend.SparkBackend.conf_input" class="doc doc-heading">
+<h5 id="ubunye.backends.spark_backend.SparkBackend.conf_input" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">conf_input</span>
 
 
@@ -5202,7 +5791,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.conf_input" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.spark_backend.SparkBackend.conf_input" class="headerlink" title="Permanent link">&para;</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">conf_input</span>
 </code></pre></div>
 
@@ -5218,7 +5807,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h4 id="ubunye.backends.spark_backend.SparkBackend.is_spark" class="doc doc-heading">
+<h5 id="ubunye.backends.spark_backend.SparkBackend.is_spark" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">is_spark</span>
 
 
@@ -5226,7 +5815,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.is_spark" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.spark_backend.SparkBackend.is_spark" class="headerlink" title="Permanent link">&para;</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">is_spark</span>
 </code></pre></div>
 
@@ -5242,7 +5831,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h4 id="ubunye.backends.spark_backend.SparkBackend.spark" class="doc doc-heading">
+<h5 id="ubunye.backends.spark_backend.SparkBackend.spark" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">spark</span>
 
 
@@ -5250,7 +5839,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.spark" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.spark_backend.SparkBackend.spark" class="headerlink" title="Permanent link">&para;</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">spark</span>
 </code></pre></div>
 
@@ -5271,11 +5860,11 @@ conf : Optional[Dict[str, str]]
 <div class="doc doc-object doc-function">
 
 
-<h4 id="ubunye.backends.spark_backend.SparkBackend.start" class="doc doc-heading">
+<h5 id="ubunye.backends.spark_backend.SparkBackend.start" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">start</span>
 
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.start" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.spark_backend.SparkBackend.start" class="headerlink" title="Permanent link">&para;</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">start</span><span class="p">()</span>
 </code></pre></div>
 
@@ -5292,17 +5881,111 @@ conf : Optional[Dict[str, str]]
 <div class="doc doc-object doc-function">
 
 
-<h4 id="ubunye.backends.spark_backend.SparkBackend.stop" class="doc doc-heading">
+<h5 id="ubunye.backends.spark_backend.SparkBackend.stop" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">stop</span>
 
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.stop" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.spark_backend.SparkBackend.stop" class="headerlink" title="Permanent link">&para;</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">stop</span><span class="p">()</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Stop the SparkSession if running.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="databricksbackend">DatabricksBackend<a class="headerlink" href="#databricksbackend" title="Permanent link">&para;</a></h3>
+<p>Reuses an active SparkSession instead of creating one. Use on Databricks where a session already exists.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="ubunye.backends.databricks_backend.DatabricksBackend" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ubunye.backends.databricks_backend.DatabricksBackend</span>
+
+
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="Backend (ubunye.core.interfaces.Backend)" href="#ubunye.core.interfaces.Backend">Backend</a></code></p>
+
+
+
+        <p>Backend that reuses the existing Databricks SparkSession.</p>
+<h6 id="ubunye.backends.databricks_backend.DatabricksBackend--parameters">Parameters<a class="headerlink" href="#ubunye.backends.databricks_backend.DatabricksBackend--parameters" title="Permanent link">&para;</a></h6>
+<p>spark : Optional[SparkSession]
+    An explicit session to wrap. If <em>None</em> (the default), the active
+    session is retrieved via <code>SparkSession.getActiveSession()</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.start" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">start</span>
+
+
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.start" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">start</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Attach to the active SparkSession if one wasn't provided.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.stop" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">stop</span>
+
+
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.stop" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">stop</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>No-op — we don't own the session, so we never stop it.</p>
 
 
     </div>
@@ -8152,7 +8835,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 20, 2026 01:55:54 UTC">March 20, 2026</span>
   </span>
 
     
