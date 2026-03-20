@@ -2,114 +2,118 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/api/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/changelog/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/cli/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/contributing/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/</loc>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/dev_guide/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/engine/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/io/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/jinja/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/orchestration/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/overview/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/transform/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/hive/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/jdbc/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/overview/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/plugin_guide/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/rest_api/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/s3/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/unity/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/getting_started/install/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/getting_started/quickstart/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/getting_started/structure/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/ml/model_contract/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/ml/registry/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/drift/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/features/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/rag/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/rest_api/</loc>
-         <lastmod>2026-03-04</lastmod>
+         <lastmod>2026-03-20</lastmod>
     </url>
 </urlset>

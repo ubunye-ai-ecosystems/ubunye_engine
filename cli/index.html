@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -371,6 +371,25 @@
     
   
   API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../deployment/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Deployment
 
       </a>
     </li>
@@ -1521,6 +1540,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#common-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common flags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ubunye-init" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1558,6 +1588,17 @@
     <span class="md-ellipsis">
       
         ubunye run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ubunye-test-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ubunye test run
       
     </span>
   </a>
@@ -1610,10 +1651,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#lineage-list" class="md-nav__link">
+  <a href="#lineage-show" class="md-nav__link">
     <span class="md-ellipsis">
       
-        lineage list
+        lineage show
       
     </span>
   </a>
@@ -1621,10 +1662,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#lineage-show" class="md-nav__link">
+  <a href="#lineage-list" class="md-nav__link">
     <span class="md-ellipsis">
       
-        lineage show
+        lineage list
       
     </span>
   </a>
@@ -1805,6 +1846,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../dev_guide/" class="md-nav__link">
         
   
@@ -1934,6 +2002,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#common-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common flags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ubunye-init" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1971,6 +2050,17 @@
     <span class="md-ellipsis">
       
         ubunye run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ubunye-test-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ubunye test run
       
     </span>
   </a>
@@ -2023,10 +2113,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#lineage-list" class="md-nav__link">
+  <a href="#lineage-show" class="md-nav__link">
     <span class="md-ellipsis">
       
-        lineage list
+        lineage show
       
     </span>
   </a>
@@ -2034,10 +2124,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#lineage-show" class="md-nav__link">
+  <a href="#lineage-list" class="md-nav__link">
     <span class="md-ellipsis">
       
-        lineage show
+        lineage list
       
     </span>
   </a>
@@ -2224,11 +2314,11 @@ All commands accept <code>--help</code> for full option details.</p>
 </tr>
 <tr>
 <td><code>plan</code></td>
-<td>Print the execution DAG</td>
+<td>Print the execution plan</td>
 </tr>
 <tr>
 <td><code>run</code></td>
-<td>Execute a task</td>
+<td>Execute one or more tasks</td>
 </tr>
 <tr>
 <td><code>plugins</code></td>
@@ -2261,6 +2351,59 @@ All commands accept <code>--help</code> for full option details.</p>
 <td><code>models</code></td>
 <td>Manage model versions and lifecycle</td>
 </tr>
+<tr>
+<td><code>test</code></td>
+<td>Run tasks in test mode and report PASS/FAIL</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="common-flags">Common flags<a class="headerlink" href="#common-flags" title="Permanent link">&para;</a></h2>
+<p>Most commands share a set of path and variable flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--usecase-dir</code></td>
+<td><code>-d</code></td>
+<td>Root pipelines directory</td>
+</tr>
+<tr>
+<td><code>--usecase</code></td>
+<td><code>-u</code></td>
+<td>Use-case name</td>
+</tr>
+<tr>
+<td><code>--package</code></td>
+<td><code>-p</code></td>
+<td>Package / pipeline name</td>
+</tr>
+<tr>
+<td><code>--task-list</code></td>
+<td><code>-t</code></td>
+<td>Task name(s) — repeatable</td>
+</tr>
+<tr>
+<td><code>--data-timestamp</code></td>
+<td><code>-dt</code></td>
+<td>Data timestamp, injected as <code>{{ dt }}</code> in Jinja</td>
+</tr>
+<tr>
+<td><code>--data-timestamp-format</code></td>
+<td><code>-dtf</code></td>
+<td>Timestamp format, injected as <code>{{ dtf }}</code></td>
+</tr>
+<tr>
+<td><code>--mode</code></td>
+<td><code>-m</code></td>
+<td>Engine profile / run mode (default: <code>DEV</code>)</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -2276,7 +2419,57 @@ All commands accept <code>--help</code> for full option details.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pipelines/fraud_detection/ingestion/claim_etl/
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    config.yaml
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    transformations.py
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    notebooks/
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        claim_etl_dev.ipynb    ← interactive dev notebook (Databricks-ready)
 </code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--usecase-dir</code></td>
+<td><code>-d</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Root directory</td>
+</tr>
+<tr>
+<td><code>--usecase</code></td>
+<td><code>-u</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Use-case name</td>
+</tr>
+<tr>
+<td><code>--package</code></td>
+<td><code>-p</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Package name</td>
+</tr>
+<tr>
+<td><code>--task-list</code></td>
+<td><code>-t</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Task(s) to scaffold (repeatable)</td>
+</tr>
+<tr>
+<td><code>--overwrite</code></td>
+<td></td>
+<td>no</td>
+<td><code>no-overwrite</code></td>
+<td>Overwrite existing files</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="ubunye-validate"><code>ubunye validate</code><a class="headerlink" href="#ubunye-validate" title="Permanent link">&para;</a></h2>
 <p>Render Jinja and validate the config schema. Exits <code>0</code> on success, <code>1</code> on error.</p>
@@ -2285,166 +2478,365 @@ All commands accept <code>--help</code> for full option details.</p>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span>-p<span class="w"> </span>ingestion<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span>-t<span class="w"> </span>claim_etl<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span>--var<span class="w"> </span><span class="nv">dt</span><span class="o">=</span><span class="m">2024</span>-06-01
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span>-dt<span class="w"> </span><span class="m">2024</span>-06-01
 </code></pre></div>
-<hr />
-<h2 id="ubunye-plan"><code>ubunye plan</code><a class="headerlink" href="#ubunye-plan" title="Permanent link">&para;</a></h2>
-<p>Print the execution DAG — inputs → transform → outputs — without running.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ubunye<span class="w"> </span>plan<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span>-p<span class="w"> </span>ingestion<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span>-t<span class="w"> </span>claim_etl
+<p>Validate all tasks in a package:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ubunye<span class="w"> </span>validate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>--all
 </code></pre></div>
-<hr />
-<h2 id="ubunye-run"><code>ubunye run</code><a class="headerlink" href="#ubunye-run" title="Permanent link">&para;</a></h2>
-<p>Execute a task: read inputs → transform → write outputs.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ubunye<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span>-p<span class="w"> </span>ingestion<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span>-t<span class="w"> </span>claim_etl<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span>--profile<span class="w"> </span>prod<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span>--lineage<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span>--var<span class="w"> </span><span class="nv">dt</span><span class="o">=</span><span class="m">2024</span>-06-01
+<p>Validate against a specific profile:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ubunye<span class="w"> </span>validate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>--profile<span class="w"> </span>dev
 </code></pre></div>
 <table>
 <thead>
 <tr>
 <th>Flag</th>
+<th>Short</th>
+<th>Required</th>
+<th>Default</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>-d, --dir</code></td>
-<td>Root pipelines directory</td>
+<td><code>--usecase-dir</code></td>
+<td><code>-d</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Root directory</td>
 </tr>
 <tr>
-<td><code>-u, --use-case</code></td>
+<td><code>--usecase</code></td>
+<td><code>-u</code></td>
+<td>yes</td>
+<td>—</td>
 <td>Use-case name</td>
 </tr>
 <tr>
-<td><code>-p, --pipeline</code></td>
-<td>Pipeline name</td>
+<td><code>--package</code></td>
+<td><code>-p</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Package name</td>
 </tr>
 <tr>
-<td><code>-t, --task</code></td>
-<td>Task name</td>
+<td><code>--task-list</code></td>
+<td><code>-t</code></td>
+<td>no</td>
+<td>—</td>
+<td>Task(s) to validate (repeatable)</td>
+</tr>
+<tr>
+<td><code>--all</code></td>
+<td></td>
+<td>no</td>
+<td>false</td>
+<td>Validate all tasks in the package</td>
 </tr>
 <tr>
 <td><code>--profile</code></td>
-<td>Engine profile to activate (dev / staging / prod)</td>
+<td></td>
+<td>no</td>
+<td>—</td>
+<td>Profile to validate against (e.g. dev, prod)</td>
+</tr>
+<tr>
+<td><code>--data-timestamp</code></td>
+<td><code>-dt</code></td>
+<td>no</td>
+<td>—</td>
+<td>Data timestamp</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ubunye-plan"><code>ubunye plan</code><a class="headerlink" href="#ubunye-plan" title="Permanent link">&para;</a></h2>
+<p>Print the execution plan — inputs, transform, outputs — without running.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ubunye<span class="w"> </span>plan<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span>-p<span class="w"> </span>ingestion<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span>-t<span class="w"> </span>claim_etl
+</code></pre></div>
+<hr />
+<h2 id="ubunye-run"><code>ubunye run</code><a class="headerlink" href="#ubunye-run" title="Permanent link">&para;</a></h2>
+<p>Execute one or more tasks sequentially: read inputs, transform, write outputs.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ubunye<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span>-p<span class="w"> </span>ingestion<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span>-t<span class="w"> </span>claim_etl<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span>-m<span class="w"> </span>PROD<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">    </span>--lineage<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span>-dt<span class="w"> </span><span class="m">2024</span>-06-01
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--usecase-dir</code></td>
+<td><code>-d</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Root pipelines directory</td>
+</tr>
+<tr>
+<td><code>--usecase</code></td>
+<td><code>-u</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Use-case name</td>
+</tr>
+<tr>
+<td><code>--package</code></td>
+<td><code>-p</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Package name</td>
+</tr>
+<tr>
+<td><code>--task-list</code></td>
+<td><code>-t</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Task(s) to execute (repeatable)</td>
+</tr>
+<tr>
+<td><code>--data-timestamp</code></td>
+<td><code>-dt</code></td>
+<td>no</td>
+<td>—</td>
+<td>Data timestamp</td>
+</tr>
+<tr>
+<td><code>--data-timestamp-format</code></td>
+<td><code>-dtf</code></td>
+<td>no</td>
+<td>—</td>
+<td>Timestamp format</td>
+</tr>
+<tr>
+<td><code>--mode</code></td>
+<td><code>-m</code></td>
+<td>no</td>
+<td><code>DEV</code></td>
+<td>Run mode (DEV/PROD)</td>
+</tr>
+<tr>
+<td><code>--deploy-mode</code></td>
+<td></td>
+<td>no</td>
+<td><code>client</code></td>
+<td>Spark deploy mode (cluster/client)</td>
 </tr>
 <tr>
 <td><code>--lineage</code></td>
-<td>Record run provenance to <code>.ubunye/lineage/</code></td>
+<td></td>
+<td>no</td>
+<td>false</td>
+<td>Record lineage for this run</td>
 </tr>
 <tr>
-<td><code>--var KEY=VALUE</code></td>
-<td>Inject a Jinja variable (repeatable)</td>
+<td><code>--lineage-dir</code></td>
+<td></td>
+<td>no</td>
+<td><code>.ubunye/lineage</code></td>
+<td>Root directory for lineage records</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code>run</code> command does not have <code>--all</code> or <code>--profile</code> flags.
+Use <code>-m/--mode</code> for environment switching and list tasks explicitly with <code>-t</code>.</p>
+</div>
+<hr />
+<h2 id="ubunye-test-run"><code>ubunye test run</code><a class="headerlink" href="#ubunye-test-run" title="Permanent link">&para;</a></h2>
+<p>Run one or more tasks with a test profile and report PASS/FAIL per task.
+Config is validated before Spark starts; invalid configs are reported as <code>[CONFIG FAIL]</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>ubunye<span class="w"> </span><span class="nb">test</span><span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span>-p<span class="w"> </span>ingestion<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span>-t<span class="w"> </span>claim_etl
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--usecase-dir</code></td>
+<td><code>-d</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Root directory</td>
+</tr>
+<tr>
+<td><code>--usecase</code></td>
+<td><code>-u</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Use-case name</td>
+</tr>
+<tr>
+<td><code>--package</code></td>
+<td><code>-p</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Package name</td>
+</tr>
+<tr>
+<td><code>--task-list</code></td>
+<td><code>-t</code></td>
+<td>yes</td>
+<td>—</td>
+<td>Task(s) to test (repeatable)</td>
+</tr>
+<tr>
+<td><code>--profile</code></td>
+<td></td>
+<td>no</td>
+<td><code>test</code></td>
+<td>Config profile to use</td>
+</tr>
+<tr>
+<td><code>--data-timestamp</code></td>
+<td><code>-dt</code></td>
+<td>no</td>
+<td>—</td>
+<td>Data timestamp</td>
+</tr>
+<tr>
+<td><code>--lineage / --no-lineage</code></td>
+<td></td>
+<td>no</td>
+<td><code>lineage</code></td>
+<td>Record lineage (ON by default)</td>
+</tr>
+<tr>
+<td><code>--lineage-dir</code></td>
+<td></td>
+<td>no</td>
+<td><code>.ubunye/lineage</code></td>
+<td>Lineage directory</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="ubunye-plugins"><code>ubunye plugins</code><a class="headerlink" href="#ubunye-plugins" title="Permanent link">&para;</a></h2>
 <p>List all readers, writers, transforms, and monitors discovered via entry points.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ubunye<span class="w"> </span>plugins
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ubunye<span class="w"> </span>plugins
 </code></pre></div>
 <hr />
 <h2 id="ubunye-config"><code>ubunye config</code><a class="headerlink" href="#ubunye-config" title="Permanent link">&para;</a></h2>
-<p>Show the fully expanded (Jinja-rendered, Pydantic-validated) config as JSON.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ubunye<span class="w"> </span>config<span class="w"> </span>show<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span>-p<span class="w"> </span>ingestion<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span>-t<span class="w"> </span>claim_etl<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span>--var<span class="w"> </span><span class="nv">dt</span><span class="o">=</span><span class="m">2024</span>-06-01
+<p>Show the fully expanded (Jinja-rendered, Pydantic-validated) config.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>ubunye<span class="w"> </span>config<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span>-p<span class="w"> </span>ingestion<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span>-t<span class="w"> </span>claim_etl<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">    </span>-dt<span class="w"> </span><span class="m">2024</span>-06-01
 </code></pre></div>
 <hr />
 <h2 id="ubunye-version"><code>ubunye version</code><a class="headerlink" href="#ubunye-version" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>ubunye<span class="w"> </span>version
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1"># Ubunye Engine v0.1.0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ubunye<span class="w"> </span>version
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># Ubunye Engine v0.1.0</span>
 </code></pre></div>
 <hr />
 <h2 id="ubunye-lineage"><code>ubunye lineage</code><a class="headerlink" href="#ubunye-lineage" title="Permanent link">&para;</a></h2>
 <p>Inspect run provenance records written by <code>ubunye run --lineage</code>.</p>
-<h3 id="lineage-list"><code>lineage list</code><a class="headerlink" href="#lineage-list" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>list
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>list<span class="w"> </span>--use-case<span class="w"> </span>fraud_detection
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>list<span class="w"> </span>--limit<span class="w"> </span><span class="m">20</span>
-</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Lineage sub-commands use <code>--task</code> (<code>-t</code> singular), not <code>--task-list</code>.</p>
+</div>
 <h3 id="lineage-show"><code>lineage show</code><a class="headerlink" href="#lineage-show" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span>--run-id<span class="w"> </span>&lt;run_id&gt;
+<p>Show a run record as formatted JSON (latest or specific run).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">    </span>--run-id<span class="w"> </span>&lt;run_id&gt;
+</code></pre></div>
+<h3 id="lineage-list"><code>lineage list</code><a class="headerlink" href="#lineage-list" title="Permanent link">&para;</a></h3>
+<p>List recent runs for a task (newest first).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>list<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>list<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span>
 </code></pre></div>
 <h3 id="lineage-compare"><code>lineage compare</code><a class="headerlink" href="#lineage-compare" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>compare<span class="w"> </span>--run-ids<span class="w"> </span>&lt;id1&gt;<span class="w"> </span>&lt;id2&gt;
+<p>Diff two run records — highlight changes in hashes, row counts, and status.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>compare<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span>--run-id1<span class="w"> </span>&lt;id1&gt;<span class="w"> </span>--run-id2<span class="w"> </span>&lt;id2&gt;
 </code></pre></div>
 <h3 id="lineage-search"><code>lineage search</code><a class="headerlink" href="#lineage-search" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>search<span class="w"> </span>--task<span class="w"> </span>claim_etl
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>search<span class="w"> </span>--tag<span class="w"> </span><span class="nv">status</span><span class="o">=</span>success
+<p>Search all recorded runs across tasks with optional filters.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>search<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-t<span class="w"> </span>claim_etl
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>search<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>--status<span class="w"> </span>success<span class="w"> </span>--since<span class="w"> </span><span class="m">2024</span>-06-01
 </code></pre></div>
 <h3 id="lineage-trace"><code>lineage trace</code><a class="headerlink" href="#lineage-trace" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>trace<span class="w"> </span>--run-id<span class="w"> </span>&lt;run_id&gt;
+<p>Print the input, transform, output data flow graph for a run.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>trace<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">    </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
 </code></pre></div>
-<p>Prints a full provenance chain: config hash, input data hashes, transform, outputs.</p>
 <hr />
 <h2 id="ubunye-models"><code>ubunye models</code><a class="headerlink" href="#ubunye-models" title="Permanent link">&para;</a></h2>
 <p>Manage ML model versions and lifecycle.
-Requires the <code>--use-case</code>, <code>--model</code>, and <code>--store</code> flags on all sub-commands.</p>
+All sub-commands require: <code>--use-case</code> (<code>-u</code>), <code>--model</code> (<code>-m</code>), <code>--store</code> (<code>-s</code>).</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Note: <code>models</code> uses <code>--use-case</code> (hyphenated), while other commands use <code>--usecase</code>.</p>
+</div>
 <h3 id="models-list"><code>models list</code><a class="headerlink" href="#models-list" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <h3 id="models-info"><code>models info</code><a class="headerlink" href="#models-info" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <h3 id="models-promote"><code>models promote</code><a class="headerlink" href="#models-promote" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>promote<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">    </span>--to<span class="w"> </span>production<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">    </span>--promoted-by<span class="w"> </span>alice<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>promote<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">    </span>--to<span class="w"> </span>production<span class="w"> </span>--promoted-by<span class="w"> </span>alice<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <p>Target stages: <code>staging</code>, <code>production</code>.</p>
 <h3 id="models-demote"><code>models demote</code><a class="headerlink" href="#models-demote" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>demote<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">    </span>--to<span class="w"> </span>staging<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>demote<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">    </span>--to<span class="w"> </span>staging<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <p>Target stages: <code>development</code>, <code>staging</code>, <code>archived</code>.</p>
 <h3 id="models-rollback"><code>models rollback</code><a class="headerlink" href="#models-rollback" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>rollback<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>rollback<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <p>Archives the current production version and restores <code>--version</code> to production.</p>
 <h3 id="models-archive"><code>models archive</code><a class="headerlink" href="#models-archive" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>archive<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.1.0<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>archive<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.1.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <h3 id="models-compare"><code>models compare</code><a class="headerlink" href="#models-compare" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>compare<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">    </span>--versions<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>compare<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">    </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">    </span>--versions<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span>--versions<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 
 
@@ -2468,7 +2860,7 @@ Requires the <code>--use-case</code>, <code>--model</code>, and <code>--store</c
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 20, 2026 01:55:54 UTC">March 20, 2026</span>
   </span>
 
     
