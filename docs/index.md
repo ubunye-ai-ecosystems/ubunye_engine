@@ -34,6 +34,29 @@ Define your pipeline in YAML. Write a Python class. Run it.
 - **Telemetry-ready** — Prometheus, OpenTelemetry, and JSON event logs via the `monitors` protocol.
 - **Orchestration export** — generate Airflow DAGs or Databricks job JSON from the same config.
 
+## Two entry points
+
+=== "CLI"
+
+    ```bash
+    ubunye run -d pipelines -u fraud -p etl -t claims -m PROD --lineage
+    ```
+
+=== "Python API (Databricks)"
+
+    ```python
+    import ubunye
+
+    outputs = ubunye.run_task(
+        task_dir="pipelines/fraud/etl/claims",
+        mode="PROD",
+        dt="2024-06-01",
+    )
+    ```
+
+The Python API auto-detects and reuses an active SparkSession on Databricks.
+When no session exists, it creates one — same as the CLI.
+
 ## Quick Example
 
 ```yaml
@@ -57,7 +80,7 @@ CONFIG:
 ```
 
 ```bash
-ubunye run -d pipelines -u fraud -p etl -t claims --profile prod
+ubunye run -d pipelines -u fraud -p etl -t claims -m PROD
 ```
 
 ## Documentation Map
@@ -69,4 +92,6 @@ ubunye run -d pipelines -u fraud -p etl -t claims --profile prod
 - [ML — Model Contract](ml/model_contract.md) — the `UbunyeModel` ABC
 - [ML — Registry](ml/registry.md) — versioning, promotion, gates
 - [CLI Reference](cli.md) — all commands and flags
+- [API Reference](api.md) — Python API (`run_task`, `run_pipeline`)
+- [Deployment](deployment.md) — Databricks Asset Bundles + GitHub Actions
 - [Developer Guide](dev_guide.md) — architecture, plugins, testing

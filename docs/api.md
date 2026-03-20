@@ -4,6 +4,46 @@ Auto-generated from docstrings via [mkdocstrings](https://mkdocstrings.github.io
 
 ---
 
+## Python API
+
+The public Python API for running Ubunye tasks without the CLI.
+Primary use case: Databricks notebooks and jobs where a SparkSession already exists.
+
+```python
+import ubunye
+
+# Run a single task
+outputs = ubunye.run_task(
+    task_dir="pipelines/fraud_detection/ingestion/claim_etl",
+    mode="nonprod",
+    dt="202510",
+)
+
+# Run multiple tasks sequentially
+results = ubunye.run_pipeline(
+    usecase_dir="pipelines",
+    usecase="fraud_detection",
+    package="ingestion",
+    tasks=["claim_etl", "feature_engineering"],
+    mode="nonprod",
+    dt="202510",
+)
+```
+
+::: ubunye.api.run_task
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 3
+
+::: ubunye.api.run_pipeline
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 3
+
+---
+
 ## Core Engine
 
 ::: ubunye.core.runtime.Engine
@@ -64,13 +104,27 @@ Auto-generated from docstrings via [mkdocstrings](https://mkdocstrings.github.io
 
 ---
 
-## Spark Backend
+## Backends
+
+### SparkBackend
+
+Creates and manages a new SparkSession. Use for local development, CI, and non-Databricks environments.
 
 ::: ubunye.backends.spark_backend.SparkBackend
     options:
       show_root_heading: true
       show_source: false
-      heading_level: 3
+      heading_level: 4
+
+### DatabricksBackend
+
+Reuses an active SparkSession instead of creating one. Use on Databricks where a session already exists.
+
+::: ubunye.backends.databricks_backend.DatabricksBackend
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 4
 
 ---
 

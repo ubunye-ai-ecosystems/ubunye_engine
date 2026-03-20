@@ -7,4 +7,6 @@ try:
 except PackageNotFoundError:
     __version__ = "unknown"
 
-__all__ = ["core", "config", "cli", "plugins", "backends"]
+from ubunye.api import run_pipeline, run_task
+
+__all__ = ["core", "config", "cli", "plugins", "backends", "run_task", "run_pipeline"]

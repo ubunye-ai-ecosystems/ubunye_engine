@@ -16,7 +16,9 @@ my_project/
 │       └── ingestion/             ← pipeline (-p flag)
 │           └── claim_etl/         ← task (-t flag)
 │               ├── config.yaml
-│               └── transformations.py
+│               ├── transformations.py
+│               └── notebooks/
+│                   └── claim_etl_dev.ipynb  ← interactive dev notebook
 ├── .ubunye/
 │   ├── lineage/                   ← run provenance (--lineage flag)
 │   └── model_store/               ← model registry artifacts
@@ -31,8 +33,9 @@ my_project/
 | File | Purpose |
 |---|---|
 | `config.yaml` | Declares inputs, transform, outputs, engine, orchestration |
-| `transformations.py` | Optional Python transform (`Task` subclass) |
+| `transformations.py` | Python transform (`Task` subclass) |
 | `model.py` | Optional ML model (`UbunyeModel` subclass) for `type: model` transforms |
+| `notebooks/<task>_dev.ipynb` | Interactive dev notebook (Databricks-ready) |
 
 Every task is **self-contained**. The config is the single source of truth for what runs and where.
 
@@ -82,16 +85,19 @@ ORCHESTRATION:
 
 ```
 ubunye/
+├── api.py          — Public Python API (run_task, run_pipeline)
 ├── core/           — Engine, Registry, interfaces (Reader/Writer/Transform/Task/Backend)
 ├── config/         — YAML loader, Jinja resolver, Pydantic schema
-├── backends/       — SparkBackend (lazy PySpark init)
+├── backends/
+│   ├── spark_backend.py      — Creates new SparkSession
+│   └── databricks_backend.py — Reuses active SparkSession (Databricks)
 ├── plugins/
-│   ├── readers/    — hive, jdbc, unity, rest_api
+│   ├── readers/    — hive, jdbc, unity, rest_api, s3
 │   ├── writers/    — s3, jdbc, unity, rest_api
 │   ├── transforms/ — noop, model_transform
 │   └── ml/         — BaseModel, SklearnModel, SparkMLModel (internal wrappers)
 ├── models/         — UbunyeModel contract, loader, registry, gates
-├── cli/            — main, lineage, models sub-apps
+├── cli/            — main, lineage, models, test sub-apps
 ├── lineage/        — RunContext, LineageRecorder, FileSystemLineageStore
 └── telemetry/      — events, mlflow, prometheus, otel, monitors protocol
 ```
@@ -119,8 +125,16 @@ ENGINE:
 Select at runtime:
 
 ```bash
-ubunye run -d pipelines -u fraud -p etl -t claims --profile dev
-ubunye run -d pipelines -u fraud -p etl -t claims --profile prod
+ubunye run -d pipelines -u fraud -p etl -t claims -m dev
+ubunye run -d pipelines -u fraud -p etl -t claims -m prod
+```
+
+Or via the Python API:
+
+```python
+import ubunye
+
+ubunye.run_task(task_dir="pipelines/fraud/etl/claims", mode="dev")
 ```
 
 ---

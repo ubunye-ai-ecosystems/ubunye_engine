@@ -7,19 +7,20 @@ Architecture deep-dive and extension patterns for contributors and advanced user
 ## Architecture overview
 
 ```
-CLI (Typer)
-    └── ubunye run
-            ↓
-        ConfigLoader          ← YAML + Jinja2 → Pydantic v2
-            ↓
-        Engine.run(cfg)
-            ├── SparkBackend.start()
-            ├── PluginRegistry.get_reader(format) → Reader.read()  [per input]
-            ├── PluginRegistry.get_transform(type) → Transform.apply()
-            ├── PluginRegistry.get_writer(format) → Writer.write() [per output]
-            └── SparkBackend.stop()
-                    ↓
-            LineageRecorder (if --lineage)
+Entry points:
+    CLI (ubunye run)  ──┐
+    Python API        ──┤
+                        ↓
+                    ConfigLoader          ← YAML + Jinja2 → Pydantic v2
+                        ↓
+                    Engine.run(cfg)
+                        ├── Backend.start()     ← SparkBackend or DatabricksBackend
+                        ├── Registry.get_reader(format) → Reader.read()  [per input]
+                        ├── Registry.get_transform(type) → Transform.apply()
+                        ├── Registry.get_writer(format) → Writer.write() [per output]
+                        └── Backend.stop()
+                                ↓
+                        LineageRecorder (if --lineage)
 ```
 
 ---
@@ -75,15 +76,56 @@ The `task_dir` is added to `sys.path` before step 4, so `transformations.py` and
 
 ---
 
-## SparkBackend
+## Backends
+
+### SparkBackend
 
 `ubunye/backends/spark_backend.py`:
 
 - Lazily imports `pyspark` — no import error if PySpark is not installed and Spark isn't used.
 - Implements context manager (`with SparkBackend(...) as be:`).
 - `be.spark` — the `SparkSession`.
-- `be.spark_conf` — dict of active configuration.
+- `be.conf_effective` — dict of active configuration.
 - Safe for multiple `start()` calls (idempotent).
+- `stop()` terminates the session.
+
+### DatabricksBackend
+
+`ubunye/backends/databricks_backend.py`:
+
+- Wraps an **existing** SparkSession instead of creating a new one.
+- If no session is passed explicitly, retrieves the active session via `SparkSession.getActiveSession()`.
+- `start()` attaches to the active session (or no-ops if already attached).
+- `stop()` is a **no-op** — we don't own the session, so we never stop it.
+- Use this on Databricks where a SparkSession is always available.
+
+### Auto-detection in the Python API
+
+`ubunye.run_task()` and `ubunye.run_pipeline()` auto-detect the backend:
+
+1. If `spark=` is passed explicitly → `DatabricksBackend(spark=session)`
+2. If an active SparkSession exists → `DatabricksBackend`
+3. Otherwise → `SparkBackend` with config-driven Spark conf
+
+---
+
+## Python API
+
+`ubunye/api.py` exposes `run_task()` and `run_pipeline()` — the same execution
+pipeline as the CLI but callable from Python code (notebooks, scripts, tests).
+
+Key differences from the CLI path:
+
+- **Backend auto-detection**: picks `DatabricksBackend` if an active session exists, otherwise `SparkBackend`.
+- **No subprocess**: runs in-process, so the caller can inspect returned DataFrames directly.
+- **Shared session lifecycle**: when using `DatabricksBackend`, the session stays alive after the run.
+
+Both functions are re-exported from `ubunye.__init__`:
+
+```python
+import ubunye
+outputs = ubunye.run_task(task_dir="...", mode="DEV")
+```
 
 ---
 

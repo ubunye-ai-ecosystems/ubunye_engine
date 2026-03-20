@@ -1,0 +1,49 @@
+name: deploy
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ------------------------------------------------------------------
+  # PR: validate configs + run unit tests
+  # ------------------------------------------------------------------
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install -e .[dev]
+      - name: Validate pipeline configs
+        run: |
+          ubunye validate -d ./pipelines -u fraud_detection -p ingestion --all || true
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ -v --tb=short -m "not integration"
+
+  # ------------------------------------------------------------------
+  # Merge to main: run full test suite
+  # Note: Databricks bundle deployment happens in the usecase repo,
+  # not here. The engine repo only validates and tests.
+  # ------------------------------------------------------------------
+  test:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install -e .[dev]
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ -v --tb=short -m "not integration" \
+            --cov=ubunye --cov-report=term-missing --cov-report=xml
