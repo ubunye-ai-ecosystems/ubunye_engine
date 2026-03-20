@@ -40,8 +40,9 @@ from ubunye.core.runtime import EngineContext, Registry
 from ubunye.telemetry.monitors import load_monitors, safe_call
 
 
-def _make_app_name(usecase: Optional[str] = None, package: Optional[str] = None,
-                    task: Optional[str] = None) -> str:
+def _make_app_name(
+    usecase: Optional[str] = None, package: Optional[str] = None, task: Optional[str] = None
+) -> str:
     """Build a descriptive Spark app name: ``ubunye:<usecase>.<package>.<task>``."""
     parts = [p for p in (usecase, package, task) if p]
     return f"ubunye:{'.'.join(parts)}" if parts else "ubunye"
@@ -339,9 +340,7 @@ def run_pipeline(
                 profile=mode,
                 task_name=f"{usecase}/{package}/{task}",
             )
-            results[task] = _execute_task(
-                backend, task_path, cfg, context, lineage_recorder
-            )
+            results[task] = _execute_task(backend, task_path, cfg, context, lineage_recorder)
         return results
     finally:
         backend.stop()
