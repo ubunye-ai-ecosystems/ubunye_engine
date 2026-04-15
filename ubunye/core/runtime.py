@@ -63,7 +63,9 @@ _TELEMETRY_ENABLED = os.getenv("UBUNYE_TELEMETRY", "0") not in ("0", "", "false"
 def _discover_hooks() -> List[type[Hook]]:
     """Load Hook classes from the ``ubunye.hooks`` entry point group."""
     eps = md.entry_points()
-    group_eps = eps.get("ubunye.hooks", []) if hasattr(eps, "get") else eps.select(group="ubunye.hooks")
+    group_eps = (
+        eps.get("ubunye.hooks", []) if hasattr(eps, "get") else eps.select(group="ubunye.hooks")
+    )
     classes: List[type[Hook]] = []
     for ep in group_eps:
         try:
