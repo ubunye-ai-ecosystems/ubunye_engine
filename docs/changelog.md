@@ -94,9 +94,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Jinja2 rendering before Pydantic validation.
   - Semver validation on `VERSION` field.
 
+- **`ubunye export airflow|databricks` CLI** — the `AirflowExporter` and
+  `DatabricksExporter` under `ubunye/orchestration/` are now reachable from the
+  command line. The command loads the task's `config.yaml`, pulls defaults from
+  its `ORCHESTRATION` block, and writes the artifact to `--output`. Airflow emits
+  a DAG Python file; Databricks emits a Jobs API `job.json`. Classes are now
+  exported from `ubunye.orchestration.__init__`.
+
 - **Test infrastructure** — 288 unit tests, all Spark-free in `tests/unit/`.
 
 ### Changed
+
+- `databricks_expoter.py` renamed to `databricks_exporter.py` (typo fix). Not
+  previously exported from `ubunye.orchestration`, so external callers are
+  unaffected.
 
 - **Unified execution path** (`ubunye/core/task_runner.py`) — `api.py`, `cli/main.py run`
   and `cli/test_cmd.py run` previously each reimplemented the read → transform → write

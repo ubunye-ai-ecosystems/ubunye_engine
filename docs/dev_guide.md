@@ -279,18 +279,28 @@ pytest tests/ -m integration
 
 `ubunye/orchestration/`:
 
-- `base.py` — `OrchestrationExporter` ABC with `export(cfg, output_path)`.
-- `airflow.py` — generates an Airflow DAG Python file.
-- `databricks.py` — generates a Databricks Jobs API JSON.
+- `base.py` — `OrchestratorExporter` ABC with
+  `export(config_path, *, output_path, options) -> Path`.
+- `airflow_exporter.py` — `AirflowExporter`, generates a DAG Python file whose
+  single `BashOperator` runs `ubunye run ...`.
+- `databricks_exporter.py` — `DatabricksExporter`, generates a Databricks Jobs
+  API spec (`job.json`).
 
-Exporters read from `cfg.ORCHESTRATION` and `cfg.ENGINE` (for profile-specific cluster settings).
-They do **not** interact with the running cluster — they only produce configuration artifacts.
+Exporters are reached via `ubunye export airflow|databricks`. The CLI
+(`ubunye/cli/export.py`) loads the task's `config.yaml`, dumps the
+`ORCHESTRATION` block to a plain dict, and hands it to the exporter as
+``options``. For the Databricks exporter the nested ``databricks`` cluster block
+is flattened into top-level options so the exporter can splat it into
+``new_cluster``. They do **not** interact with the running cluster — they only
+produce configuration artifacts.
 
 ---
 
 ## Adding a new orchestration target
 
-1. Subclass `OrchestrationExporter`.
-2. Implement `export(cfg: UbunyeConfig, output_path: str, profile: str)`.
-3. Add a new value to `OrchestrationType` enum in `schema.py`.
-4. Register in the CLI `export` command.
+1. Subclass `OrchestratorExporter` and implement `export(config_path, *,
+   output_path, options)`.
+2. Add a new value to `OrchestrationType` enum in `ubunye/config/schema.py`.
+3. Export the class from `ubunye/orchestration/__init__.py`.
+4. Add a new Typer command in `ubunye/cli/export.py` that maps
+   `OrchestrationConfig` fields to the exporter's `options`.

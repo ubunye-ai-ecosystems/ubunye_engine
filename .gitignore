@@ -118,3 +118,4 @@ site/
 # Claude Code
 # =========================
 .claude/
+.mcp.json

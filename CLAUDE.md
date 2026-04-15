@@ -14,7 +14,7 @@ ubunye plugins                  # list discovered plugins
 ## CLI Reference
 
 ### `ubunye` (top-level)
-Commands: `init`, `plugins`, `config`, `validate`, `plan`, `run`, `version`, `lineage`, `models`, `test`
+Commands: `init`, `plugins`, `config`, `validate`, `plan`, `run`, `version`, `lineage`, `models`, `test`, `export`
 
 ---
 
@@ -124,6 +124,29 @@ Run one or more tasks with a test profile and report PASS/FAIL per task.
 ```bash
 ubunye test run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl
 ```
+
+---
+
+### `ubunye export`
+Sub-commands: `airflow`, `databricks`. Render a task's `config.yaml` as a
+scheduler artifact. Defaults come from the `ORCHESTRATION` block of the config.
+
+| Flag | Short | Required | Default | Description |
+|------|-------|----------|---------|-------------|
+| `--config` | `-c` | yes | — | Path to the task `config.yaml` |
+| `--output` | `-o` | yes | — | Where to write the generated artifact |
+| `--profile` | | no | `prod` | Profile embedded in the `ubunye run` command |
+
+**Examples:**
+```bash
+ubunye export airflow -c pipelines/fraud/etl/claims/config.yaml -o dags/claims.py
+ubunye export databricks -c pipelines/fraud/etl/claims/config.yaml -o jobs/claims.json
+```
+
+`export airflow` emits a DAG Python file with a single `BashOperator` that runs
+`ubunye run ...`. `export databricks` emits a Jobs API spec; nested
+`ORCHESTRATION.databricks` cluster settings are flattened into the job's
+`new_cluster` block.
 
 ---
 
@@ -291,6 +314,8 @@ DABs (`bundles/`, `databricks.yml`) belong in the usecase repo, not in the engin
 - `ubunye/cli/lineage.py` — lineage sub-commands
 - `ubunye/cli/models.py` — models sub-commands
 - `ubunye/cli/test_cmd.py` — test sub-commands
+- `ubunye/cli/export.py` — export sub-commands (airflow, databricks)
+- `ubunye/orchestration/` — `AirflowExporter`, `DatabricksExporter`, `OrchestratorExporter`
 - `ubunye/lineage/` — run provenance: RunContext, StepRecord, LineageRecorder, FileSystemLineageStore
 - `ubunye/telemetry/` — events, mlflow, prometheus, otel, monitors
 - `ubunye/telemetry/hooks/` — built-in Hook implementations (EventLoggerHook, OTelHook, PrometheusHook, LegacyMonitorsHook); registered via `ubunye.hooks` entry-point group
