@@ -279,7 +279,7 @@ DABs (`bundles/`, `databricks.yml`) belong in the usecase repo, not in the engin
 
 ## Source Layout
 - `ubunye/api.py` — Public Python API (`run_task`, `run_pipeline`)
-- `ubunye/core/` — Engine, Registry, interfaces (Reader/Writer/Transform/Task/Backend)
+- `ubunye/core/` — Engine, Registry, interfaces (Reader/Writer/Transform/Task/Backend), `hooks.py` (Hook / HookChain observability abstraction)
 - `ubunye/config/` — YAML loader + Pydantic v2 schema
 - `ubunye/backends/spark_backend.py` — SparkSession lifecycle (creates new session)
 - `ubunye/backends/databricks_backend.py` — Reuses active SparkSession (Databricks)
@@ -293,6 +293,7 @@ DABs (`bundles/`, `databricks.yml`) belong in the usecase repo, not in the engin
 - `ubunye/cli/test_cmd.py` — test sub-commands
 - `ubunye/lineage/` — run provenance: RunContext, StepRecord, LineageRecorder, FileSystemLineageStore
 - `ubunye/telemetry/` — events, mlflow, prometheus, otel, monitors
+- `ubunye/telemetry/hooks/` — built-in Hook implementations (EventLoggerHook, OTelHook, PrometheusHook, LegacyMonitorsHook); registered via `ubunye.hooks` entry-point group
 - `ubunye/orchestration/` — Airflow/Databricks exporters
 - `pipelines/` — example pipeline tasks
 - `examples/` — fraud_detection, rest_api examples

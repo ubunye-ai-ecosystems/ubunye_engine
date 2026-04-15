@@ -60,22 +60,46 @@ class Registry:
 _TELEMETRY_ENABLED = os.getenv("UBUNYE_TELEMETRY", "0") not in ("0", "", "false", "False")
 
 
+def _discover_hooks() -> List[type[Hook]]:
+    """Load Hook classes from the ``ubunye.hooks`` entry point group."""
+    eps = md.entry_points()
+    group_eps = eps.get("ubunye.hooks", []) if hasattr(eps, "get") else eps.select(group="ubunye.hooks")
+    classes: List[type[Hook]] = []
+    for ep in group_eps:
+        try:
+            classes.append(ep.load())
+        except Exception:
+            # A broken third-party hook must not prevent the task from running.
+            pass
+    return classes
+
+
 def _default_hooks(cfg: Dict[str, Any]) -> List[Hook]:
-    """Build the default hook list honoring ``UBUNYE_TELEMETRY`` and config monitors."""
-    from ubunye.telemetry.hooks import (
-        EventLoggerHook,
-        LegacyMonitorsHook,
-        OTelHook,
-        PrometheusHook,
-    )
+    """Build the default hook list honoring ``UBUNYE_TELEMETRY`` and config monitors.
+
+    Discovery model:
+
+    - When ``UBUNYE_TELEMETRY`` is set, all hooks registered under the
+      ``ubunye.hooks`` entry point group are instantiated with no arguments.
+      Third-party packages can ship their own hooks (Slack, Datadog, audit
+      logs, drift detectors) and Ubunye will pick them up automatically.
+    - ``LegacyMonitorsHook`` is always appended — it reads ``CONFIG.monitors``
+      and runs user-declared monitors (MLflow, lineage recorders, etc.),
+      preserving the pre-hook behavior.
+
+    Hooks that need constructor arguments should be passed explicitly via
+    ``Engine(hooks=[...])``.
+    """
+    from ubunye.telemetry.hooks import LegacyMonitorsHook
 
     hooks: List[Hook] = []
     if _TELEMETRY_ENABLED:
-        hooks.append(EventLoggerHook())
-        hooks.append(OTelHook())
-        hooks.append(PrometheusHook())
-    # Legacy user monitors (MLflow etc.) run regardless of telemetry flag —
-    # they're opt-in via CONFIG.monitors, same as before.
+        for hook_cls in _discover_hooks():
+            try:
+                hooks.append(hook_cls())
+            except Exception:
+                # Hook __init__ errors shouldn't fail the run.
+                pass
     hooks.append(LegacyMonitorsHook(cfg))
     return hooks
 

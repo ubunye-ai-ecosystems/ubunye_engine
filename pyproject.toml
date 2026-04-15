@@ -50,6 +50,11 @@ sparkml = "ubunye.plugins.ml.pysparkml:SparkMLModel"
 mlflow  = "ubunye.telemetry.mlflow:MLflowMonitor"
 lineage = "ubunye.lineage.recorder:LineageRecorder"
 
+[project.entry-points."ubunye.hooks"]
+events     = "ubunye.telemetry.hooks.events:EventLoggerHook"
+otel       = "ubunye.telemetry.hooks.otel:OTelHook"
+prometheus = "ubunye.telemetry.hooks.prometheus:PrometheusHook"
+
 [tool.setuptools.packages.find]
 include = ["ubunye*"]
 
