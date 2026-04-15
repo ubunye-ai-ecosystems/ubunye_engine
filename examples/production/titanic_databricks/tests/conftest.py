@@ -1,7 +1,11 @@
-"""Put the task directory on sys.path so tests can import transformations.py."""
+"""Pytest fixtures: sys.path for transformations + shared SparkSession."""
 
-from pathlib import Path
+from __future__ import annotations
+
 import sys
+from pathlib import Path
+
+import pytest
 
 TASK_DIR = (
     Path(__file__).resolve().parent.parent
@@ -13,3 +17,20 @@ TASK_DIR = (
 
 if str(TASK_DIR) not in sys.path:
     sys.path.insert(0, str(TASK_DIR))
+
+
+@pytest.fixture(scope="session")
+def spark():
+    """Session-scoped local SparkSession for the example's tests."""
+    from pyspark.sql import SparkSession
+
+    session = (
+        SparkSession.builder.master("local[1]")
+        .appName("titanic-local-tests")
+        .config("spark.sql.shuffle.partitions", "1")
+        .config("spark.ui.enabled", "false")
+        .config("spark.driver.memory", "512m")
+        .getOrCreate()
+    )
+    yield session
+    session.stop()

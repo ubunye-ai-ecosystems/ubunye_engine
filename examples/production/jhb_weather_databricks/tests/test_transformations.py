@@ -1,32 +1,30 @@
-"""Unit tests for the JHB hourly forecast transformation (pandas twin)."""
+"""Spark unit tests for the JHB hourly-forecast transformation.
+
+The transformation operates on the exact shape produced by the REST API
+reader: a single-row DataFrame with nested struct / array columns. These
+tests build that shape with ``spark.createDataFrame`` so they exercise
+``arrays_zip`` + ``explode`` end-to-end on a real local SparkSession.
+"""
 
 from __future__ import annotations
 
 import datetime as dt
 from typing import Any, Dict
 
-import pandas as pd
 import pytest
 
 from transformations import (  # noqa: E402 (conftest mutates sys.path)
     OUTPUT_COLUMNS,
-    transform_weather_pandas,
+    transform_weather,
 )
 
 
 @pytest.fixture
-def sample_response() -> Dict[str, Any]:
+def sample_row() -> Dict[str, Any]:
     """Trimmed Open-Meteo response - three hourly ticks for JHB."""
     return {
         "latitude": -26.2041,
         "longitude": 28.0473,
-        "hourly_units": {
-            "time": "iso8601",
-            "temperature_2m": "°C",
-            "relative_humidity_2m": "%",
-            "precipitation": "mm",
-            "wind_speed_10m": "km/h",
-        },
         "hourly": {
             "time": [
                 "2026-04-15T00:00",
@@ -41,45 +39,51 @@ def sample_response() -> Dict[str, Any]:
     }
 
 
-def test_output_columns_match_contract(sample_response: Dict[str, Any]) -> None:
-    result = transform_weather_pandas(sample_response)
+@pytest.fixture
+def source_df(spark, sample_row):
+    """Single-row DataFrame matching the rest_api reader's output shape."""
+    return spark.createDataFrame([sample_row])
+
+
+def test_output_columns_match_contract(source_df):
+    result = transform_weather(source_df)
     assert tuple(result.columns) == OUTPUT_COLUMNS
 
 
-def test_row_count_matches_hourly_array(sample_response: Dict[str, Any]) -> None:
-    result = transform_weather_pandas(sample_response)
-    assert len(result) == len(sample_response["hourly"]["time"])
+def test_row_count_matches_hourly_array(source_df, sample_row):
+    result = transform_weather(source_df)
+    assert result.count() == len(sample_row["hourly"]["time"])
 
 
-def test_coordinates_broadcast_to_every_row(sample_response: Dict[str, Any]) -> None:
-    result = transform_weather_pandas(sample_response)
-    assert (result["latitude"] == -26.2041).all()
-    assert (result["longitude"] == 28.0473).all()
+def test_coordinates_broadcast_to_every_row(source_df):
+    result = transform_weather(source_df).collect()
+    assert all(row["latitude"] == -26.2041 for row in result)
+    assert all(row["longitude"] == 28.0473 for row in result)
 
 
-def test_forecast_timestamp_is_parsed(sample_response: Dict[str, Any]) -> None:
-    result = transform_weather_pandas(sample_response)
-    assert result["forecast_timestamp"].iloc[0] == pd.Timestamp("2026-04-15T00:00")
-    assert result["forecast_timestamp"].iloc[2] == pd.Timestamp("2026-04-15T02:00")
+def test_forecast_timestamp_is_parsed(source_df):
+    rows = transform_weather(source_df).orderBy("forecast_timestamp").collect()
+    assert rows[0]["forecast_timestamp"] == dt.datetime(2026, 4, 15, 0, 0)
+    assert rows[2]["forecast_timestamp"] == dt.datetime(2026, 4, 15, 2, 0)
 
 
-def test_forecast_date_derived_from_timestamp(sample_response: Dict[str, Any]) -> None:
-    result = transform_weather_pandas(sample_response)
-    assert result["forecast_date"].iloc[0] == dt.date(2026, 4, 15)
+def test_forecast_date_derived_from_timestamp(source_df):
+    rows = transform_weather(source_df).collect()
+    assert all(row["forecast_date"] == dt.date(2026, 4, 15) for row in rows)
 
 
-def test_values_copied_verbatim(sample_response: Dict[str, Any]) -> None:
-    result = transform_weather_pandas(sample_response)
-    assert result["temperature_c"].tolist() == [13.6, 13.5, 13.1]
-    assert result["precipitation_mm"].tolist() == [0.0, 0.0, 0.1]
-    assert result["wind_speed_kmh"].tolist() == [8.2, 7.9, 7.5]
+def test_values_copied_verbatim(source_df):
+    rows = transform_weather(source_df).orderBy("forecast_timestamp").collect()
+    assert [r["temperature_c"] for r in rows] == [13.6, 13.5, 13.1]
+    assert [r["precipitation_mm"] for r in rows] == [0.0, 0.0, 0.1]
+    assert [r["wind_speed_kmh"] for r in rows] == [8.2, 7.9, 7.5]
 
 
-def test_missing_hourly_key_raises() -> None:
-    bad = {
-        "latitude": -26.0,
-        "longitude": 28.0,
-        "hourly": {"time": [], "temperature_2m": []},  # missing other fields
-    }
-    with pytest.raises(ValueError, match="missing keys"):
-        transform_weather_pandas(bad)
+def test_output_column_types(source_df):
+    """Delta table contract: timestamp + date partition key + doubles."""
+    schema = {f.name: f.dataType.simpleString() for f in transform_weather(source_df).schema}
+    assert schema["forecast_timestamp"] == "timestamp"
+    assert schema["forecast_date"] == "date"
+    assert schema["temperature_c"] == "double"
+    assert schema["precipitation_mm"] == "double"
+    assert schema["wind_speed_kmh"] == "double"

@@ -6,11 +6,8 @@ yields this as a single-row Spark DataFrame with nested array columns.
 This module explodes those arrays into a tidy one-row-per-hour frame
 suitable for a Delta table.
 
-Two implementations are provided and must stay in lock-step:
-
-* ``transform_weather_spark``  - PySpark path; runs in production.
-* ``transform_weather_pandas`` - pure pandas path; exercised by the unit
-  tests so the business logic can be validated without a SparkSession.
+Single implementation — Spark only. Tested via a local SparkSession
+fixture in ``tests/test_transformations.py``.
 """
 
 from __future__ import annotations
@@ -31,35 +28,10 @@ OUTPUT_COLUMNS = (
 )
 
 
-def transform_weather_pandas(response: Dict[str, Any]) -> "Any":
-    """Pandas implementation over the raw Open-Meteo response dict."""
-    import pandas as pd
+def transform_weather(df: "Any") -> "Any":
+    """Explode the Open-Meteo hourly arrays into a tidy DataFrame.
 
-    hourly = response.get("hourly") or {}
-    required = {"time", "temperature_2m", "relative_humidity_2m", "precipitation", "wind_speed_10m"}
-    missing = required - set(hourly)
-    if missing:
-        raise ValueError(f"Open-Meteo hourly payload missing keys: {sorted(missing)}")
-
-    df = pd.DataFrame(
-        {
-            "forecast_timestamp": pd.to_datetime(hourly["time"]),
-            "temperature_c": hourly["temperature_2m"],
-            "relative_humidity_pct": hourly["relative_humidity_2m"],
-            "precipitation_mm": hourly["precipitation"],
-            "wind_speed_kmh": hourly["wind_speed_10m"],
-        }
-    )
-    df["latitude"] = response["latitude"]
-    df["longitude"] = response["longitude"]
-    df["forecast_date"] = df["forecast_timestamp"].dt.date
-    return df[list(OUTPUT_COLUMNS)]
-
-
-def transform_weather_spark(df: "Any") -> "Any":
-    """Spark implementation - identical column shape to the pandas version.
-
-    Input ``df`` is a single-row frame with nested fields:
+    Input schema (as produced by the ``rest_api`` reader):
         latitude:  double
         longitude: double
         hourly:    struct<time: array<string>,
@@ -99,4 +71,4 @@ class JhbHourlyForecast(Task):
 
     def transform(self, sources: Dict[str, Any]) -> Dict[str, Any]:
         forecast = sources["forecast"]
-        return {"jhb_hourly_forecast": transform_weather_spark(forecast)}
+        return {"jhb_hourly_forecast": transform_weather(forecast)}

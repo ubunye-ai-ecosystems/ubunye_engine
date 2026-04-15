@@ -70,7 +70,7 @@ titanic_databricks/
 │   └── survival_by_class.parquet         # golden for the unit test suite
 ├── tests/
 │   ├── conftest.py
-│   └── test_transformations.py           # shared pandas unit tests
+│   └── test_transformations.py           # shared PySpark unit tests
 ├── databricks.yml                        # Asset Bundle
 └── README.md
 ```
@@ -187,7 +187,7 @@ Lineage records are written under
 
 See `.github/workflows/databricks_deploy.yml`. The workflow:
 
-1. Runs the pandas unit tests (same as local).
+1. Runs the PySpark unit tests (same as local; Java 17 on the runner).
 2. Diffs `transformations.py` between the two production examples — **fails
    loudly if they drift**, which is the portability contract.
 3. Installs the Databricks CLI via the official `databricks/setup-cli` action.
