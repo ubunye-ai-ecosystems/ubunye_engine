@@ -198,6 +198,43 @@ def test_engine_dry_run_skips_backend_but_runs_task_hooks():
     assert log == [("h", "task_enter"), ("h", "task_exit_ok", None)]
 
 
+def test_discover_hooks_finds_builtin_telemetry():
+    from ubunye.core.runtime import _discover_hooks
+
+    names = {c.__name__ for c in _discover_hooks()}
+    assert {"EventLoggerHook", "OTelHook", "PrometheusHook"} <= names
+
+
+def test_default_hooks_honors_telemetry_flag(monkeypatch):
+    import ubunye.core.runtime as runtime
+
+    monkeypatch.setattr(runtime, "_TELEMETRY_ENABLED", False)
+    hooks = runtime._default_hooks({})
+    # Only LegacyMonitorsHook when telemetry disabled
+    assert len(hooks) == 1
+    assert type(hooks[0]).__name__ == "LegacyMonitorsHook"
+
+    monkeypatch.setattr(runtime, "_TELEMETRY_ENABLED", True)
+    hooks = runtime._default_hooks({})
+    names = {type(h).__name__ for h in hooks}
+    assert "LegacyMonitorsHook" in names
+    assert {"EventLoggerHook", "OTelHook", "PrometheusHook"} <= names
+
+
+def test_default_hooks_skips_broken_discovered_hook(monkeypatch):
+    import ubunye.core.runtime as runtime
+
+    class Boom(Hook):
+        def __init__(self):
+            raise RuntimeError("broken init")
+
+    monkeypatch.setattr(runtime, "_TELEMETRY_ENABLED", True)
+    monkeypatch.setattr(runtime, "_discover_hooks", lambda: [Boom])
+    hooks = runtime._default_hooks({})
+    # Boom's __init__ raised; only LegacyMonitorsHook remains
+    assert [type(h).__name__ for h in hooks] == ["LegacyMonitorsHook"]
+
+
 def test_engine_exposes_outputs_to_hooks_via_state():
     log: List[tuple] = []
     engine = Engine(

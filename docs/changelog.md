@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Third parties can register custom hooks (Slack alerts, audit logs, drift checks) without
   modifying the Engine. See `docs/patterns/hooks.md`.
 
+- **`ubunye.hooks` entry point group** (`pyproject.toml`) — third-party packages can
+  register `Hook` subclasses as entry points and have them auto-discovered by the Engine.
+  The three built-in telemetry hooks (events, otel, prometheus) are registered via this
+  mechanism and gated on `UBUNYE_TELEMETRY=1`.
+
 - **Python API** (`ubunye/api.py`) — `run_task()` and `run_pipeline()` for running Ubunye tasks
   from Python code (Databricks notebooks, scripts, tests) without the CLI.
   Auto-detects and reuses active SparkSessions. Exported from `ubunye.__init__`.

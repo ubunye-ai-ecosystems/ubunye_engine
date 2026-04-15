@@ -74,10 +74,23 @@ yourself if you still want user monitors from `CONFIG.monitors`.
 
 ### Environment (default set)
 
-With no `hooks=` argument, the engine loads:
+With no `hooks=` argument, the engine discovers hooks via the
+`ubunye.hooks` Python entry point group. When `UBUNYE_TELEMETRY=1`,
+every discovered hook class is instantiated with no arguments.
+`LegacyMonitorsHook(cfg)` is always appended so user monitors in
+`CONFIG.monitors` continue to run regardless of the flag.
 
-- `EventLoggerHook`, `OTelHook`, `PrometheusHook` — only if `UBUNYE_TELEMETRY=1`
-- `LegacyMonitorsHook(cfg)` — always (reads `CONFIG.monitors`)
+Ship your own hook from a separate package:
+
+```toml
+# your-package/pyproject.toml
+[project.entry-points."ubunye.hooks"]
+slack = "your_package.hooks:SlackAlertHook"
+```
+
+After `pip install your-package`, Ubunye picks it up automatically — no
+Engine changes, no config changes. Hooks needing constructor arguments
+should still be passed via `Engine(hooks=[...])`.
 
 ```bash
 export UBUNYE_TELEMETRY=1
