@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/drift/">
+        <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/hooks/">
       
       
-        <link rel="prev" href="../features/">
+        <link rel="prev" href="../rest_api/">
       
       
-        <link rel="next" href="../rest_api/">
+        <link rel="next" href="../../ml/model_contract/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Drift Detection - Ubunye Engine</title>
+        <title>Observability Hooks - Ubunye Engine</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pattern-drift-detection" class="md-skip">
+        <a href="#hooks-observing-task-runs" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Drift Detection
+              Observability Hooks
             
           </span>
         </div>
@@ -1272,37 +1272,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Drift Detection
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../drift/" class="md-nav__link">
         
   
   
@@ -1318,92 +1291,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-drift" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What is drift?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-1-compute-drift-metrics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 1 — Compute drift metrics
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-2-gate-model-promotion-on-drift-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 2 — Gate model promotion on drift check
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-inspect-drift-over-time" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3 — Inspect drift over time
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#alerting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Alerting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#promotion-gate-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Promotion gate reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1441,10 +1328,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../hooks/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability Hooks
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1460,6 +1374,170 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-your-hook-sees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What your hook sees
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registering-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registering hooks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registering hooks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#per-engine-explicit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-engine (explicit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-default-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment (default set)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-slack-alert-on-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Slack alert on failure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-row-count-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Row-count audit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-per-step-timing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Per-step timing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#composing-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Composing hooks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-not-to-use-a-hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When NOT to use a hook
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1778,10 +1856,88 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-is-drift" class="md-nav__link">
+  <a href="#the-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is drift?
+        The contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-your-hook-sees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What your hook sees
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registering-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registering hooks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registering hooks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#per-engine-explicit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-engine (explicit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-default-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment (default set)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-slack-alert-on-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Slack alert on failure
       
     </span>
   </a>
@@ -1789,10 +1945,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-compute-drift-metrics" class="md-nav__link">
+  <a href="#example-row-count-audit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1 — Compute drift metrics
+        Example: Row-count audit
       
     </span>
   </a>
@@ -1800,10 +1956,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-gate-model-promotion-on-drift-check" class="md-nav__link">
+  <a href="#example-per-step-timing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2 — Gate model promotion on drift check
+        Example: Per-step timing
       
     </span>
   </a>
@@ -1811,10 +1967,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-inspect-drift-over-time" class="md-nav__link">
+  <a href="#composing-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3 — Inspect drift over time
+        Composing hooks
       
     </span>
   </a>
@@ -1822,10 +1978,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#alerting" class="md-nav__link">
+  <a href="#when-not-to-use-a-hook" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Alerting
+        When NOT to use a hook
       
     </span>
   </a>
@@ -1833,10 +1989,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#promotion-gate-reference" class="md-nav__link">
+  <a href="#source-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Promotion gate reference
+        Source reference
       
     </span>
   </a>
@@ -1860,7 +2016,7 @@
 
 
   
-    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/patterns/drift.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/patterns/hooks.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1868,203 +2024,243 @@
   
 
 
-<h1 id="pattern-drift-detection">Pattern: Drift Detection<a class="headerlink" href="#pattern-drift-detection" title="Permanent link">&para;</a></h1>
-<p>Data drift and model drift degrade prediction quality silently.
-This pattern shows how to compute drift metrics with Ubunye and gate model promotion on them.</p>
+<h1 id="hooks-observing-task-runs">Hooks: Observing Task Runs<a class="headerlink" href="#hooks-observing-task-runs" title="Permanent link">&para;</a></h1>
+<p>Hooks let you watch a task run without changing Engine code. Every task and
+every step (Reader / Transform / Writer) is wrapped in a hook context
+manager — so you see the start, the end, and any exception that escaped.</p>
+<p>Use hooks to add logging, metrics, tracing, alerts, audit records, drift
+checks — anything that observes but does not change the pipeline.</p>
 <hr />
-<h2 id="what-is-drift">What is drift?<a class="headerlink" href="#what-is-drift" title="Permanent link">&para;</a></h2>
+<h2 id="the-contract">The contract<a class="headerlink" href="#the-contract" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Hook</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyHook</span><span class="p">(</span><span class="n">Hook</span><span class="p">):</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="nd">@contextmanager</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="c1"># before the task</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>            <span class="k">yield</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>            <span class="c1"># task succeeded</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>            <span class="c1"># task failed — re-raise or you&#39;ll swallow the error</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>            <span class="k">raise</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="nd">@contextmanager</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">meta</span><span class="p">):</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        <span class="c1"># before each Reader/Transform/Writer step</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>            <span class="k">yield</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>            <span class="c1"># step succeeded</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>            <span class="k">raise</span>
+</code></pre></div>
+<p>Both methods are optional — inherit from <code>Hook</code> and only override what you need.</p>
+<h3 id="what-your-hook-sees">What your hook sees<a class="headerlink" href="#what-your-hook-sees" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
+<th>Arg</th>
 <th>Type</th>
-<th>Description</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Data drift</strong></td>
-<td>Input feature distribution has shifted since training</td>
+<td><code>ctx</code></td>
+<td><code>EngineContext</code></td>
+<td><code>run_id</code>, <code>task_name</code>, <code>profile</code></td>
 </tr>
 <tr>
-<td><strong>Concept drift</strong></td>
-<td>The relationship between features and target has changed</td>
+<td><code>cfg</code></td>
+<td><code>dict</code></td>
+<td>Full resolved task config</td>
 </tr>
 <tr>
-<td><strong>Prediction drift</strong></td>
-<td>Model output distribution has shifted</td>
+<td><code>state</code></td>
+<td><code>dict</code></td>
+<td>Shared scratchpad. On task exit, <code>state["outputs"]</code> holds the outputs map (success only).</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td><code>str</code></td>
+<td>Step name, e.g. <code>"Reader:hive"</code>, <code>"Transform:noop"</code>, <code>"Writer:s3"</code></td>
+</tr>
+<tr>
+<td><code>meta</code></td>
+<td><code>dict \| None</code></td>
+<td>Step-specific metadata, e.g. <code>{"input": "claims_raw"}</code></td>
 </tr>
 </tbody>
 </table>
+<h3 id="rules">Rules<a class="headerlink" href="#rules" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Never raise in <code>__exit__</code>.</strong> Wrap all your hook code in <code>try/except</code>.
+   The engine does not swallow hook errors; a crashing hook crashes the task.</li>
+<li><strong>Always re-raise step failures.</strong> If you catch an exception in <code>step()</code>,
+   re-raise it so the engine can fail fast.</li>
+<li><strong>Hooks must be cheap.</strong> They run inline with every step.</li>
+</ol>
 <hr />
-<h2 id="step-1-compute-drift-metrics">Step 1 — Compute drift metrics<a class="headerlink" href="#step-1-compute-drift-metrics" title="Permanent link">&para;</a></h2>
-<p>Calculate PSI (Population Stability Index) or KL divergence between a reference
-distribution (from training) and the current serving window.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># pipelines/fraud/drift/psi/config.yaml</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">MODEL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">etl</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">VERSION</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.0.0&quot;</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">CONFIG</span><span class="p">:</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">inputs</span><span class="p">:</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="nt">reference</span><span class="p">:</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://datalake/ml/training_sets/fraud/</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="nt">current</span><span class="p">:</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hive</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">      </span><span class="nt">db_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">raw</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">      </span><span class="nt">tbl_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transactions</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;-</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">        </span><span class="no">SELECT * FROM raw.transactions</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">        </span><span class="no">WHERE event_date &gt;= date_sub(current_date(), 7)</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="nt">transform</span><span class="p">:</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">task</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="nt">drift_metrics</span><span class="p">:</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://datalake/ml/drift/fraud/</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite</span>
+<h2 id="registering-hooks">Registering hooks<a class="headerlink" href="#registering-hooks" title="Permanent link">&para;</a></h2>
+<h3 id="per-engine-explicit">Per-engine (explicit)<a class="headerlink" href="#per-engine-explicit" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.runtime</span><span class="w"> </span><span class="kn">import</span> <span class="n">Engine</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">Engine</span><span class="p">(</span><span class="n">hooks</span><span class="o">=</span><span class="p">[</span><span class="n">MyHook</span><span class="p">(),</span> <span class="n">AnotherHook</span><span class="p">()])</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">engine</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 </code></pre></div>
-<p><code>transformations.py</code> — PSI per numeric feature:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyspark.sql</span><span class="w"> </span><span class="kn">import</span> <span class="n">functions</span> <span class="k">as</span> <span class="n">F</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">Task</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">N_BINS</span> <span class="o">=</span> <span class="mi">10</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">class</span><span class="w"> </span><span class="nc">DriftTask</span><span class="p">(</span><span class="n">Task</span><span class="p">):</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sources</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        <span class="n">ref</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="s2">&quot;reference&quot;</span><span class="p">]</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        <span class="n">cur</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="s2">&quot;current&quot;</span><span class="p">]</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        <span class="n">feature_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;amount_sum_30d&quot;</span><span class="p">,</span> <span class="s2">&quot;txn_count_30d&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_amount_30d&quot;</span><span class="p">]</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">feature_cols</span><span class="p">:</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>            <span class="n">psi</span> <span class="o">=</span> <span class="n">_psi</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">cur</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">col</span><span class="p">,</span> <span class="s2">&quot;psi&quot;</span><span class="p">:</span> <span class="n">psi</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;PASS&quot;</span> <span class="k">if</span> <span class="n">psi</span> <span class="o">&lt;</span> <span class="mf">0.2</span> <span class="k">else</span> <span class="s2">&quot;FAIL&quot;</span><span class="p">})</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        <span class="n">spark</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">sparkSession</span>
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;drift_metrics&quot;</span><span class="p">:</span> <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)}</span>
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="k">def</span><span class="w"> </span><span class="nf">_psi</span><span class="p">(</span><span class="n">ref_df</span><span class="p">,</span> <span class="n">cur_df</span><span class="p">,</span> <span class="n">col</span><span class="p">):</span>
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute PSI for a single numeric column.&quot;&quot;&quot;</span>
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="n">breaks</span> <span class="o">=</span> <span class="n">ref_df</span><span class="o">.</span><span class="n">approxQuantile</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="p">[</span><span class="n">i</span> <span class="o">/</span> <span class="n">N_BINS</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N_BINS</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)],</span> <span class="mf">0.01</span><span class="p">)</span>
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    <span class="n">ref_hist</span> <span class="o">=</span> <span class="n">_histogram</span><span class="p">(</span><span class="n">ref_df</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">breaks</span><span class="p">)</span>
-<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="n">cur_hist</span> <span class="o">=</span> <span class="n">_histogram</span><span class="p">(</span><span class="n">cur_df</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">breaks</span><span class="p">)</span>
-<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span>
-<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>        <span class="p">(</span><span class="n">c</span> <span class="o">-</span> <span class="n">r</span><span class="p">)</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">((</span><span class="n">c</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">r</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">))</span>
-<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>        <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ref_hist</span><span class="p">,</span> <span class="n">cur_hist</span><span class="p">)</span>
-<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    <span class="p">)</span>
-<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>
-<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="k">def</span><span class="w"> </span><span class="nf">_histogram</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">breaks</span><span class="p">):</span>
-<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    <span class="n">total</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
-<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>    <span class="n">counts</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>    <span class="k">for</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">breaks</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">breaks</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
-<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>        <span class="n">n</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">filter</span><span class="p">((</span><span class="n">F</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">lo</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">hi</span><span class="p">))</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
-<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>        <span class="n">counts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">n</span> <span class="o">/</span> <span class="n">total</span><span class="p">,</span> <span class="mf">1e-8</span><span class="p">))</span>
-<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>    <span class="k">return</span> <span class="n">counts</span>
+<p>Explicit hooks <strong>replace</strong> the default set. Add <code>LegacyMonitorsHook(cfg)</code>
+yourself if you still want user monitors from <code>CONFIG.monitors</code>.</p>
+<h3 id="environment-default-set">Environment (default set)<a class="headerlink" href="#environment-default-set" title="Permanent link">&para;</a></h3>
+<p>With no <code>hooks=</code> argument, the engine loads:</p>
+<ul>
+<li><code>EventLoggerHook</code>, <code>OTelHook</code>, <code>PrometheusHook</code> — only if <code>UBUNYE_TELEMETRY=1</code></li>
+<li><code>LegacyMonitorsHook(cfg)</code> — always (reads <code>CONFIG.monitors</code>)</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">UBUNYE_TELEMETRY</span><span class="o">=</span><span class="m">1</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">UBUNYE_PROM_PORT</span><span class="o">=</span><span class="m">8000</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>ubunye<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>./pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
 </code></pre></div>
 <hr />
-<h2 id="step-2-gate-model-promotion-on-drift-check">Step 2 — Gate model promotion on drift check<a class="headerlink" href="#step-2-gate-model-promotion-on-drift-check" title="Permanent link">&para;</a></h2>
-<p>The <code>require_drift_check</code> promotion gate checks that <code>metadata["drift_check_passed"]</code>
-is <code>True</code> before allowing promotion to staging or production.</p>
-<p>In your training pipeline's <code>model.py</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.models.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">UbunyeModel</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">FraudRiskModel</span><span class="p">(</span><span class="n">UbunyeModel</span><span class="p">):</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="c1"># ... training logic</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="n">metrics</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;auc&quot;</span><span class="p">:</span> <span class="mf">0.91</span><span class="p">,</span> <span class="s2">&quot;f1&quot;</span><span class="p">:</span> <span class="mf">0.87</span><span class="p">}</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="c1"># Read drift results and attach to metrics/metadata</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">drift_ok</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_drift</span><span class="p">()</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">metrics</span><span class="p">,</span> <span class="s2">&quot;_drift_check_passed&quot;</span><span class="p">:</span> <span class="n">drift_ok</span><span class="p">}</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="o">...</span>
+<h2 id="example-slack-alert-on-failure">Example: Slack alert on failure<a class="headerlink" href="#example-slack-alert-on-failure" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Hook</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="k">class</span><span class="w"> </span><span class="nc">SlackAlertHook</span><span class="p">(</span><span class="n">Hook</span><span class="p">):</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">webhook_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">webhook_url</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SLACK_WEBHOOK_URL&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="nd">@contextmanager</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>            <span class="k">yield</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;:red_circle: `</span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">task_name</span><span class="si">}</span><span class="s2">` failed: `</span><span class="si">{</span><span class="n">e</span><span class="si">!r}</span><span class="s2">`&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>            <span class="k">raise</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">:</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>            <span class="k">return</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>            <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">text</span><span class="p">},</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>            <span class="k">pass</span>
 </code></pre></div>
-<p>In <code>config.yaml</code> for the training task:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="w">  </span><span class="nt">transform</span><span class="p">:</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">params</span><span class="p">:</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">model_class</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;model.FraudRiskModel&quot;</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="nt">registry</span><span class="p">:</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">        </span><span class="nt">store</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;.ubunye/model_store&quot;</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">        </span><span class="nt">use_case</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fraud</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">        </span><span class="nt">auto_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">        </span><span class="nt">promote_to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">staging</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">        </span><span class="nt">promotion_gates</span><span class="p">:</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">          </span><span class="nt">min_auc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.85</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">          </span><span class="nt">min_f1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.80</span>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">          </span><span class="nt">require_drift_check</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">     </span><span class="c1"># blocks promotion if drift_check_passed=false</span>
-</code></pre></div>
-<p>Or pass <code>drift_check_passed</code> via metadata at registration time (from the CLI or
-a pre-training orchestration step that computes drift first).</p>
-<hr />
-<h2 id="step-3-inspect-drift-over-time">Step 3 — Inspect drift over time<a class="headerlink" href="#step-3-inspect-drift-over-time" title="Permanent link">&para;</a></h2>
-<p>Query the drift metrics Delta table:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">SELECT</span><span class="w"> </span><span class="n">feature</span><span class="p">,</span><span class="w"> </span><span class="n">psi</span><span class="p">,</span><span class="w"> </span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="n">run_date</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">FROM</span><span class="w"> </span><span class="n">delta</span><span class="p">.</span><span class="o">`</span><span class="n">s3</span><span class="p">:</span><span class="o">//</span><span class="n">datalake</span><span class="o">/</span><span class="n">ml</span><span class="o">/</span><span class="n">drift</span><span class="o">/</span><span class="n">fraud</span><span class="o">/`</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">run_date</span><span class="w"> </span><span class="k">DESC</span><span class="p">,</span><span class="w"> </span><span class="n">psi</span><span class="w"> </span><span class="k">DESC</span>
-</code></pre></div>
-<p>Or use the Ubunye lineage CLI to trace which runs had drift:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>search<span class="w"> </span>--tag<span class="w"> </span><span class="nv">drift_check</span><span class="o">=</span>FAIL
+<p>Wire it in:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">Engine</span><span class="p">(</span><span class="n">hooks</span><span class="o">=</span><span class="p">[</span><span class="n">SlackAlertHook</span><span class="p">()])</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">engine</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 </code></pre></div>
 <hr />
-<h2 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h2>
-<p>Write the drift output to a JDBC table and trigger an alert when PSI &gt; 0.2:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="nt">drift_metrics</span><span class="p">:</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://datalake/ml/drift/fraud/</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">append</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">    </span><span class="nt">drift_alerts</span><span class="p">:</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jdbc</span>
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;jdbc:postgresql://{{</span><span class="nv"> </span><span class="s">env.DB_HOST</span><span class="nv"> </span><span class="s">}}/mlops&quot;</span>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public.drift_alerts</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">append</span>
+<h2 id="example-row-count-audit">Example: Row-count audit<a class="headerlink" href="#example-row-count-audit" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Hook</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">RowCountHook</span><span class="p">(</span><span class="n">Hook</span><span class="p">):</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="nd">@contextmanager</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        <span class="k">yield</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        <span class="n">outputs</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;outputs&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">outputs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>            <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>                <span class="k">pass</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">task_name</span><span class="si">}</span><span class="s2">] row counts: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p>Filter in <code>transformations.py</code> to write only FAIL rows to the alerts table:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="s2">&quot;drift_metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">,</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="s2">&quot;drift_alerts&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&quot;status = &#39;FAIL&#39;&quot;</span><span class="p">),</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="p">}</span>
+<p>The <code>state["outputs"]</code> dict is populated <strong>only on success</strong>, before the hook's
+<code>__exit__</code> runs.</p>
+<hr />
+<h2 id="example-per-step-timing">Example: Per-step timing<a class="headerlink" href="#example-per-step-timing" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Hook</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">TimingHook</span><span class="p">(</span><span class="n">Hook</span><span class="p">):</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="nd">@contextmanager</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">meta</span><span class="p">):</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>            <span class="k">yield</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        <span class="k">finally</span><span class="p">:</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>            <span class="n">dur</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">run_id</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> took </span><span class="si">{</span><span class="n">dur</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Output during a run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>[5b3f91aa] Reader:hive took 0.42s
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>[5b3f91aa] Transform:noop took 0.01s
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>[5b3f91aa] Writer:s3 took 1.37s
 </code></pre></div>
 <hr />
-<h2 id="promotion-gate-reference">Promotion gate reference<a class="headerlink" href="#promotion-gate-reference" title="Permanent link">&para;</a></h2>
+<h2 id="composing-hooks">Composing hooks<a class="headerlink" href="#composing-hooks" title="Permanent link">&para;</a></h2>
+<p><code>HookChain</code> combines multiple hooks. Engine uses it internally, but you can
+use it yourself for complex setups:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">HookChain</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.telemetry.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">EventLoggerHook</span><span class="p">,</span> <span class="n">PrometheusHook</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">chain</span> <span class="o">=</span> <span class="n">HookChain</span><span class="p">([</span><span class="n">EventLoggerHook</span><span class="p">(),</span> <span class="n">PrometheusHook</span><span class="p">(),</span> <span class="n">MyHook</span><span class="p">()])</span>
+</code></pre></div>
+<ul>
+<li><strong>Enter order</strong> — as listed.</li>
+<li><strong>Exit order</strong> — reverse (LIFO), so outermost hook sees inner hooks' work.</li>
+<li><strong>Broken hooks</strong> — if one raises on <code>__enter__</code>, the others still run.</li>
+</ul>
+<hr />
+<h2 id="when-not-to-use-a-hook">When NOT to use a hook<a class="headerlink" href="#when-not-to-use-a-hook" title="Permanent link">&para;</a></h2>
+<p>Hooks observe. They do <strong>not</strong>:</p>
+<ul>
+<li>Mutate the config or outputs mid-run.</li>
+<li>Replace a Reader/Transform/Writer. Write a plugin for that.</li>
+<li>Decide whether a step runs. That belongs in config.</li>
+</ul>
+<p>If you need to change pipeline behavior, write a plugin
+(<a href="../../connectors/plugin_guide/">Connectors → Writing a Plugin</a>) or a custom
+<code>Transform</code>. Hooks are strictly for observability.</p>
+<hr />
+<h2 id="source-reference">Source reference<a class="headerlink" href="#source-reference" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Gate key</th>
-<th>Type</th>
-<th>Description</th>
+<th>File</th>
+<th>What it contains</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>min_&lt;metric&gt;</code></td>
-<td>float</td>
-<td>Metric must be <code>&gt;=</code> threshold</td>
+<td><code>ubunye/core/hooks.py</code></td>
+<td><code>Hook</code> base class, <code>HookChain</code> multiplexer</td>
 </tr>
 <tr>
-<td><code>max_&lt;metric&gt;</code></td>
-<td>float</td>
-<td>Metric must be <code>&lt;=</code> threshold</td>
+<td><code>ubunye/telemetry/hooks/events.py</code></td>
+<td>JSON event logger hook</td>
 </tr>
 <tr>
-<td><code>require_drift_check</code></td>
-<td>bool</td>
-<td><code>metadata["drift_check_passed"]</code> must be <code>True</code></td>
+<td><code>ubunye/telemetry/hooks/otel.py</code></td>
+<td>OpenTelemetry spans</td>
+</tr>
+<tr>
+<td><code>ubunye/telemetry/hooks/prometheus.py</code></td>
+<td>Prometheus metrics</td>
+</tr>
+<tr>
+<td><code>ubunye/telemetry/hooks/monitors.py</code></td>
+<td>Legacy <code>CONFIG.monitors</code> bridge</td>
+</tr>
+<tr>
+<td><code>tests/unit/test_hooks.py</code></td>
+<td>Reference tests — recording hook, failure propagation, dry-run</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">promotion_gates</span><span class="p">:</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">min_auc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.85</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">max_loss</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.15</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nt">require_drift_check</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
-<p>When any gate fails, <code>registry.promote()</code> raises <code>ValueError</code> listing each failing gate
-with the actual value and threshold. The CLI surfaces this as an <code>[ERROR]</code> message.</p>
 
 
 
@@ -2087,7 +2283,7 @@ with the actual value and threshold. The CLI surfaces this as an <code>[ERROR]</
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:58:39 UTC">April 15, 2026</span>
   </span>
 
     
@@ -2097,7 +2293,7 @@ with the actual value and threshold. The CLI surfaces this as an <code>[ERROR]</
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:58:39 UTC">April 15, 2026</span>
   </span>
 
     
