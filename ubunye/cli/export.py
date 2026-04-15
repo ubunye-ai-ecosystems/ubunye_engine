@@ -61,7 +61,9 @@ def export_databricks(
     config: Path = typer.Option(
         ..., "-c", "--config", exists=True, dir_okay=False, help="Path to task config.yaml."
     ),
-    output: Path = typer.Option(..., "-o", "--output", help="Where to write the generated job.json."),
+    output: Path = typer.Option(
+        ..., "-o", "--output", help="Where to write the generated job.json."
+    ),
     profile: str = typer.Option("prod", "--profile", help="Profile embedded in the job command."),
 ):
     """Generate a Databricks Jobs API spec (``job.json``) for the task."""

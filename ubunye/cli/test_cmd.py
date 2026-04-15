@@ -120,9 +120,7 @@ def run_test(
             )
             task_start = time.perf_counter()
             try:
-                execute_user_task(
-                    backend, task_dir, cfg, context, extra_hooks=extra_hooks
-                )
+                execute_user_task(backend, task_dir, cfg, context, extra_hooks=extra_hooks)
                 duration = time.perf_counter() - task_start
                 typer.secho(f"  [PASS] {task}  ({duration:.1f}s)", fg=typer.colors.GREEN)
                 passed += 1
@@ -140,5 +138,3 @@ def run_test(
         raise typer.Exit(code=1)
     else:
         typer.secho(f"All {total} task(s) PASSED.", fg=typer.colors.GREEN)
-
-

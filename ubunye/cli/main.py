@@ -373,8 +373,6 @@ def plan(
         typer.echo()
 
 
-
-
 @app.command()
 def run(
     usecase_dir: Path = typer.Option(
@@ -463,14 +461,10 @@ def run(
                 run_id=run_id, profile=mode, task_name=f"{usecase}/{package}/{task}"
             )
             try:
-                execute_user_task(
-                    backend, task_dir, cfg, context, extra_hooks=extra_hooks
-                )
+                execute_user_task(backend, task_dir, cfg, context, extra_hooks=extra_hooks)
                 typer.secho(f"[OK] Run complete for {task}", fg=typer.colors.GREEN)
             except Exception as e:
-                typer.secho(
-                    f"[ERROR] Run failed for {task}: {e}", fg=typer.colors.RED, err=True
-                )
+                typer.secho(f"[ERROR] Run failed for {task}: {e}", fg=typer.colors.RED, err=True)
                 raise
     finally:
         backend.stop()
