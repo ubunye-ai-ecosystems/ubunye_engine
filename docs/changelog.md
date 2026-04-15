@@ -167,7 +167,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- N/A
+- **Unity Catalog writer collapsed plugin dispatch with Spark source format.**
+  `UnityTableWriter.write()` was reading `cfg["format"]` and passing it to
+  Spark's `DataFrameWriter.format(...)`. But `cfg["format"]` is the Ubunye
+  plugin selector and is always `"unity"` by the time the writer runs, so
+  Spark raised `[DATA_SOURCE_NOT_FOUND] Failed to find the data source: unity`.
+  Switched the writer to read `cfg["file_format"]` (defaulting to `delta`),
+  matching the convention already used by the s3 writer. Caught while
+  deploying the `jhb_weather_databricks` example to a serverless workspace.
 
 ---
 

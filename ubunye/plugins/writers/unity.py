@@ -9,7 +9,10 @@ Config keys:
   - table: "main.fraud.claims_curated"      # or catalog/schema/tbl_name
   - mode: append|overwrite|errorifexists|ignore (default: append)
   - partitionBy: ["ds", "region"]           # optional
-  - format: delta|parquet (default: delta)  # UC+Delta is the typical choice
+  - file_format: delta|parquet (default: delta)  # UC+Delta is the typical choice
+                                                  # Note: the top-level ``format`` key is
+                                                  # the Ubunye plugin selector and is always
+                                                  # "unity" here - do not confuse the two.
   - options:                                 # writer options (merged last)
       overwriteSchema: "true"                # Spark expects strings
       mergeSchema: "true"
@@ -56,7 +59,10 @@ class UnityTableWriter(Writer):
         full_name = _qualify(cfg)
 
         mode = (cfg.get("mode") or "append").lower()
-        fmt = (cfg.get("format") or "delta").lower()  # UC best practice is Delta
+        # The top-level cfg["format"] is the Ubunye plugin dispatch key
+        # (always "unity" by the time we get here). The underlying Spark
+        # source format lives in cfg["file_format"], matching the s3 writer.
+        fmt = (cfg.get("file_format") or "delta").lower()
 
         partition_by: List[str] = list(cfg.get("partitionBy", []) or [])
         options: Dict[str, Any] = dict(cfg.get("options", {}) or {})
