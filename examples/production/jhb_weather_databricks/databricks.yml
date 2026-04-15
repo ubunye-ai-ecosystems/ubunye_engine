@@ -61,11 +61,7 @@ targets:
   nonprod:
     mode: development
     default: true
-    workspace:
-      host: ${workspace.host}
   prod:
     mode: production
-    workspace:
-      host: ${workspace.host}
     variables:
       weather_schema: weather_prod
