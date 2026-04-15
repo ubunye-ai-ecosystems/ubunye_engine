@@ -1,37 +1,30 @@
 # Databricks Asset Bundle — Titanic Survival pipeline.
 #
-# Sized for Databricks Community Edition (and the newer "Free Edition"):
-# a single-node cluster, DBFS-backed storage, no Unity Catalog. For a paid
-# workspace, swap node_type_id / spark_version for the values recommended by
-# your org and remove the single-node conf block.
-#
-# CE caveats are documented honestly in README.md — in particular, `bundle
-# deploy` against CE is frequently restricted by the Jobs API and may require
-# either (a) upgrading to a trial/paid workspace or (b) switching to the
-# `existing_cluster_id` pattern against a cluster you created in the UI.
+# Uses serverless compute and writes the result as a Unity Catalog managed
+# Delta table. Runs on Databricks Free Edition (which disallows classic-
+# cluster creation) and on standard paid workspaces alike. The notebook
+# downloads the Titanic CSV to /tmp at runtime and installs ubunye-engine
+# via %pip - so no DBFS bootstrap and no manual workspace setup required.
 
 bundle:
-  name: titanic-survival-ce
+  name: titanic-survival
 
 include:
   - pipelines/**/*.yaml
 
 variables:
-  titanic_input_path:
-    description: DBFS path to the Titanic CSV (bootstrapped by the notebook on first run).
-    default: "dbfs:/FileStore/titanic/titanic.csv"
-  titanic_output_path:
-    description: DBFS directory where the Parquet output is written.
-    default: "dbfs:/FileStore/titanic/output"
+  titanic_catalog:
+    description: |
+      Unity Catalog catalog for the output table. Defaults to ``workspace``
+      because that is the catalog Free Edition provisions automatically.
+      Override to ``main`` (or your standard catalog) on paid workspaces.
+    default: "workspace"
+  titanic_schema:
+    description: Unity Catalog schema for the output table.
+    default: "titanic"
   data_timestamp:
     description: Data timestamp injected into the config as ``{{ dt }}``.
     default: "2026-04-15"
-  existing_cluster_id:
-    description: |
-      Optional. If set, the job runs on this existing cluster instead of
-      spinning up a new one. Use this on Community Edition, which often
-      blocks new_cluster creation via the Jobs API.
-    default: ""
 
 sync:
   include:
@@ -51,20 +44,10 @@ resources:
               task_dir: ${workspace.file_path}/pipelines/titanic/analytics/survival_by_class
               dt: ${var.data_timestamp}
               mode: "PROD"
-              titanic_input_path: ${var.titanic_input_path}
-              titanic_output_path: ${var.titanic_output_path}
-          # Provision a fresh single-node cluster per run. Override by setting
-          # the ``existing_cluster_id`` variable if your workspace disallows
-          # new_cluster creation (common on CE).
-          new_cluster:
-            spark_version: "13.3.x-scala2.12"
-            node_type_id: "i3.xlarge"
-            num_workers: 0
-            spark_conf:
-              spark.databricks.cluster.profile: singleNode
-              spark.master: "local[*]"
-            custom_tags:
-              ResourceClass: SingleNode
+              titanic_catalog: ${var.titanic_catalog}
+              titanic_schema: ${var.titanic_schema}
+          # Serverless compute: no new_cluster / existing_cluster_id block.
+          # Notebook tasks with no cluster spec route to serverless.
 
 targets:
   nonprod:

@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Titanic Survival — Databricks Community Edition
+# MAGIC # Titanic Survival — Databricks (serverless)
 # MAGIC
 # MAGIC Invoked by the `titanic_survival` job defined in `databricks.yml`. All
 # MAGIC parameters are supplied by the job at runtime via widgets.
@@ -15,28 +15,20 @@
 dbutils.widgets.text("task_dir", "", "Workspace task directory (absolute)")
 dbutils.widgets.text("dt", "2026-04-15", "Data timestamp")
 dbutils.widgets.dropdown("mode", "PROD", ["DEV", "PROD"], "Run mode")
-dbutils.widgets.text(
-    "titanic_input_path",
-    "dbfs:/FileStore/titanic/titanic.csv",
-    "DBFS path to the Titanic CSV",
-)
-dbutils.widgets.text(
-    "titanic_output_path",
-    "dbfs:/FileStore/titanic/output",
-    "DBFS output directory",
-)
+dbutils.widgets.text("titanic_catalog", "workspace", "Unity Catalog catalog")
+dbutils.widgets.text("titanic_schema", "titanic", "Unity Catalog schema")
 
 task_dir = dbutils.widgets.get("task_dir")
 dt = dbutils.widgets.get("dt")
 mode = dbutils.widgets.get("mode")
-input_path = dbutils.widgets.get("titanic_input_path")
-output_path = dbutils.widgets.get("titanic_output_path")
+titanic_catalog = dbutils.widgets.get("titanic_catalog")
+titanic_schema = dbutils.widgets.get("titanic_schema")
 
 assert task_dir, "task_dir must be supplied by the job (see databricks.yml)"
 
 # COMMAND ----------
 
-# MAGIC %pip install ubunye-engine==0.1.5
+# MAGIC %pip install "ubunye-engine[spark] @ git+https://github.com/ubunye-ai-ecosystems/ubunye_engine.git@main"
 
 # COMMAND ----------
 
@@ -44,35 +36,37 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-# Re-read widgets after the Python restart and expose the env vars that
-# config.yaml resolves via Jinja.
+# Re-read widgets after the Python restart and expose env vars consumed by
+# config.yaml via Jinja.
 import os
+import urllib.request
 
 task_dir = dbutils.widgets.get("task_dir")
 dt = dbutils.widgets.get("dt")
 mode = dbutils.widgets.get("mode")
-input_path = dbutils.widgets.get("titanic_input_path")
-output_path = dbutils.widgets.get("titanic_output_path")
+titanic_catalog = dbutils.widgets.get("titanic_catalog")
+titanic_schema = dbutils.widgets.get("titanic_schema")
 
-os.environ["TITANIC_INPUT_PATH"] = input_path
-os.environ["TITANIC_OUTPUT_PATH"] = output_path
+# Bootstrap the Titanic CSV into /tmp at runtime - serverless can read
+# file:///tmp/... and the file is gone when the executor releases. This
+# replaces the old DBFS bootstrap, which is deprecated on Free Edition.
+csv_path = "/tmp/titanic.csv"
+if not os.path.exists(csv_path):
+    urllib.request.urlretrieve(
+        "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv",
+        csv_path,
+    )
+    print(f"Fetched Titanic CSV -> {csv_path}")
+
+os.environ["TITANIC_INPUT_PATH"] = f"file://{csv_path}"
+os.environ["TITANIC_CATALOG"] = titanic_catalog
+os.environ["TITANIC_SCHEMA"] = titanic_schema
 
 # COMMAND ----------
 
-# Bootstrap the Titanic CSV into DBFS if it is not already present.
-# Idempotent: skips the download on every subsequent run.
-import urllib.request
-
-local_mirror = input_path.replace("dbfs:/", "/dbfs/")
-if not os.path.exists(local_mirror):
-    os.makedirs(os.path.dirname(local_mirror), exist_ok=True)
-    urllib.request.urlretrieve(
-        "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv",
-        local_mirror,
-    )
-    print(f"Fetched Titanic CSV -> {local_mirror}")
-else:
-    print(f"Titanic CSV already present at {local_mirror}")
+# Ensure the target schema exists. Unity Catalog raises on a missing schema
+# when the writer issues CREATE TABLE.
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {titanic_catalog}.{titanic_schema}")
 
 # COMMAND ----------
 
@@ -93,3 +87,4 @@ print(f"Outputs written: {list(outputs.keys())}")
 for name, df in outputs.items():
     print(f"--- {name} ---")
     df.show(truncate=False)
+    print(f"Row count: {df.count()}")

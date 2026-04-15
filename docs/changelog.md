@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`titanic_databricks` DAB switched to serverless + Unity Catalog.** Removed
+  the `new_cluster` block and the DBFS bootstrap; the notebook now downloads
+  the Titanic CSV to `/tmp` at runtime and the writer emits a Unity Catalog
+  managed Delta table (`workspace.titanic.survival_by_class` by default).
+  Validated end-to-end on Databricks Free Edition. The portability contract
+  with `titanic_local` (byte-identical `transformations.py`) is unchanged
+  — only the deployment wrapper (config + notebook + DAB) differs.
+
 ### Fixed
 
 - N/A
