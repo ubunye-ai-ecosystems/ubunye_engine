@@ -1,0 +1,42 @@
+MODEL: "etl"
+VERSION: "1.0.0"
+
+# Engine section: Spark settings and per-profile overrides.
+#
+# Profiles are selected by the -m/--mode flag on the CLI (default: DEV).
+# Keep profile keys uppercase to match that default. Jinja {{ mode }} is also
+# populated from the same flag, so templates resolve consistently.
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "4"
+    spark.sql.sources.partitionOverwriteMode: "dynamic"
+  profiles:
+    DEV:
+      spark_conf:
+        spark.sql.shuffle.partitions: "2"
+    PROD:
+      spark_conf:
+        spark.sql.shuffle.partitions: "50"
+
+# Pipeline definition. The generic `s3` reader/writer plugin handles any path
+# Spark can reach (file://, s3a://, dbfs:/), so it is correct here even though
+# we are reading a local CSV. `file_format` picks the actual Spark format.
+CONFIG:
+  inputs:
+    titanic:
+      format: s3
+      path: "{{ env.TITANIC_INPUT_PATH }}"
+      file_format: csv
+      options:
+        header: "true"
+        inferSchema: "true"
+        mode: "FAILFAST"
+  transform:
+    # Overridden at runtime by execute_user_task → transformations.py.
+    type: noop
+  outputs:
+    survival_by_class:
+      format: s3
+      path: "{{ env.TITANIC_OUTPUT_PATH }}/mode={{ mode | default('DEV') }}/dt={{ dt | default('latest') }}"
+      file_format: parquet
+      mode: overwrite

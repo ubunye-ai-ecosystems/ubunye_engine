@@ -83,6 +83,12 @@ Thumbs.db
 *.lineage.json
 
 # =========================
+# Production examples — runtime artifacts
+# =========================
+examples/production/titanic_local/data/titanic.csv
+examples/production/titanic_local/output/
+
+# =========================
 # Docs
 # =========================
 site/
