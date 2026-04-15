@@ -4,9 +4,9 @@
 # once a day, explodes the hourly arrays into a tidy DataFrame, and writes the
 # result to a Unity Catalog Delta table.
 #
-# Sized for a single-node cluster so it runs on small workspaces. For a
-# production paid workspace, raise ``num_workers`` and swap ``node_type_id``
-# for the values recommended by your org.
+# Uses serverless compute so it runs on Databricks Free Edition (where
+# classic-cluster creation is disallowed) and standard workspaces alike.
+# The notebook installs ``ubunye-engine`` at runtime via ``%pip``.
 
 bundle:
   name: jhb-weather-ingest
@@ -16,20 +16,18 @@ include:
 
 variables:
   weather_catalog:
-    description: Unity Catalog catalog name for the output table.
-    default: "main"
+    description: |
+      Unity Catalog catalog name for the output table. Defaults to
+      ``workspace`` because that is the catalog Free Edition provisions
+      automatically. Override to ``main`` (or your standard catalog) on
+      paid workspaces.
+    default: "workspace"
   weather_schema:
     description: Unity Catalog schema name for the output table.
     default: "weather"
   data_timestamp:
     description: Data timestamp injected into the config as ``{{ dt }}``.
     default: "2026-04-15"
-  existing_cluster_id:
-    description: |
-      Optional. If set, the job runs on this existing cluster instead of
-      spinning up a new one. Use this on workspaces that block
-      new_cluster creation via the Jobs API.
-    default: ""
 
 sync:
   include:
@@ -55,19 +53,9 @@ resources:
               mode: "PROD"
               weather_catalog: ${var.weather_catalog}
               weather_schema: ${var.weather_schema}
-          # Provision a fresh single-node cluster per run. Override by setting
-          # the ``existing_cluster_id`` variable if your workspace disallows
-          # new_cluster creation.
-          new_cluster:
-            spark_version: "13.3.x-scala2.12"
-            node_type_id: "i3.xlarge"
-            num_workers: 0
-            spark_conf:
-              spark.databricks.cluster.profile: singleNode
-              spark.master: "local[*]"
-            custom_tags:
-              ResourceClass: SingleNode
-              Pipeline: jhb_weather
+          # Serverless compute: no new_cluster / existing_cluster_id block.
+          # Databricks routes notebook_task to serverless when no cluster
+          # spec is supplied. The notebook installs ubunye-engine via %pip.
 
 targets:
   nonprod:
