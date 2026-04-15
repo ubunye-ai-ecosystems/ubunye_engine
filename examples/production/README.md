@@ -17,12 +17,16 @@ The short answer: the business logic does not change. The config shifts from
 | Example                                           | Runtime                               | Input                        | Output                       |
 |---------------------------------------------------|---------------------------------------|------------------------------|------------------------------|
 | [`titanic_local/`](./titanic_local/)              | Local SparkSession                    | CSV on disk                  | Parquet on disk              |
-| [`titanic_databricks/`](./titanic_databricks/)    | Databricks (CE-sized)                 | CSV on DBFS                  | Parquet on DBFS              |
+| [`titanic_databricks/`](./titanic_databricks/)    | Databricks serverless + UC            | CSV on UC volume             | Unity Catalog Delta table    |
 | [`jhb_weather_databricks/`](./jhb_weather_databricks/) | Databricks + Unity Catalog        | Open-Meteo REST API (no auth)| Unity Catalog Delta table    |
+| [`titanic_ml_databricks/`](./titanic_ml_databricks/) | Databricks serverless + UC (ML)     | CSV on UC volume             | Training audit log + predictions (UC Delta); MLflow + Model Registry |
 
 The first two answer *"how much code changes when I move from laptop to
 Databricks?"* — the business logic is byte-identical across them. The third
 shows REST ingestion + Unity Catalog sinks with a scheduled Databricks job.
+The fourth is the end-to-end ML lifecycle counterpart: `UbunyeModel` +
+MLflow logging + filesystem-backed Model Registry on a UC volume, with
+promotion gates.
 
 Each example is self-contained: its own `README.md`, tests, and CI workflow.
 Start with the one that matches your runtime.

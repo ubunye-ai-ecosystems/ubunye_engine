@@ -1,0 +1,47 @@
+MODEL: "ml"
+VERSION: "1.0.0"
+
+# Training task for the Titanic survival classifier.
+#
+# Reads the same raw Titanic CSV as the analytics example (from a UC volume),
+# trains a sklearn RandomForest via TitanicSurvivalModel, logs the run to
+# MLflow, and registers the trained artifact in the Ubunye Model Registry
+# (filesystem-backed under a UC volume). Promotion to staging is gated on
+# a minimum AUC.
+#
+# The engine requires at least one declared output, so we emit a tiny
+# single-row ``training_metrics`` DataFrame summarising the run — this
+# doubles as a queryable audit trail in Unity Catalog.
+
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "4"
+  profiles:
+    DEV:
+      spark_conf:
+        spark.sql.shuffle.partitions: "2"
+    PROD:
+      spark_conf:
+        spark.sql.shuffle.partitions: "4"
+
+CONFIG:
+  inputs:
+    titanic:
+      format: s3
+      path: "{{ env.TITANIC_INPUT_PATH }}"
+      file_format: csv
+      options:
+        header: "true"
+        inferSchema: "true"
+        mode: "FAILFAST"
+  transform:
+    # Overridden at runtime by execute_user_task -> transformations.py.
+    type: noop
+  outputs:
+    training_metrics:
+      format: unity
+      table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic_ml') }}.training_metrics"
+      mode: append
+      file_format: delta
+      options:
+        comment: "Titanic classifier training audit log — one row per ubunye run."

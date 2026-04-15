@@ -1,0 +1,73 @@
+# Databricks Asset Bundle — Titanic ML (train + predict on serverless + UC).
+#
+# Two jobs share the same bundle:
+#   * ``titanic_train``   — fits TitanicSurvivalModel, logs to MLflow,
+#                           registers + auto-promotes via Model Registry.
+#   * ``titanic_predict`` — loads the current production/staging model and
+#                           writes batch predictions to a UC Delta table.
+#
+# Both run on serverless compute (no new_cluster block). Model artifacts and
+# the input CSV live on UC volumes so serverless Spark can read them — local
+# /tmp paths are blocked by SharedUCWorkspaceLocalFileSystem.
+
+bundle:
+  name: titanic-ml
+
+include:
+  - pipelines/**/*.yaml
+
+variables:
+  titanic_catalog:
+    description: |
+      Unity Catalog catalog for the ML outputs. Free Edition provisions only
+      ``workspace`` by default; paid workspaces typically use ``main``.
+    default: "workspace"
+  titanic_schema:
+    description: Unity Catalog schema for the training audit log and predictions.
+    default: "titanic_ml"
+  data_timestamp:
+    description: Data timestamp injected into the config as ``{{ dt }}``.
+    default: "2026-04-15"
+  min_auc:
+    description: Minimum AUC required to auto-promote the trained model to staging.
+    default: "0.80"
+
+sync:
+  include:
+    - pipelines/**
+    - notebooks/**
+
+resources:
+  jobs:
+    titanic_train:
+      name: titanic_ml_train
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: train
+          notebook_task:
+            notebook_path: ./notebooks/train_titanic.py
+            base_parameters:
+              task_dir: ${workspace.file_path}/pipelines/titanic/ml/train_classifier
+              dt: ${var.data_timestamp}
+              mode: "PROD"
+              titanic_catalog: ${var.titanic_catalog}
+              titanic_schema: ${var.titanic_schema}
+              min_auc: ${var.min_auc}
+    titanic_predict:
+      name: titanic_ml_predict
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: predict
+          notebook_task:
+            notebook_path: ./notebooks/predict_titanic.py
+            base_parameters:
+              task_dir: ${workspace.file_path}/pipelines/titanic/ml/predict_classifier
+              dt: ${var.data_timestamp}
+              mode: "PROD"
+              titanic_catalog: ${var.titanic_catalog}
+              titanic_schema: ${var.titanic_schema}
+
+targets:
+  nonprod:
+    mode: development
+    default: true
