@@ -23,6 +23,7 @@ from typing import List, Optional
 import typer
 
 from ubunye.backends.spark_backend import SparkBackend
+from ubunye.cli.export import export_app
 from ubunye.cli.lineage import lineage_app
 from ubunye.cli.models import models_app
 from ubunye.cli.test_cmd import test_app
@@ -33,6 +34,7 @@ from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
 
 app = typer.Typer(add_completion=False, help="Ubunye Engine CLI")
+app.add_typer(export_app)
 app.add_typer(lineage_app)
 app.add_typer(models_app)
 app.add_typer(test_app)
