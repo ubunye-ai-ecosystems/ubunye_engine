@@ -52,7 +52,7 @@ titanic_local/
 |-------------------|--------------------|--------------------------------------------|
 | Python            | 3.11 (CI target)   | Matches the workflow; 3.9+ also works.     |
 | Java              | 11                 | Required by PySpark.                       |
-| `ubunye-engine`   | `>=0.1.3`, `[spark]` extra | Provides the CLI and Spark backend. |
+| `ubunye-engine`   | `>=0.1.5`, `[spark]` extra | Provides the CLI and Spark backend. |
 | `pandas`, `pyarrow` | latest          | Golden-file validation + unit tests.       |
 
 Install from the repo root:
