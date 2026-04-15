@@ -79,25 +79,33 @@ jobs:
           fi
           echo "OK: transformations.py is byte-identical across runtimes."
 
-      - name: Fail fast if Databricks secrets are missing
+      - name: Check for Databricks secrets
+        # Skip deploy steps when secrets are absent so PRs from forks still
+        # exercise the unit tests and portability diff above.
+        id: check_secrets
         run: |
           if [[ -z "${DATABRICKS_HOST}" || -z "${DATABRICKS_TOKEN}" ]]; then
-            echo "::error::DATABRICKS_HOST and DATABRICKS_TOKEN must be set as repository secrets."
-            exit 1
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::DATABRICKS_HOST/DATABRICKS_TOKEN not set - skipping bundle deploy."
+          else
+            echo "has_secrets=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Install Databricks CLI
+        if: steps.check_secrets.outputs.has_secrets == 'true'
         uses: databricks/setup-cli@main
 
       - name: databricks bundle validate
+        if: steps.check_secrets.outputs.has_secrets == 'true'
         working-directory: ${{ env.EXAMPLE_DIR }}
         run: databricks bundle validate --target nonprod
 
       - name: databricks bundle deploy
+        if: steps.check_secrets.outputs.has_secrets == 'true'
         working-directory: ${{ env.EXAMPLE_DIR }}
         run: databricks bundle deploy --target nonprod
 
       - name: databricks bundle run (manual trigger only)
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_after_deploy }}
+        if: ${{ steps.check_secrets.outputs.has_secrets == 'true' && github.event_name == 'workflow_dispatch' && inputs.run_after_deploy }}
         working-directory: ${{ env.EXAMPLE_DIR }}
         run: databricks bundle run titanic_survival --target nonprod
