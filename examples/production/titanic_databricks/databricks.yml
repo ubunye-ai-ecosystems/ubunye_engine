@@ -70,7 +70,8 @@ targets:
   nonprod:
     mode: development
     default: true
-    workspace:
-      host: ${workspace.host}
-    # Prefixes deployments with the current user so two developers sharing a
-    # CE workspace don't clobber each other's jobs. Databricks DAB convention.
+    # No workspace.host: DABs read it from $DATABRICKS_HOST. Self-referencing
+    # ${workspace.host} is rejected by the CLI ("Variable interpolation is
+    # not supported for fields that configure authentication").
+    # mode: development prefixes deployments with the current user so two
+    # developers sharing a workspace don't clobber each other's jobs.
