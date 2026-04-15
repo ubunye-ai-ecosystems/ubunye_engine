@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Production reference example: Titanic ML end-to-end on Databricks** —
+  `examples/production/titanic_ml_databricks/` demonstrates the full ML
+  lifecycle: `UbunyeModel` subclass (sklearn RandomForest), MLflow param/
+  metric/artifact logging, filesystem-backed `ModelRegistry` on a UC volume,
+  and a `PromotionGate` on validation AUC. Two serverless jobs share one
+  Asset Bundle — `titanic_train` registers and auto-promotes; `titanic_predict`
+  loads the current production/staging model and writes a Unity Catalog
+  Delta predictions table. A one-row `training_metrics` audit row is appended
+  per training run. CI (`.github/workflows/titanic_ml_databricks.yml`) runs
+  pandas/sklearn unit tests, diffs the two `model.py` copies for drift, and
+  validates/deploys the bundle when Databricks secrets are configured. See
+  the example's `README.md`.
+
 ### Changed
 
 - N/A

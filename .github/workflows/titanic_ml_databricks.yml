@@ -1,0 +1,99 @@
+name: examples/titanic_ml_databricks
+
+# Production reference CI for examples/production/titanic_ml_databricks.
+#
+# Responsibilities:
+#   1. Run model unit tests (pandas + sklearn; no Spark runtime needed).
+#   2. Enforce the portability contract: model.py must be byte-identical
+#      between the train_classifier and predict_classifier task directories.
+#   3. Validate the Asset Bundle statically.
+#   4. Deploy the bundle to the ``nonprod`` target on the configured workspace.
+#   5. Optionally trigger the train job when the workflow is invoked manually.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/production/titanic_ml_databricks/**"
+      - ".github/workflows/titanic_ml_databricks.yml"
+  workflow_dispatch:
+    inputs:
+      job_to_run:
+        description: "Which job to trigger after deploy (empty = none)"
+        type: choice
+        options: ["", "titanic_train", "titanic_predict"]
+        default: ""
+
+concurrency:
+  group: titanic-ml-databricks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      EXAMPLE_DIR: examples/production/titanic_ml_databricks
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[ml,dev]"
+
+      - name: Unit tests (model contract, pandas only)
+        run: pytest "${EXAMPLE_DIR}/tests" -v
+
+      - name: Enforce portability — model.py must match between train and predict
+        run: |
+          set -e
+          train_file="${EXAMPLE_DIR}/pipelines/titanic/ml/train_classifier/model.py"
+          predict_file="${EXAMPLE_DIR}/pipelines/titanic/ml/predict_classifier/model.py"
+          if ! diff -q "${train_file}" "${predict_file}"; then
+            echo "::error file=${predict_file}::model.py differs from ${train_file}. The two tasks must share identical model definitions."
+            diff "${train_file}" "${predict_file}" || true
+            exit 1
+          fi
+          echo "OK: model.py is byte-identical across train_classifier and predict_classifier."
+
+      - name: Check for Databricks secrets
+        id: check_secrets
+        run: |
+          if [[ -z "${DATABRICKS_HOST}" || -z "${DATABRICKS_TOKEN}" ]]; then
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::DATABRICKS_HOST/DATABRICKS_TOKEN not set - skipping bundle deploy."
+          else
+            echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Databricks CLI
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        uses: databricks/setup-cli@main
+
+      - name: databricks bundle validate
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle validate --target nonprod
+
+      - name: databricks bundle deploy
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle deploy --target nonprod
+
+      - name: databricks bundle run (manual trigger only)
+        if: ${{ steps.check_secrets.outputs.has_secrets == 'true' && github.event_name == 'workflow_dispatch' && inputs.job_to_run != '' }}
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle run ${{ inputs.job_to_run }} --target nonprod
