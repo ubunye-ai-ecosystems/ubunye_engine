@@ -1686,6 +1686,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#ubunye.core.runtime.Engine.__init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        __init__
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="__init__">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.runtime.Engine.__init__--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ubunye.core.runtime.Engine.run" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3294,6 +3322,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#ubunye.core.runtime.Engine.__init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        __init__
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="__init__">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.runtime.Engine.__init__--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ubunye.core.runtime.Engine.run" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4700,7 +4756,7 @@ Primary use case: Databricks notebooks and jobs where a SparkSession already exi
 
 
 <a href="#ubunye.api.run_task" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_task</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DEV&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">&#39;.ubunye/lineage&#39;</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_task</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DEV&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">&#39;.ubunye/lineage&#39;</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
@@ -4724,7 +4780,10 @@ lineage : bool
 lineage_dir : str
     Root directory for lineage records.
 profile : str, optional
-    Config profile for validation (passed to <code>load_config</code>).</p>
+    Config profile for validation (passed to <code>load_config</code>).
+hooks : iterable of Hook, optional
+    Replace the engine's default hooks entirely. Rarely needed; prefer
+    the <code>ubunye.hooks</code> entry point for always-on hooks.</p>
 <h5 id="ubunye.api.run_task--returns">Returns<a class="headerlink" href="#ubunye.api.run_task--returns" title="Permanent link">&para;</a></h5>
 <p>Dict[str, Any]
     Mapping of output name → DataFrame.</p>
@@ -4742,7 +4801,7 @@ profile : str, optional
 
 
 <a href="#ubunye.api.run_pipeline" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_pipeline</span><span class="p">(</span><span class="n">usecase_dir</span><span class="p">,</span> <span class="n">usecase</span><span class="p">,</span> <span class="n">package</span><span class="p">,</span> <span class="n">tasks</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DEV&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">&#39;.ubunye/lineage&#39;</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_pipeline</span><span class="p">(</span><span class="n">usecase_dir</span><span class="p">,</span> <span class="n">usecase</span><span class="p">,</span> <span class="n">package</span><span class="p">,</span> <span class="n">tasks</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DEV&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">&#39;.ubunye/lineage&#39;</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
@@ -4757,7 +4816,7 @@ package : str
     Package/pipeline name.
 tasks : List[str]
     Task names to run in order.
-mode, dt, dtf, spark, lineage, lineage_dir, profile
+mode, dt, dtf, spark, lineage, lineage_dir, profile, hooks
     Same as :func:<code>run_task</code>.</p>
 <h5 id="ubunye.api.run_pipeline--returns">Returns<a class="headerlink" href="#ubunye.api.run_pipeline--returns" title="Permanent link">&para;</a></h5>
 <p>Dict[str, Dict[str, Any]]
@@ -4818,6 +4877,35 @@ default set.</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.core.runtime.Engine.__init__" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">__init__</span>
+
+
+<a href="#ubunye.core.runtime.Engine.__init__" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">__init__</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">extra_hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">manage_backend</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <h6 id="ubunye.core.runtime.Engine.__init__--parameters">Parameters<a class="headerlink" href="#ubunye.core.runtime.Engine.__init__--parameters" title="Permanent link">&para;</a></h6>
+<p>hooks : iterable of Hook, optional
+    Replace the default hook set entirely.
+extra_hooks : iterable of Hook, optional
+    Append these hooks to the default set. Ignored when <code>hooks</code> is
+    also given.
+manage_backend : bool, default True
+    If True (default), the engine calls <code>backend.start()</code> and
+    <code>backend.stop()</code>. Set to False when the caller owns the backend
+    lifecycle (e.g. Python API running multiple tasks on one session).</p>
+
+
+    </div>
+
+</div>
 
 <div class="doc doc-object doc-function">
 
