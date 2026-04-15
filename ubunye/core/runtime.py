@@ -4,23 +4,13 @@ from __future__ import annotations
 
 import importlib.metadata as md
 import os
-import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
 from ubunye.backends.spark_backend import SparkBackend  # default backend
+from ubunye.core.hooks import Hook, HookChain
 from ubunye.core.interfaces import Backend, Reader, Transform, Writer
-
-# --- Optional telemetry (no-ops if libs not present / flag disabled) ---
-from ubunye.telemetry.events import EventLogger
-from ubunye.telemetry.monitors import load_monitors, safe_call
-from ubunye.telemetry.otel import init_tracer, span
-from ubunye.telemetry.prometheus import (
-    observe_step,
-    observe_task,
-    start_prometheus_http_server,
-)
 
 
 @dataclass(frozen=True)
@@ -66,25 +56,28 @@ class Registry:
         self.transforms[name] = cls_
 
 
-# ---------------- Telemetry toggles & init helpers ----------------
+# ---------------- Default hook assembly ----------------
 _TELEMETRY_ENABLED = os.getenv("UBUNYE_TELEMETRY", "0") not in ("0", "", "false", "False")
 
 
-def _maybe_init_telemetry() -> None:
-    """Initialize optional telemetry backends if enabled via env flag."""
-    if not _TELEMETRY_ENABLED:
-        return
-    try:
-        init_tracer(service_name="ubunye")  # safe to call more than once
-    except Exception:
-        pass
-    # Optional Prometheus endpoint for dev/local debugging
-    prom_port = os.getenv("UBUNYE_PROM_PORT")
-    if prom_port:
-        try:
-            start_prometheus_http_server(int(prom_port))
-        except Exception:
-            pass
+def _default_hooks(cfg: Dict[str, Any]) -> List[Hook]:
+    """Build the default hook list honoring ``UBUNYE_TELEMETRY`` and config monitors."""
+    from ubunye.telemetry.hooks import (
+        EventLoggerHook,
+        LegacyMonitorsHook,
+        OTelHook,
+        PrometheusHook,
+    )
+
+    hooks: List[Hook] = []
+    if _TELEMETRY_ENABLED:
+        hooks.append(EventLoggerHook())
+        hooks.append(OTelHook())
+        hooks.append(PrometheusHook())
+    # Legacy user monitors (MLflow etc.) run regardless of telemetry flag —
+    # they're opt-in via CONFIG.monitors, same as before.
+    hooks.append(LegacyMonitorsHook(cfg))
+    return hooks
 
 
 class Engine:
@@ -97,10 +90,9 @@ class Engine:
       cfg[``CONFIG``][``transform``]: EITHER a single transform dict with 'type',
                                   OR a list of transform dicts to form a pipeline.
 
-    Notes
-    -----
-    - This class is intentionally small; orchestration, telemetry, and retries
-      can be layered around it without changing plugin contracts.
+    Observation (logging, metrics, tracing, user monitors) is delegated to
+    :class:`ubunye.core.hooks.Hook` instances. Pass ``hooks=`` to override the
+    default set.
     """
 
     def __init__(
@@ -108,10 +100,12 @@ class Engine:
         backend: Optional[Backend] = None,
         registry: Optional[Registry] = None,
         context: Optional[EngineContext] = None,
+        hooks: Optional[Iterable[Hook]] = None,
     ) -> None:
         self.backend = backend or SparkBackend(app_name="ubunye")
         self.registry = registry or Registry.from_entrypoints()
         self.context = context or EngineContext(run_id=str(uuid.uuid4()))
+        self._hooks_override = list(hooks) if hooks is not None else None
 
     # ---------- public API ----------
 
@@ -140,206 +134,94 @@ class Engine:
         transforms = self._normalize_transforms(transform_cfg)
         self._validate_transforms_exist(transforms)
 
-        # Resolve context for telemetry
+        # Resolve context for observability
         task_name = self.context.task_name or cfg.get("TASK_NAME") or "unknown_task"
         profile = self.context.profile or cfg.get("ENGINE", {}).get("active_profile") or "default"
+        ctx = EngineContext(run_id=self.context.run_id, profile=profile, task_name=task_name)
 
-        # Init telemetry (no-op if disabled)
-        _maybe_init_telemetry()
-        logger = EventLogger(task=task_name, profile=profile, run_id=self.context.run_id)
-        if _TELEMETRY_ENABLED:
-            logger.task_start()
-        monitors = load_monitors(cfg)
-        for monitor in monitors:
-            safe_call(monitor, "task_start", context=self.context, config=cfg)
+        chain = HookChain(
+            self._hooks_override if self._hooks_override is not None else _default_hooks(cfg)
+        )
+        state: Dict[str, Any] = {"outputs": None}
 
         if dry_run:
-            # Intentionally do not start backend on dry runs
-            for monitor in monitors:
-                safe_call(
-                    monitor,
-                    "task_end",
-                    context=self.context,
-                    config=cfg,
-                    outputs=None,
-                    status="success",
-                    duration_sec=0.0,
-                )
-            if _TELEMETRY_ENABLED:
-                logger.task_end(status="success", duration_sec=0.0)
-                observe_task(task=task_name, profile=profile, status="success")
+            with chain.task(ctx, cfg, state):
+                pass
             return None
 
-        # Execute
-        self.backend.start()
-        task_start = time.perf_counter()
-        try:
-            # -------- READ --------
-            sources: Dict[str, Any] = {}
-            for name in sorted(inputs_cfg):  # deterministic order
-                icfg = inputs_cfg[name]
-                rtype = icfg["format"]
-                reader_cls = self.registry.readers.get(rtype)
-                if not reader_cls:
-                    raise KeyError(
-                        f"Reader plugin '{rtype}' not found for input '{name}'. "
-                        f"Installed: {sorted(self.registry.readers)}"
-                    )
-                step = f"Reader:{rtype}"
-                t0 = time.perf_counter()
-                if _TELEMETRY_ENABLED:
-                    logger.step_start(step, extra={"input": name})
-                try:
-                    with span(step, {"task": task_name, "profile": profile}):
-                        df = reader_cls().read(icfg, self.backend)
-                    sources[name] = df
-                    dur = time.perf_counter() - t0
-                    if _TELEMETRY_ENABLED:
-                        observe_step(
-                            task=task_name,
-                            profile=profile,
-                            step=step,
-                            status="success",
-                            duration_sec=dur,
-                        )
-                        logger.step_end(step, status="success", duration_sec=dur)
-                except Exception as e:
-                    dur = time.perf_counter() - t0
-                    if _TELEMETRY_ENABLED:
-                        observe_step(
-                            task=task_name,
-                            profile=profile,
-                            step=step,
-                            status="error",
-                            duration_sec=dur,
-                        )
-                        logger.step_end(
-                            step, status="error", duration_sec=dur, extra={"error": repr(e)}
-                        )
-                    raise
+        with chain.task(ctx, cfg, state):
+            self.backend.start()
+            try:
+                sources = self._read_inputs(ctx, chain, inputs_cfg)
+                outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
+                self._write_outputs(ctx, chain, outputs_cfg, outputs_map)
+                state["outputs"] = outputs_map
+                return outputs_map
+            finally:
+                self.backend.stop()
 
-            # -------- TRANSFORM(S) --------
-            outputs_map = dict(sources)
-            for tcfg in transforms:
-                ttype = tcfg["type"]
-                tcls = self.registry.transforms[ttype]
-                step = f"Transform:{ttype}"
-                t0 = time.perf_counter()
-                if _TELEMETRY_ENABLED:
-                    logger.step_start(step)
-                try:
-                    with span(step, {"task": task_name, "profile": profile}):
-                        outputs_map = tcls().apply(outputs_map, tcfg, self.backend)
-                    if not isinstance(outputs_map, dict):
-                        raise TypeError(
-                            f"Transform '{ttype}' must return a dict[str, DataFrame], got {type(outputs_map)}"
-                        )
-                    dur = time.perf_counter() - t0
-                    if _TELEMETRY_ENABLED:
-                        observe_step(
-                            task=task_name,
-                            profile=profile,
-                            step=step,
-                            status="success",
-                            duration_sec=dur,
-                        )
-                        logger.step_end(step, status="success", duration_sec=dur)
-                except Exception as e:
-                    dur = time.perf_counter() - t0
-                    if _TELEMETRY_ENABLED:
-                        observe_step(
-                            task=task_name,
-                            profile=profile,
-                            step=step,
-                            status="error",
-                            duration_sec=dur,
-                        )
-                        logger.step_end(
-                            step, status="error", duration_sec=dur, extra={"error": repr(e)}
-                        )
-                    raise
+    # ---------- pipeline stages ----------
 
-            # -------- WRITE --------
-            for name in sorted(outputs_cfg):  # deterministic order
-                ocfg = outputs_cfg[name]
-                wtype = ocfg["format"]
-                writer_cls = self.registry.writers.get(wtype)
-                if not writer_cls:
-                    raise KeyError(
-                        f"Writer plugin '{wtype}' not found for output '{name}'. "
-                        f"Installed: {sorted(self.registry.writers)}"
-                    )
-                if name not in outputs_map:
-                    raise KeyError(f"Transform did not return output '{name}' expected by config.")
-                step = f"Writer:{wtype}"
-                t0 = time.perf_counter()
-                if _TELEMETRY_ENABLED:
-                    logger.step_start(step, extra={"output": name})
-                try:
-                    with span(step, {"task": task_name, "profile": profile}):
-                        writer_cls().write(outputs_map[name], ocfg, self.backend)
-                    dur = time.perf_counter() - t0
-                    if _TELEMETRY_ENABLED:
-                        observe_step(
-                            task=task_name,
-                            profile=profile,
-                            step=step,
-                            status="success",
-                            duration_sec=dur,
-                        )
-                        logger.step_end(step, status="success", duration_sec=dur)
-                except Exception as e:
-                    dur = time.perf_counter() - t0
-                    if _TELEMETRY_ENABLED:
-                        observe_step(
-                            task=task_name,
-                            profile=profile,
-                            step=step,
-                            status="error",
-                            duration_sec=dur,
-                        )
-                        logger.step_end(
-                            step, status="error", duration_sec=dur, extra={"error": repr(e)}
-                        )
-                    raise
-
-            # Success
-            if _TELEMETRY_ENABLED:
-                observe_task(task=task_name, profile=profile, status="success")
-                logger.task_end(status="success")
-            duration = time.perf_counter() - task_start
-            for monitor in monitors:
-                safe_call(
-                    monitor,
-                    "task_end",
-                    context=self.context,
-                    config=cfg,
-                    outputs=outputs_map,
-                    status="success",
-                    duration_sec=duration,
+    def _read_inputs(
+        self,
+        ctx: EngineContext,
+        chain: HookChain,
+        inputs_cfg: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        sources: Dict[str, Any] = {}
+        for name in sorted(inputs_cfg):
+            icfg = inputs_cfg[name]
+            rtype = icfg["format"]
+            reader_cls = self.registry.readers.get(rtype)
+            if not reader_cls:
+                raise KeyError(
+                    f"Reader plugin '{rtype}' not found for input '{name}'. "
+                    f"Installed: {sorted(self.registry.readers)}"
                 )
-            return outputs_map
+            with chain.step(ctx, f"Reader:{rtype}", {"input": name}):
+                sources[name] = reader_cls().read(icfg, self.backend)
+        return sources
 
-        except Exception:
-            duration = time.perf_counter() - task_start
-            for monitor in monitors:
-                safe_call(
-                    monitor,
-                    "task_end",
-                    context=self.context,
-                    config=cfg,
-                    outputs=None,
-                    status="error",
-                    duration_sec=duration,
+    def _apply_transforms(
+        self,
+        ctx: EngineContext,
+        chain: HookChain,
+        sources: Dict[str, Any],
+        transforms: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        outputs_map: Dict[str, Any] = dict(sources)
+        for tcfg in transforms:
+            ttype = tcfg["type"]
+            tcls = self.registry.transforms[ttype]
+            with chain.step(ctx, f"Transform:{ttype}", None):
+                outputs_map = tcls().apply(outputs_map, tcfg, self.backend)
+            if not isinstance(outputs_map, dict):
+                raise TypeError(
+                    f"Transform '{ttype}' must return a dict[str, DataFrame], "
+                    f"got {type(outputs_map)}"
                 )
-            if _TELEMETRY_ENABLED:
-                observe_task(task=task_name, profile=profile, status="error")
-                # task_end(status="error") already emitted inside failing step block,
-                # but call again defensively if failure was outside step boundaries:
-                logger.task_end(status="error")
-            raise
-        finally:
-            self.backend.stop()
+        return outputs_map
+
+    def _write_outputs(
+        self,
+        ctx: EngineContext,
+        chain: HookChain,
+        outputs_cfg: Dict[str, Any],
+        outputs_map: Dict[str, Any],
+    ) -> None:
+        for name in sorted(outputs_cfg):
+            ocfg = outputs_cfg[name]
+            wtype = ocfg["format"]
+            writer_cls = self.registry.writers.get(wtype)
+            if not writer_cls:
+                raise KeyError(
+                    f"Writer plugin '{wtype}' not found for output '{name}'. "
+                    f"Installed: {sorted(self.registry.writers)}"
+                )
+            if name not in outputs_map:
+                raise KeyError(f"Transform did not return output '{name}' expected by config.")
+            with chain.step(ctx, f"Writer:{wtype}", {"output": name}):
+                writer_cls().write(outputs_map[name], ocfg, self.backend)
 
     # ---------- internal helpers ----------
 

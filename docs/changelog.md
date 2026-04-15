@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Hook abstraction for observability** (`ubunye/core/hooks.py`) — `Hook` base class and
+  `HookChain` multiplexer. Tasks and steps are now wrapped in hook context managers so the
+  Engine no longer imports telemetry modules directly. Built-in hooks shipped under
+  `ubunye/telemetry/hooks/`: `EventLoggerHook`, `OTelHook`, `PrometheusHook`, `LegacyMonitorsHook`.
+  Third parties can register custom hooks (Slack alerts, audit logs, drift checks) without
+  modifying the Engine. See `docs/patterns/hooks.md`.
+
 - **Python API** (`ubunye/api.py`) — `run_task()` and `run_pipeline()` for running Ubunye tasks
   from Python code (Databricks notebooks, scripts, tests) without the CLI.
   Auto-detects and reuses active SparkSessions. Exported from `ubunye.__init__`.
@@ -61,6 +68,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Engine runtime refactored** — `ubunye/core/runtime.py` reduced from 374 to 255 lines.
+  `Engine.run()` body shrank from ~220 lines to ~35 by delegating telemetry plumbing to
+  hooks. The engine no longer imports from `ubunye.telemetry.*` — only from
+  `ubunye.core.hooks`. `UBUNYE_TELEMETRY` and `UBUNYE_PROM_PORT` env vars still honored;
+  user monitors in `CONFIG.monitors` continue to work via `LegacyMonitorsHook`.
+  `Engine.__init__` gained an optional `hooks=` argument.
 - `ubunye/config/schema.py` — added `RegistryConfig`, `ModelTransformParams`, `FormatType.REST_API`.
 - `ubunye/__init__.py` — exports `run_task` and `run_pipeline`.
 - `ubunye/cli/main.py` — mounted `models_app`, `lineage_app`, `test_app` Typer sub-apps; added notebook scaffolding to `init`.

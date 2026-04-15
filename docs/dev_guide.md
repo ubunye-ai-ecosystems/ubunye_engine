@@ -145,26 +145,50 @@ On task end it writes a `RunRecord` JSON file keyed by `run_id`.
 
 ---
 
-## Telemetry
+## Observability (hooks)
 
-`ubunye/telemetry/` — all telemetry is opt-in via `UBUNYE_TELEMETRY=1`:
-
-| Module | Backend |
-|---|---|
-| `events.py` | JSON Lines log file |
-| `prometheus.py` | Prometheus counters and histograms (port `UBUNYE_PROM_PORT`) |
-| `otel.py` | OpenTelemetry spans (OTLP or console exporter) |
-| `mlflow.py` | MLflow run logging (experiment, metrics, params) |
-
-All monitors implement the `Monitor` protocol:
+The Engine observes task runs through **hooks** — a single abstraction that
+wraps every task and every step in a context manager. The Engine itself does
+not know about Prometheus, OpenTelemetry, MLflow, or event logs.
 
 ```python
-class Monitor(Protocol):
-    def on_task_start(self, ctx: RunContext) -> None: ...
-    def on_task_end(self, ctx: RunContext, success: bool) -> None: ...
+class Hook:
+    @contextmanager
+    def task(self, ctx, cfg, state): yield
+
+    @contextmanager
+    def step(self, ctx, name, meta): yield
 ```
 
-Monitors are wrapped with `safe_call()` — a failing monitor never crashes the task.
+`ubunye/core/hooks.py` defines `Hook` and `HookChain` (multiplexer).
+`ubunye/telemetry/hooks/` ships four built-in hooks:
+
+| File | Hook | Wraps |
+|---|---|---|
+| `hooks/events.py` | `EventLoggerHook` | JSON Lines event log |
+| `hooks/otel.py` | `OTelHook` | OpenTelemetry spans |
+| `hooks/prometheus.py` | `PrometheusHook` | Prometheus counters/histograms |
+| `hooks/monitors.py` | `LegacyMonitorsHook` | User monitors from `CONFIG.monitors` (MLflow etc.) |
+
+Environment flags still apply:
+
+- `UBUNYE_TELEMETRY=1` — enable the three built-in telemetry hooks
+- `UBUNYE_PROM_PORT=8000` — start Prometheus HTTP endpoint
+
+Legacy user monitors (`CONFIG.monitors`) run independently of the telemetry
+flag — same behavior as before.
+
+Override the hook set directly:
+
+```python
+from ubunye.core.runtime import Engine
+from my_package.hooks import SlackAlertHook
+
+engine = Engine(hooks=[SlackAlertHook(channel="#data-alerts")])
+engine.run(cfg)
+```
+
+See the [Hooks guide](patterns/hooks.md) for writing custom hooks.
 
 ---
 
