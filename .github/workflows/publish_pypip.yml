@@ -8,7 +8,9 @@ on:
 jobs:
   build-n-publish:
     runs-on: ubuntu-latest
-    environment: pypi          # protects releases with an approval gate
+    environment: pypip         # protects releases with an approval gate
+                               # (must match the env name on the PyPI Trusted
+                               # Publisher entry exactly - case-sensitive)
     permissions:
       contents: read
       id-token: write          # required for OIDC Trusted Publishers
