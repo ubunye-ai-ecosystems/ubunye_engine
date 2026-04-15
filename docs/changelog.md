@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Production reference example: JHB hourly weather (REST API → Unity Catalog)** —
+  end-to-end example at `examples/production/jhb_weather_databricks/` demonstrating
+  REST ingestion with the `rest_api` reader against the free Open-Meteo API
+  (lat/lon for Johannesburg, no auth required), a Spark transform that explodes
+  parallel hourly arrays into a tidy one-row-per-hour DataFrame, and a Unity
+  Catalog Delta writer partitioned by `forecast_date`. Ships a Databricks Asset
+  Bundle with a scheduled daily job (06:00 `Africa/Johannesburg`), a notebook
+  wrapper around `ubunye.run_task()`, seven pandas unit tests over a hand-built
+  fixture response, and a CI workflow
+  (`.github/workflows/jhb_weather_databricks.yml`) that runs the tests, smoke-checks
+  the endpoint, and validates/deploys the bundle when Databricks secrets are
+  configured. See the example's `README.md`.
+
 - **Production reference example: Titanic (local runtime)** — end-to-end example at
   `examples/production/titanic_local/` demonstrating a CSV → Parquet pipeline with
   dev/prod profiles, Jinja-templated paths, pandas unit tests (no Spark), a committed

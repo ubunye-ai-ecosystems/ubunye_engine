@@ -1,0 +1,83 @@
+# Databricks Asset Bundle - JHB hourly forecast pipeline.
+#
+# Deploys the ``jhb_weather_forecast`` job that calls the Open-Meteo REST API
+# once a day, explodes the hourly arrays into a tidy DataFrame, and writes the
+# result to a Unity Catalog Delta table.
+#
+# Sized for a single-node cluster so it runs on small workspaces. For a
+# production paid workspace, raise ``num_workers`` and swap ``node_type_id``
+# for the values recommended by your org.
+
+bundle:
+  name: jhb-weather-ingest
+
+include:
+  - pipelines/**/*.yaml
+
+variables:
+  weather_catalog:
+    description: Unity Catalog catalog name for the output table.
+    default: "main"
+  weather_schema:
+    description: Unity Catalog schema name for the output table.
+    default: "weather"
+  data_timestamp:
+    description: Data timestamp injected into the config as ``{{ dt }}``.
+    default: "2026-04-15"
+  existing_cluster_id:
+    description: |
+      Optional. If set, the job runs on this existing cluster instead of
+      spinning up a new one. Use this on workspaces that block
+      new_cluster creation via the Jobs API.
+    default: ""
+
+sync:
+  include:
+    - pipelines/**
+    - notebooks/**
+
+resources:
+  jobs:
+    jhb_weather_forecast:
+      name: jhb_weather_hourly_forecast
+      max_concurrent_runs: 1
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: "Africa/Johannesburg"
+        pause_status: UNPAUSED
+      tasks:
+        - task_key: ingest_forecast
+          notebook_task:
+            notebook_path: ./notebooks/run_jhb_weather.py
+            base_parameters:
+              task_dir: ${workspace.file_path}/pipelines/jhb_weather/ingestion/hourly_forecast
+              dt: ${var.data_timestamp}
+              mode: "PROD"
+              weather_catalog: ${var.weather_catalog}
+              weather_schema: ${var.weather_schema}
+          # Provision a fresh single-node cluster per run. Override by setting
+          # the ``existing_cluster_id`` variable if your workspace disallows
+          # new_cluster creation.
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+              Pipeline: jhb_weather
+
+targets:
+  nonprod:
+    mode: development
+    default: true
+    workspace:
+      host: ${workspace.host}
+  prod:
+    mode: production
+    workspace:
+      host: ${workspace.host}
+    variables:
+      weather_schema: weather_prod
