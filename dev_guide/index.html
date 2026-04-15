@@ -1321,6 +1321,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1709,10 +1737,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#telemetry" class="md-nav__link">
+  <a href="#observability-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Telemetry
+        Observability (hooks)
       
     </span>
   </a>
@@ -1996,10 +2024,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#telemetry" class="md-nav__link">
+  <a href="#observability-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Telemetry
+        Observability (hooks)
       
     </span>
   </a>
@@ -2237,40 +2265,65 @@ pipeline as the CLI but callable from Python code (notebooks, scripts, tests).</
 <p>The <code>LineageRecorder</code> is attached as a monitor and called at task start and end.
 On task end it writes a <code>RunRecord</code> JSON file keyed by <code>run_id</code>.</p>
 <hr />
-<h2 id="telemetry">Telemetry<a class="headerlink" href="#telemetry" title="Permanent link">&para;</a></h2>
-<p><code>ubunye/telemetry/</code> — all telemetry is opt-in via <code>UBUNYE_TELEMETRY=1</code>:</p>
+<h2 id="observability-hooks">Observability (hooks)<a class="headerlink" href="#observability-hooks" title="Permanent link">&para;</a></h2>
+<p>The Engine observes task runs through <strong>hooks</strong> — a single abstraction that
+wraps every task and every step in a context manager. The Engine itself does
+not know about Prometheus, OpenTelemetry, MLflow, or event logs.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Hook</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="nd">@contextmanager</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span> <span class="k">yield</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="nd">@contextmanager</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">meta</span><span class="p">):</span> <span class="k">yield</span>
+</code></pre></div>
+<p><code>ubunye/core/hooks.py</code> defines <code>Hook</code> and <code>HookChain</code> (multiplexer).
+<code>ubunye/telemetry/hooks/</code> ships four built-in hooks:</p>
 <table>
 <thead>
 <tr>
-<th>Module</th>
-<th>Backend</th>
+<th>File</th>
+<th>Hook</th>
+<th>Wraps</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>events.py</code></td>
-<td>JSON Lines log file</td>
+<td><code>hooks/events.py</code></td>
+<td><code>EventLoggerHook</code></td>
+<td>JSON Lines event log</td>
 </tr>
 <tr>
-<td><code>prometheus.py</code></td>
-<td>Prometheus counters and histograms (port <code>UBUNYE_PROM_PORT</code>)</td>
+<td><code>hooks/otel.py</code></td>
+<td><code>OTelHook</code></td>
+<td>OpenTelemetry spans</td>
 </tr>
 <tr>
-<td><code>otel.py</code></td>
-<td>OpenTelemetry spans (OTLP or console exporter)</td>
+<td><code>hooks/prometheus.py</code></td>
+<td><code>PrometheusHook</code></td>
+<td>Prometheus counters/histograms</td>
 </tr>
 <tr>
-<td><code>mlflow.py</code></td>
-<td>MLflow run logging (experiment, metrics, params)</td>
+<td><code>hooks/monitors.py</code></td>
+<td><code>LegacyMonitorsHook</code></td>
+<td>User monitors from <code>CONFIG.monitors</code> (MLflow etc.)</td>
 </tr>
 </tbody>
 </table>
-<p>All monitors implement the <code>Monitor</code> protocol:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Monitor</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">on_task_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">on_task_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+<p>Environment flags still apply:</p>
+<ul>
+<li><code>UBUNYE_TELEMETRY=1</code> — enable the three built-in telemetry hooks</li>
+<li><code>UBUNYE_PROM_PORT=8000</code> — start Prometheus HTTP endpoint</li>
+</ul>
+<p>Legacy user monitors (<code>CONFIG.monitors</code>) run independently of the telemetry
+flag — same behavior as before.</p>
+<p>Override the hook set directly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.runtime</span><span class="w"> </span><span class="kn">import</span> <span class="n">Engine</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">my_package.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">SlackAlertHook</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">Engine</span><span class="p">(</span><span class="n">hooks</span><span class="o">=</span><span class="p">[</span><span class="n">SlackAlertHook</span><span class="p">(</span><span class="n">channel</span><span class="o">=</span><span class="s2">&quot;#data-alerts&quot;</span><span class="p">)])</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">engine</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 </code></pre></div>
-<p>Monitors are wrapped with <code>safe_call()</code> — a failing monitor never crashes the task.</p>
+<p>See the <a href="../patterns/hooks/">Hooks guide</a> for writing custom hooks.</p>
 <hr />
 <h2 id="ml-architecture">ML architecture<a class="headerlink" href="#ml-architecture" title="Permanent link">&para;</a></h2>
 <p>Two separate ML systems coexist:</p>
@@ -2304,30 +2357,30 @@ filesystem. JSON serialization uses <code>dataclasses.asdict()</code>.</p>
 <h2 id="writing-tests">Writing tests<a class="headerlink" href="#writing-tests" title="Permanent link">&para;</a></h2>
 <h3 id="unit-tests-spark-free">Unit tests (Spark-free)<a class="headerlink" href="#unit-tests-spark-free" title="Permanent link">&para;</a></h3>
 <p>Use <code>MockDF</code> for any test that would otherwise require PySpark:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MockDF</span><span class="p">:</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rows</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_rows</span> <span class="o">=</span> <span class="n">rows</span> <span class="ow">or</span> <span class="p">[{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">}]</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rows</span><span class="p">)</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">toPandas</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span><span class="p">;</span> <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rows</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MockDF</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rows</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_rows</span> <span class="o">=</span> <span class="n">rows</span> <span class="ow">or</span> <span class="p">[{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">}]</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rows</span><span class="p">)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">toPandas</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span><span class="p">;</span> <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rows</span><span class="p">)</span>
 </code></pre></div>
 <p>All tests in <code>tests/unit/</code> must pass without <code>pyspark</code> installed.</p>
 <h3 id="integration-tests">Integration tests<a class="headerlink" href="#integration-tests" title="Permanent link">&para;</a></h3>
 <p>Mark with <code>@pytest.mark.integration</code> and use <code>SparkBackend</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.backends.spark_backend</span><span class="w"> </span><span class="kn">import</span> <span class="n">SparkBackend</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">spark</span><span class="p">():</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="k">with</span> <span class="n">SparkBackend</span><span class="p">(</span><span class="n">app_name</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">spark_conf</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;spark.sql.shuffle.partitions&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">})</span> <span class="k">as</span> <span class="n">be</span><span class="p">:</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="k">yield</span> <span class="n">be</span><span class="o">.</span><span class="n">spark</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">integration</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_hive_reader</span><span class="p">(</span><span class="n">spark</span><span class="p">):</span>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="o">...</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.backends.spark_backend</span><span class="w"> </span><span class="kn">import</span> <span class="n">SparkBackend</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">spark</span><span class="p">():</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="k">with</span> <span class="n">SparkBackend</span><span class="p">(</span><span class="n">app_name</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">spark_conf</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;spark.sql.shuffle.partitions&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">})</span> <span class="k">as</span> <span class="n">be</span><span class="p">:</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        <span class="k">yield</span> <span class="n">be</span><span class="o">.</span><span class="n">spark</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">integration</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_hive_reader</span><span class="p">(</span><span class="n">spark</span><span class="p">):</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="o">...</span>
 </code></pre></div>
 <p>Run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pytest<span class="w"> </span>tests/<span class="w"> </span>-m<span class="w"> </span>integration
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pytest<span class="w"> </span>tests/<span class="w"> </span>-m<span class="w"> </span>integration
 </code></pre></div>
 <hr />
 <h2 id="orchestration-exporters">Orchestration exporters<a class="headerlink" href="#orchestration-exporters" title="Permanent link">&para;</a></h2>
@@ -2369,7 +2422,7 @@ They do <strong>not</strong> interact with the running cluster — they only pro
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 20, 2026 01:55:54 UTC">March 20, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:58:39 UTC">April 15, 2026</span>
   </span>
 
     

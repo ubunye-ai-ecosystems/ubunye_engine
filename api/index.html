@@ -1321,6 +1321,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1656,17 +1684,6 @@
   
     <nav class="md-nav" aria-label="Engine">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ubunye.core.runtime.Engine--notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notes
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#ubunye.core.runtime.Engine.run" class="md-nav__link">
@@ -3277,17 +3294,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#ubunye.core.runtime.Engine--notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#ubunye.core.runtime.Engine.run" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4788,11 +4794,9 @@ mode, dt, dtf, spark, lineage, lineage_dir, profile
 cfg[<code>CONFIG</code>][<code>outputs</code>]  : mapping output_name -&gt; writer cfg (must include 'format')
 cfg[<code>CONFIG</code>][<code>transform</code>]: EITHER a single transform dict with 'type',
                             OR a list of transform dicts to form a pipeline.</p>
-</details>        <h5 id="ubunye.core.runtime.Engine--notes">Notes<a class="headerlink" href="#ubunye.core.runtime.Engine--notes" title="Permanent link">&para;</a></h5>
-<ul>
-<li>This class is intentionally small; orchestration, telemetry, and retries
-  can be layered around it without changing plugin contracts.</li>
-</ul>
+</details>        <p>Observation (logging, metrics, tracing, user monitors) is delegated to
+:class:<code>ubunye.core.hooks.Hook</code> instances. Pass <code>hooks=</code> to override the
+default set.</p>
 
 
 
