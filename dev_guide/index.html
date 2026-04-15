@@ -1723,6 +1723,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unified-execution-task_runnerexecute_user_task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unified execution: task_runner.execute_user_task
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2010,6 +2027,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unified-execution-task_runnerexecute_user_task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unified execution: task_runner.execute_user_task
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2181,16 +2215,17 @@ The class is instantiated fresh for each task run.</p>
 <h2 id="engine-runtime">Engine runtime<a class="headerlink" href="#engine-runtime" title="Permanent link">&para;</a></h2>
 <p><code>Engine.run(cfg)</code> in <code>ubunye/core/runtime.py</code>:</p>
 <ol>
-<li>Merge Spark conf (base + profile).</li>
-<li>Start <code>SparkBackend</code>.</li>
-<li>For each input in <code>cfg.CONFIG.inputs</code>: call <code>Reader.read(io_cfg_dict, backend)</code>.</li>
-<li>Call <code>Transform.apply(inputs_dict, transform_cfg_params, backend)</code>.</li>
-<li>For each output in <code>cfg.CONFIG.outputs</code>: call <code>Writer.write(df, io_cfg_dict, backend)</code>.</li>
-<li>Stop <code>SparkBackend</code>.</li>
-<li>If <code>LineageRecorder</code> is attached (via monitors): write run record.</li>
+<li>Build the hook chain (defaults + <code>extra_hooks</code>, or <code>hooks=</code> override).</li>
+<li>Open <code>chain.task(ctx, cfg, state)</code> — wraps the entire run.</li>
+<li>If <code>manage_backend=True</code>, start the backend.</li>
+<li>Read each input: <code>chain.step("read.&lt;name&gt;")</code> → <code>Reader.read(io_cfg, backend)</code>.</li>
+<li>Apply the transform: <code>chain.step("transform")</code> → <code>Transform.apply(...)</code>.</li>
+<li>Write each output: <code>chain.step("write.&lt;name&gt;")</code> → <code>Writer.write(...)</code>.</li>
+<li>Populate <code>state["outputs"]</code> so hooks can inspect them on exit.</li>
+<li>If <code>manage_backend=True</code>, stop the backend.</li>
 </ol>
-<p>The <code>task_dir</code> is added to <code>sys.path</code> before step 4, so <code>transformations.py</code> and
-<code>model.py</code> can be imported without explicit path configuration.</p>
+<p><code>task_runner.execute_user_task</code> adds <code>task_dir</code> to <code>sys.path</code> for the duration
+of step 5 so <code>transformations.py</code> can do <code>from model import ...</code>.</p>
 <hr />
 <h2 id="backends">Backends<a class="headerlink" href="#backends" title="Permanent link">&para;</a></h2>
 <h3 id="sparkbackend">SparkBackend<a class="headerlink" href="#sparkbackend" title="Permanent link">&para;</a></h3>
@@ -2232,7 +2267,26 @@ pipeline as the CLI but callable from Python code (notebooks, scripts, tests).</
 <p>Both functions are re-exported from <code>ubunye.__init__</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ubunye</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span><span class="n">task_dir</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;DEV&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Inject custom hooks (notebook/script use only)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">my_pkg.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">SlackAlertHook</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span><span class="n">task_dir</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="p">[</span><span class="n">SlackAlertHook</span><span class="p">(</span><span class="s2">&quot;#alerts&quot;</span><span class="p">)])</span>
 </code></pre></div>
+<h3 id="unified-execution-task_runnerexecute_user_task">Unified execution: <code>task_runner.execute_user_task</code><a class="headerlink" href="#unified-execution-task_runnerexecute_user_task" title="Permanent link">&para;</a></h3>
+<p><code>api.py</code>, <code>cli/main.py run</code>, and <code>cli/test_cmd.py run</code> all delegate to
+<code>ubunye.core.task_runner.execute_user_task()</code>. It loads the user's <code>Task</code>
+subclass from <code>transformations.py</code>, wraps it as an ephemeral Transform plugin
+(<code>_ubunye_user_task</code>), and runs the resulting config through <code>Engine</code>. One code
+path means hooks, lineage, and lifecycle behave identically across all three
+entry points.</p>
+<p>The <code>Engine</code> exposes two flags that this helper relies on:</p>
+<ul>
+<li><code>manage_backend=False</code> — caller owns <code>backend.start()</code> / <code>backend.stop()</code>,
+  letting the CLI share one Spark session across many tasks.</li>
+<li><code>extra_hooks=[...]</code> — appended to the default hook set. Used to attach a
+  <code>MonitorHook</code> wrapping the optional <code>LineageRecorder</code> without replacing the
+  built-in telemetry hooks.</li>
+</ul>
 <hr />
 <h2 id="lineage-system">Lineage system<a class="headerlink" href="#lineage-system" title="Permanent link">&para;</a></h2>
 <p><code>ubunye/lineage/</code>:</p>
@@ -2422,7 +2476,7 @@ They do <strong>not</strong> interact with the running cluster — they only pro
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:58:39 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:20:00 UTC">April 15, 2026</span>
   </span>
 
     
