@@ -33,12 +33,12 @@ Output table: `<catalog>.<schema>.jhb_hourly_forecast`, partitioned by
 ```
 jhb_weather_databricks/
 ├── README.md                               (this file)
-├── databricks.yml                          Asset Bundle: job + cluster + targets
+├── databricks.yml                          Asset Bundle: serverless job + targets
 ├── notebooks/
 │   └── run_jhb_weather.py                  Notebook wrapping ubunye.run_task()
 ├── pipelines/jhb_weather/ingestion/hourly_forecast/
 │   ├── config.yaml                         rest_api reader -> unity writer
-│   └── transformations.py                  Spark + pandas transform
+│   └── transformations.py                  Spark transform (arrays_zip + explode)
 └── tests/
     ├── conftest.py                         sys.path + session-scoped SparkSession
     └── test_transformations.py             PySpark unit tests (arrays_zip/explode)
@@ -71,6 +71,22 @@ databricks bundle run     jhb_weather_forecast --target nonprod
 The bundle deploys a scheduled job that fires daily at 06:00
 `Africa/Johannesburg`. Override the Unity Catalog destination by setting the
 `weather_catalog` and `weather_schema` bundle variables (see `databricks.yml`).
+
+### Compute model
+
+The job uses **serverless compute** — no `new_cluster` block in
+`databricks.yml`. This is required on Databricks Free Edition (which does
+not allow classic-cluster creation) and works identically on paid
+workspaces. Dependencies are installed in-notebook via
+`%pip install ubunye-engine==<ver>`.
+
+The default `weather_catalog` is `workspace` because that is the catalog
+Free Edition provisions automatically. On a paid workspace, override to
+`main` (or your standard catalog) via:
+
+```bash
+databricks bundle deploy --target nonprod --var="weather_catalog=main"
+```
 
 ## CI workflow
 

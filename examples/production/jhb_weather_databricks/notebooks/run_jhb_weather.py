@@ -14,7 +14,7 @@
 dbutils.widgets.text("task_dir", "", "Workspace task directory (absolute)")
 dbutils.widgets.text("dt", "2026-04-15", "Data timestamp")
 dbutils.widgets.dropdown("mode", "PROD", ["DEV", "PROD"], "Run mode")
-dbutils.widgets.text("weather_catalog", "main", "Unity Catalog catalog")
+dbutils.widgets.text("weather_catalog", "workspace", "Unity Catalog catalog")
 dbutils.widgets.text("weather_schema", "weather", "Unity Catalog schema")
 
 task_dir = dbutils.widgets.get("task_dir")

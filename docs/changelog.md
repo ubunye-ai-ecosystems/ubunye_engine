@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`jhb_weather_databricks` DAB switched to serverless compute.** Removed
+  the `new_cluster` block (and the `existing_cluster_id` escape hatch) from
+  `databricks.yml`. Notebook tasks with no cluster spec route to serverless
+  on both Free Edition and paid workspaces; the notebook installs
+  `ubunye-engine` at runtime via `%pip`. Default `weather_catalog` changed
+  from `main` to `workspace` because Free Edition auto-provisions only the
+  `workspace` catalog. Paid-workspace users override via
+  `--var="weather_catalog=main"`. README documents the rationale.
+- **`databricks_deploy.yml` (titanic) skips deploy gracefully when secrets
+  are absent.** Mirrors the soft-skip pattern in `jhb_weather_databricks.yml`
+  so PRs from forks (or repos that have not configured
+  `DATABRICKS_HOST`/`DATABRICKS_TOKEN`) still exercise the unit tests and
+  portability diff instead of failing the workflow.
 - **Production examples switched from pandas twins to PySpark tests.** Every
   `transformations.py` under `examples/production/` now exposes a single Spark
   implementation. Tests use a session-scoped `SparkSession` fixture
