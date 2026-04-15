@@ -63,16 +63,17 @@ The class is instantiated fresh for each task run.
 
 `Engine.run(cfg)` in `ubunye/core/runtime.py`:
 
-1. Merge Spark conf (base + profile).
-2. Start `SparkBackend`.
-3. For each input in `cfg.CONFIG.inputs`: call `Reader.read(io_cfg_dict, backend)`.
-4. Call `Transform.apply(inputs_dict, transform_cfg_params, backend)`.
-5. For each output in `cfg.CONFIG.outputs`: call `Writer.write(df, io_cfg_dict, backend)`.
-6. Stop `SparkBackend`.
-7. If `LineageRecorder` is attached (via monitors): write run record.
+1. Build the hook chain (defaults + `extra_hooks`, or `hooks=` override).
+2. Open `chain.task(ctx, cfg, state)` — wraps the entire run.
+3. If `manage_backend=True`, start the backend.
+4. Read each input: `chain.step("read.<name>")` → `Reader.read(io_cfg, backend)`.
+5. Apply the transform: `chain.step("transform")` → `Transform.apply(...)`.
+6. Write each output: `chain.step("write.<name>")` → `Writer.write(...)`.
+7. Populate `state["outputs"]` so hooks can inspect them on exit.
+8. If `manage_backend=True`, stop the backend.
 
-The `task_dir` is added to `sys.path` before step 4, so `transformations.py` and
-`model.py` can be imported without explicit path configuration.
+`task_runner.execute_user_task` adds `task_dir` to `sys.path` for the duration
+of step 5 so `transformations.py` can do `from model import ...`.
 
 ---
 
@@ -125,7 +126,28 @@ Both functions are re-exported from `ubunye.__init__`:
 ```python
 import ubunye
 outputs = ubunye.run_task(task_dir="...", mode="DEV")
+
+# Inject custom hooks (notebook/script use only)
+from my_pkg.hooks import SlackAlertHook
+outputs = ubunye.run_task(task_dir="...", hooks=[SlackAlertHook("#alerts")])
 ```
+
+### Unified execution: `task_runner.execute_user_task`
+
+`api.py`, `cli/main.py run`, and `cli/test_cmd.py run` all delegate to
+`ubunye.core.task_runner.execute_user_task()`. It loads the user's `Task`
+subclass from `transformations.py`, wraps it as an ephemeral Transform plugin
+(`_ubunye_user_task`), and runs the resulting config through `Engine`. One code
+path means hooks, lineage, and lifecycle behave identically across all three
+entry points.
+
+The `Engine` exposes two flags that this helper relies on:
+
+- `manage_backend=False` — caller owns `backend.start()` / `backend.stop()`,
+  letting the CLI share one Spark session across many tasks.
+- `extra_hooks=[...]` — appended to the default hook set. Used to attach a
+  `MonitorHook` wrapping the optional `LineageRecorder` without replacing the
+  built-in telemetry hooks.
 
 ---
 

@@ -13,7 +13,6 @@ Usage
 
 from __future__ import annotations
 
-import sys
 import time
 import uuid
 from pathlib import Path
@@ -23,8 +22,9 @@ import typer
 
 from ubunye.backends.spark_backend import SparkBackend
 from ubunye.config import load_config
-from ubunye.core.runtime import EngineContext, Registry
-from ubunye.telemetry.monitors import load_monitors, safe_call
+from ubunye.core.runtime import EngineContext
+from ubunye.core.task_runner import execute_user_task
+from ubunye.telemetry.hooks import MonitorHook
 
 test_app = typer.Typer(
     name="test", help="Run task(s) in test mode and report PASS/FAIL.", add_completion=False
@@ -110,6 +110,7 @@ def run_test(
 
     run_id = str(uuid.uuid4())
     backend.start()
+    extra_hooks = [MonitorHook(lineage_recorder)] if lineage_recorder is not None else []
     try:
         for task in task_list:
             cfg = configs[task]
@@ -117,18 +118,11 @@ def run_test(
             context = EngineContext(
                 run_id=run_id, profile=profile, task_name=f"{usecase}/{package}/{task}"
             )
-            monitors = load_monitors(cfg.model_dump(mode="json"))
-            if lineage_recorder is not None:
-                monitors = [lineage_recorder] + monitors
-
-            for monitor in monitors:
-                safe_call(
-                    monitor, "task_start", context=context, config=cfg.model_dump(mode="json")
-                )
-
             task_start = time.perf_counter()
             try:
-                _run_task(backend, task_dir, cfg, monitors, context)
+                execute_user_task(
+                    backend, task_dir, cfg, context, extra_hooks=extra_hooks
+                )
                 duration = time.perf_counter() - task_start
                 typer.secho(f"  [PASS] {task}  ({duration:.1f}s)", fg=typer.colors.GREEN)
                 passed += 1
@@ -136,16 +130,6 @@ def run_test(
                 duration = time.perf_counter() - task_start
                 typer.secho(f"  [FAIL] {task}  ({duration:.1f}s): {e}", fg=typer.colors.RED)
                 failed += 1
-                for monitor in monitors:
-                    safe_call(
-                        monitor,
-                        "task_end",
-                        context=context,
-                        config=cfg.model_dump(mode="json"),
-                        outputs=None,
-                        status="error",
-                        duration_sec=duration,
-                    )
     finally:
         backend.stop()
 
@@ -158,63 +142,3 @@ def run_test(
         typer.secho(f"All {total} task(s) PASSED.", fg=typer.colors.GREEN)
 
 
-def _run_task(
-    backend: SparkBackend, task_dir: Path, cfg, monitors: list, context: EngineContext
-) -> None:
-    """Load transformations.py and execute the read → transform → write loop."""
-    import importlib.util
-
-    sys.path.insert(0, str(task_dir))
-    try:
-        fc_path = task_dir / "transformations.py"
-        if not fc_path.exists():
-            raise FileNotFoundError(f"Missing transformations.py at {fc_path}")
-
-        spec = importlib.util.spec_from_file_location("transformations", str(fc_path))
-        mod = importlib.util.module_from_spec(spec)  # type: ignore
-        assert spec and spec.loader
-        spec.loader.exec_module(mod)
-
-        from ubunye.core.interfaces import Task
-
-        task_cls = None
-        for attr in mod.__dict__.values():
-            if isinstance(attr, type) and issubclass(attr, Task) and attr is not Task:
-                task_cls = attr
-                break
-
-        if not task_cls:
-            raise RuntimeError(f"No Task subclass found in {fc_path}")
-
-        task_obj = task_cls(config=cfg.model_dump(mode="json"))
-        task_obj.setup()
-
-        reg = Registry.from_entrypoints()
-        sources = {}
-        for name, icfg in cfg.CONFIG.inputs.items():
-            reader_cls = reg.readers[icfg.format]
-            sources[name] = reader_cls().read(icfg.model_dump(mode="json"), backend)
-
-        outputs_map = task_obj.transform(sources)
-
-        for name, ocfg in cfg.CONFIG.outputs.items():
-            writer_cls = reg.writers[ocfg.format]
-            df = outputs_map.get(name)
-            if df is None:
-                raise KeyError(f"Transform did not return output '{name}'")
-            writer_cls().write(df, ocfg.model_dump(mode="json"), backend)
-
-        _duration = time.perf_counter()  # placeholder — actual duration tracked in caller
-        for monitor in monitors:
-            safe_call(
-                monitor,
-                "task_end",
-                context=context,
-                config=cfg.model_dump(mode="json"),
-                outputs=outputs_map,
-                status="success",
-                duration_sec=0.0,
-            )
-    finally:
-        if str(task_dir) in sys.path:
-            sys.path.remove(str(task_dir))
