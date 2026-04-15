@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- N/A
+
+---
+
+## [0.1.6] — 2026-04-15
+
 ### Changed
 
 - **`jhb_weather_databricks` DAB switched to serverless compute.** Removed
