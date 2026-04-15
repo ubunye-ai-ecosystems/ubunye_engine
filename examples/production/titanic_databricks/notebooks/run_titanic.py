@@ -47,26 +47,33 @@ mode = dbutils.widgets.get("mode")
 titanic_catalog = dbutils.widgets.get("titanic_catalog")
 titanic_schema = dbutils.widgets.get("titanic_schema")
 
-# Bootstrap the Titanic CSV into /tmp at runtime - serverless can read
-# file:///tmp/... and the file is gone when the executor releases. This
-# replaces the old DBFS bootstrap, which is deprecated on Free Edition.
-csv_path = "/tmp/titanic.csv"
+# COMMAND ----------
+
+# Ensure the target schema and the volume that holds the input CSV both
+# exist. UC volumes are the only serverless-compatible local file path -
+# file:///tmp/... is blocked by SharedUCWorkspaceLocalFileSystem.
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {titanic_catalog}.{titanic_schema}")
+spark.sql(f"CREATE VOLUME IF NOT EXISTS {titanic_catalog}.{titanic_schema}.data")
+
+# COMMAND ----------
+
+# Bootstrap the Titanic CSV into the UC volume. Idempotent: skips download
+# if the file already exists.
+volume_dir = f"/Volumes/{titanic_catalog}/{titanic_schema}/data"
+csv_path = f"{volume_dir}/titanic.csv"
+
 if not os.path.exists(csv_path):
     urllib.request.urlretrieve(
         "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv",
         csv_path,
     )
     print(f"Fetched Titanic CSV -> {csv_path}")
+else:
+    print(f"Titanic CSV already present at {csv_path}")
 
-os.environ["TITANIC_INPUT_PATH"] = f"file://{csv_path}"
+os.environ["TITANIC_INPUT_PATH"] = csv_path
 os.environ["TITANIC_CATALOG"] = titanic_catalog
 os.environ["TITANIC_SCHEMA"] = titanic_schema
-
-# COMMAND ----------
-
-# Ensure the target schema exists. Unity Catalog raises on a missing schema
-# when the writer issues CREATE TABLE.
-spark.sql(f"CREATE SCHEMA IF NOT EXISTS {titanic_catalog}.{titanic_schema}")
 
 # COMMAND ----------
 

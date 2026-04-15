@@ -34,11 +34,14 @@ The notebook:
 1. Reads widgets populated by the job's `base_parameters`.
 2. `%pip install`s `ubunye-engine` (currently from `git+main` until 0.1.6 is
    on PyPI).
-3. Downloads the Titanic CSV to `/tmp/titanic.csv` at runtime — no DBFS
-   bootstrap, no manual upload.
-4. Exports `TITANIC_INPUT_PATH`, `TITANIC_CATALOG`, `TITANIC_SCHEMA` so the
+3. `CREATE SCHEMA IF NOT EXISTS workspace.titanic` and
+   `CREATE VOLUME IF NOT EXISTS workspace.titanic.data` — UC volumes are
+   the only serverless-compatible local file path
+   (`file:///tmp/...` is blocked by `SharedUCWorkspaceLocalFileSystem`).
+4. Downloads the Titanic CSV to `/Volumes/workspace/titanic/data/titanic.csv`
+   at runtime — idempotent, no manual upload.
+5. Exports `TITANIC_INPUT_PATH`, `TITANIC_CATALOG`, `TITANIC_SCHEMA` so the
    config resolves via Jinja.
-5. `CREATE SCHEMA IF NOT EXISTS workspace.titanic`.
 6. Calls `ubunye.run_task(task_dir, dt, mode, lineage=True)`, which writes
    `workspace.titanic.survival_by_class`.
 
@@ -166,5 +169,6 @@ still run; steps 3-4 are skipped with a warning.
 | `bundle deploy` fails with "no associated worker environments" | You still have a `new_cluster` block. This DAB intentionally has none — confirm yours matches. |
 | `[DATA_SOURCE_NOT_FOUND] Failed to find the data source: unity` | The unity writer was reading the plugin dispatch key as a Spark format. Fixed in `>=0.1.6`. |
 | `[SCHEMA_NOT_FOUND]` on saveAsTable                  | The notebook didn't `CREATE SCHEMA IF NOT EXISTS` before writing. Re-run.            |
+| `LocalFilesystemAccessDeniedException: Cannot access non /Workspace local filesystem path` | Spark on serverless can't read from `file:///tmp/...`. Use a UC volume path (`/Volumes/<catalog>/<schema>/<volume>/...`) instead. |
 | `bundle deploy` succeeds but job not visible in UI  | DAB's `mode: development` prefixes the job name with `[dev <user>]`. Search by name. |
 | Notebook errors at `%pip install`                    | Network egress is blocked on some workspaces. Pin to a wheel hosted in DBFS instead. |
