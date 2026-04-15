@@ -1,0 +1,114 @@
+name: examples/titanic_local
+
+# Production reference CI for examples/production/titanic_local.
+#
+# Stages (each one fails the job with a distinct message):
+#   1. Checkout + Python/Java setup (with pip cache)
+#   2. Install engine + test deps
+#   3. Unit tests (pandas, no Spark)
+#   4. Fetch Titanic CSV
+#   5. ubunye validate  (config + Jinja)
+#   6. ubunye plan      (resolved I/O graph)
+#   7. ubunye run       (Spark; writes Parquet + lineage)
+#   8. Validate Parquet output against the committed golden
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/production/titanic_local/**"
+      - ".github/workflows/local_pipeline.yml"
+      - "ubunye/**"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "examples/production/titanic_local/**"
+      - ".github/workflows/local_pipeline.yml"
+      - "ubunye/**"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+concurrency:
+  group: titanic-local-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-example:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      EXAMPLE_DIR: examples/production/titanic_local
+      DATA_TIMESTAMP: "2026-04-15"
+      MODE: DEV
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Set up Java 11 (required by PySpark)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+
+      - name: Install engine with Spark + dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[spark,dev]" pandas pyarrow
+
+      - name: Unit tests (pandas, no Spark)
+        run: pytest "${EXAMPLE_DIR}/tests" -v
+
+      - name: Fetch Titanic CSV
+        run: bash "${EXAMPLE_DIR}/scripts/fetch_titanic.sh"
+
+      - name: Export runtime env vars
+        run: |
+          echo "TITANIC_INPUT_PATH=file://${GITHUB_WORKSPACE}/${EXAMPLE_DIR}/data/titanic.csv" >> "$GITHUB_ENV"
+          echo "TITANIC_OUTPUT_PATH=file://${GITHUB_WORKSPACE}/${EXAMPLE_DIR}/output" >> "$GITHUB_ENV"
+
+      - name: ubunye validate
+        run: |
+          ubunye validate \
+            -d "${EXAMPLE_DIR}/pipelines" \
+            -u titanic -p analytics -t survival_by_class \
+            -dt "${DATA_TIMESTAMP}"
+
+      - name: ubunye plan
+        run: |
+          ubunye plan \
+            -d "${EXAMPLE_DIR}/pipelines" \
+            -u titanic -p analytics -t survival_by_class \
+            -dt "${DATA_TIMESTAMP}" -m "${MODE}"
+
+      - name: ubunye run
+        run: |
+          ubunye run \
+            -d "${EXAMPLE_DIR}/pipelines" \
+            -u titanic -p analytics -t survival_by_class \
+            -dt "${DATA_TIMESTAMP}" -m "${MODE}" --lineage
+
+      - name: Validate output against golden parquet
+        run: |
+          python "${EXAMPLE_DIR}/scripts/validate_output.py" \
+            --actual "${EXAMPLE_DIR}/output/mode=${MODE}/dt=${DATA_TIMESTAMP}" \
+            --expected "${EXAMPLE_DIR}/expected_output/survival_by_class.parquet"
+
+      - name: Upload pipeline output (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titanic-local-output-${{ github.run_id }}
+          path: |
+            ${{ env.EXAMPLE_DIR }}/output
+            ${{ env.EXAMPLE_DIR }}/.ubunye
+          if-no-files-found: ignore
+          retention-days: 7

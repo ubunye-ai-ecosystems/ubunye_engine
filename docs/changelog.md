@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Production reference example: Titanic (local runtime)** — end-to-end example at
+  `examples/production/titanic_local/` demonstrating a CSV → Parquet pipeline with
+  dev/prod profiles, Jinja-templated paths, pandas unit tests (no Spark), a committed
+  golden Parquet, and a GitHub Actions workflow (`.github/workflows/local_pipeline.yml`)
+  that validates config, runs the pipeline on a real SparkSession, and diffs the output
+  against the golden. One half of the portability demo — the Databricks counterpart
+  shares `transformations.py` verbatim. See the example's `README.md`.
+
 - **Hook abstraction for observability** (`ubunye/core/hooks.py`) — `Hook` base class and
   `HookChain` multiplexer. Tasks and steps are now wrapped in hook context managers so the
   Engine no longer imports telemetry modules directly. Built-in hooks shipped under
