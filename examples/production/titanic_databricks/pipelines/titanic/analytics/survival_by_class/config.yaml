@@ -19,9 +19,10 @@ ENGINE:
       spark_conf:
         spark.sql.shuffle.partitions: "8"
 
-# Pipeline definition — identical shape to the local example. Only the
-# env-var values differ at runtime: TITANIC_INPUT_PATH points at DBFS
-# (``dbfs:/FileStore/...``) instead of ``file://``.
+# Pipeline definition — input is the Titanic CSV (downloaded to /tmp by the
+# notebook), output is a Unity Catalog managed Delta table. Catalog/schema
+# are env-overridable so the same config works on Free Edition (workspace
+# catalog) and paid workspaces (typically main).
 CONFIG:
   inputs:
     titanic:
@@ -37,7 +38,9 @@ CONFIG:
     type: noop
   outputs:
     survival_by_class:
-      format: s3
-      path: "{{ env.TITANIC_OUTPUT_PATH }}/mode={{ mode | default('PROD') }}/dt={{ dt | default('latest') }}"
-      file_format: parquet
+      format: unity
+      table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic') }}.survival_by_class"
       mode: overwrite
+      options:
+        overwriteSchema: "true"
+        comment: "Titanic survival rate per passenger class."
