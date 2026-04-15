@@ -83,7 +83,7 @@ concrete bindings move.
 | How the CSV gets staged          | `scripts/fetch_titanic.sh` (curl; local or CI)         | `notebooks/run_titanic.py` does `urllib.urlretrieve` into DBFS  |
 | How env vars are set             | `export TITANIC_INPUT_PATH=...` before `ubunye run`    | `os.environ["TITANIC_INPUT_PATH"] = dbutils.widgets.get(...)`   |
 | How the pipeline is invoked      | `ubunye run -d ... -t survival_by_class`               | `ubunye.run_task(task_dir=..., dt=..., mode=...)`               |
-| Output validation                | `scripts/validate_output.py` diffs vs. golden parquet  | Golden diff is exercised by the pandas unit tests in CI         |
+| Output validation                | `scripts/validate_output.py` diffs vs. golden parquet  | PySpark unit tests read the golden parquet via the SparkSession fixture |
 
 ---
 
@@ -96,7 +96,7 @@ the bottleneck is always I/O locality.
 |--------------------------------------------------------------------|----------------------|-------------------------------------------------------------------------------------------|
 | Developing and iterating locally, data fits on a laptop            | `titanic_local`      | Fast feedback loop; no auth, no workspace, no cluster startup cost.                       |
 | CI validation of config + logic on pull requests                   | `titanic_local`      | GitHub runners have JDK and can run a local Spark session deterministically in ~1 minute. |
-| Unit tests of the aggregation itself                               | Either               | Tests use the pandas helper — no Spark either way.                                        |
+| Unit tests of the aggregation itself                               | Either               | Both use a session-scoped local SparkSession fixture — same code runs in CI.              |
 | Data lives in DBFS, Unity Catalog, or a Databricks Delta table     | `titanic_databricks` | Reading from DBFS/UC requires a Databricks runtime; running elsewhere pays a transfer cost. |
 | Production batch job on a schedule with Databricks Jobs orchestration | `titanic_databricks` | Asset Bundles give you job-as-code, versioned deploys, and lineage in one workflow.       |
 | Ad-hoc analysis in a notebook by a data scientist                  | `titanic_databricks` | `ubunye.run_task()` reuses the active SparkSession so the notebook "just works".          |

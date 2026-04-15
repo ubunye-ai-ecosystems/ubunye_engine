@@ -1,21 +1,12 @@
-"""Titanic survival analytics — compute survival rate per passenger class.
+"""Titanic survival analytics - compute survival rate per passenger class.
 
 Portability contract: this module is imported verbatim by both runtimes in
-examples/production/ (titanic_local and titanic_databricks). The business logic
-lives here; only the config.yaml and deployment wrappers differ per runtime.
+examples/production/ (titanic_local and titanic_databricks). The business
+logic lives here; only the config.yaml and deployment wrappers differ per
+runtime.
 
-Two implementations are provided:
-
-* ``compute_survival_by_class_spark`` — Spark DataFrame API. Runs inside the
-  Ubunye Task.transform contract. Distributed; suitable for arbitrarily large
-  inputs.
-* ``compute_survival_by_class_pandas`` — equivalent pandas expression. Used
-  by unit tests so the business logic can be exercised without a SparkSession
-  or Java toolchain.
-
-Both functions are pure — given the same input, they return the same output
-columns in the same order. The pandas version exists as a test double, not
-as a production path.
+Single implementation - Spark only. Tested via a local SparkSession
+fixture in ``tests/test_transformations.py``.
 """
 
 from __future__ import annotations
@@ -27,40 +18,21 @@ from ubunye.core.interfaces import Task
 OUTPUT_COLUMNS = ("Pclass", "passenger_count", "survivors_count", "survival_rate")
 
 
-def compute_survival_by_class_pandas(df: "Any") -> "Any":
-    """Pandas implementation of the survival-by-class aggregation.
+def compute_survival_by_class(df: "Any") -> "Any":
+    """Group by Pclass; emit passenger count, survivors, survival rate.
 
     Expected input columns: ``PassengerId``, ``Pclass``, ``Survived``.
-    Survival rate is rounded to 4 decimal places — matches the Spark version
-    so golden-file comparisons are exact.
+    Survival rate is rounded to 4 decimal places so golden-file
+    comparisons are exact across runs.
     """
-    import pandas as pd
-
-    if not {"PassengerId", "Pclass", "Survived"}.issubset(df.columns):
-        raise ValueError(
-            "Input DataFrame must contain columns: PassengerId, Pclass, Survived"
-        )
-
-    result = (
-        df.groupby("Pclass", as_index=False)
-        .agg(
-            passenger_count=("PassengerId", "count"),
-            survivors_count=("Survived", "sum"),
-        )
-        .sort_values("Pclass")
-        .reset_index(drop=True)
-    )
-    result["survival_rate"] = (
-        (result["survivors_count"] / result["passenger_count"]).round(4)
-    )
-    return result[list(OUTPUT_COLUMNS)].astype(
-        {"Pclass": "int64", "passenger_count": "int64", "survivors_count": "int64"}
-    )
-
-
-def compute_survival_by_class_spark(df: "Any") -> "Any":
-    """Spark implementation — identical semantics to the pandas version."""
     from pyspark.sql import functions as F
+
+    required = {"PassengerId", "Pclass", "Survived"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"Input DataFrame must contain columns: {sorted(required)} (missing: {sorted(missing)})"
+        )
 
     return (
         df.groupBy("Pclass")
@@ -82,4 +54,4 @@ class SurvivalByClass(Task):
 
     def transform(self, sources: Dict[str, Any]) -> Dict[str, Any]:
         titanic = sources["titanic"]
-        return {"survival_by_class": compute_survival_by_class_spark(titanic)}
+        return {"survival_by_class": compute_survival_by_class(titanic)}

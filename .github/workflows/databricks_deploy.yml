@@ -3,7 +3,7 @@ name: examples/titanic_databricks
 # Production reference CI for examples/production/titanic_databricks.
 #
 # Responsibilities:
-#   1. Run pandas unit tests (portable, no Spark / no Databricks).
+#   1. Run PySpark unit tests (local SparkSession; no Databricks).
 #   2. Enforce the portability contract: transformations.py must be
 #      byte-identical between the local and Databricks examples.
 #   3. Validate the Asset Bundle statically.
@@ -53,12 +53,18 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
+      - name: Set up Java 17 (required by PySpark)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas pyarrow pytest
+          pip install -e ".[spark,dev]" pyarrow
 
-      - name: Unit tests (pandas, no Spark)
+      - name: Unit tests (Spark, local mode)
         run: pytest "${EXAMPLE_DIR}/tests" -v
 
       - name: Enforce portability — transformations.py must match local example

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Production examples switched from pandas twins to PySpark tests.** Every
+  `transformations.py` under `examples/production/` now exposes a single Spark
+  implementation. Tests use a session-scoped `SparkSession` fixture
+  (`local[1]`, 512 MB driver, shuffle partitions=1) so the production code is
+  the code under test. Eliminates the dual-maintenance burden and the risk of
+  silent drift between pandas and Spark paths. Unit-test CI steps now install
+  Java 17 + `ubunye-engine[spark,dev]` on the runner.
+
 ### Added
 
 - **Production reference example: JHB hourly weather (REST API → Unity Catalog)** —

@@ -31,7 +31,7 @@ titanic_local/
 ├── pipelines/                                # usecase_dir passed to the CLI
 │   └── titanic/analytics/survival_by_class/
 │       ├── config.yaml                       # pipeline config (dev/prod profiles)
-│       └── transformations.py                # Task subclass + pure pandas/Spark helpers
+│       └── transformations.py                # Task subclass + Spark aggregation
 ├── data/                                     # gitignored; CSV fetched at runtime
 ├── expected_output/
 │   └── survival_by_class.parquet             # golden output (committed)
@@ -39,8 +39,8 @@ titanic_local/
 │   ├── fetch_titanic.sh                      # canonical CSV download
 │   └── validate_output.py                    # compares pipeline output to golden
 ├── tests/
-│   ├── conftest.py                           # puts task dir on sys.path
-│   └── test_transformations.py               # pandas unit tests (no Spark)
+│   ├── conftest.py                           # sys.path + session-scoped SparkSession
+│   └── test_transformations.py               # PySpark unit tests
 └── README.md
 ```
 
@@ -51,14 +51,14 @@ titanic_local/
 | Requirement       | Version            | Why                                        |
 |-------------------|--------------------|--------------------------------------------|
 | Python            | 3.11 (CI target)   | Matches the workflow; 3.9+ also works.     |
-| Java              | 11                 | Required by PySpark.                       |
+| Java              | 17                 | Required by PySpark.                       |
 | `ubunye-engine`   | `>=0.1.5`, `[spark]` extra | Provides the CLI and Spark backend. |
-| `pandas`, `pyarrow` | latest          | Golden-file validation + unit tests.       |
+| `pyarrow`         | latest             | Parquet read/write for golden validation.  |
 
 Install from the repo root:
 
 ```bash
-pip install -e ".[spark,dev]" pandas pyarrow
+pip install -e ".[spark,dev]" pyarrow
 ```
 
 ---
@@ -126,7 +126,8 @@ can render.
 pytest examples/production/titanic_local/tests -v
 ```
 
-Five unit tests cover the pandas helper that mirrors the Spark aggregation:
+Five unit tests run against a session-scoped local `SparkSession` fixture,
+so the production code is the code under test:
 
 | Test                                       | Purpose                                                    |
 |--------------------------------------------|------------------------------------------------------------|
@@ -134,10 +135,9 @@ Five unit tests cover the pandas helper that mirrors the Spark aggregation:
 | `test_aggregation_values`                  | Hand-computed toy fixture produces known values.           |
 | `test_missing_column_raises`               | Missing input column surfaces as `ValueError`.             |
 | `test_deterministic_ordering`              | Output is sorted by `Pclass` regardless of input order.    |
-| `test_golden_matches_canonical_titanic_stats` | Committed golden file matches Kaggle Titanic known stats.  |
+| `test_golden_matches_canonical_titanic_stats` | Golden parquet matches Kaggle Titanic known stats.      |
 
-No SparkSession, no Java, no network. The Spark version of the logic is
-covered by the end-to-end CI run.
+Requires Java 17 on PATH (PySpark prerequisite).
 
 ---
 
@@ -165,20 +165,15 @@ not match any profile key — see `docs/config/engine.md`.
 |-----------------------------------------------------------|-----------------------------------------------------------|
 | `Environment variable 'TITANIC_INPUT_PATH' is not set`    | Export the two env vars shown in step 2.                  |
 | `No module named 'pyspark'`                               | Install the Spark extra: `pip install -e ".[spark]"`.     |
-| `JAVA_HOME is not set`                                    | Install JDK 11 and export `JAVA_HOME`.                    |
+| `JAVA_HOME is not set`                                    | Install JDK 17 and export `JAVA_HOME`.                    |
 | `OK: 0 rows match golden.`                                | Pipeline wrote to a different path — double-check `dt`/`mode` in the `validate_output.py` call. |
 | Output parquet missing `_SUCCESS`                         | Previous run was interrupted. Re-run with the same args — `mode: overwrite` replaces the partition. |
 
 ---
 
-## Why two implementations of the same aggregation?
+## Single implementation
 
-`transformations.py` exposes both a Spark and a pandas version of the same
-computation. The Task uses Spark; the unit tests use pandas. This is a
-deliberate pattern — not a workaround — because it lets the business logic be
-validated without a JVM, on any CI runner, in milliseconds. The same pattern
-appears in dbt-core's adapter tests, Great Expectations' expectations, and
-most Databricks reference examples.
-
-The contract is: both functions return the same columns, in the same order,
-with the same dtypes. `OUTPUT_COLUMNS` is the shared definition.
+`transformations.py` exposes one function, `compute_survival_by_class`,
+using the Spark DataFrame API. The unit tests drive it through a local
+`SparkSession` fixture so the production code is the code under test - no
+parallel pandas implementation to keep in lock-step.
