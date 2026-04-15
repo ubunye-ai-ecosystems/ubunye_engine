@@ -28,7 +28,7 @@ assert task_dir, "task_dir must be supplied by the job (see databricks.yml)"
 
 # COMMAND ----------
 
-# MAGIC %pip install "ubunye-engine[spark] @ git+https://github.com/ubunye-ai-ecosystems/ubunye_engine.git@main"
+# MAGIC %pip install "ubunye-engine[spark]==0.1.6"
 
 # COMMAND ----------
 

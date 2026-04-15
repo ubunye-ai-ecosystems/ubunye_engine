@@ -32,8 +32,7 @@ titanic_survival_by_class (Job)
 The notebook:
 
 1. Reads widgets populated by the job's `base_parameters`.
-2. `%pip install`s `ubunye-engine` (currently from `git+main` until 0.1.6 is
-   on PyPI).
+2. `%pip install`s `ubunye-engine==0.1.6` from PyPI.
 3. `CREATE SCHEMA IF NOT EXISTS workspace.titanic` and
    `CREATE VOLUME IF NOT EXISTS workspace.titanic.data` — UC volumes are
    the only serverless-compatible local file path
