@@ -1,0 +1,97 @@
+name: examples/titanic_databricks
+
+# Production reference CI for examples/production/titanic_databricks.
+#
+# Responsibilities:
+#   1. Run pandas unit tests (portable, no Spark / no Databricks).
+#   2. Enforce the portability contract: transformations.py must be
+#      byte-identical between the local and Databricks examples.
+#   3. Validate the Asset Bundle statically.
+#   4. Deploy the bundle to the ``nonprod`` target on the configured workspace.
+#   5. Optionally trigger a run when the workflow is invoked manually.
+#
+# Secrets required:
+#   DATABRICKS_HOST   — e.g. https://community.cloud.databricks.com
+#   DATABRICKS_TOKEN  — personal access token (CE has no service principals).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/production/titanic_databricks/**"
+      - ".github/workflows/databricks_deploy.yml"
+  workflow_dispatch:
+    inputs:
+      run_after_deploy:
+        description: "Trigger the job after deploying"
+        type: boolean
+        default: false
+
+concurrency:
+  group: titanic-databricks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      EXAMPLE_DIR: examples/production/titanic_databricks
+      LOCAL_EXAMPLE_DIR: examples/production/titanic_local
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas pyarrow pytest
+
+      - name: Unit tests (pandas, no Spark)
+        run: pytest "${EXAMPLE_DIR}/tests" -v
+
+      - name: Enforce portability — transformations.py must match local example
+        run: |
+          set -e
+          local_file="${LOCAL_EXAMPLE_DIR}/pipelines/titanic/analytics/survival_by_class/transformations.py"
+          databricks_file="${EXAMPLE_DIR}/pipelines/titanic/analytics/survival_by_class/transformations.py"
+          if ! diff -q "${local_file}" "${databricks_file}"; then
+            echo "::error file=${databricks_file}::transformations.py differs from ${local_file}. The two production examples must share identical business logic."
+            diff "${local_file}" "${databricks_file}" || true
+            exit 1
+          fi
+          echo "OK: transformations.py is byte-identical across runtimes."
+
+      - name: Fail fast if Databricks secrets are missing
+        run: |
+          if [[ -z "${DATABRICKS_HOST}" || -z "${DATABRICKS_TOKEN}" ]]; then
+            echo "::error::DATABRICKS_HOST and DATABRICKS_TOKEN must be set as repository secrets."
+            exit 1
+          fi
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: databricks bundle validate
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle validate --target nonprod
+
+      - name: databricks bundle deploy
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle deploy --target nonprod
+
+      - name: databricks bundle run (manual trigger only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_after_deploy }}
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle run titanic_survival --target nonprod

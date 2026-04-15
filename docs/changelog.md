@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   against the golden. One half of the portability demo — the Databricks counterpart
   shares `transformations.py` verbatim. See the example's `README.md`.
 
+- **Production reference example: Titanic (Databricks Community Edition)** — the
+  Databricks half of the portability demo at `examples/production/titanic_databricks/`.
+  Ships a Databricks Asset Bundle (`databricks.yml`) sized for CE's single-node /
+  DBFS / no-UC constraints, a notebook entry (`notebooks/run_titanic.py`) that calls
+  `ubunye.run_task()` against the active SparkSession, the same pandas unit tests,
+  and a CI workflow (`.github/workflows/databricks_deploy.yml`) that installs the
+  Go-based Databricks CLI, validates and deploys the bundle, and enforces the
+  portability contract by diffing `transformations.py` against the local example.
+  Known CE limitations (no service principals, restricted Jobs API, DBFS deprecation)
+  are documented honestly rather than worked around.
+
 - **Hook abstraction for observability** (`ubunye/core/hooks.py`) — `Hook` base class and
   `HookChain` multiplexer. Tasks and steps are now wrapped in hook context managers so the
   Engine no longer imports telemetry modules directly. Built-in hooks shipped under
