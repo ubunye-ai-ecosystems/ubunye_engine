@@ -1,0 +1,43 @@
+MODEL: "etl"
+VERSION: "1.0.0"
+
+# Engine section: Spark settings and per-profile overrides.
+#
+# On Databricks the SparkSession already exists — ubunye.run_task() reuses it
+# via DatabricksBackend, and spark_conf here is merged into the *existing*
+# session's runtime config. Profile keys mirror the local example so the same
+# ``mode`` value (DEV/PROD) drives both runtimes identically.
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "4"
+    spark.sql.sources.partitionOverwriteMode: "dynamic"
+  profiles:
+    DEV:
+      spark_conf:
+        spark.sql.shuffle.partitions: "2"
+    PROD:
+      spark_conf:
+        spark.sql.shuffle.partitions: "8"
+
+# Pipeline definition — identical shape to the local example. Only the
+# env-var values differ at runtime: TITANIC_INPUT_PATH points at DBFS
+# (``dbfs:/FileStore/...``) instead of ``file://``.
+CONFIG:
+  inputs:
+    titanic:
+      format: s3
+      path: "{{ env.TITANIC_INPUT_PATH }}"
+      file_format: csv
+      options:
+        header: "true"
+        inferSchema: "true"
+        mode: "FAILFAST"
+  transform:
+    # Overridden at runtime by execute_user_task → transformations.py.
+    type: noop
+  outputs:
+    survival_by_class:
+      format: s3
+      path: "{{ env.TITANIC_OUTPUT_PATH }}/mode={{ mode | default('PROD') }}/dt={{ dt | default('latest') }}"
+      file_format: parquet
+      mode: overwrite
