@@ -27,17 +27,17 @@ Usage
 
 from __future__ import annotations
 
-import importlib.util
-import sys
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from ubunye.config import load_config
 from ubunye.core.catalog import set_catalog_and_schema
-from ubunye.core.interfaces import Backend, Task
-from ubunye.core.runtime import EngineContext, Registry
-from ubunye.telemetry.monitors import load_monitors, safe_call
+from ubunye.core.hooks import Hook
+from ubunye.core.interfaces import Backend
+from ubunye.core.runtime import EngineContext
+from ubunye.core.task_runner import execute_user_task
+from ubunye.telemetry.hooks import MonitorHook
 
 
 def _make_app_name(
@@ -82,107 +82,11 @@ def _detect_backend(
     return SparkBackend(app_name=app_name, conf=spark_conf or {})
 
 
-def _load_task_class(task_dir: Path) -> type:
-    """Import transformations.py and return the first Task subclass."""
-    fc_path = task_dir / "transformations.py"
-    if not fc_path.exists():
-        raise FileNotFoundError(
-            f"Missing transformations.py at {fc_path}. "
-            "Each task directory must contain a transformations.py with a Task subclass."
-        )
-
-    spec = importlib.util.spec_from_file_location("transformations", str(fc_path))
-    mod = importlib.util.module_from_spec(spec)  # type: ignore
-    assert spec and spec.loader
-    spec.loader.exec_module(mod)
-
-    for attr in mod.__dict__.values():
-        if isinstance(attr, type) and issubclass(attr, Task) and attr is not Task:
-            return attr
-
-    raise RuntimeError(
-        f"No Task subclass found in {fc_path}. "
-        "Define a class that subclasses ubunye.core.interfaces.Task."
-    )
-
-
-def _execute_task(
-    backend: Backend,
-    task_dir: Path,
-    cfg: Any,
-    context: EngineContext,
-    lineage_recorder: Optional[Any] = None,
-) -> Dict[str, Any]:
-    """Run a single task: read → transform → write. Returns the outputs map."""
-    import time
-
-    reg = Registry.from_entrypoints()
-    monitors = load_monitors(cfg.model_dump(mode="json"))
-    if lineage_recorder is not None:
-        monitors = [lineage_recorder] + monitors
-
-    for monitor in monitors:
-        safe_call(monitor, "task_start", context=context, config=cfg.model_dump(mode="json"))
-
-    task_cls = _load_task_class(task_dir)
-    task_obj = task_cls(config=cfg.model_dump(mode="json"))
-    task_obj.setup()
-
-    task_start = time.perf_counter()
-    outputs_map: Dict[str, Any] = {}
-
-    old_path = str(task_dir) in sys.path
-    if not old_path:
-        sys.path.insert(0, str(task_dir))
-
-    try:
-        # Read
-        sources: Dict[str, Any] = {}
-        for name, icfg in cfg.CONFIG.inputs.items():
-            reader_cls = reg.readers[icfg.format]
-            sources[name] = reader_cls().read(icfg.model_dump(mode="json"), backend)
-
-        # Transform
-        outputs_map = task_obj.transform(sources)
-
-        # Write
-        for name, ocfg in cfg.CONFIG.outputs.items():
-            writer_cls = reg.writers[ocfg.format]
-            df = outputs_map.get(name)
-            if df is None:
-                raise KeyError(f"Transform did not return output '{name}'")
-            writer_cls().write(df, ocfg.model_dump(mode="json"), backend)
-
-        duration = time.perf_counter() - task_start
-        for monitor in monitors:
-            safe_call(
-                monitor,
-                "task_end",
-                context=context,
-                config=cfg.model_dump(mode="json"),
-                outputs=outputs_map,
-                status="success",
-                duration_sec=duration,
-            )
-
-        return outputs_map
-
-    except Exception:
-        duration = time.perf_counter() - task_start
-        for monitor in monitors:
-            safe_call(
-                monitor,
-                "task_end",
-                context=context,
-                config=cfg.model_dump(mode="json"),
-                outputs=outputs_map,
-                status="error",
-                duration_sec=duration,
-            )
-        raise
-    finally:
-        if not old_path and str(task_dir) in sys.path:
-            sys.path.remove(str(task_dir))
+def _build_extra_hooks(lineage_recorder: Optional[Any]) -> List[Hook]:
+    """Wrap the optional lineage recorder as a hook, if present."""
+    if lineage_recorder is None:
+        return []
+    return [MonitorHook(lineage_recorder)]
 
 
 def run_task(
@@ -195,6 +99,7 @@ def run_task(
     lineage: bool = False,
     lineage_dir: str = ".ubunye/lineage",
     profile: Optional[str] = None,
+    hooks: Optional[Iterable[Hook]] = None,
 ) -> Dict[str, Any]:
     """Run a single Ubunye task and return the outputs map.
 
@@ -218,6 +123,9 @@ def run_task(
         Root directory for lineage records.
     profile : str, optional
         Config profile for validation (passed to ``load_config``).
+    hooks : iterable of Hook, optional
+        Replace the engine's default hooks entirely. Rarely needed; prefer
+        the ``ubunye.hooks`` entry point for always-on hooks.
 
     Returns
     -------
@@ -259,7 +167,14 @@ def run_task(
         schema=cfg.resolved_schema(mode),
     )
     try:
-        return _execute_task(backend, task_path, cfg, context, lineage_recorder)
+        return execute_user_task(
+            backend,
+            task_path,
+            cfg,
+            context,
+            hooks=hooks,
+            extra_hooks=_build_extra_hooks(lineage_recorder),
+        )
     finally:
         backend.stop()
 
@@ -277,6 +192,7 @@ def run_pipeline(
     lineage: bool = False,
     lineage_dir: str = ".ubunye/lineage",
     profile: Optional[str] = None,
+    hooks: Optional[Iterable[Hook]] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Run multiple tasks sequentially and return all outputs.
 
@@ -290,7 +206,7 @@ def run_pipeline(
         Package/pipeline name.
     tasks : List[str]
         Task names to run in order.
-    mode, dt, dtf, spark, lineage, lineage_dir, profile
+    mode, dt, dtf, spark, lineage, lineage_dir, profile, hooks
         Same as :func:`run_task`.
 
     Returns
@@ -330,6 +246,7 @@ def run_pipeline(
         catalog=first_cfg.resolved_catalog(mode),
         schema=first_cfg.resolved_schema(mode),
     )
+    extra_hooks = _build_extra_hooks(lineage_recorder)
     results: Dict[str, Dict[str, Any]] = {}
     try:
         for task in tasks:
@@ -340,7 +257,14 @@ def run_pipeline(
                 profile=mode,
                 task_name=f"{usecase}/{package}/{task}",
             )
-            results[task] = _execute_task(backend, task_path, cfg, context, lineage_recorder)
+            results[task] = execute_user_task(
+                backend,
+                task_path,
+                cfg,
+                context,
+                hooks=hooks,
+                extra_hooks=extra_hooks,
+            )
         return results
     finally:
         backend.stop()

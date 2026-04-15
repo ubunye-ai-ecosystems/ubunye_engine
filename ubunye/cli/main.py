@@ -16,11 +16,9 @@ Commands:
 from __future__ import annotations
 
 import json
-import sys
-import time
 import uuid
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import List, Optional
 
 import typer
 
@@ -31,7 +29,8 @@ from ubunye.cli.test_cmd import test_app
 from ubunye.config import load_config
 from ubunye.core.catalog import set_catalog_and_schema
 from ubunye.core.runtime import EngineContext, Registry
-from ubunye.telemetry.monitors import load_monitors, safe_call
+from ubunye.core.task_runner import execute_user_task
+from ubunye.telemetry.hooks import MonitorHook
 
 app = typer.Typer(add_completion=False, help="Ubunye Engine CLI")
 app.add_typer(lineage_app)
@@ -372,97 +371,6 @@ def plan(
         typer.echo()
 
 
-def _run_single_task(
-    backend: SparkBackend, task_dir: Path, cfg: Any, monitors: list, context: EngineContext
-):
-    sys.path.insert(0, str(task_dir))
-
-    # Load user-defined Task from transformations.py
-    import importlib.util
-
-    fc_path = task_dir / "transformations.py"
-    if not fc_path.exists():
-        typer.secho(
-            f"[ERROR] Missing transformations.py at {fc_path}. Transforms must live here.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
-
-    spec = importlib.util.spec_from_file_location("transformations", str(fc_path))
-    mod = importlib.util.module_from_spec(spec)  # type: ignore
-    assert spec and spec.loader
-    spec.loader.exec_module(mod)
-
-    from ubunye.core.interfaces import Task
-
-    task_cls = None
-    for attr in mod.__dict__.values():
-        if isinstance(attr, type) and issubclass(attr, Task) and attr is not Task:
-            task_cls = attr
-            break
-
-    if not task_cls:
-        typer.secho(
-            f"[ERROR] No Task subclass found in {fc_path}. Define a class that subclasses Task in transformations.py.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
-
-    task_obj = task_cls(config=cfg.model_dump(mode="json"))
-    task_obj.setup()
-
-    from ubunye.core.runtime import Registry
-
-    reg = Registry.from_entrypoints()
-
-    task_start = time.perf_counter()
-    outputs_map = {}
-    try:
-        sources = {}
-        for name, icfg in cfg.CONFIG.inputs.items():
-            reader_cls = reg.readers[icfg.format]
-            sources[name] = reader_cls().read(icfg.model_dump(mode="json"), backend)
-
-        outputs_map = task_obj.transform(sources)
-
-        for name, ocfg in cfg.CONFIG.outputs.items():
-            writer_cls = reg.writers[ocfg.format]
-            df = outputs_map.get(name)
-            if df is None:
-                raise KeyError(f"Transform did not return output '{name}'")
-            writer_cls().write(df, ocfg.model_dump(mode="json"), backend)
-
-        duration = time.perf_counter() - task_start
-        for monitor in monitors:
-            safe_call(
-                monitor,
-                "task_end",
-                context=context,
-                config=cfg.model_dump(mode="json"),
-                outputs=outputs_map,
-                status="success",
-                duration_sec=duration,
-            )
-            typer.secho(f"[OK] Run complete for {task_dir.name}", fg=typer.colors.GREEN)
-    except Exception as e:
-        duration = time.perf_counter() - task_start
-        for monitor in monitors:
-            safe_call(
-                monitor,
-                "task_end",
-                context=context,
-                config=cfg.model_dump(mode="json"),
-                outputs=outputs_map,
-                status="error",
-                duration_sec=duration,
-            )
-        typer.secho(f"[ERROR] Run failed for {task_dir.name}: {e}", fg=typer.colors.RED, err=True)
-        raise
-    finally:
-        if str(task_dir) in sys.path:
-            sys.path.remove(str(task_dir))
 
 
 @app.command()
@@ -543,26 +451,25 @@ def run(
         catalog=first_cfg.resolved_catalog(mode),
         schema=first_cfg.resolved_schema(mode),
     )
+    extra_hooks = [MonitorHook(lineage_recorder)] if lineage_recorder is not None else []
     try:
         for task in task_list:
             typer.echo(f"Starting task: {task} (Mode: {mode}, Deploy: {deploy_mode})")
             cfg = configs[task]
             task_dir = _task_path(usecase_dir, usecase, package, task)
-            # Include full path so LineageRecorder can parse usecase/package/task
             context = EngineContext(
                 run_id=run_id, profile=mode, task_name=f"{usecase}/{package}/{task}"
             )
-            monitors = load_monitors(cfg.model_dump(mode="json"))
-            if lineage_recorder is not None:
-                monitors = [lineage_recorder] + monitors
-
-            for monitor in monitors:
-                safe_call(
-                    monitor, "task_start", context=context, config=cfg.model_dump(mode="json")
+            try:
+                execute_user_task(
+                    backend, task_dir, cfg, context, extra_hooks=extra_hooks
                 )
-
-            _run_single_task(backend, task_dir, cfg, monitors, context)
-
+                typer.secho(f"[OK] Run complete for {task}", fg=typer.colors.GREEN)
+            except Exception as e:
+                typer.secho(
+                    f"[ERROR] Run failed for {task}: {e}", fg=typer.colors.RED, err=True
+                )
+                raise
     finally:
         backend.stop()
 

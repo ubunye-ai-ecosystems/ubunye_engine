@@ -73,6 +73,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Unified execution path** (`ubunye/core/task_runner.py`) — `api.py`, `cli/main.py run`
+  and `cli/test_cmd.py run` previously each reimplemented the read → transform → write
+  loop and called `load_monitors` / `safe_call` directly. They now delegate to
+  `execute_user_task()`, which wraps the user's `Task.transform()` as an ephemeral
+  Transform plugin and runs it through `Engine`. Single code path, single hook
+  lifecycle, `MonitorHook` adapts the legacy lineage recorder to a `Hook`.
+  `Engine.__init__` gained `extra_hooks=` (append to defaults) and `manage_backend=`
+  (caller-owned vs engine-owned backend lifecycle). `run_task` / `run_pipeline` accept
+  `hooks=` for notebook callers who want to swap in custom hook chains.
 - **Engine runtime refactored** — `ubunye/core/runtime.py` reduced from 374 to 255 lines.
   `Engine.run()` body shrank from ~220 lines to ~35 by delegating telemetry plumbing to
   hooks. The engine no longer imports from `ubunye.telemetry.*` — only from

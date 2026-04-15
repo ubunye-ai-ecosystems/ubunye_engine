@@ -125,11 +125,28 @@ class Engine:
         registry: Optional[Registry] = None,
         context: Optional[EngineContext] = None,
         hooks: Optional[Iterable[Hook]] = None,
+        extra_hooks: Optional[Iterable[Hook]] = None,
+        manage_backend: bool = True,
     ) -> None:
+        """
+        Parameters
+        ----------
+        hooks : iterable of Hook, optional
+            Replace the default hook set entirely.
+        extra_hooks : iterable of Hook, optional
+            Append these hooks to the default set. Ignored when ``hooks`` is
+            also given.
+        manage_backend : bool, default True
+            If True (default), the engine calls ``backend.start()`` and
+            ``backend.stop()``. Set to False when the caller owns the backend
+            lifecycle (e.g. Python API running multiple tasks on one session).
+        """
         self.backend = backend or SparkBackend(app_name="ubunye")
         self.registry = registry or Registry.from_entrypoints()
         self.context = context or EngineContext(run_id=str(uuid.uuid4()))
         self._hooks_override = list(hooks) if hooks is not None else None
+        self._extra_hooks = list(extra_hooks) if extra_hooks else []
+        self._manage_backend = manage_backend
 
     # ---------- public API ----------
 
@@ -163,9 +180,11 @@ class Engine:
         profile = self.context.profile or cfg.get("ENGINE", {}).get("active_profile") or "default"
         ctx = EngineContext(run_id=self.context.run_id, profile=profile, task_name=task_name)
 
-        chain = HookChain(
-            self._hooks_override if self._hooks_override is not None else _default_hooks(cfg)
-        )
+        if self._hooks_override is not None:
+            hook_list = self._hooks_override
+        else:
+            hook_list = _default_hooks(cfg) + self._extra_hooks
+        chain = HookChain(hook_list)
         state: Dict[str, Any] = {"outputs": None}
 
         if dry_run:
@@ -174,7 +193,8 @@ class Engine:
             return None
 
         with chain.task(ctx, cfg, state):
-            self.backend.start()
+            if self._manage_backend:
+                self.backend.start()
             try:
                 sources = self._read_inputs(ctx, chain, inputs_cfg)
                 outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
@@ -182,7 +202,8 @@ class Engine:
                 state["outputs"] = outputs_map
                 return outputs_map
             finally:
-                self.backend.stop()
+                if self._manage_backend:
+                    self.backend.stop()
 
     # ---------- pipeline stages ----------
 

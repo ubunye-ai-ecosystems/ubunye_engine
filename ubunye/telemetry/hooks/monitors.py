@@ -1,8 +1,11 @@
-"""Bridge hook for user-defined monitors declared under ``CONFIG.monitors``.
+"""Bridge hooks for the legacy ``Monitor`` protocol.
 
-Keeps backwards compatibility with the existing ``Monitor`` protocol
-(``task_start``/``task_end`` with keyword args). Reads outputs from the
-shared ``state`` dict on task exit.
+``LegacyMonitorsHook`` loads monitors declared under ``CONFIG.monitors``.
+``MonitorHook`` wraps a single already-constructed ``Monitor`` instance so
+callers (the Python API, the CLI's lineage recorder) can adapt it to the
+Hook protocol without going through config.
+
+Both read outputs from the shared ``state`` dict on task exit.
 """
 
 from __future__ import annotations
@@ -13,6 +16,51 @@ from typing import Any, Dict, Iterator
 
 from ubunye.core.hooks import Hook
 from ubunye.telemetry.monitors import load_monitors, safe_call
+
+
+def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
+    """Shared task-lifecycle contextmanager body for a single Monitor."""
+    t0 = time.perf_counter()
+    safe_call(monitor, "task_start", context=ctx, config=cfg)
+    try:
+        yield
+    except Exception:
+        safe_call(
+            monitor,
+            "task_end",
+            context=ctx,
+            config=cfg,
+            outputs=None,
+            status="error",
+            duration_sec=time.perf_counter() - t0,
+        )
+        raise
+    else:
+        safe_call(
+            monitor,
+            "task_end",
+            context=ctx,
+            config=cfg,
+            outputs=state.get("outputs"),
+            status="success",
+            duration_sec=time.perf_counter() - t0,
+        )
+
+
+class MonitorHook(Hook):
+    """Adapt a single ``Monitor`` instance to the Hook protocol.
+
+    Useful when a caller already holds a Monitor (e.g. a LineageRecorder
+    constructed from CLI flags) and wants to plug it into the engine's hook
+    chain without going through ``CONFIG.monitors``.
+    """
+
+    def __init__(self, monitor: Any) -> None:
+        self.monitor = monitor
+
+    @contextmanager
+    def task(self, ctx, cfg: Dict[str, Any], state: Dict[str, Any]) -> Iterator[None]:
+        yield from _wrap_monitor_task(self.monitor, ctx, cfg, state)
 
 
 class LegacyMonitorsHook(Hook):
