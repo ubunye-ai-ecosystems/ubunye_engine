@@ -36,7 +36,7 @@ assert task_dir, "task_dir must be supplied by the job (see databricks.yml)"
 
 # COMMAND ----------
 
-# MAGIC %pip install ubunye-engine==0.1.3
+# MAGIC %pip install ubunye-engine==0.1.5
 
 # COMMAND ----------
 

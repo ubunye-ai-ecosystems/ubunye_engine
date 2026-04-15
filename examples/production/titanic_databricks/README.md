@@ -50,7 +50,7 @@ titanic_survival_by_class (Job)
 The notebook:
 
 1. Reads widgets populated by the job's `base_parameters`.
-2. Installs `ubunye-engine==0.1.3` via `%pip`.
+2. Installs `ubunye-engine==0.1.5` via `%pip`.
 3. Bootstraps the Titanic CSV into DBFS (idempotent, no manual upload).
 4. Exports `TITANIC_INPUT_PATH` / `TITANIC_OUTPUT_PATH` so the config resolves.
 5. Calls `ubunye.run_task(task_dir, dt, mode, lineage=True)`.
