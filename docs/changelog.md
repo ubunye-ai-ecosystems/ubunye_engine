@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Known CE limitations (no service principals, restricted Jobs API, DBFS deprecation)
   are documented honestly rather than worked around.
 
+- **Cross-runtime reference index** — `examples/production/README.md` explains the
+  portability contract, provides a side-by-side config comparison of the two examples,
+  a decision guide for choosing between the local and Databricks runtimes, and a
+  migration table covering what changes when moving from Community Edition to a
+  standard Databricks workspace.
+
 - **Hook abstraction for observability** (`ubunye/core/hooks.py`) — `Hook` base class and
   `HookChain` multiplexer. Tasks and steps are now wrapped in hook context managers so the
   Engine no longer imports telemetry modules directly. Built-in hooks shipped under
