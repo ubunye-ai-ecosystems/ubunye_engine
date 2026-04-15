@@ -1,0 +1,72 @@
+MODEL: "etl"
+VERSION: "1.0.0"
+
+# Engine section: Spark settings and per-profile overrides.
+#
+# On Databricks the SparkSession already exists - ubunye.run_task() reuses it
+# via DatabricksBackend, and spark_conf here is merged into the existing
+# session's runtime config. Profile keys mirror the titanic examples so the
+# same ``mode`` value (DEV/PROD) drives runtime behaviour identically.
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "4"
+    spark.sql.sources.partitionOverwriteMode: "dynamic"
+  profiles:
+    DEV:
+      spark_conf:
+        spark.sql.shuffle.partitions: "2"
+    PROD:
+      spark_conf:
+        spark.sql.shuffle.partitions: "8"
+
+# Pipeline definition:
+#   inputs:    one REST call to Open-Meteo for Johannesburg hourly forecast
+#   transform: explode the parallel arrays into a tidy hourly DataFrame
+#   outputs:   Unity Catalog Delta table, partitioned by forecast_date
+#
+# The target catalog/schema are overridable through env vars so the same
+# config can be deployed to nonprod and prod workspaces without edits.
+CONFIG:
+  inputs:
+    forecast:
+      format: rest_api
+      url: "https://api.open-meteo.com/v1/forecast"
+      method: GET
+      params:
+        latitude: -26.2041
+        longitude: 28.0473
+        hourly: "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m"
+        timezone: "Africa/Johannesburg"
+        forecast_days: 7
+      rate_limit:
+        requests_per_second: 2
+        retry_on: [429, 503]
+        max_retries: 3
+  transform:
+    # Overridden at runtime by execute_user_task -> transformations.py.
+    type: noop
+  outputs:
+    jhb_hourly_forecast:
+      format: unity
+      table: "{{ env.WEATHER_CATALOG | default('main') }}.{{ env.WEATHER_SCHEMA | default('weather') }}.jhb_hourly_forecast"
+      mode: overwrite
+      partitionBy: ["forecast_date"]
+      options:
+        overwriteSchema: "true"
+        comment: "Hourly weather forecast for Johannesburg sourced from Open-Meteo."
+
+# Scheduler metadata consumed by ``ubunye export databricks``.
+# Cron runs daily at 06:00 Africa/Johannesburg to refresh the 7-day forecast.
+ORCHESTRATION:
+  type: databricks
+  schedule: "0 0 6 * * ?"
+  retries: 2
+  owner: "data-eng"
+  tags: ["weather", "rest_api", "production"]
+  databricks:
+    spark_version: "13.3.x-scala2.12"
+    node_type_id: "i3.xlarge"
+    num_workers: 0
+    spark_conf:
+      spark.databricks.cluster.profile: singleNode
+      spark.master: "local[*]"

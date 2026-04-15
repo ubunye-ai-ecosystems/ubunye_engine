@@ -1,0 +1,88 @@
+name: examples/jhb_weather_databricks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/production/jhb_weather_databricks/**"
+      - ".github/workflows/jhb_weather_databricks.yml"
+  pull_request:
+    paths:
+      - "examples/production/jhb_weather_databricks/**"
+      - ".github/workflows/jhb_weather_databricks.yml"
+  workflow_dispatch:
+    inputs:
+      run_after_deploy:
+        description: "Trigger the job after deploying"
+        type: boolean
+        default: false
+
+concurrency:
+  group: jhb-weather-databricks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXAMPLE_DIR: examples/production/jhb_weather_databricks
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas pyarrow pytest
+
+      - name: Unit tests (pandas, no Spark)
+        run: pytest "${EXAMPLE_DIR}/tests" -v
+
+      - name: Smoke-check Open-Meteo is reachable
+        run: |
+          curl -sf \
+            "https://api.open-meteo.com/v1/forecast?latitude=-26.2041&longitude=28.0473&hourly=temperature_2m&forecast_days=1" \
+            >/dev/null
+
+      - name: Fail fast if Databricks secrets are missing
+        # Deploy is only meaningful when the workspace is reachable. Skip the
+        # deploy steps instead of hard-failing the job, so PRs from forks
+        # still exercise the unit tests above.
+        id: check_secrets
+        run: |
+          if [[ -z "${DATABRICKS_HOST}" || -z "${DATABRICKS_TOKEN}" ]]; then
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::DATABRICKS_HOST/DATABRICKS_TOKEN not set - skipping bundle deploy."
+          else
+            echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Databricks CLI
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        uses: databricks/setup-cli@main
+
+      - name: databricks bundle validate
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle validate --target nonprod
+
+      - name: databricks bundle deploy
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle deploy --target nonprod
+
+      - name: databricks bundle run (manual trigger only)
+        if: ${{ steps.check_secrets.outputs.has_secrets == 'true' && github.event_name == 'workflow_dispatch' && inputs.run_after_deploy }}
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle run jhb_weather_forecast --target nonprod

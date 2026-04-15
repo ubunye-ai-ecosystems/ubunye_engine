@@ -12,15 +12,20 @@ The short answer: the business logic does not change. The config shifts from
 
 ---
 
-## The two examples
+## The examples
 
-| Example                                   | Runtime                               | Entry point                                    | Storage                      |
-|-------------------------------------------|---------------------------------------|------------------------------------------------|------------------------------|
-| [`titanic_local/`](./titanic_local/)      | Local SparkSession (`SparkBackend`)   | `ubunye run` (CLI)                             | Local filesystem (`file://`) |
-| [`titanic_databricks/`](./titanic_databricks/) | Databricks Community Edition (`DatabricksBackend`) | `ubunye.run_task()` inside a notebook-task job | DBFS (`dbfs:/`)              |
+| Example                                           | Runtime                               | Input                        | Output                       |
+|---------------------------------------------------|---------------------------------------|------------------------------|------------------------------|
+| [`titanic_local/`](./titanic_local/)              | Local SparkSession                    | CSV on disk                  | Parquet on disk              |
+| [`titanic_databricks/`](./titanic_databricks/)    | Databricks (CE-sized)                 | CSV on DBFS                  | Parquet on DBFS              |
+| [`jhb_weather_databricks/`](./jhb_weather_databricks/) | Databricks + Unity Catalog        | Open-Meteo REST API (no auth)| Unity Catalog Delta table    |
 
-Each example is self-contained: its own `README.md`, tests, golden parquet,
-and CI workflow. Start with the one that matches your runtime.
+The first two answer *"how much code changes when I move from laptop to
+Databricks?"* — the business logic is byte-identical across them. The third
+shows REST ingestion + Unity Catalog sinks with a scheduled Databricks job.
+
+Each example is self-contained: its own `README.md`, tests, and CI workflow.
+Start with the one that matches your runtime.
 
 ---
 
