@@ -2440,19 +2440,29 @@ filesystem. JSON serialization uses <code>dataclasses.asdict()</code>.</p>
 <h2 id="orchestration-exporters">Orchestration exporters<a class="headerlink" href="#orchestration-exporters" title="Permanent link">&para;</a></h2>
 <p><code>ubunye/orchestration/</code>:</p>
 <ul>
-<li><code>base.py</code> — <code>OrchestrationExporter</code> ABC with <code>export(cfg, output_path)</code>.</li>
-<li><code>airflow.py</code> — generates an Airflow DAG Python file.</li>
-<li><code>databricks.py</code> — generates a Databricks Jobs API JSON.</li>
+<li><code>base.py</code> — <code>OrchestratorExporter</code> ABC with
+  <code>export(config_path, *, output_path, options) -&gt; Path</code>.</li>
+<li><code>airflow_exporter.py</code> — <code>AirflowExporter</code>, generates a DAG Python file whose
+  single <code>BashOperator</code> runs <code>ubunye run ...</code>.</li>
+<li><code>databricks_exporter.py</code> — <code>DatabricksExporter</code>, generates a Databricks Jobs
+  API spec (<code>job.json</code>).</li>
 </ul>
-<p>Exporters read from <code>cfg.ORCHESTRATION</code> and <code>cfg.ENGINE</code> (for profile-specific cluster settings).
-They do <strong>not</strong> interact with the running cluster — they only produce configuration artifacts.</p>
+<p>Exporters are reached via <code>ubunye export airflow|databricks</code>. The CLI
+(<code>ubunye/cli/export.py</code>) loads the task's <code>config.yaml</code>, dumps the
+<code>ORCHESTRATION</code> block to a plain dict, and hands it to the exporter as
+<code>options</code>. For the Databricks exporter the nested <code>databricks</code> cluster block
+is flattened into top-level options so the exporter can splat it into
+<code>new_cluster</code>. They do <strong>not</strong> interact with the running cluster — they only
+produce configuration artifacts.</p>
 <hr />
 <h2 id="adding-a-new-orchestration-target">Adding a new orchestration target<a class="headerlink" href="#adding-a-new-orchestration-target" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Subclass <code>OrchestrationExporter</code>.</li>
-<li>Implement <code>export(cfg: UbunyeConfig, output_path: str, profile: str)</code>.</li>
-<li>Add a new value to <code>OrchestrationType</code> enum in <code>schema.py</code>.</li>
-<li>Register in the CLI <code>export</code> command.</li>
+<li>Subclass <code>OrchestratorExporter</code> and implement <code>export(config_path, *,
+   output_path, options)</code>.</li>
+<li>Add a new value to <code>OrchestrationType</code> enum in <code>ubunye/config/schema.py</code>.</li>
+<li>Export the class from <code>ubunye/orchestration/__init__.py</code>.</li>
+<li>Add a new Typer command in <code>ubunye/cli/export.py</code> that maps
+   <code>OrchestrationConfig</code> fields to the exporter's <code>options</code>.</li>
 </ol>
 
 
@@ -2476,7 +2486,7 @@ They do <strong>not</strong> interact with the running cluster — they only pro
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:20:00 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 21:19:42 UTC">April 15, 2026</span>
   </span>
 
     
