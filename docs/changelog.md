@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unit tests, validates both configs, runs the full pipeline, and verifies
   output. See the example's `README.md`.
 
+- **Production reference example: Titanic multi-task pipeline (Databricks)** —
+  `examples/production/titanic_multitask_databricks/` is the Databricks
+  counterpart of the local multi-task example. Same `transformations.py`
+  (byte-identical, CI-enforced), but task chaining uses Unity Catalog Delta
+  tables instead of Parquet files. Task 1 writes `titanic_cleaned`, task 2
+  reads it and writes `survival_summary`. Runs via `ubunye.run_pipeline()`
+  on serverless compute. CI workflow enforces portability diff against the
+  local example and validates/deploys the Asset Bundle.
+
 - **Production reference example: Titanic ML end-to-end on Databricks** —
   `examples/production/titanic_ml_databricks/` demonstrates the full ML
   lifecycle: `UbunyeModel` subclass (sklearn RandomForest), MLflow param/

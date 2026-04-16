@@ -1,0 +1,115 @@
+name: examples/titanic_multitask_databricks
+
+# Production reference CI for examples/production/titanic_multitask_databricks.
+#
+# Responsibilities:
+#   1. Run PySpark unit tests (local SparkSession; no Databricks).
+#   2. Enforce the portability contract: transformations.py must be
+#      byte-identical between the local and Databricks examples.
+#   3. Validate the Asset Bundle statically.
+#   4. Deploy the bundle to the nonprod target on the configured workspace.
+#   5. Optionally trigger a run when the workflow is invoked manually.
+#
+# Secrets required:
+#   DATABRICKS_HOST   — e.g. https://community.cloud.databricks.com
+#   DATABRICKS_TOKEN  — personal access token.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/production/titanic_multitask_databricks/**"
+      - ".github/workflows/multitask_databricks.yml"
+  pull_request:
+    paths:
+      - "examples/production/titanic_multitask_databricks/**"
+      - ".github/workflows/multitask_databricks.yml"
+  workflow_dispatch:
+    inputs:
+      run_after_deploy:
+        description: "Trigger the job after deploying"
+        type: boolean
+        default: false
+
+concurrency:
+  group: titanic-multitask-databricks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      EXAMPLE_DIR: examples/production/titanic_multitask_databricks
+      LOCAL_EXAMPLE_DIR: examples/production/titanic_multitask_local
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Set up Java 17 (required by PySpark)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[spark,dev]" pyarrow
+
+      - name: Unit tests (Spark, local mode)
+        run: pytest "${EXAMPLE_DIR}/tests" -v
+
+      - name: Enforce portability — transformations.py must match local example
+        run: |
+          set -e
+          for task in clean_data aggregate; do
+            local_file="${LOCAL_EXAMPLE_DIR}/pipelines/titanic/pipeline/${task}/transformations.py"
+            databricks_file="${EXAMPLE_DIR}/pipelines/titanic/pipeline/${task}/transformations.py"
+            if ! diff -q "${local_file}" "${databricks_file}"; then
+              echo "::error file=${databricks_file}::transformations.py differs from ${local_file}. The two examples must share identical business logic."
+              diff "${local_file}" "${databricks_file}" || true
+              exit 1
+            fi
+          done
+          echo "OK: all transformations.py files are byte-identical across runtimes."
+
+      - name: Check for Databricks secrets
+        id: check_secrets
+        run: |
+          if [[ -z "${DATABRICKS_HOST}" || -z "${DATABRICKS_TOKEN}" ]]; then
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::DATABRICKS_HOST/DATABRICKS_TOKEN not set - skipping bundle deploy."
+          else
+            echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Databricks CLI
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        uses: databricks/setup-cli@main
+
+      - name: databricks bundle validate
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle validate --target nonprod
+
+      - name: databricks bundle deploy
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle deploy --target nonprod
+
+      - name: databricks bundle run (manual trigger only)
+        if: ${{ steps.check_secrets.outputs.has_secrets == 'true' && github.event_name == 'workflow_dispatch' && inputs.run_after_deploy }}
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: databricks bundle run titanic_multitask --target nonprod
