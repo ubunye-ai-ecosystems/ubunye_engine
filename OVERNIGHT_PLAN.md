@@ -14,21 +14,24 @@ Branch: `overnight/2026-04-16`. Main is untouched. PR in the morning.
 
 ## Work queue (ordered, revisable)
 
-### Round 1 — low-risk, no Databricks required
+### Round 1 — low-risk, no Databricks required ✅
 
-- [ ] Node 20 → Node 24 action bumps across `.github/workflows/*.yml` (task-03).
-- [ ] Investigate `FileSystemLineageStore` for `/Volumes/...` path handling (task-08 prep). Add unit test covering UC-style absolute path.
-- [ ] Audit `ubunye/core/task_runner.py` and `ubunye/api.py` for other sys.path / import ordering landmines adjacent to the 6362942 fix.
-- [ ] Audit `ubunye/config/schema.py` Pydantic validators for edge cases: empty outputs list, missing profiles, Jinja-in-path with unresolved vars.
+- [x] Node 20 → Node 24 action bumps across `.github/workflows/*.yml` (task-03). Commit `59d1fc4`.
+- [x] Investigate `FileSystemLineageStore` for `/Volumes/...` path handling (task-08 prep). No bug found — all pathlib-based.
+- [x] Audit `ubunye/core/task_runner.py` and `ubunye/api.py` for sys.path / import landmines. Found and fixed sibling-module leak. Commit `1732d25`.
+- [x] Audit `ubunye/config/schema.py` Pydantic validators. No bugs found. Found and fixed Jinja resolver silent pass-through. Commit `a955e0f`.
+- [x] Lint fix: unused pytest import in test_task_runner. Commit `41cd83b`.
 
-### Round 2 — fire-test existing examples
+### Round 2 — fire-test existing examples ✅
 
-For each example, trigger the workflow via `gh workflow run`, watch, triage any failure, file-and-fix on this branch, re-trigger.
+All four examples passed on branch `overnight/2026-04-16`:
 
-- [ ] `titanic_local` (CI only; fast feedback).
-- [ ] `titanic_databricks` (serverless + UC).
-- [ ] `jhb_weather_databricks` (REST → UC, scheduled).
-- [ ] `titanic_ml_databricks` — already smoke-passed, re-run to confirm nothing regressed under branch changes.
+- [x] `titanic_local` — run 24486921439 ✅
+- [x] `titanic_databricks` — run 24486925775 ✅
+- [x] `jhb_weather_databricks` — run 24486926643 ✅
+- [x] `titanic_ml_databricks` — run 24486927572 ✅
+
+Zero bugs found during fire-testing.
 
 Each bug found: new `tasks/todo/task-NN.md`, then fix on this branch, then `mv` to `tasks/done/` and reference the commit.
 
