@@ -31,6 +31,12 @@ from jinja2 import DebugUndefined, Environment
 # The negative lookahead (?![^}]*default) detects usage WITHOUT a default filter.
 _ENV_REF_RE = re.compile(r"\{\{[^}]*env\.(\w+)([^}]*)\}\}")
 
+# Matches any residual Jinja2 expression in a post-render string — used to
+# surface undefined CLI variables that ``DebugUndefined`` silently leaves in
+# place. Captures the first identifier inside the braces so the error can
+# name the offending variable.
+_JINJA_RESIDUE_RE = re.compile(r"\{\{\s*([\w.]+)")
+
 
 def resolve_config(
     raw: Any,
@@ -118,4 +124,20 @@ def _render_string(
                 f"{{{{ env.{var_name} | default('fallback') }}}} in your config."
             )
 
-    return jinja_env.from_string(value).render(**variables)
+    rendered = jinja_env.from_string(value).render(**variables)
+
+    # Post-render check: ``DebugUndefined`` leaves unresolvable expressions
+    # (e.g. ``{{ dt }}`` when ``dt`` wasn't supplied) in the output verbatim.
+    # Silent pass-through would let a literal ``{{ dt }}`` flow into a Spark
+    # path — fail loudly so it's caught at config-load time.
+    residue = _JINJA_RESIDUE_RE.search(rendered)
+    if residue:
+        var_name = residue.group(1)
+        raise ValueError(
+            f"Template variable '{var_name}' is undefined in config value "
+            f"{value!r}. Either pass it via the CLI (e.g. '-dt 2026-04-16'), "
+            f"set it in the environment, or use "
+            f"{{{{ {var_name} | default('fallback') }}}}."
+        )
+
+    return rendered
