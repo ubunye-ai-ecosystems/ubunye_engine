@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Production reference example: Titanic multi-task pipeline (local)** —
+  `examples/production/titanic_multitask_local/` demonstrates sequential
+  task chaining via `ubunye run -t clean_data -t aggregate`. Task 1 reads
+  the Titanic CSV, cleans it, and writes intermediate Parquet. Task 2 reads
+  that Parquet and computes survival rates by class and age group. Exercises
+  `run_pipeline()`, sibling-module isolation between tasks, and cross-task
+  lineage. CI workflow (`.github/workflows/multitask_local.yml`) runs Spark
+  unit tests, validates both configs, runs the full pipeline, and verifies
+  output. See the example's `README.md`.
+
 - **Production reference example: Titanic ML end-to-end on Databricks** —
   `examples/production/titanic_ml_databricks/` demonstrates the full ML
   lifecycle: `UbunyeModel` subclass (sklearn RandomForest), MLflow param/
