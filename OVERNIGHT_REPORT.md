@@ -41,9 +41,16 @@ via `workflow_dispatch` until merged to `main`.
   fixing. Minor schema smells noted (e.g. `options` vs `model_extra`).
 - `ubunye/` codebase: zero `TODO`/`FIXME`/`HACK`/`XXX` markers.
 
+## Test coverage improvements (Round 5)
+
+| Commit | New tests | Coverage area |
+|--------|-----------|---------------|
+| `7ae9279` | 8 | `ubunye/api.py` — `_make_app_name`, `_build_extra_hooks` |
+| `5692833` | 20 | `ubunye/core/runtime.py` — Engine validation, Registry, EngineContext; `ubunye/core/catalog.py` — `set_catalog_and_schema` |
+
 ## Test suite
 
-302 unit tests pass. No regressions introduced.
+330 unit tests pass (up from 302 at session start). No regressions introduced.
 
 ## Tasks
 
