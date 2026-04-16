@@ -9,10 +9,8 @@ from ubunye.api import _build_extra_hooks, _make_app_name
 
 class TestMakeAppName:
     def test_all_parts(self):
-        assert (
-            _make_app_name("fraud", "ingestion", "claim_etl")
-            == "ubunye:fraud.ingestion.claim_etl"
-        )
+        result = _make_app_name("fraud", "ingestion", "claim_etl")
+        assert result == "ubunye:fraud.ingestion.claim_etl"
 
     def test_usecase_only(self):
         assert _make_app_name("fraud") == "ubunye:fraud"
