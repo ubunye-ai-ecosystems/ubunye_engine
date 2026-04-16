@@ -1,0 +1,42 @@
+bundle:
+  name: titanic-multitask
+
+include:
+  - pipelines/**/*.yaml
+
+variables:
+  titanic_catalog:
+    description: Unity Catalog catalog. Defaults to "workspace" (Free Edition).
+    default: "workspace"
+  titanic_schema:
+    description: Unity Catalog schema for intermediate and output tables.
+    default: "titanic"
+  data_timestamp:
+    description: Data timestamp injected into the config as {{ dt }}.
+    default: "2026-04-15"
+
+sync:
+  include:
+    - pipelines/**
+    - notebooks/**
+
+resources:
+  jobs:
+    titanic_multitask:
+      name: titanic_multitask_pipeline
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: run_pipeline
+          notebook_task:
+            notebook_path: ./notebooks/run_multitask.py
+            base_parameters:
+              usecase_dir: ${workspace.file_path}/pipelines
+              dt: ${var.data_timestamp}
+              mode: "PROD"
+              titanic_catalog: ${var.titanic_catalog}
+              titanic_schema: ${var.titanic_schema}
+
+targets:
+  nonprod:
+    mode: development
+    default: true

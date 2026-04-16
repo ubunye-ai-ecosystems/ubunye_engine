@@ -1,0 +1,118 @@
+name: examples/titanic_multitask_local
+
+# Production reference CI for examples/production/titanic_multitask_local.
+#
+# Exercises the multi-task pipeline: clean_data -> aggregate, validating that
+# run_pipeline() correctly chains tasks and the sibling-module isolation in
+# _with_task_dir_on_path works end-to-end.
+#
+# Stages:
+#   1. Checkout + Python/Java setup
+#   2. Install engine + test deps
+#   3. Unit tests (Spark)
+#   4. Fetch Titanic CSV
+#   5. ubunye validate (both tasks)
+#   6. ubunye run (both tasks sequentially via -t flag)
+#   7. Verify output Parquet exists and has rows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/production/titanic_multitask_local/**"
+      - ".github/workflows/multitask_local.yml"
+      - "ubunye/**"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "examples/production/titanic_multitask_local/**"
+      - ".github/workflows/multitask_local.yml"
+      - "ubunye/**"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+concurrency:
+  group: titanic-multitask-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-example:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      EXAMPLE_DIR: examples/production/titanic_multitask_local
+      DATA_TIMESTAMP: "2026-04-16"
+      MODE: DEV
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Set up Java 17 (required by PySpark)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install engine with Spark + dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[spark,dev]" pandas pyarrow
+
+      - name: Unit tests (Spark)
+        run: pytest "${EXAMPLE_DIR}/tests" -v
+
+      - name: Fetch Titanic CSV
+        run: bash "${EXAMPLE_DIR}/scripts/fetch_titanic.sh"
+
+      - name: Export runtime env vars
+        run: |
+          echo "TITANIC_INPUT_PATH=file://${GITHUB_WORKSPACE}/${EXAMPLE_DIR}/data/titanic.csv" >> "$GITHUB_ENV"
+          echo "TITANIC_CLEAN_PATH=file://${GITHUB_WORKSPACE}/${EXAMPLE_DIR}/output/cleaned" >> "$GITHUB_ENV"
+          echo "TITANIC_SUMMARY_PATH=file://${GITHUB_WORKSPACE}/${EXAMPLE_DIR}/output/summary" >> "$GITHUB_ENV"
+
+      - name: ubunye validate (both tasks)
+        run: |
+          ubunye validate \
+            -d "${EXAMPLE_DIR}/pipelines" \
+            -u titanic -p pipeline \
+            -t clean_data -t aggregate \
+            -dt "${DATA_TIMESTAMP}"
+
+      - name: "ubunye run: clean_data -> aggregate"
+        run: |
+          ubunye run \
+            -d "${EXAMPLE_DIR}/pipelines" \
+            -u titanic -p pipeline \
+            -t clean_data -t aggregate \
+            -dt "${DATA_TIMESTAMP}" -m "${MODE}" --lineage
+
+      - name: Verify output exists
+        run: |
+          SUMMARY_DIR="${EXAMPLE_DIR}/output/summary/dt=${DATA_TIMESTAMP}"
+          if [ ! -d "$SUMMARY_DIR" ] || [ -z "$(ls -A "$SUMMARY_DIR"/*.parquet 2>/dev/null)" ]; then
+            echo "ERROR: Expected Parquet output at $SUMMARY_DIR" >&2
+            ls -la "${EXAMPLE_DIR}/output/" || true
+            exit 1
+          fi
+          echo "Output Parquet found at $SUMMARY_DIR"
+          ls -la "$SUMMARY_DIR"
+
+      - name: Upload pipeline output (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titanic-multitask-output-${{ github.run_id }}
+          path: |
+            ${{ env.EXAMPLE_DIR }}/output
+            ${{ env.EXAMPLE_DIR }}/.ubunye
+          if-no-files-found: ignore
+          retention-days: 7

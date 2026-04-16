@@ -81,3 +81,25 @@ class TestJinjaResolver:
         resolved = resolve_config(raw, cli_vars={})
         assert resolved["steps"][0]["region"] == "us-east-1"
         assert resolved["steps"][1]["region"] == "eu-west-1"
+
+    # ------------------------------------------------------------------
+    # Undefined CLI-var detection — prevents silent pass-through
+    # ------------------------------------------------------------------
+
+    def test_missing_cli_var_raises(self):
+        """A referenced cli_var that's not provided must fail loudly,
+        not render as a literal ``{{ ds }}`` in the resolved output."""
+        raw = {"path": "s3a://bucket/{{ ds }}/data"}
+        with pytest.raises(ValueError, match="ds"):
+            resolve_config(raw, cli_vars={})
+
+    def test_missing_cli_var_with_default_does_not_raise(self):
+        """The Jinja ``| default(...)`` filter must still bypass the check."""
+        raw = {"path": "s3a://bucket/{{ ds | default('1970-01-01') }}/data"}
+        resolved = resolve_config(raw, cli_vars={})
+        assert resolved["path"] == "s3a://bucket/1970-01-01/data"
+
+    def test_missing_cli_var_in_nested_structure_raises(self):
+        raw = {"inputs": {"src": {"path": "file:///{{ missing }}/data"}}}
+        with pytest.raises(ValueError, match="missing"):
+            resolve_config(raw, cli_vars={})
