@@ -26,7 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- N/A
+- **GitHub Actions bumped to Node 24-capable majors.** `actions/checkout@v4`
+  → `@v6`, `actions/setup-python@v5` → `@v6` across all nine workflow files.
+  Resolves the deprecation warning surfaced on 2026-04-16 runs ahead of the
+  Node 20 removal deadline (2026-09-16). No behavioural change.
 
 ### Fixed
 
