@@ -1,0 +1,30 @@
+MODEL: "etl"
+VERSION: "1.0.0"
+
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "4"
+    spark.sql.sources.partitionOverwriteMode: "dynamic"
+  profiles:
+    DEV:
+      spark_conf:
+        spark.sql.shuffle.partitions: "2"
+    PROD:
+      spark_conf:
+        spark.sql.shuffle.partitions: "8"
+
+CONFIG:
+  inputs:
+    cleaned:
+      format: unity
+      table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic') }}.titanic_cleaned"
+  transform:
+    type: noop
+  outputs:
+    survival_summary:
+      format: unity
+      table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic') }}.survival_summary"
+      mode: overwrite
+      options:
+        overwriteSchema: "true"
+        comment: "Titanic survival rate by passenger class and age group."

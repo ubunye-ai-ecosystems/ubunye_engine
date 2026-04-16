@@ -21,15 +21,18 @@ The short answer: the business logic does not change. The config shifts from
 | [`jhb_weather_databricks/`](./jhb_weather_databricks/) | Databricks + Unity Catalog        | Open-Meteo REST API (no auth)| Unity Catalog Delta table    |
 | [`titanic_ml_databricks/`](./titanic_ml_databricks/) | Databricks serverless + UC (ML)     | CSV on UC volume             | Training audit log + predictions (UC Delta); MLflow + Model Registry |
 | [`titanic_multitask_local/`](./titanic_multitask_local/) | Local SparkSession             | CSV on disk                  | Intermediate + summary Parquet on disk |
+| [`titanic_multitask_databricks/`](./titanic_multitask_databricks/) | Databricks serverless + UC | CSV on UC volume | Unity Catalog Delta tables (intermediate + summary) |
 
 The first two answer *"how much code changes when I move from laptop to
 Databricks?"* — the business logic is byte-identical across them. The third
 shows REST ingestion + Unity Catalog sinks with a scheduled Databricks job.
 The fourth is the end-to-end ML lifecycle counterpart: `UbunyeModel` +
 MLflow logging + filesystem-backed Model Registry on a UC volume, with
-promotion gates. The fifth demonstrates **multi-task chaining**: two tasks
-run sequentially via `ubunye run -t task1 -t task2`, validating that the
-engine's sibling-module isolation works correctly.
+promotion gates. The fifth and sixth are **multi-task chaining** pairs: two
+tasks run sequentially via `ubunye run -t task1 -t task2` (local) or
+`ubunye.run_pipeline()` (Databricks), validating that the engine's
+sibling-module isolation works correctly. Their `transformations.py` files
+are byte-identical — only the configs change (s3 → unity).
 
 Each example is self-contained: its own `README.md`, tests, and CI workflow.
 Start with the one that matches your runtime.
