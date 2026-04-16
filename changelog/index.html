@@ -2017,7 +2017,29 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <h2 id="unreleased">[Unreleased]<a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Production reference example: Titanic ML end-to-end on Databricks</strong> —
+<li>
+<p><strong>Production reference example: Titanic multi-task pipeline (local)</strong> —
+  <code>examples/production/titanic_multitask_local/</code> demonstrates sequential
+  task chaining via <code>ubunye run -t clean_data -t aggregate</code>. Task 1 reads
+  the Titanic CSV, cleans it, and writes intermediate Parquet. Task 2 reads
+  that Parquet and computes survival rates by class and age group. Exercises
+  <code>run_pipeline()</code>, sibling-module isolation between tasks, and cross-task
+  lineage. CI workflow (<code>.github/workflows/multitask_local.yml</code>) runs Spark
+  unit tests, validates both configs, runs the full pipeline, and verifies
+  output. See the example's <code>README.md</code>.</p>
+</li>
+<li>
+<p><strong>Production reference example: Titanic multi-task pipeline (Databricks)</strong> —
+  <code>examples/production/titanic_multitask_databricks/</code> is the Databricks
+  counterpart of the local multi-task example. Same <code>transformations.py</code>
+  (byte-identical, CI-enforced), but task chaining uses Unity Catalog Delta
+  tables instead of Parquet files. Task 1 writes <code>titanic_cleaned</code>, task 2
+  reads it and writes <code>survival_summary</code>. Runs via <code>ubunye.run_pipeline()</code>
+  on serverless compute. CI workflow enforces portability diff against the
+  local example and validates/deploys the Asset Bundle.</p>
+</li>
+<li>
+<p><strong>Production reference example: Titanic ML end-to-end on Databricks</strong> —
   <code>examples/production/titanic_ml_databricks/</code> demonstrates the full ML
   lifecycle: <code>UbunyeModel</code> subclass (sklearn RandomForest), MLflow param/
   metric/artifact logging, filesystem-backed <code>ModelRegistry</code> on a UC volume,
@@ -2028,15 +2050,44 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
   per training run. CI (<code>.github/workflows/titanic_ml_databricks.yml</code>) runs
   pandas/sklearn unit tests, diffs the two <code>model.py</code> copies for drift, and
   validates/deploys the bundle when Databricks secrets are configured. See
-  the example's <code>README.md</code>.</li>
+  the example's <code>README.md</code>.</p>
+</li>
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
-<li>N/A</li>
+<li><strong>GitHub Actions bumped to Node 24-capable majors.</strong> <code>actions/checkout@v4</code>
+  → <code>@v6</code>, <code>actions/setup-python@v5</code> → <code>@v6</code> across all nine workflow files.
+  Resolves the deprecation warning surfaced on 2026-04-16 runs ahead of the
+  Node 20 removal deadline (2026-09-16). No behavioural change.</li>
 </ul>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
-<li>N/A</li>
+<li>
+<p><strong>Undefined CLI template variables silently leaked into resolved configs.</strong>
+  <code>resolve_config</code> pre-checked <code>{{ env.X }}</code> references but not bare
+  <code>{{ var }}</code> identifiers. Jinja2's <code>DebugUndefined</code> left unresolved
+  expressions verbatim, so <code>path: "file:///{{ dt }}"</code> with no <code>dt</code>
+  provided would pass validation and then hand Spark a literal
+  <code>file:///{{ dt }}</code> at runtime. Fix adds a post-render residue scan
+  that names the offending variable and suggests a CLI flag, env var,
+  or <code>| default()</code> filter. Regression tests in
+  <code>tests/unit/config/test_resolver.py</code>. Pre-existing configs under
+  <code>examples/</code> and <code>pipelines/</code> all use <code>| default()</code> on CLI-derived
+  vars, so no downstream config needs updating.</p>
+</li>
+<li>
+<p><strong>Sibling modules leaked between sequential tasks in <code>run_pipeline</code>.</strong>
+  <code>_with_task_dir_on_path</code> added the task dir to <code>sys.path</code> but never
+  cleaned up <code>sys.modules</code> on exit. Two tasks that each shipped their
+  own <code>model.py</code> (or <code>utils.py</code>, etc.) would silently run the <em>first</em>
+  task's module when the second task imported it — Python's import
+  cache was keying on the shared short name. Fix evicts only modules
+  whose source file lives under the exiting task dir; stdlib and
+  site-packages are untouched. Regression test in
+  <code>tests/unit/test_task_runner.py</code>. Caught by offline audit on the
+  overnight branch, ahead of the planned multi-task DAG example
+  (<code>tasks/todo/task-04.md</code>).</p>
+</li>
 </ul>
 <hr />
 <h2 id="016-2026-04-15">[0.1.6] — 2026-04-15<a class="headerlink" href="#016-2026-04-15" title="Permanent link">&para;</a></h2>
@@ -2281,7 +2332,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 23:40:46 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 16, 2026 12:40:39 UTC">April 16, 2026</span>
   </span>
 
     
