@@ -13,8 +13,6 @@ import sys
 import textwrap
 from pathlib import Path
 
-import pytest
-
 from ubunye.core.task_runner import _load_task_class, _with_task_dir_on_path
 
 
