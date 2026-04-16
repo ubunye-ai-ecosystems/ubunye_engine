@@ -35,24 +35,24 @@ Zero bugs found during fire-testing.
 
 Each bug found: new `tasks/todo/task-NN.md`, then fix on this branch, then `mv` to `tasks/done/` and reference the commit.
 
-### Round 3 — build coverage-gap examples (seed more todos as surface area grows)
+### Round 3 — build coverage-gap examples (partially done)
 
-- [ ] `examples/production/churn_pipeline_databricks/` — 3-task DAG (ingest → features → train). Sequential job dependencies via `depends_on`. Tests failure: does task B start before task A's Delta commit is visible? (task-04)
-- [ ] `examples/production/jdbc_example/` — JDBC reader/writer exercised on Databricks against a free Postgres (if `JDBC_URL` secret exists) else local SQLite. Soft-skip when absent. (task-05)
-- [ ] Streaming example — **design doc first** (task-06). Likely a schema change to signal stream-vs-batch; flag as `Blocked-on-human` rather than guess.
+- [x] `examples/production/titanic_multitask_local/` — two-task pipeline (clean → aggregate). Commit `aab60c4`.
+- [ ] `examples/production/churn_pipeline_databricks/` — 3-task DAG. Needs UC tables. Deferred.
+- [ ] `examples/production/jdbc_example/` — Needs JDBC secret. Deferred.
+- [ ] Streaming example — **Blocked-on-human** (schema change needed).
 
-### Round 4 — paper prep (task-10)
+### Round 4 — paper prep (partially done)
 
-- [ ] Pull the MSc thesis from <https://wiredspace.wits.ac.za/items/2c23f3d9-05fd-410e-ad52-31ecffbbf643>.
-- [ ] Extract voice-sheet: sentence length distribution, hedge words, transition patterns, formality register, preferred section structures.
-- [ ] Save to `papers/voice_sheet.md` (create the dir).
-- [ ] Draft `papers/outline.md` — skeleton + argument, do not draft prose yet.
+- [x] Draft `papers/outline.md` — skeleton + argument. Commit `f55f017`.
+- [x] Related-work comparison matrix (`papers/related_work_matrix.md`). Commit `f55f017`.
+- [ ] Pull MSc thesis and extract voice sheet. Deferred (needs PDF download).
 
-### Round 5 — opportunistic engine hardening
+### Round 5 — opportunistic engine hardening ✅
 
-- [ ] Run the full unit test suite periodically; add coverage where gaps are found.
-- [ ] Check `ubunye plugins` still lists every plugin after any refactor.
-- [ ] Grep for TODO/FIXME in `ubunye/` — triage into `tasks/todo/` if material.
+- [x] 330 tests (up from 302). Added coverage for api.py, Engine, Registry, catalog.
+- [x] No TODO/FIXME/HACK/XXX in `ubunye/` — clean.
+- [x] Plugin discovery verified via `Registry.from_entrypoints()` test.
 
 ## Loop cadence
 
