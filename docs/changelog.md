@@ -33,6 +33,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Undefined CLI template variables silently leaked into resolved configs.**
+  `resolve_config` pre-checked `{{ env.X }}` references but not bare
+  `{{ var }}` identifiers. Jinja2's `DebugUndefined` left unresolved
+  expressions verbatim, so `path: "file:///{{ dt }}"` with no `dt`
+  provided would pass validation and then hand Spark a literal
+  `file:///{{ dt }}` at runtime. Fix adds a post-render residue scan
+  that names the offending variable and suggests a CLI flag, env var,
+  or `| default()` filter. Regression tests in
+  `tests/unit/config/test_resolver.py`. Pre-existing configs under
+  `examples/` and `pipelines/` all use `| default()` on CLI-derived
+  vars, so no downstream config needs updating.
+
 - **Sibling modules leaked between sequential tasks in `run_pipeline`.**
   `_with_task_dir_on_path` added the task dir to `sys.path` but never
   cleaned up `sys.modules` on exit. Two tasks that each shipped their
