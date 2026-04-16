@@ -61,8 +61,16 @@ def _with_task_dir_on_path(task_dir: Path) -> Iterator[None]:
     """Put ``task_dir`` on ``sys.path`` for the duration of the run.
 
     Lets ``transformations.py`` import adjacent modules (``from model import ...``).
+
+    On exit, evicts any ``sys.modules`` entries whose source file lives under
+    ``task_dir``. Without this, two sequential tasks that each ship their own
+    ``model.py`` (or ``utils.py``, …) would see the *first* task's module
+    cached under the shared name when the second task imports it — silently
+    running against stale code. Only task-local modules are evicted; stdlib
+    and site-packages stay put.
     """
     path_str = str(task_dir)
+    task_dir_resolved = str(task_dir.resolve())
     already = path_str in sys.path
     if not already:
         sys.path.insert(0, path_str)
@@ -71,6 +79,19 @@ def _with_task_dir_on_path(task_dir: Path) -> Iterator[None]:
     finally:
         if not already and path_str in sys.path:
             sys.path.remove(path_str)
+        to_evict = []
+        for name, mod in list(sys.modules.items()):
+            mod_file = getattr(mod, "__file__", None)
+            if not mod_file:
+                continue
+            try:
+                mod_resolved = str(Path(mod_file).resolve())
+            except (OSError, ValueError):
+                continue
+            if mod_resolved.startswith(task_dir_resolved):
+                to_evict.append(name)
+        for name in to_evict:
+            sys.modules.pop(name, None)
 
 
 _USER_TASK_TRANSFORM_KEY = "_ubunye_user_task"

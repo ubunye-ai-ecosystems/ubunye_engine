@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Production reference example: Titanic multi-task pipeline (local)** —
+  `examples/production/titanic_multitask_local/` demonstrates sequential
+  task chaining via `ubunye run -t clean_data -t aggregate`. Task 1 reads
+  the Titanic CSV, cleans it, and writes intermediate Parquet. Task 2 reads
+  that Parquet and computes survival rates by class and age group. Exercises
+  `run_pipeline()`, sibling-module isolation between tasks, and cross-task
+  lineage. CI workflow (`.github/workflows/multitask_local.yml`) runs Spark
+  unit tests, validates both configs, runs the full pipeline, and verifies
+  output. See the example's `README.md`.
+
+- **Production reference example: Titanic multi-task pipeline (Databricks)** —
+  `examples/production/titanic_multitask_databricks/` is the Databricks
+  counterpart of the local multi-task example. Same `transformations.py`
+  (byte-identical, CI-enforced), but task chaining uses Unity Catalog Delta
+  tables instead of Parquet files. Task 1 writes `titanic_cleaned`, task 2
+  reads it and writes `survival_summary`. Runs via `ubunye.run_pipeline()`
+  on serverless compute. CI workflow enforces portability diff against the
+  local example and validates/deploys the Asset Bundle.
+
 - **Production reference example: Titanic ML end-to-end on Databricks** —
   `examples/production/titanic_ml_databricks/` demonstrates the full ML
   lifecycle: `UbunyeModel` subclass (sklearn RandomForest), MLflow param/
@@ -26,11 +45,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- N/A
+- **GitHub Actions bumped to Node 24-capable majors.** `actions/checkout@v4`
+  → `@v6`, `actions/setup-python@v5` → `@v6` across all nine workflow files.
+  Resolves the deprecation warning surfaced on 2026-04-16 runs ahead of the
+  Node 20 removal deadline (2026-09-16). No behavioural change.
 
 ### Fixed
 
-- N/A
+- **Undefined CLI template variables silently leaked into resolved configs.**
+  `resolve_config` pre-checked `{{ env.X }}` references but not bare
+  `{{ var }}` identifiers. Jinja2's `DebugUndefined` left unresolved
+  expressions verbatim, so `path: "file:///{{ dt }}"` with no `dt`
+  provided would pass validation and then hand Spark a literal
+  `file:///{{ dt }}` at runtime. Fix adds a post-render residue scan
+  that names the offending variable and suggests a CLI flag, env var,
+  or `| default()` filter. Regression tests in
+  `tests/unit/config/test_resolver.py`. Pre-existing configs under
+  `examples/` and `pipelines/` all use `| default()` on CLI-derived
+  vars, so no downstream config needs updating.
+
+- **Sibling modules leaked between sequential tasks in `run_pipeline`.**
+  `_with_task_dir_on_path` added the task dir to `sys.path` but never
+  cleaned up `sys.modules` on exit. Two tasks that each shipped their
+  own `model.py` (or `utils.py`, etc.) would silently run the *first*
+  task's module when the second task imported it — Python's import
+  cache was keying on the shared short name. Fix evicts only modules
+  whose source file lives under the exiting task dir; stdlib and
+  site-packages are untouched. Regression test in
+  `tests/unit/test_task_runner.py`. Caught by offline audit on the
+  overnight branch, ahead of the planned multi-task DAG example
+  (`tasks/todo/task-04.md`).
 
 ---
 
