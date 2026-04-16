@@ -16,8 +16,17 @@ Responsibilities:
 from __future__ import annotations
 
 import os
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict
+
+# The engine puts task_dir on sys.path before transforms run, but ubunye
+# <= 0.1.6 does so *after* loading transformations.py, so a top-level
+# ``from model import ...`` raises at import time. Self-heal here.
+_TASK_DIR = str(Path(__file__).resolve().parent)
+if _TASK_DIR not in sys.path:
+    sys.path.insert(0, _TASK_DIR)
 
 from ubunye.core.interfaces import Task
 from ubunye.models.registry import ModelRegistry, ModelStage
