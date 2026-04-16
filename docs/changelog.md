@@ -33,7 +33,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- N/A
+- **Sibling modules leaked between sequential tasks in `run_pipeline`.**
+  `_with_task_dir_on_path` added the task dir to `sys.path` but never
+  cleaned up `sys.modules` on exit. Two tasks that each shipped their
+  own `model.py` (or `utils.py`, etc.) would silently run the *first*
+  task's module when the second task imported it — Python's import
+  cache was keying on the shared short name. Fix evicts only modules
+  whose source file lives under the exiting task dir; stdlib and
+  site-packages are untouched. Regression test in
+  `tests/unit/test_task_runner.py`. Caught by offline audit on the
+  overnight branch, ahead of the planned multi-task DAG example
+  (`tasks/todo/task-04.md`).
 
 ---
 
