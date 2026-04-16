@@ -119,27 +119,31 @@ def execute_user_task(
     """
     cfg_dict = cfg.model_dump(mode="json")
 
-    task_cls = _load_task_class(task_dir)
-    task_obj = task_cls(config=cfg_dict)
-    task_obj.setup()
-
-    reg = Registry.from_entrypoints()
-    reg.register_transform(_USER_TASK_TRANSFORM_KEY, _make_user_task_transform(task_obj))
-    cfg_dict = {
-        **cfg_dict,
-        "CONFIG": {**cfg_dict["CONFIG"], "transform": {"type": _USER_TASK_TRANSFORM_KEY}},
-    }
-
-    engine = Engine(
-        backend=backend,
-        registry=reg,
-        context=context,
-        hooks=hooks,
-        extra_hooks=extra_hooks,
-        manage_backend=manage_backend,
-    )
-
+    # The task_dir must be on sys.path *before* loading transformations.py,
+    # not only during engine.run. Otherwise a top-level ``from model import
+    # MyModel`` (adjacent helper modules) raises ModuleNotFoundError at
+    # import time, before the engine even gets the chance to extend the path.
     with _with_task_dir_on_path(task_dir):
+        task_cls = _load_task_class(task_dir)
+        task_obj = task_cls(config=cfg_dict)
+        task_obj.setup()
+
+        reg = Registry.from_entrypoints()
+        reg.register_transform(_USER_TASK_TRANSFORM_KEY, _make_user_task_transform(task_obj))
+        cfg_dict = {
+            **cfg_dict,
+            "CONFIG": {**cfg_dict["CONFIG"], "transform": {"type": _USER_TASK_TRANSFORM_KEY}},
+        }
+
+        engine = Engine(
+            backend=backend,
+            registry=reg,
+            context=context,
+            hooks=hooks,
+            extra_hooks=extra_hooks,
+            manage_backend=manage_backend,
+        )
+
         result = engine.run(cfg_dict)
 
     return result or {}

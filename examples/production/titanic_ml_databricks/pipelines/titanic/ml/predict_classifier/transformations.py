@@ -9,7 +9,15 @@ Unity Catalog Delta table per ``config.yaml``.
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 from typing import Any, Dict
+
+# See train_classifier/transformations.py for the rationale — this self-heal
+# can be removed once the engine ships the sys.path fix (0.1.7+).
+_TASK_DIR = str(Path(__file__).resolve().parent)
+if _TASK_DIR not in sys.path:
+    sys.path.insert(0, _TASK_DIR)
 
 from ubunye.core.interfaces import Task
 from ubunye.models.registry import ModelRegistry, ModelStage
