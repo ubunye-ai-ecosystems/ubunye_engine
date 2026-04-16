@@ -25,3 +25,24 @@ serverless without an explicit `--lineage-dir` pointing at a UC volume.
 The `FileSystemLineageStore` may assume local paths and break on
 `/Volumes/...`. If so, either teach it about the Databricks FS mount or
 document the limitation and ship a `DatabricksLineageStore` variant.
+
+## Offline audit (2026-04-16, overnight branch)
+
+Read `ubunye/lineage/storage.py` top-to-bottom. Findings:
+
+- All FS access is `pathlib.Path`-based. No OS-specific path munging,
+  no calls to `os.*` beyond what `pathlib` abstracts.
+- `mkdir(parents=True, exist_ok=True)`, `write_text`, `glob`, `rglob`,
+  `stat().st_mtime` — every operation is supported by UC volumes'
+  POSIX FUSE mount on Databricks.
+- Existing unit tests in `tests/unit/lineage/test_storage.py` already
+  exercise absolute `base_dir` via pytest's `tmp_path` — the code path
+  a `/Volumes/...` user would hit.
+- `search(..., since=...)` uses lexicographic string comparison. Works
+  for ISO-8601 when both sides use a consistent format; silently
+  mis-compares if some records are `Z` and some `+00:00`. Not UC-specific,
+  but worth tightening later.
+
+**Conclusion:** no offline bug. The remaining validation is a live
+Databricks run with `--lineage-dir=/Volumes/...` — covered by this
+task's original scope.
