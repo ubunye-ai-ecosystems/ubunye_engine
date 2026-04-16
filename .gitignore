@@ -119,3 +119,6 @@ site/
 # =========================
 .claude/
 .mcp.json
+
+# Papers - thesis PDFs are copyrighted, don't commit
+papers/*.pdf
