@@ -25,26 +25,18 @@ def _write_task(
 ) -> None:
     """Emit a minimal task_dir with an adjacent ``model.py`` and ``transformations.py``."""
     dir_path.mkdir(parents=True, exist_ok=True)
-    (dir_path / "model.py").write_text(
-        textwrap.dedent(
-            f"""
+    (dir_path / "model.py").write_text(textwrap.dedent(f"""
             class {model_class_name}:
                 marker = {model_marker!r}
-            """
-        )
-    )
-    (dir_path / "transformations.py").write_text(
-        textwrap.dedent(
-            f"""
+            """))
+    (dir_path / "transformations.py").write_text(textwrap.dedent(f"""
             from ubunye.core.interfaces import Task
             from model import {model_class_name}
 
             class {task_class_name}(Task):
                 def transform(self, sources):
                     return {{"marker": {model_class_name}.marker}}
-            """
-        )
-    )
+            """))
 
 
 class TestSiblingModuleIsolation:
@@ -108,6 +100,6 @@ class TestSiblingModuleIsolation:
         with _with_task_dir_on_path(task_a):
             _load_task_class(task_a)
 
-        assert "json" in sys.modules and sys.modules["json"] is json, (
-            "Context manager evicted an unrelated stdlib module — too aggressive."
-        )
+        assert (
+            "json" in sys.modules and sys.modules["json"] is json
+        ), "Context manager evicted an unrelated stdlib module — too aggressive."
