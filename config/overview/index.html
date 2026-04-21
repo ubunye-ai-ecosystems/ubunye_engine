@@ -1829,8 +1829,8 @@
 This page explains the top-level structure. Each section links to a dedicated reference page.</p>
 <hr />
 <h2 id="top-level-keys">Top-level keys<a class="headerlink" href="#top-level-keys" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">MODEL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">etl</span><span class="w">          </span><span class="c1"># required — job type: etl | ml</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">VERSION</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.0.0&quot;</span><span class="w">    </span><span class="c1"># required — semver string</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">MODEL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">etl</span><span class="w">          </span><span class="c1"># optional — job type: etl | ml (defaults to etl)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">VERSION</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.0.0&quot;</span><span class="w">    </span><span class="c1"># optional — semver string (defaults to &quot;0.0.0-dev&quot;)</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nt">ENGINE</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span><span class="w">         </span><span class="c1"># optional — Spark settings and per-profile overrides</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">CONFIG</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span><span class="w">         </span><span class="c1"># required — inputs, transform, outputs</span>
@@ -1842,6 +1842,7 @@ This page explains the top-level structure. Each section links to a dedicated re
 <th>Key</th>
 <th>Type</th>
 <th>Required</th>
+<th>Default</th>
 <th>Description</th>
 </tr>
 </thead>
@@ -1849,35 +1850,43 @@ This page explains the top-level structure. Each section links to a dedicated re
 <tr>
 <td><code>MODEL</code></td>
 <td><code>etl</code> | <code>ml</code></td>
-<td>Yes</td>
+<td>No</td>
+<td><code>etl</code></td>
 <td>Declares the job type</td>
 </tr>
 <tr>
 <td><code>VERSION</code></td>
 <td>semver string</td>
-<td>Yes</td>
-<td>Pipeline version (<code>MAJOR.MINOR.PATCH</code>)</td>
+<td>No</td>
+<td><code>"0.0.0-dev"</code></td>
+<td>Pipeline version (<code>MAJOR.MINOR.PATCH</code>, optional <code>-prerelease</code> suffix)</td>
 </tr>
 <tr>
 <td><code>ENGINE</code></td>
 <td><a href="../engine/">EngineConfig</a></td>
 <td>No</td>
+<td>—</td>
 <td>Spark conf + per-profile overrides</td>
 </tr>
 <tr>
 <td><code>CONFIG</code></td>
 <td><a href="../io/">TaskConfig</a></td>
 <td>Yes</td>
+<td>—</td>
 <td>Inputs, transform, outputs</td>
 </tr>
 <tr>
 <td><code>ORCHESTRATION</code></td>
 <td><a href="../orchestration/">OrchestrationConfig</a></td>
 <td>No</td>
+<td>—</td>
 <td>Export metadata for orchestrators</td>
 </tr>
 </tbody>
 </table>
+<p>Set <code>MODEL</code> and <code>VERSION</code> explicitly in production pipelines where job type or
+version is load-bearing (lineage records, model registry, orchestrator
+metadata). For quick local iteration the defaults are fine.</p>
 <hr />
 <h2 id="jinja-templating">Jinja templating<a class="headerlink" href="#jinja-templating" title="Permanent link">&para;</a></h2>
 <p>Config values are rendered through Jinja2 <strong>before</strong> Pydantic validation.
@@ -1950,7 +1959,7 @@ Run validation before deploying:</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 21, 2026 10:58:51 UTC">April 21, 2026</span>
   </span>
 
     
