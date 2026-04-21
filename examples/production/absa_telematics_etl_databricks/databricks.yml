@@ -1,0 +1,73 @@
+# Databricks Asset Bundle - Telematics Policy/Device Mapping ETL.
+#
+# Paid workspace only (Unity Catalog is required). The nonprod target runs
+# in development mode and is scoped to the deploying identity; prod runs
+# in production mode under the workspace service principal.
+#
+# Catalog and schema values are NOT committed here: the GitHub workflow
+# (.github/workflows/absa_telematics_etl_databricks.yml) passes them via
+# ``--var`` from environment-scoped secrets, so the same databricks.yml
+# can deploy against the nonprod and prod Unity Catalogs without ever
+# surfacing the identifiers in source control.
+
+bundle:
+  name: absa-telematics-etl
+
+include:
+  - pipelines/**/*.yaml
+
+variables:
+  telm_catalog:
+    description: |
+      Unity Catalog catalog name for the telematics tables. Supplied at
+      deploy time via ``--var="telm_catalog=..."`` sourced from the
+      ``TELM_CATALOG`` GitHub environment secret.
+    default: ""
+  telm_schema:
+    description: |
+      Unity Catalog schema name for the telematics tables. Supplied at
+      deploy time via ``--var="telm_schema=..."`` sourced from the
+      ``TELM_SCHEMA`` GitHub environment secret.
+    default: ""
+  data_timestamp:
+    description: Data timestamp injected into the config as ``{{ dt }}``.
+    default: "2026-04-21"
+
+sync:
+  include:
+    - pipelines/**
+    - notebooks/**
+
+resources:
+  jobs:
+    policy_device_mapping_etl:
+      name: absa_telematics_policy_device_mapping_etl
+      max_concurrent_runs: 1
+      schedule:
+        # Monthly on the 2nd at 06:00 UTC; exposure data is typically
+        # finalised by end-of-day on the 1st.
+        quartz_cron_expression: "0 0 6 2 * ?"
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+      tasks:
+        - task_key: run_etl
+          notebook_task:
+            notebook_path: ./notebooks/run_policy_device_mapping.py
+            base_parameters:
+              task_dir: ${workspace.file_path}/pipelines/telematics/etl/policy_device_mapping
+              dt: ${var.data_timestamp}
+              mode: "PROD"
+              telm_catalog: ${var.telm_catalog}
+              telm_schema: ${var.telm_schema}
+          # Serverless: no new_cluster / existing_cluster_id block.
+
+targets:
+  nonprod:
+    mode: development
+    default: true
+    # workspace.host comes from $DATABRICKS_HOST in the CI env.
+  prod:
+    mode: production
+    # Run prod under the service principal (set via workspace config or
+    # ``run_as.service_principal_name`` if that identity is different from
+    # the deploying principal).

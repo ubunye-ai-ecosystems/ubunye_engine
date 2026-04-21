@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Production reference example: ABSA telematics ETL (Databricks, paid
+  workspace)** — `examples/production/absa_telematics_etl_databricks/`
+  ports a legacy policy-device mapping script onto Ubunye. Three Unity
+  Catalog reads, one Unity Catalog Delta sink, a monthly Databricks Jobs
+  schedule (2nd of month, 06:00 UTC), and a dedicated GitHub Actions
+  workflow (`.github/workflows/absa_telematics_etl_databricks.yml`) that
+  gates `bundle deploy` on OAuth service-principal secrets plus
+  `TELM_CATALOG` / `TELM_SCHEMA` environment secrets. No catalog/schema
+  identifiers are committed — values flow through DAB `--var` flags at
+  deploy time, keeping confidential Unity Catalog names out of source
+  control. Corrects a latent bug in the original script where the
+  IMEI-first-detection-adjusted `installation_datetime_final` was
+  computed but never selected into the final output.
+
 ---
 
 ## [0.1.7] — 2026-04-21

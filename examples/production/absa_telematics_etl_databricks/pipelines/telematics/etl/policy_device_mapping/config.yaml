@@ -1,0 +1,52 @@
+MODEL: "etl"
+VERSION: "1.0.0"
+
+# ETL pipeline: telematics policy/device mapping with exposure.
+#
+# Joins three Unity Catalog tables (policy-device details, user IMEI history,
+# activate-item premium exposure), deduplicates to latest-version records,
+# corrects the installation datetime with the earliest IMEI-detection
+# signal, and writes a tidy snake-cased Delta table partitioned by
+# ``inserted_timestamp``.
+#
+# Runs on a paid Databricks workspace only - Unity Catalog reads/writes are
+# not available on Free Edition. Catalog and schema are supplied at runtime
+# via the Databricks Asset Bundle variables + GitHub environment secrets;
+# no environment-specific identifiers are committed to this file.
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "200"
+    spark.sql.sources.partitionOverwriteMode: "dynamic"
+  profiles:
+    DEV:
+      spark_conf:
+        spark.sql.shuffle.partitions: "8"
+    PROD:
+      spark_conf:
+        spark.sql.shuffle.partitions: "200"
+
+CONFIG:
+  inputs:
+    policy_device_details:
+      format: unity
+      table: "{{ env.TELM_CATALOG }}.{{ env.TELM_SCHEMA }}.aq_policy_device_details"
+    user_imei:
+      format: unity
+      table: "{{ env.TELM_CATALOG }}.{{ env.TELM_SCHEMA }}.aq_user_imei"
+    activateitempremiumexposure:
+      format: unity
+      table: "{{ env.TELM_CATALOG }}.{{ env.TELM_SCHEMA }}.aq_activateitempremiumexposure"
+
+  transform:
+    # Overridden at runtime by execute_user_task -> transformations.py
+    type: noop
+
+  outputs:
+    policy_device_mapping_exposure:
+      format: unity
+      table: "{{ env.TELM_CATALOG }}.{{ env.TELM_SCHEMA }}.telematics_policy_device_mapping_exposure"
+      mode: overwrite
+      partitionBy: ["inserted_timestamp"]
+      options:
+        overwriteSchema: "true"
+        comment: "Telematics policy + device mapping joined to MI exposure, partitioned by inserted_timestamp."

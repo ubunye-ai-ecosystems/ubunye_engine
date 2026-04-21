@@ -22,6 +22,7 @@ The short answer: the business logic does not change. The config shifts from
 | [`titanic_ml_databricks/`](./titanic_ml_databricks/) | Databricks serverless + UC (ML)     | CSV on UC volume             | Training audit log + predictions (UC Delta); MLflow + Model Registry |
 | [`titanic_multitask_local/`](./titanic_multitask_local/) | Local SparkSession             | CSV on disk                  | Intermediate + summary Parquet on disk |
 | [`titanic_multitask_databricks/`](./titanic_multitask_databricks/) | Databricks serverless + UC | CSV on UC volume | Unity Catalog Delta tables (intermediate + summary) |
+| [`absa_telematics_etl_databricks/`](./absa_telematics_etl_databricks/) | Databricks serverless + UC (paid workspace only) | 3x UC tables (policy-device details, user-IMEI, MI exposure) | UC Delta table (policy/device/exposure mapping) |
 
 The first two answer *"how much code changes when I move from laptop to
 Databricks?"* — the business logic is byte-identical across them. The third
