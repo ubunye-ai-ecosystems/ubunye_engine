@@ -169,6 +169,23 @@ Check out the [Patterns](https://ubunye-ai-ecosystems.github.io/ubunye_engine) s
 
 ---
 
+## Examples
+
+Six fully worked pipelines live in [`examples/production/`](examples/production/). Each one is self-contained — its own README, tests, and CI workflow — so you can copy a folder, tweak the config, and have something running in minutes.
+
+| Example | What it shows | Where it runs |
+|---|---|---|
+| [`titanic_local/`](examples/production/titanic_local/) | Simplest end-to-end: Kaggle Titanic CSV → survival rate by passenger class, saved as Parquet. Start here. | Your laptop |
+| [`titanic_databricks/`](examples/production/titanic_databricks/) | Same business logic, same file — just a different config. Shows how little changes when you move to the cloud. | Databricks Community Edition |
+| [`titanic_multitask_local/`](examples/production/titanic_multitask_local/) | Two tasks chained: one cleans the data, the next summarises it. Shows `ubunye run -t task1 -t task2`. | Your laptop |
+| [`titanic_multitask_databricks/`](examples/production/titanic_multitask_databricks/) | Same chain, running on Databricks with Unity Catalog tables instead of local Parquet. | Databricks |
+| [`titanic_ml_databricks/`](examples/production/titanic_ml_databricks/) | The full ML lifecycle: train a classifier, log to MLflow, promote through the model registry, score new rows. | Databricks |
+| [`jhb_weather_databricks/`](examples/production/jhb_weather_databricks/) | REST API ingestion (Open-Meteo, no auth) → Unity Catalog Delta table, on a schedule. | Databricks |
+
+Not sure which one to open? Read [`examples/production/README.md`](examples/production/README.md) — it walks through picking a runtime and what the Community Edition / paid workspace differences look like.
+
+---
+
 ## Connectors
 
 | Format | Read | Write | Description |
