@@ -109,6 +109,7 @@ env:
 The `Check for Databricks secrets` step gates the deploy on *either* flow
 being wired up:
 
+[% raw %]
 ```bash
 if [[ -z "${DATABRICKS_HOST}" ]]; then
   has_secrets=false
@@ -119,6 +120,7 @@ else
   has_secrets=false
 fi
 ```
+[% endraw %]
 
 If the gate is false, the workflow runs the unit tests and portability diff
 but skips `bundle validate` / `deploy` / `run`. This keeps PRs from forks
