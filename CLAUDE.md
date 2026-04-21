@@ -1,348 +1,161 @@
-# Ubunye Engine — Developer Guide
+# CLAUDE.md
 
-## Overview
-Config-driven, Spark-native framework for building and deploying ML/ETL pipelines.
-Users write the same code in notebooks and production without worrying about infrastructure.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Quick Start
+## Project
+
+Ubunye Engine — config-driven, Spark-native framework for ETL/ML pipelines. A pipeline is a
+`<usecase_dir>/<usecase>/<package>/<task>/` folder containing `config.yaml` (declarative
+inputs/transform/outputs) and `transformations.py` (user logic). The same task folder runs on a
+laptop, YARN, K8s, or Databricks — only the `ENGINE.profiles` block changes.
+
+## Dev setup
+
 ```bash
-pip install -e .                # install in dev mode
-ubunye version                  # v0.1.0
-ubunye plugins                  # list discovered plugins
+python -m venv .venv && source .venv/bin/activate
+pip install -e .[dev]           # dev extras include pytest, hypothesis, ruff, black
+pre-commit install              # black + ruff run on commit (never skip with --no-verify)
+pytest tests/unit -v            # fast unit tier — what CI runs
+pytest -m integration           # needs local Spark + Java 11
+pytest tests/ -k test_config    # single test by keyword
 ```
 
-## CLI Reference
-
-### `ubunye` (top-level)
-Commands: `init`, `plugins`, `config`, `validate`, `plan`, `run`, `version`, `lineage`, `models`, `test`, `export`
-
----
-
-### `ubunye init`
-Scaffold task folders with `config.yaml` and `transformations.py`.
-
-| Flag | Short | Required | Default | Description |
-|------|-------|----------|---------|-------------|
-| `--usecase-dir` | `-d` | yes | — | Root directory for the use case |
-| `--usecase` | `-u` | yes | — | Use case name |
-| `--package` | `-p` | yes | — | Package name |
-| `--task-list` | `-t` | yes | — | Task(s) to scaffold (repeatable) |
-| `--overwrite` | | no | `no-overwrite` | Overwrite existing files |
-
----
-
-### `ubunye validate`
-Validate config file(s) without executing the pipeline. Runs Pydantic + Jinja resolution.
-
-| Flag | Short | Required | Default | Description |
-|------|-------|----------|---------|-------------|
-| `--usecase-dir` | `-d` | yes | — | Root directory of pipelines |
-| `--usecase` | `-u` | yes | — | Use case name |
-| `--package` | `-p` | yes | — | Pipeline/package name |
-| `--task-list` | `-t` | no | — | Task(s) to validate (repeatable) |
-| `--all` | | no | false | Validate all tasks in the package |
-| `--profile` | | no | — | Profile to validate against (e.g. dev, prod) |
-| `--data-timestamp` | `-dt` | no | — | Data timestamp for Jinja rendering |
-
-**Examples:**
-```bash
-ubunye validate -d ./pipelines -u fraud_detection -p ingestion -t claim_etl
-ubunye validate -d ./pipelines -u fraud_detection -p ingestion --all
-ubunye validate -d ./pipelines -u fraud_detection -p ingestion -t claim_etl --profile dev
-```
-
----
-
-### `ubunye config`
-Show and validate config files (similar to validate but also resolves Spark conf).
-
-| Flag | Short | Required | Default | Description |
-|------|-------|----------|---------|-------------|
-| `--usecase-dir` | `-d` | yes | — | Root directory |
-| `--usecase` | `-u` | yes | — | Use case name |
-| `--package` | `-p` | yes | — | Package name |
-| `--task-list` | `-t` | yes | — | Task(s) (repeatable) |
-| `--data-timestamp` | `-dt` | no | — | Data timestamp |
-| `--data-timestamp-format` | `-dtf` | no | — | Timestamp format |
-| `--mode` | `-m` | no | `DEV` | Run mode |
-
----
-
-### `ubunye plan`
-Print the planned inputs → transform → outputs for task(s).
-
-| Flag | Short | Required | Default | Description |
-|------|-------|----------|---------|-------------|
-| `--usecase-dir` | `-d` | yes | — | Root directory |
-| `--usecase` | `-u` | yes | — | Use case name |
-| `--package` | `-p` | yes | — | Package name |
-| `--task-list` | `-t` | yes | — | Task(s) (repeatable) |
-| `--data-timestamp` | `-dt` | no | — | Data timestamp |
-| `--data-timestamp-format` | `-dtf` | no | — | Timestamp format |
-| `--mode` | `-m` | no | `DEV` | Run mode |
-
----
-
-### `ubunye run`
-Run one or more tasks within a package sequentially.
-
-| Flag | Short | Required | Default | Description |
-|------|-------|----------|---------|-------------|
-| `--usecase-dir` | `-d` | yes | — | Root directory for the use case |
-| `--usecase` | `-u` | yes | — | Use case name |
-| `--package` | `-p` | yes | — | Package name |
-| `--task-list` | `-t` | yes | — | Task(s) to execute (repeatable) |
-| `--data-timestamp` | `-dt` | no | — | Data timestamp for Jinja rendering |
-| `--data-timestamp-format` | `-dtf` | no | — | Timestamp format |
-| `--mode` | `-m` | no | `DEV` | Run mode (DEV/PROD) |
-| `--deploy-mode` | | no | `client` | Spark deploy mode (cluster/client) |
-| `--lineage` | | no | false | Record lineage for this run |
-| `--lineage-dir` | | no | `.ubunye/lineage` | Root directory for lineage records |
-
-**Example:**
-```bash
-ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl -m PROD --lineage
-```
-
----
-
-### `ubunye test run`
-Run one or more tasks with a test profile and report PASS/FAIL per task.
-
-| Flag | Short | Required | Default | Description |
-|------|-------|----------|---------|-------------|
-| `--usecase-dir` | `-d` | yes | — | Root directory of pipelines |
-| `--usecase` | `-u` | yes | — | Use case name |
-| `--package` | `-p` | yes | — | Package name |
-| `--task-list` | `-t` | yes | — | Task(s) to test (repeatable) |
-| `--profile` | | no | `test` | Config profile to use |
-| `--data-timestamp` | `-dt` | no | — | Data timestamp |
-| `--lineage / --no-lineage` | | no | `lineage` | Record lineage for each test run |
-| `--lineage-dir` | | no | `.ubunye/lineage` | Lineage directory |
-
-**Example:**
-```bash
-ubunye test run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl
-```
-
----
-
-### `ubunye export`
-Sub-commands: `airflow`, `databricks`. Render a task's `config.yaml` as a
-scheduler artifact. Defaults come from the `ORCHESTRATION` block of the config.
-
-| Flag | Short | Required | Default | Description |
-|------|-------|----------|---------|-------------|
-| `--config` | `-c` | yes | — | Path to the task `config.yaml` |
-| `--output` | `-o` | yes | — | Where to write the generated artifact |
-| `--profile` | | no | `prod` | Profile embedded in the `ubunye run` command |
-
-**Examples:**
-```bash
-ubunye export airflow -c pipelines/fraud/etl/claims/config.yaml -o dags/claims.py
-ubunye export databricks -c pipelines/fraud/etl/claims/config.yaml -o jobs/claims.json
-```
-
-`export airflow` emits a DAG Python file with a single `BashOperator` that runs
-`ubunye run ...`. `export databricks` emits a Jobs API spec; nested
-`ORCHESTRATION.databricks` cluster settings are flattened into the job's
-`new_cluster` block.
-
----
-
-### `ubunye lineage`
-Sub-commands: `show`, `list`, `compare`, `search`, `trace`
-
-#### `ubunye lineage show`
-Show a run record as formatted JSON (latest or specific run).
-
-| Flag | Short | Required | Default |
-|------|-------|----------|---------|
-| `--usecase-dir` | `-d` | yes | — |
-| `--usecase` | `-u` | yes | — |
-| `--package` | `-p` | yes | — |
-| `--task` | `-t` | yes | — |
-| `--run-id` | | no | latest |
-| `--lineage-dir` | | no | `.ubunye/lineage` |
-
-#### `ubunye lineage list`
-List recent runs for a task (newest first).
-
-| Flag | Short | Required | Default |
-|------|-------|----------|---------|
-| `--usecase-dir` | `-d` | yes | — |
-| `--usecase` | `-u` | yes | — |
-| `--package` | `-p` | yes | — |
-| `--task` | `-t` | yes | — |
-| `--n` | `-n` | no | `10` |
-| `--lineage-dir` | | no | `.ubunye/lineage` |
-
-#### `ubunye lineage compare`
-Diff two run records — highlight changes in hashes, row counts, and status.
-
-| Flag | Short | Required | Default |
-|------|-------|----------|---------|
-| `--usecase-dir` | `-d` | yes | — |
-| `--usecase` | `-u` | yes | — |
-| `--package` | `-p` | yes | — |
-| `--task` | `-t` | yes | — |
-| `--run-id1` | | yes | — |
-| `--run-id2` | | yes | — |
-| `--lineage-dir` | | no | `.ubunye/lineage` |
-
-#### `ubunye lineage search`
-Search all recorded runs across tasks with optional filters.
-
-| Flag | Short | Required | Default |
-|------|-------|----------|---------|
-| `--usecase-dir` | `-d` | yes | — |
-| `--task` | `-t` | no | — |
-| `--usecase` | `-u` | no | — |
-| `--package` | `-p` | no | — |
-| `--status` | | no | — |
-| `--since` | | no | — |
-| `--lineage-dir` | | no | `.ubunye/lineage` |
-
-#### `ubunye lineage trace`
-Print the input → transform → output data flow graph for a run.
-
-| Flag | Short | Required | Default |
-|------|-------|----------|---------|
-| `--usecase-dir` | `-d` | yes | — |
-| `--usecase` | `-u` | yes | — |
-| `--package` | `-p` | yes | — |
-| `--task` | `-t` | yes | — |
-| `--run-id` | | no | latest |
-| `--lineage-dir` | | no | `.ubunye/lineage` |
-
----
-
-### `ubunye models`
-Sub-commands: `list`, `info`, `promote`, `demote`, `rollback`, `archive`, `compare`
-
-All model sub-commands require: `--use-case` (`-u`), `--model` (`-m`), `--store` (`-s`).
-
-#### `ubunye models list`
-List all registered versions for a model (newest first).
-
-#### `ubunye models info`
-Show full details of a specific model version as JSON. Requires `--version` (`-v`).
-
-#### `ubunye models promote`
-Promote a model version to a higher lifecycle stage.
-Requires `--version` (`-v`), `--to` (staging | production). Optional `--promoted-by`.
-
-#### `ubunye models demote`
-Demote a model version to a lower lifecycle stage.
-Requires `--version` (`-v`), `--to` (development | staging | archived).
-
-#### `ubunye models rollback`
-Roll back production to a specific previous version. Requires `--version` (`-v`).
-
-#### `ubunye models archive`
-Archive a model version. Requires `--version` (`-v`).
-
-#### `ubunye models compare`
-Compare metrics between two model versions. Requires `--versions` (two version strings, repeatable).
-
----
-
-### `ubunye plugins`
-List discovered Reader/Writer/Transform plugins. No flags.
-
-**Current plugins:**
-- Readers: `hive`, `jdbc`, `rest_api`, `s3`, `unity`
-- Writers: `jdbc`, `rest_api`, `s3`, `unity`
-- Transforms: `model`, `noop`
-
-### `ubunye version`
-Print version string. No flags. Currently: `v0.1.0`.
-
-## Entry Points
-
-Ubunye has two entry points:
-
-### CLI (`ubunye run`) — for terminals, CI, Jenkins
-```bash
-ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl -m PROD --lineage
-```
-
-### Python API (`ubunye.run_task()`) — for Databricks notebooks and jobs
-```python
-import ubunye
-
-# Single task
-outputs = ubunye.run_task(
-    task_dir="pipelines/fraud_detection/ingestion/claim_etl",
-    mode="nonprod",
-    dt="202510",
-)
-
-# Multiple tasks
-results = ubunye.run_pipeline(
-    usecase_dir="pipelines",
-    usecase="fraud_detection",
-    package="ingestion",
-    tasks=["claim_etl", "feature_engineering"],
-    mode="nonprod",
-    dt="202510",
-)
-```
-
-The Python API auto-detects an active SparkSession (Databricks) and reuses it
-instead of creating a new one. Pass `spark=` explicitly to override.
-
-## Deployment Pattern
-
-- **CI (GitHub Actions)**: On PR → validate configs + unit tests. On merge to main → deploy Databricks Asset Bundle to nonprod.
-- **CD (Databricks Asset Bundles)**: Jobs defined as code in the **usecase repo** (not this engine repo). Deployed via `databricks bundle deploy --target <nonprod|prod>`.
-- **Execution**: All pipeline execution happens on Databricks, not in GitHub Actions. CI is validation-only.
-
-DABs (`bundles/`, `databricks.yml`) belong in the usecase repo, not in the engine.
-
-## Source Layout
-- `ubunye/api.py` — Public Python API (`run_task`, `run_pipeline`)
-- `ubunye/core/` — Engine, Registry, interfaces (Reader/Writer/Transform/Task/Backend), `hooks.py` (Hook / HookChain observability abstraction)
-- `ubunye/config/` — YAML loader + Pydantic v2 schema
-- `ubunye/backends/spark_backend.py` — SparkSession lifecycle (creates new session)
-- `ubunye/backends/databricks_backend.py` — Reuses active SparkSession (Databricks)
-- `ubunye/plugins/readers/` — Hive, JDBC, Unity Catalog, REST API, S3 readers
-- `ubunye/plugins/writers/` — S3, JDBC, Unity Catalog, REST API writers
-- `ubunye/plugins/transforms/` — noop, model transforms
-- `ubunye/plugins/ml/` — BaseModel, SklearnModel, SparkMLModel, BatchPredictMixin, MLflowLoggingMixin
-- `ubunye/cli/main.py` — Typer CLI entry point
-- `ubunye/cli/lineage.py` — lineage sub-commands
-- `ubunye/cli/models.py` — models sub-commands
-- `ubunye/cli/test_cmd.py` — test sub-commands
-- `ubunye/cli/export.py` — export sub-commands (airflow, databricks)
-- `ubunye/orchestration/` — `AirflowExporter`, `DatabricksExporter`, `OrchestratorExporter`
-- `ubunye/lineage/` — run provenance: RunContext, StepRecord, LineageRecorder, FileSystemLineageStore
-- `ubunye/telemetry/` — events, mlflow, prometheus, otel, monitors
-- `ubunye/telemetry/hooks/` — built-in Hook implementations (EventLoggerHook, OTelHook, PrometheusHook, LegacyMonitorsHook); registered via `ubunye.hooks` entry-point group
-- `ubunye/orchestration/` — Airflow/Databricks exporters
-- `pipelines/` — example pipeline tasks
-- `examples/` — fraud_detection, rest_api examples
-
-## Running Tests
-```bash
-pytest                           # run full test suite
-pytest tests/ -k "test_config"   # run specific tests
-```
-
-## Key Conventions
-- Timestamps are passed via `-dt` (short for `--data-timestamp`), not `--dt`
-- Mode defaults to `DEV` (uppercase), not "nonprod" or "dev"
-- Deploy mode defaults to `client`
-- `validate` has `--all` flag to validate all tasks in a package; `run` does not
-- `validate` has `--profile` flag; `run` uses `-m/--mode` instead
-- `test run` defaults profile to `test` and lineage is ON by default
-- `lineage` sub-commands use `--task` (`-t` singular), not `--task-list`
-- `models` sub-commands use `--use-case` (`-u`), `--model` (`-m`), `--store` (`-s`)
-- `load_config()` accepts a directory path (for validate) or a file path (for run/plan/config)
-- Task code lives in `transformations.py` inside each task directory
-- Config lives in `config.yaml` inside each task directory
-- Spark app name convention: `ubunye:<usecase>.<package>.<task>` (set by the Python API for easy identification in Spark UI)
-- `merged_spark_conf(mode)` silently returns base config when mode doesn't match any profile key (no error)
-- Folder convention: `<usecase_dir>/<usecase>/<package>/<task>/config.yaml`
-- Config top-level keys: `MODEL` (etl/ml), `VERSION` (semver), `ENGINE` (spark_conf + profiles), `CONFIG` (inputs/transform/outputs)
-- Jinja variables: `{{ dt }}`, `{{ dtf }}`, `{{ mode }}`, `{{ env.VAR_NAME }}`
+CI (`.github/workflows/ci.yml`) runs `pytest tests/unit -m "not integration"` with coverage. All
+other workflows under `.github/workflows/*_databricks.yml` fire end-to-end examples against a real
+Databricks workspace and are gated on secrets; treat them as integration probes, not PR gates.
+
+## CLI surface
+
+`ubunye <cmd> --help` is authoritative — don't hard-code flag tables here. Top-level commands:
+`init`, `validate`, `config`, `plan`, `run`, `test run`, `export {airflow,databricks}`,
+`lineage {show,list,compare,search,trace}`, `models {list,info,promote,demote,rollback,archive,compare}`,
+`plugins`, `version`.
+
+**Non-obvious CLI gotchas** (every single one has bitten someone):
+
+- Timestamp flag is `-dt` / `--data-timestamp`, **not** `--dt`.
+- `--mode` / `-m` defaults to `DEV` (uppercase). Modes are case-sensitive when matching profile keys.
+- `validate` takes `--profile`; `run` takes `-m/--mode`. They are not aliases.
+- `validate` has `--all` for all tasks in a package; `run` does not — repeat `-t` instead.
+- `test run` defaults profile to `test` and `--lineage` is **on** by default (opposite of `run`).
+- `lineage *` sub-commands use singular `--task` / `-t`, not `--task-list`.
+- `models *` sub-commands use `--use-case` (`-u`), `--model` (`-m`), `--store` (`-s`) — different
+  flag shape from the pipeline commands.
+- `merged_spark_conf(mode)` silently returns base conf if `mode` doesn't match any profile key. No
+  error, no warning. Verify the profile name matches the YAML before blaming the engine.
+
+## Architecture — the parts that aren't obvious from a single file
+
+### Two entry points, one execution path
+
+- **CLI** (`ubunye.cli.main`): used from terminals and CI. Creates a fresh `SparkBackend`.
+- **Python API** (`ubunye.api.run_task` / `run_pipeline`): used from Databricks notebooks and jobs.
+  Auto-detects an active `SparkSession` via `SparkSession.getActiveSession()` and wraps it in
+  `DatabricksBackend` instead of creating a new one. See `ubunye/api.py::_detect_backend` — this is
+  why the same code works identically in a notebook and at the shell.
+
+Both paths converge in `ubunye.core.task_runner.execute_user_task`, which loads
+`transformations.py` via a `sys.path` injection of the task directory. The task dir is prepended
+to `sys.path` so sibling modules (`transformations.py`, helpers) resolve correctly — a regression
+here broke multi-task pipelines once (commit `6362942`), keep the import contract in mind when
+touching the runner.
+
+### Plugins are entry-points, not imports
+
+Readers, writers, transforms, ML models, monitors, and hooks are all discovered via
+`importlib.metadata` entry-point groups declared in `pyproject.toml`:
+
+- `ubunye.readers` — `hive`, `jdbc`, `s3`, `unity`, `rest_api`
+- `ubunye.writers` — `s3`, `jdbc`, `unity`, `rest_api`
+- `ubunye.transforms` — `noop`, `model`
+- `ubunye.ml` — `sklearn`, `sparkml`
+- `ubunye.monitors` — `mlflow`, `lineage`
+- `ubunye.hooks` — `events`, `otel`, `prometheus`
+
+The `format: <name>` field in a config selects the plugin. Adding a connector = write the class,
+register the entry point in `pyproject.toml`, reinstall with `pip install -e .`. Don't wire plugins
+by direct import inside the engine.
+
+### Hooks vs. monitors
+
+`ubunye/core/hooks.py` defines the `Hook` / `HookChain` observability abstraction — the modern
+path. Built-in hooks live in `ubunye/telemetry/hooks/` (events, otel, prometheus) and are
+always-on via the `ubunye.hooks` entry point. The legacy `ubunye.monitors` group (mlflow, lineage)
+is wrapped through `MonitorHook`; prefer the hook interface for new observability code.
+
+### Config schema
+
+`ubunye/config/` loads YAML through Pydantic v2 + Jinja2 (applied after YAML parse, before
+validation). Top-level keys: `MODEL` (`etl`/`ml`), `VERSION` (semver), `ENGINE` (base `spark_conf`
+plus per-mode `profiles`), `CONFIG` (`inputs` / `transform` / `outputs`), optional `ORCHESTRATION`
+(defaults consumed by `ubunye export`). Jinja context: `{{ dt }}`, `{{ dtf }}`, `{{ mode }}`,
+`{{ env.VAR_NAME }}`. `load_config()` accepts either a directory (for `validate --all`) or a file
+path (for `run`/`plan`/`config`).
+
+### Deployment split
+
+DABs (`bundles/`, `databricks.yml`) and Airflow DAGs belong in the **usecase repo**, not in this
+engine repo. CI here is validation-only; execution happens on Databricks. `ubunye export` produces
+the scheduler artifacts that the usecase repo commits.
+
+## Source layout (only what isn't discoverable)
+
+- `ubunye/api.py` — public `run_task` / `run_pipeline`, backend auto-detection.
+- `ubunye/core/task_runner.py` — the `sys.path`-injecting task loader. Touch carefully.
+- `ubunye/core/hooks.py` — Hook / HookChain abstraction. New observability goes here.
+- `ubunye/backends/{spark,databricks}_backend.py` — session lifecycle. Databricks reuses active
+  session; Spark creates a new one.
+- `ubunye/plugins/ml/` — `BaseModel`, `SklearnModel`, `SparkMLModel`, `BatchPredictMixin`,
+  `MLflowLoggingMixin`. The contract for user-defined models lives here.
+- `ubunye/lineage/` — `RunContext`, `StepRecord`, `LineageRecorder`, `FileSystemLineageStore`.
+- `ubunye/orchestration/` — `AirflowExporter`, `DatabricksExporter` (used by `ubunye export`).
+- `examples/production/` — reference pipelines with a **byte-identical `transformations.py`**
+  invariant between `titanic_local` and `titanic_databricks`, enforced in CI via `diff -q`. When
+  editing either, mirror the change in the other or the Databricks workflow fails. Read
+  `examples/production/README.md` before touching these.
+
+## Conventions baked into the engine
+
+- Folder: `<usecase_dir>/<usecase>/<package>/<task>/{config.yaml,transformations.py}`. The Python
+  API derives the Spark app name `ubunye:<usecase>.<package>.<task>` from the last three path
+  parts — renaming the dirs changes what shows up in the Spark UI.
+- Deploy mode defaults to `client`.
+- Default lineage dir: `.ubunye/lineage`.
+- Version is read from package metadata (`importlib.metadata.version("ubunye-engine")`), so
+  `pip install -e .` is required for `ubunye version` to report anything other than `unknown`.
+
+## Workflow in this repo
+
+The `tasks/` scratchpad tracks work in flight (not authoritative — GitHub issues + changelog are):
+
+- `tasks/todo/task-NN.md` — queued bugs and coverage gaps. `task-00.md` is the umbrella strategy.
+- `tasks/done/task-NN.md` — finished work, same number, with a `Status: done (date)` line
+  appended. **Move, don't copy.**
+
+Four project-level subagents automate the loop (see `.claude/agents/README.md`):
+
+1. `fire-tester` — runs a production example end-to-end on Databricks, files findings to
+   `tasks/todo/`. Use for prompts like "run the titanic example", "does the ML lifecycle still
+   work".
+2. `engine-fixer` — picks up a filed bug, produces **one atomic commit per bug** (failing test
+   first, then minimal fix). Does not release.
+3. `example-author` — scaffolds a new `examples/production/*` pipeline when a coverage-gap task
+   calls for one.
+4. `task-curator` — tidies `tasks/` and keeps numbering/metadata honest.
+
+Hard invariants these agents preserve (and you should too):
+
+- No releases. The `pypip` GitHub environment requires a human reviewer.
+- Never skip pre-commit hooks (`--no-verify`) or signing.
+- One commit per fix — no bundled bug-fix commits.
+- **Docs + changelog move with code.** Every code change touches `docs/` and `docs/changelog.md`
+  in the same commit; this is tracked in user memory and has been called out before.
+
+## Related docs in this repo
+
+- `README.md` — user-facing pitch + quickstart.
+- `DEV_README.md` — environment bootstrap. Partially stale (lists `dagster`/`prefect` exporters
+  that don't exist and a `doctor` command that was never shipped). Trust the code over this file.
+- `docs/` — full MkDocs site (`mkdocs serve` to preview). `mkdocs.yml` nav lists what exists.
+- `tasks/README.md` — scratchpad conventions.
+- `examples/production/README.md` — portability contract, CE-vs-paid-workspace matrix.
