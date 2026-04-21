@@ -54,17 +54,27 @@ class TestUbunyeConfig:
         )
         assert cfg.MODEL == JobType.ML
 
-    def test_missing_model_key_raises(self):
-        with pytest.raises(ValidationError):
-            UbunyeConfig(VERSION="0.1.0", CONFIG=_MINIMAL_CONFIG)
+    def test_model_defaults_to_etl_when_omitted(self):
+        cfg = UbunyeConfig(VERSION="0.1.0", CONFIG=_MINIMAL_CONFIG)
+        assert cfg.MODEL == JobType.ETL
 
     def test_invalid_model_type_raises(self):
         with pytest.raises(ValidationError):
             UbunyeConfig(**_make_config(MODEL="streaming"))
 
-    def test_missing_version_raises(self):
-        with pytest.raises(ValidationError):
-            UbunyeConfig(MODEL="etl", CONFIG=_MINIMAL_CONFIG)
+    def test_version_defaults_to_dev_when_omitted(self):
+        cfg = UbunyeConfig(MODEL="etl", CONFIG=_MINIMAL_CONFIG)
+        assert cfg.VERSION == "0.0.0-dev"
+
+    def test_model_and_version_both_defaultable(self):
+        cfg = UbunyeConfig(CONFIG=_MINIMAL_CONFIG)
+        assert cfg.MODEL == JobType.ETL
+        assert cfg.VERSION == "0.0.0-dev"
+
+    def test_prerelease_semver_accepted(self):
+        for v in ("1.0.0-rc1", "2.3.4-beta.2", "0.0.0-dev"):
+            cfg = UbunyeConfig(**_make_config(VERSION=v))
+            assert cfg.VERSION == v
 
     def test_invalid_semver_raises(self):
         with pytest.raises(ValidationError, match="semver"):
