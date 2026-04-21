@@ -8,21 +8,25 @@ This page explains the top-level structure. Each section links to a dedicated re
 ## Top-level keys
 
 ```yaml
-MODEL: etl          # required — job type: etl | ml
-VERSION: "1.0.0"    # required — semver string
+MODEL: etl          # optional — job type: etl | ml (defaults to etl)
+VERSION: "1.0.0"    # optional — semver string (defaults to "0.0.0-dev")
 
 ENGINE: ...         # optional — Spark settings and per-profile overrides
 CONFIG: ...         # required — inputs, transform, outputs
 ORCHESTRATION: ...  # optional — Airflow / Databricks / Prefect / Dagster metadata
 ```
 
-| Key | Type | Required | Description |
-|---|---|---|---|
-| `MODEL` | `etl` \| `ml` | Yes | Declares the job type |
-| `VERSION` | semver string | Yes | Pipeline version (`MAJOR.MINOR.PATCH`) |
-| `ENGINE` | [EngineConfig](engine.md) | No | Spark conf + per-profile overrides |
-| `CONFIG` | [TaskConfig](io.md) | Yes | Inputs, transform, outputs |
-| `ORCHESTRATION` | [OrchestrationConfig](orchestration.md) | No | Export metadata for orchestrators |
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `MODEL` | `etl` \| `ml` | No | `etl` | Declares the job type |
+| `VERSION` | semver string | No | `"0.0.0-dev"` | Pipeline version (`MAJOR.MINOR.PATCH`, optional `-prerelease` suffix) |
+| `ENGINE` | [EngineConfig](engine.md) | No | — | Spark conf + per-profile overrides |
+| `CONFIG` | [TaskConfig](io.md) | Yes | — | Inputs, transform, outputs |
+| `ORCHESTRATION` | [OrchestrationConfig](orchestration.md) | No | — | Export metadata for orchestrators |
+
+Set `MODEL` and `VERSION` explicitly in production pipelines where job type or
+version is load-bearing (lineage records, model registry, orchestrator
+metadata). For quick local iteration the defaults are fine.
 
 ---
 
