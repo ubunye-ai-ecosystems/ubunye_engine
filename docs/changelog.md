@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Service principal + OAuth auth for Databricks CI.** The four Databricks
+  example workflows (`databricks_deploy.yml`, `jhb_weather_databricks.yml`,
+  `multitask_databricks.yml`, `titanic_ml_databricks.yml`) now pass
+  `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET` alongside the existing
+  `DATABRICKS_TOKEN` env var. The secrets gate accepts either flow: PAT
+  (`HOST` + `TOKEN`) or OAuth (`HOST` + `CLIENT_ID` + `CLIENT_SECRET`). The
+  Databricks CLI auto-selects OAuth when both client vars are set. New
+  reference page `docs/databricks-auth.md` walks through service principal
+  creation, workspace/UC grants, secret rotation, and verification.
+
 ---
 
 ## [0.1.7] — 2026-04-21
