@@ -62,7 +62,9 @@ nav:
       - Model Registry: ml/registry.md
   - CLI Reference: cli.md
   - API Reference: api.md
-  - Deployment: deployment.md
+  - Deployment:
+      - Overview: deployment.md
+      - Databricks Authentication: databricks-auth.md
   - Developer Guide: dev_guide.md
   - Contributing: contributing.md
   - Changelog: changelog.md

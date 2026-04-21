@@ -10,9 +10,12 @@ name: examples/titanic_databricks
 #   4. Deploy the bundle to the ``nonprod`` target on the configured workspace.
 #   5. Optionally trigger a run when the workflow is invoked manually.
 #
-# Secrets required:
-#   DATABRICKS_HOST   — e.g. https://community.cloud.databricks.com
-#   DATABRICKS_TOKEN  — personal access token (CE has no service principals).
+# Secrets required (one of the two auth flows):
+#   DATABRICKS_HOST           — e.g. https://community.cloud.databricks.com
+#   DATABRICKS_TOKEN          — personal access token (Free Edition), OR
+#   DATABRICKS_CLIENT_ID      — service principal Application ID (paid WS), AND
+#   DATABRICKS_CLIENT_SECRET  — service principal OAuth secret.
+# See docs/databricks-auth.md for the full setup.
 
 on:
   push:
@@ -39,8 +42,10 @@ jobs:
     env:
       EXAMPLE_DIR: examples/production/titanic_databricks
       LOCAL_EXAMPLE_DIR: examples/production/titanic_local
-      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HOST:          ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN:         ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_CLIENT_ID:     ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
 
     steps:
       - name: Checkout
@@ -80,15 +85,21 @@ jobs:
           echo "OK: transformations.py is byte-identical across runtimes."
 
       - name: Check for Databricks secrets
-        # Skip deploy steps when secrets are absent so PRs from forks still
-        # exercise the unit tests and portability diff above.
+        # Accept either auth flow: PAT (HOST+TOKEN) or service principal
+        # OAuth (HOST+CLIENT_ID+CLIENT_SECRET). Skip deploy steps when
+        # neither is wired up so PRs from forks still exercise the unit
+        # tests and portability diff above. See docs/databricks-auth.md.
         id: check_secrets
         run: |
-          if [[ -z "${DATABRICKS_HOST}" || -z "${DATABRICKS_TOKEN}" ]]; then
+          if [[ -z "${DATABRICKS_HOST}" ]]; then
             echo "has_secrets=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::DATABRICKS_HOST/DATABRICKS_TOKEN not set - skipping bundle deploy."
-          else
+            echo "::warning::DATABRICKS_HOST not set - skipping bundle deploy."
+          elif [[ -n "${DATABRICKS_TOKEN}" ]] || \
+               [[ -n "${DATABRICKS_CLIENT_ID}" && -n "${DATABRICKS_CLIENT_SECRET}" ]]; then
             echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Neither DATABRICKS_TOKEN nor DATABRICKS_CLIENT_ID+SECRET set - skipping bundle deploy."
           fi
 
       - name: Install Databricks CLI
