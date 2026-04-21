@@ -5438,6 +5438,10 @@ transforms, and user-defined tasks.</p>
 
 
         <p>Top-level Ubunye task config (the full contents of a <code>config.yaml</code>).</p>
+<p><code>MODEL</code> and <code>VERSION</code> are optional; they default to <code>etl</code> and
+<code>"0.0.0-dev"</code> respectively. Set them explicitly in production pipelines
+where job type or version is load-bearing (lineage records, model
+registry, orchestrator metadata).</p>
 
 
 
