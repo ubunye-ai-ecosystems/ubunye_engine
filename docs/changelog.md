@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`MODEL` and `VERSION` are now optional at the top level of `config.yaml`.**
+  `MODEL` defaults to `etl` and `VERSION` defaults to `"0.0.0-dev"`. The semver
+  validator now accepts an optional pre-release suffix (e.g. `1.0.0-rc1`,
+  `0.0.0-dev`) in addition to plain `MAJOR.MINOR.PATCH`. Existing configs that
+  set these fields explicitly continue to work unchanged. Rationale: these two
+  lines were boilerplate in every scaffolded pipeline; the defaults cover the
+  common case. Set them explicitly when job type or version is load-bearing
+  (lineage, model registry, orchestrator metadata).
+
 ### Added
 
 - **Production reference example: Titanic multi-task pipeline (local)** —
