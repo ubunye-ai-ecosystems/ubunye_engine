@@ -19,97 +19,96 @@
 
 ## Hey there 👋
 
-If you've ever spent more time wiring up Spark boilerplate than writing actual data logic — this is for you.
+A **data pipeline** is a program that moves data from one place to another — a database to a file, a REST API to a data warehouse — and usually reshapes the data along the way. Building one from scratch is mostly plumbing: wire up the connection, juggle credentials, learn a framework's quirks, write the same *"read → transform → write"* scaffold for the tenth time this year. It's a lot of glue code standing between you and the three lines that actually matter.
 
-**Ubunye Engine** lets you define your entire data pipeline in a simple YAML config and a Python file. No Spark session setup. No connection management. No environment-specific scripts. Just tell the engine *what* you want, and it handles the *how*.
+**Ubunye Engine writes that plumbing for you.** You describe the pipeline in a short YAML file and put your transformation in a normal Python class. Ubunye takes care of connections, the compute engine (Apache Spark), and the read/write loop.
 
-It works on your laptop, on YARN, on Kubernetes, on Databricks — same config, same code, everywhere.
+Same pipeline runs on your laptop today and on a production cluster tomorrow — no code changes.
 
 ---
 
 ## Quickstart
 
+Install it:
+
 ```bash
 pip install ubunye-engine
 ```
 
-Scaffold your first pipeline:
+Scaffold a new pipeline folder:
 
 ```bash
-ubunye init -d ./pipelines -u fraud_detection -p ingestion -t claim_etl
+ubunye init -d ./pipelines -u demo -p starter -t filter_adults
 ```
 
-You'll get:
+You get:
 
 ```
-pipelines/
-  fraud_detection/
-    ingestion/
-      claim_etl/
-        config.yaml               ← tell the engine what to do
-        transformations.py        ← your logic goes here
-        notebooks/
-          claim_etl_dev.ipynb     ← interactive dev notebook
+pipelines/demo/starter/filter_adults/
+  config.yaml              ← describes the pipeline (inputs, outputs, settings)
+  transformations.py       ← your code goes here
+  notebooks/               ← an interactive dev notebook for exploring
 ```
 
-Open `config.yaml` and describe your pipeline:
+`ubunye init` gives you a working starting point you can customise. For a minimal run-it-on-your-laptop example, edit `config.yaml` to read a local CSV and write Parquet:
 
 ```yaml
-MODEL: "etl"
-VERSION: "0.1.0"
-
-ENGINE:
-  profiles:
-    dev:
-      spark_conf:
-        spark.master: "local[*]"
-    prod:
-      spark_conf:
-        spark.master: "yarn"
-
 CONFIG:
   inputs:
-    raw_claims:
-      format: hive
-      db_name: fraud_db
-      tbl_name: raw_claims
-
-  transform:
-    type: noop
+    people:
+      format: s3              # generic file reader; "file://" paths work too
+      file_format: csv
+      path: "file:///tmp/people.csv"
+      options:
+        header: "true"
+        inferSchema: "true"
 
   outputs:
-    bronze:
-      format: delta
-      table: main.fraud.bronze_claims
+    adults:
+      format: s3
+      file_format: parquet
+      path: "file:///tmp/adults/"
       mode: overwrite
 ```
 
-Add your logic in `transformations.py`:
+Then open `transformations.py` and write your logic:
 
 ```python
-def transform(df):
-    return df.filter("claim_amount > 0").dropDuplicates(["claim_id"])
+from typing import Any, Dict
+from ubunye.core.interfaces import Task
+
+
+class FilterAdults(Task):
+    """Keep only rows where age is 18 or older."""
+
+    def transform(self, sources: Dict[str, Any]) -> Dict[str, Any]:
+        people = sources["people"]
+        return {"adults": people.filter("age >= 18")}
 ```
+
+Two things to notice:
+
+- `sources["people"]` matches the `inputs.people` name from the YAML.
+- The return key `"adults"` matches the `outputs.adults` name.
 
 Run it:
 
 ```bash
-ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl -m dev
+ubunye run -d ./pipelines -u demo -p starter -t filter_adults
 ```
 
-Or from Python (Databricks notebooks, scripts):
+That's the whole loop. Ubunye reads `/tmp/people.csv`, hands you a Spark DataFrame, and writes whatever you return to `/tmp/adults/`.
+
+**Running on Databricks?** Call it from a notebook instead:
 
 ```python
 import ubunye
-
-outputs = ubunye.run_task(
-    task_dir="./pipelines/fraud_detection/ingestion/claim_etl",
-    mode="dev",
-)
+outputs = ubunye.run_task(task_dir="./pipelines/demo/starter/filter_adults")
 ```
 
-That's it. You just built and ran a pipeline. Same config runs in production — just swap the mode.
-The Python API auto-detects and reuses an active SparkSession on Databricks.
+Ubunye detects Databricks' active Spark session and reuses it — same pipeline, no code change.
+
+Want to see a realistic end-to-end example — Kaggle Titanic CSV → survival-rate Parquet, with tests and CI? See [`examples/production/titanic_local/`](examples/production/titanic_local/).
 
 ---
 
@@ -133,11 +132,11 @@ Ubunye says: **let's agree on how pipelines look.** One folder structure. One co
 
 Three simple ideas:
 
-**Config over code.** Your pipeline is a YAML file. Inputs, outputs, Spark settings, orchestration — all declared, not coded.
+**Config over code.** Your pipeline is a YAML file. Inputs, outputs, Spark settings, scheduling — all declared, not coded.
 
-**Plugins for everything.** The `format` field in your config selects a connector — `hive`, `jdbc`, `delta`, `s3`, `unity`, `rest_api`, and more. Need a new data source? Add a plugin.
+**Plugins for everything.** The `format` field in your config picks which *connector* to use. A connector is a small Python class that knows how to read from or write to one specific place (a database, a REST API, a cloud bucket). Built-ins include `hive`, `jdbc`, `delta`, `s3`, `unity`, and `rest_api`. Need a new data source? Write one and register it — Ubunye discovers plugins automatically.
 
-**Folders as architecture.** Pipelines are organized as `project / use_case / pipeline / task`. The CLI uses this for scaffolding, execution, and discovery:
+**Folders as architecture.** Pipelines are organized as `project / use_case / pipeline / task`. The CLI uses this structure for scaffolding, execution, and discovery:
 
 ```
 pipelines/
@@ -188,21 +187,23 @@ Want to add one? See the [plugin guide](https://ubunye-ai-ecosystems.github.io/u
 
 ## Run Anywhere
 
-Same pipeline, no changes:
+The same pipeline runs on every Spark-compatible environment. You only change the `spark.master` setting — the rest is identical:
 
-| Environment | How |
-|---|---|
-| Local | `spark.master: "local[*]"` in config |
-| YARN / Hadoop | `spark.master: "yarn"` in config |
-| Kubernetes | `spark.master: "k8s://..."` in config |
-| Databricks | Python API (`ubunye.run_task()`) or Asset Bundles |
-| AWS EMR | Via EMR Steps |
+| Where you run it                       | What to set                                   |
+|---------------------------------------|-----------------------------------------------|
+| **Your laptop**                       | `spark.master: "local[*]"`                    |
+| **Hadoop / YARN cluster**             | `spark.master: "yarn"`                        |
+| **Kubernetes**                        | `spark.master: "k8s://..."`                   |
+| **Databricks notebooks or jobs**      | Call `ubunye.run_task()` from Python — Ubunye picks up the active session |
+| **AWS EMR**                           | Runs as an EMR Step                           |
+
+Don't recognise some of these? That's fine — you only need one. If you're starting out, `local[*]` runs Spark on your own machine with no setup.
 
 ---
 
 ## Jinja Templating
 
-All config values support Jinja2:
+Anywhere a string appears in your YAML, you can plug in a variable using `{{ … }}` syntax (this is called **Jinja templating**). That's how you keep secrets out of your config, change paths per environment, and inject the run date from the CLI:
 
 ```yaml
 # Environment variables
