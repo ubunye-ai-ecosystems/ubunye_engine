@@ -66,12 +66,12 @@ def test_valid_semver_accepted(version):
 
 @given(
     version=st.text(min_size=1, max_size=20).filter(
-        lambda s: not __import__("re").match(r"^\d+\.\d+\.\d+$", s)
+        lambda s: not __import__("re").match(r"^\d+\.\d+\.\d+(-[\w.]+)?$", s)
     )
 )
 @settings(max_examples=50)
 def test_invalid_semver_rejected(version):
-    """Strings that are not valid semver should be rejected."""
+    """Strings that are not valid semver (with optional pre-release) should be rejected."""
     with pytest.raises(Exception):
         UbunyeConfig(MODEL="etl", VERSION=version, CONFIG=_MINIMAL_CONFIG)
 

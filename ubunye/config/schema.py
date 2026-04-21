@@ -223,14 +223,22 @@ class OrchestrationConfig(BaseModel):
 # Top-level model
 # ---------------------------------------------------------------------------
 
-_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
+_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(-[\w.]+)?$")
+
+DEFAULT_VERSION = "0.0.0-dev"
 
 
 class UbunyeConfig(BaseModel):
-    """Top-level Ubunye task config (the full contents of a ``config.yaml``)."""
+    """Top-level Ubunye task config (the full contents of a ``config.yaml``).
 
-    MODEL: JobType
-    VERSION: str
+    ``MODEL`` and ``VERSION`` are optional; they default to ``etl`` and
+    ``"0.0.0-dev"`` respectively. Set them explicitly in production pipelines
+    where job type or version is load-bearing (lineage records, model
+    registry, orchestrator metadata).
+    """
+
+    MODEL: JobType = JobType.ETL
+    VERSION: str = DEFAULT_VERSION
     ENGINE: EngineConfig = Field(default_factory=EngineConfig)
     CONFIG: TaskConfig
     ORCHESTRATION: Optional[OrchestrationConfig] = None
@@ -239,7 +247,9 @@ class UbunyeConfig(BaseModel):
     @classmethod
     def _validate_semver(cls, v: str) -> str:
         if not _SEMVER_RE.match(v):
-            raise ValueError(f"VERSION must be a valid semver string (e.g. '1.0.0'), got: '{v}'")
+            raise ValueError(
+                f"VERSION must be a valid semver string (e.g. '1.0.0' or '1.0.0-rc1'), got: '{v}'"
+            )
         return v
 
     def merged_spark_conf(self, profile: str | None = None) -> Dict[str, str]:
