@@ -47,7 +47,7 @@ targets:
       host: ${DATABRICKS_HOST}
     variables:
       mode: "nonprod"
-      unity_catalog: "aws-db-nonprod-aic-catalog"
+      unity_catalog: "aws-db-nonprod-tl-catalog"
 
   prod:
     mode: production
@@ -55,7 +55,7 @@ targets:
       host: ${DATABRICKS_HOST}
     variables:
       mode: "prod"
-      unity_catalog: "aws-db-prod-aic-catalog"
+      unity_catalog: "aws-db-prod-tl-catalog"
 ```
 
 ### Job definitions (`bundles/*.yaml`)
@@ -95,10 +95,16 @@ The deploy workflow (`.github/workflows/deploy.yml` in the usecase repo) handles
 
 ### Required secrets
 
-| Secret | Description |
+Two auth flows are supported — pick one per workspace. See
+[Databricks Authentication](databricks-auth.md) for the full setup.
+
+| Flow | Secrets |
 |---|---|
-| `DATABRICKS_HOST` | Workspace URL (e.g. `https://adb-1234.azuredatabricks.net`) |
-| `DATABRICKS_TOKEN` | Personal access token or service principal token |
+| PAT (Free Edition / single-user) | `DATABRICKS_HOST`, `DATABRICKS_TOKEN` |
+| Service principal + OAuth *(recommended, paid workspaces)* | `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` |
+
+The Databricks CLI auto-selects OAuth when `DATABRICKS_CLIENT_ID` and
+`DATABRICKS_CLIENT_SECRET` are both set; otherwise it falls back to PAT.
 
 ### Example workflow
 
