@@ -1,0 +1,70 @@
+# Databricks Asset Bundle - ABSA flood-risk pipeline (two tasks).
+#
+# Paid workspace only. Credentials for TomTom and JBA come from a
+# Databricks secret scope (default ``absa-flood``); Unity Catalog
+# identifiers come from ``--var`` supplied by the GitHub Actions
+# workflow. Nothing confidential is committed here.
+
+bundle:
+  name: absa-flood-risk
+
+include:
+  - pipelines/**/*.yaml
+
+variables:
+  telm_catalog:
+    description: Unity Catalog catalog for the flood-risk tables. Supplied via --var.
+    default: ""
+  telm_schema:
+    description: Unity Catalog schema for the flood-risk tables. Supplied via --var.
+    default: ""
+  address_source_table:
+    description: |
+      Unqualified name of the source table containing ``(id, address)``
+      rows to geocode. Supplied via --var from a GitHub environment secret.
+    default: ""
+  secret_scope:
+    description: Databricks secret scope holding tomtom_api_key + jba_basic_auth.
+    default: "absa-flood"
+  data_timestamp:
+    description: Data timestamp injected into the config as ``{{ dt }}``.
+    default: "2026-04-21"
+
+sync:
+  include:
+    - pipelines/**
+    - notebooks/**
+
+resources:
+  jobs:
+    absa_flood_risk:
+      name: absa_flood_risk_pipeline
+      max_concurrent_runs: 1
+      schedule:
+        # Quarterly on the 1st at 06:00 UTC (Jan/Apr/Jul/Oct). Flood-risk
+        # data is slow-moving; monthly geocoding churn is unnecessary and
+        # expensive on TomTom.
+        quartz_cron_expression: "0 0 6 1 1,4,7,10 ?"
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+      tasks:
+        - task_key: run_pipeline
+          notebook_task:
+            notebook_path: ./notebooks/run_flood_pipeline.py
+            base_parameters:
+              usecase_dir: ${workspace.file_path}/pipelines
+              dt: ${var.data_timestamp}
+              mode: "PROD"
+              telm_catalog: ${var.telm_catalog}
+              telm_schema: ${var.telm_schema}
+              address_source_table: ${var.address_source_table}
+              secret_scope: ${var.secret_scope}
+              tasks_to_run: "both"
+          # Serverless: no new_cluster block.
+
+targets:
+  nonprod:
+    mode: development
+    default: true
+  prod:
+    mode: production

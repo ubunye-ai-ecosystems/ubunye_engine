@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Production reference example: ABSA flood-risk (two-task pipeline,
+  paid Databricks + Unity Catalog).** A port of the legacy flood-detection
+  notebook to Ubunye as `examples/production/absa_flood_risk_databricks/`,
+  split into two chained tasks:
+  - `geocode_addresses` — reads `(id, address)` rows from a UC source
+    table, calls TomTom Search (top-1 per id, three-step parameter
+    fallback, 429 retry), writes `address_geocoded`.
+  - `flood_risk` — reads `address_geocoded`, calls JBA `floodscores` and
+    `flooddepths` in batches of 10, merges the two responses on `id`,
+    renames ~60 nested keys to snake-case, writes `address_flood_risk`.
+
+  Quarterly schedule (1st of Jan/Apr/Jul/Oct at 06:00 UTC). TomTom and
+  JBA credentials live in a Databricks secret scope (`absa-flood` by
+  default) and are read by the notebook wrapper; Unity Catalog
+  identifiers and the source-table name come from GitHub environment
+  secrets through `--var` at deploy time. Also corrects the legacy
+  `"Base "` → `"Basic "` auth-header typo and strips the Zscaler cert
+  probing block that belongs on corporate networks, not serverless.
+  OAuth-gated GH Actions workflow
+  (`.github/workflows/absa_flood_risk_databricks.yml`) runs Spark + fake-
+  HTTP unit tests, validates the bundle, and deploys to the `nonprod`
+  target when all three UC secrets are present. See the example's
+  `README.md`.
+
 ---
 
 ## [0.1.7] — 2026-04-21

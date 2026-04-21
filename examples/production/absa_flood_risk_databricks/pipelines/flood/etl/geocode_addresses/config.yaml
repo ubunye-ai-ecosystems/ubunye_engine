@@ -1,0 +1,41 @@
+MODEL: "etl"
+VERSION: "1.0.0"
+
+# Task 1 of the ABSA flood-risk pipeline: geocode street addresses via the
+# TomTom Search API and write lat/lon + metadata to a Unity Catalog Delta
+# table. The downstream flood_risk task reads that table and hits JBA.
+#
+# Input contract: the source table must expose ``(id, address)`` columns.
+# The ``id`` is echoed in the output row-for-row so downstream joins remain
+# stable across reruns.
+ENGINE:
+  spark_conf:
+    spark.sql.shuffle.partitions: "8"
+  profiles:
+    DEV:
+      spark_conf:
+        spark.sql.shuffle.partitions: "2"
+    PROD:
+      spark_conf:
+        spark.sql.shuffle.partitions: "16"
+
+CONFIG:
+  inputs:
+    address_source:
+      format: unity
+      # ADDRESS_SOURCE_TABLE is the qualified table name after catalog/schema,
+      # e.g. ``policies_addresses``. Keeping it an env var keeps the specific
+      # source table out of source control.
+      table: "{{ env.TELM_CATALOG }}.{{ env.TELM_SCHEMA }}.{{ env.ADDRESS_SOURCE_TABLE }}"
+
+  transform:
+    type: noop
+
+  outputs:
+    address_geocoded:
+      format: unity
+      table: "{{ env.TELM_CATALOG }}.{{ env.TELM_SCHEMA }}.address_geocoded"
+      mode: overwrite
+      options:
+        overwriteSchema: "true"
+        comment: "TomTom-geocoded addresses with top-1 candidate per id and geocoding metadata."
