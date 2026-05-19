@@ -70,9 +70,7 @@ def deploy_task(
     if cfg.ORCHESTRATION and cfg.ORCHESTRATION.schedule:
         schedule = cfg.ORCHESTRATION.schedule
 
-    workspace_task_path = (
-        f"{target_cfg.workspace_path}/{usecase}/{pipeline}/{task_name}"
-    )
+    workspace_task_path = f"{target_cfg.workspace_path}/{usecase}/{pipeline}/{task_name}"
     notebook_path = f"{workspace_task_path}/run_{task_name}"
 
     notebook_source = generate_notebook(

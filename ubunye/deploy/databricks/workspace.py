@@ -62,9 +62,7 @@ def _collect_files(task_dir: Path) -> list[tuple[Path, str]]:
 
 def _should_skip(path: Path) -> bool:
     return (
-        path.suffix == ".pyc"
-        or "__pycache__" in path.parts
-        or ".ipynb_checkpoints" in path.parts
+        path.suffix == ".pyc" or "__pycache__" in path.parts or ".ipynb_checkpoints" in path.parts
     )
 
 
@@ -88,9 +86,7 @@ def _upload_one(client: "WorkspaceClient", local_path: Path, remote_path: str) -
         ) from exc
 
 
-def _upload_notebook(
-    client: "WorkspaceClient", source: str, remote_path: str
-) -> None:
+def _upload_notebook(client: "WorkspaceClient", source: str, remote_path: str) -> None:
     """Upload notebook source as a Python notebook."""
     try:
         import base64

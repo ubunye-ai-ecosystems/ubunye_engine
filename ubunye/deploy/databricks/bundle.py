@@ -104,12 +104,12 @@ def deploy_job(
     }
 
 
-def _find_existing_jobs(
-    client: "WorkspaceClient", job_name: str
-) -> List[Any]:
+def _find_existing_jobs(client: "WorkspaceClient", job_name: str) -> List[Any]:
     """List jobs matching the exact name."""
     try:
-        return [j for j in client.jobs.list(name=job_name) if j.settings and j.settings.name == job_name]
+        return [
+            j for j in client.jobs.list(name=job_name) if j.settings and j.settings.name == job_name
+        ]
     except Exception as exc:
         raise BundleDeployError(
             f"Failed to list jobs matching '{job_name}'.",

@@ -248,7 +248,9 @@ def _build_workflow(
     if include_deploy:
         lines.append("#")
         lines.append("# Required secrets (add in repo Settings > Secrets and variables > Actions):")
-        lines.append("#   DATABRICKS_HOST   - workspace URL (e.g. https://adb-1234.azuredatabricks.net)")
+        lines.append(
+            "#   DATABRICKS_HOST   - workspace URL (e.g. https://adb-1234.azuredatabricks.net)"
+        )
         lines.append("#   DATABRICKS_TOKEN  - personal access token")
     lines.append("")
 
@@ -299,7 +301,7 @@ def _build_workflow(
     lines.append("")
 
     # ── python ──
-    lines.append('      - name: Set up Python 3.11')
+    lines.append("      - name: Set up Python 3.11")
     lines.append("        uses: actions/setup-python@v6")
     lines.append("        with:")
     lines.append('          python-version: "3.11"')
@@ -345,7 +347,9 @@ def _build_workflow(
         lines.append("        run: |")
         lines.append('          if [[ -z "${DATABRICKS_HOST}" || -z "${DATABRICKS_TOKEN}" ]]; then')
         lines.append('            echo "has_secrets=false" >> "$GITHUB_OUTPUT"')
-        lines.append('            echo "::warning::DATABRICKS_HOST/DATABRICKS_TOKEN not set - skipping deploy."')
+        lines.append(
+            '            echo "::warning::DATABRICKS_HOST/DATABRICKS_TOKEN not set - skipping deploy."'
+        )
         lines.append("          else")
         lines.append('            echo "has_secrets=true" >> "$GITHUB_OUTPUT"')
         lines.append("          fi")
@@ -369,7 +373,9 @@ def _build_workflow(
 
         for task in task_list:
             lines.append("")
-            run_label = f"Run {task} (manual trigger)" if len(task_list) > 1 else "Run job (manual trigger)"
+            run_label = (
+                f"Run {task} (manual trigger)" if len(task_list) > 1 else "Run job (manual trigger)"
+            )
             lines.append(f"      - name: {run_label}")
             lines.append(
                 "        if: "
@@ -412,14 +418,19 @@ def init_github_actions(
         ..., "-t", "--task-list", help="Task(s) to include in the deploy steps."
     ),
     extras: str = typer.Option(
-        "spark,dev", "--extras", help="pip install extras, comma-separated (e.g. spark,dev or ml,dev)."
+        "spark,dev",
+        "--extras",
+        help="pip install extras, comma-separated (e.g. spark,dev or ml,dev).",
     ),
     target: str = typer.Option("nonprod", "--target", help="Databricks deploy target."),
     no_deploy: bool = typer.Option(
         False, "--no-deploy", help="Omit Databricks deploy steps (CI-only workflow)."
     ),
     output: Optional[Path] = typer.Option(
-        None, "-o", "--output", help="Output file path (default: .github/workflows/<usecase>_<package>.yml)."
+        None,
+        "-o",
+        "--output",
+        help="Output file path (default: .github/workflows/<usecase>_<package>.yml).",
     ),
     overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing workflow file."),
 ):
@@ -443,7 +454,9 @@ def init_github_actions(
         workflow_filename = output.name
 
     if output.exists() and not overwrite:
-        typer.secho(f"[SKIP] {output} already exists (use --overwrite to replace)", fg=typer.colors.YELLOW)
+        typer.secho(
+            f"[SKIP] {output} already exists (use --overwrite to replace)", fg=typer.colors.YELLOW
+        )
         raise typer.Exit(code=1)
 
     content = _build_workflow(
