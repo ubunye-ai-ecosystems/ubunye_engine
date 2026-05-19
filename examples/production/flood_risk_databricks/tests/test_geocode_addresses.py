@@ -8,12 +8,25 @@ object. Ensures the fallback chain (strict -> no language -> no idxSet),
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
 import pytest
 
-# transformations imports are path-injected by conftest.py
+# Both task dirs share the name ``transformations.py``.  conftest puts
+# flood_risk last (= first on sys.path), so a bare import resolves to
+# the wrong module.  Re-order here and evict any cached import so
+# geocode_addresses wins regardless of test-collection order.
+_GEOCODE_DIR = str(
+    Path(__file__).resolve().parent.parent / "pipelines" / "flood" / "etl" / "geocode_addresses"
+)
+if _GEOCODE_DIR in sys.path:
+    sys.path.remove(_GEOCODE_DIR)
+sys.path.insert(0, _GEOCODE_DIR)
+sys.modules.pop("transformations", None)
+
 import transformations as geocode_mod  # noqa: E402
 from transformations import GEOCODE_OUTPUT_COLUMNS, batch_geocode  # noqa: E402
 

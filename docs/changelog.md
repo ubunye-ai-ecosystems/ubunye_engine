@@ -115,7 +115,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **flood_risk_databricks CI**: Added missing `pandas` and `pyarrow`
-  dependencies to the workflow's test-install step.
+  dependencies to the workflow's test-install step. Fixed
+  `test_geocode_addresses.py` module-resolution conflict where both
+  tasks share the name `transformations.py` — the geocode test now
+  explicitly re-orders `sys.path` and evicts the cached module.
 
 - **device_mapping_etl_databricks tests**: Replaced inferred column-name
   list with an explicit `MI_SCHEMA` (`StructType`) so PySpark can handle
