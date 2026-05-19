@@ -35,8 +35,10 @@ jobs:
 
     env:
       EXAMPLE_DIR: examples/production/titanic_ml_databricks
-      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HOST:          ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN:         ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_CLIENT_ID:     ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
 
     steps:
       - name: Checkout
@@ -70,13 +72,19 @@ jobs:
           echo "OK: model.py is byte-identical across train_classifier and predict_classifier."
 
       - name: Check for Databricks secrets
+        # Accept either auth flow: PAT (HOST+TOKEN) or service principal
+        # OAuth (HOST+CLIENT_ID+CLIENT_SECRET). See docs/databricks-auth.md.
         id: check_secrets
         run: |
-          if [[ -z "${DATABRICKS_HOST}" || -z "${DATABRICKS_TOKEN}" ]]; then
+          if [[ -z "${DATABRICKS_HOST}" ]]; then
             echo "has_secrets=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::DATABRICKS_HOST/DATABRICKS_TOKEN not set - skipping bundle deploy."
-          else
+            echo "::warning::DATABRICKS_HOST not set - skipping bundle deploy."
+          elif [[ -n "${DATABRICKS_TOKEN}" ]] || \
+               [[ -n "${DATABRICKS_CLIENT_ID}" && -n "${DATABRICKS_CLIENT_SECRET}" ]]; then
             echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Neither DATABRICKS_TOKEN nor DATABRICKS_CLIENT_ID+SECRET set - skipping bundle deploy."
           fi
 
       - name: Install Databricks CLI
