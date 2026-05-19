@@ -60,6 +60,7 @@ nav:
   - ML:
       - Model Contract: ml/model_contract.md
       - Model Registry: ml/registry.md
+  - Interfaces: interfaces.md
   - CLI Reference: cli.md
   - API Reference: api.md
   - Deployment:
