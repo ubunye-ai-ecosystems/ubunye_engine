@@ -24,6 +24,9 @@ All commands accept `--help` for full option details.
 | `lineage` | Inspect run provenance records |
 | `models` | Manage model versions and lifecycle |
 | `test` | Run tasks in test mode and report PASS/FAIL |
+| `sync` | Replay fallback manifests against configured backends |
+| `deploy` | Deploy pipelines to remote environments |
+| `export` | Export orchestration artifacts (Airflow, Databricks) |
 
 ---
 
@@ -346,4 +349,91 @@ ubunye models archive \
 ubunye models compare \
     -u fraud_detection -m FraudRiskModel \
     --versions 1.2.0 --versions 1.3.0 -s .ubunye/model_store
+```
+
+---
+
+## `ubunye sync`
+
+Replay fallback manifests against configured backends.  When metadata
+writes fail during pipeline execution (Decision 2), records are appended
+to local JSONL manifests under `~/.ubunye/fallback/`.  This command
+replays them with idempotent deduplication.
+
+### `sync lineage`
+
+```bash
+ubunye sync lineage                    # replay all lineage manifests
+ubunye sync lineage --run-id abc123    # replay a specific run
+```
+
+### `sync registry`
+
+```bash
+ubunye sync registry                   # replay all registry manifests
+ubunye sync registry --run-id abc123   # replay a specific run
+```
+
+| Flag | Required | Default | Description |
+|---|---|---|---|
+| `--run-id` | no | — | Replay only this run's manifest |
+
+Processed manifests are archived to `~/.ubunye/fallback/synced/`.
+
+---
+
+## `ubunye deploy`
+
+Deploy a task to a remote environment.
+
+### `deploy databricks`
+
+```bash
+ubunye deploy databricks \
+    -d pipelines \
+    -u fraud_detection \
+    -p ingestion \
+    -t claim_etl \
+    --target nonprod
+
+ubunye deploy databricks \
+    -d pipelines \
+    -u fraud_detection \
+    -p ingestion \
+    -t claim_etl \
+    --target nonprod \
+    --dry-run
+```
+
+| Flag | Short | Required | Default | Description |
+|---|---|---|---|---|
+| `--usecase-dir` | `-d` | yes | — | Root pipelines directory |
+| `--usecase` | `-u` | yes | — | Use-case name |
+| `--package` | `-p` | yes | — | Package name |
+| `--task` | `-t` | yes | — | Task to deploy |
+| `--target` | | yes | — | Deployment target from `targets.yaml` |
+| `--dry-run` | | no | false | Preview job spec without deploying |
+| `--data-timestamp` | `-dt` | no | — | Data timestamp |
+| `--mode` | `-m` | no | `PROD` | Run mode |
+
+---
+
+## `ubunye export`
+
+Generate orchestration artifacts from a task's config.
+
+### `export airflow`
+
+```bash
+ubunye export airflow \
+    -d pipelines -u fraud_detection -p ingestion -t claim_etl \
+    --output dag_fraud_etl.py
+```
+
+### `export databricks`
+
+```bash
+ubunye export databricks \
+    -d pipelines -u fraud_detection -p ingestion -t claim_etl \
+    --output job_fraud_etl.json
 ```

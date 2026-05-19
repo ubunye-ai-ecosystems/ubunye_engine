@@ -27,6 +27,7 @@ from ubunye.cli.export import export_app
 from ubunye.cli.init import init_app
 from ubunye.cli.lineage import lineage_app
 from ubunye.cli.models import models_app
+from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
 from ubunye.config import load_config
 from ubunye.core.catalog import set_catalog_and_schema
@@ -40,6 +41,7 @@ app.add_typer(export_app)
 app.add_typer(init_app)
 app.add_typer(lineage_app)
 app.add_typer(models_app)
+app.add_typer(sync_app)
 app.add_typer(test_app)
 
 
