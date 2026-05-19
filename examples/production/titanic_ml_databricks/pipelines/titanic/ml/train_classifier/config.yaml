@@ -34,9 +34,7 @@ CONFIG:
         header: "true"
         inferSchema: "true"
         mode: "FAILFAST"
-  transform:
-    # Overridden at runtime by execute_user_task -> transformations.py.
-    type: noop
+  transform: {}
   outputs:
     training_metrics:
       format: unity

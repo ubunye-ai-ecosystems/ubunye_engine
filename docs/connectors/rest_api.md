@@ -242,8 +242,7 @@ CONFIG:
       response:
         root_key: results
 
-  transform:
-    type: noop
+  transform: {}
 
   outputs:
     customers_delta:

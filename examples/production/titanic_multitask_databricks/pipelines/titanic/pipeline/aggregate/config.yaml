@@ -18,8 +18,7 @@ CONFIG:
     cleaned:
       format: unity
       table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic') }}.titanic_cleaned"
-  transform:
-    type: noop
+  transform: {}
   outputs:
     survival_summary:
       format: unity

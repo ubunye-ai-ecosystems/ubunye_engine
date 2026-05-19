@@ -28,8 +28,7 @@ CONFIG:
         header: "true"
         inferSchema: "true"
         mode: "FAILFAST"
-  transform:
-    type: noop
+  transform: {}
   outputs:
     predictions:
       format: unity

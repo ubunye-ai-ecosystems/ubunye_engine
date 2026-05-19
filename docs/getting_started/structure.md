@@ -62,9 +62,7 @@ CONFIG:
       db_name: raw
       tbl_name: events
 
-  transform:
-    type: noop        # noop | task | model | <custom>
-    params: {}
+  transform: {}        # optional — omit type to use Task class from transformations.py
 
   outputs:
     my_output:

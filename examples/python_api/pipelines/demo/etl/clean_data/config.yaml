@@ -17,8 +17,7 @@ CONFIG:
     raw_events:
       format: s3
       path: "{{ dt | default('data/raw_events.parquet') }}"
-  transform:
-    type: noop
+  transform: {}
   outputs:
     clean_events:
       format: s3

@@ -190,8 +190,7 @@ CONFIG:
       format: unity
       db_name: raw_db
       tbl_name: {task}_input
-  transform:
-    type: noop
+  transform: {{}}
   outputs:
     output_features:
       format: s3
