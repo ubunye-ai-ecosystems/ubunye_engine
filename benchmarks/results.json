@@ -1,0 +1,92 @@
+[
+  {
+    "name": "config_load",
+    "iterations": 500,
+    "total_sec": 0.7278,
+    "ops_per_sec": 687.0,
+    "p50_ms": 1.444,
+    "p99_ms": 1.784,
+    "mean_ms": 1.456,
+    "stdev_ms": 0.058
+  },
+  {
+    "name": "config_load_jinja",
+    "iterations": 500,
+    "total_sec": 1.0427,
+    "ops_per_sec": 479.5,
+    "p50_ms": 2.07,
+    "p99_ms": 2.527,
+    "mean_ms": 2.085,
+    "stdev_ms": 0.072
+  },
+  {
+    "name": "discovery_cached",
+    "iterations": 10000,
+    "total_sec": 0.0027,
+    "ops_per_sec": 3707411.2,
+    "p50_ms": 0.0,
+    "p99_ms": 0.0,
+    "mean_ms": 0.0,
+    "stdev_ms": 0.0
+  },
+  {
+    "name": "discovery_cold",
+    "iterations": 100,
+    "total_sec": 1.518,
+    "ops_per_sec": 65.9,
+    "p50_ms": 15.254,
+    "p99_ms": 15.806,
+    "mean_ms": 15.18,
+    "stdev_ms": 0.267
+  },
+  {
+    "name": "lineage_write",
+    "iterations": 500,
+    "total_sec": 0.2299,
+    "ops_per_sec": 2174.8,
+    "p50_ms": 0.443,
+    "p99_ms": 0.774,
+    "mean_ms": 0.46,
+    "stdev_ms": 0.089
+  },
+  {
+    "name": "lineage_read",
+    "iterations": 500,
+    "total_sec": 0.3684,
+    "ops_per_sec": 1357.2,
+    "p50_ms": 0.731,
+    "p99_ms": 0.874,
+    "mean_ms": 0.737,
+    "stdev_ms": 0.039
+  },
+  {
+    "name": "lineage_search_100",
+    "iterations": 50,
+    "total_sec": 0.3927,
+    "ops_per_sec": 127.3,
+    "p50_ms": 7.82,
+    "p99_ms": 8.271,
+    "mean_ms": 7.854,
+    "stdev_ms": 0.159
+  },
+  {
+    "name": "worker_100_records",
+    "iterations": 50,
+    "total_sec": 0.0226,
+    "ops_per_sec": 2212.8,
+    "p50_ms": 0.444,
+    "p99_ms": 0.544,
+    "mean_ms": 0.452,
+    "stdev_ms": 0.04
+  },
+  {
+    "name": "registry_register",
+    "iterations": 200,
+    "total_sec": 2.3608,
+    "ops_per_sec": 84.7,
+    "p50_ms": 11.816,
+    "p99_ms": 32.109,
+    "mean_ms": 11.804,
+    "stdev_ms": 3.098
+  }
+]
