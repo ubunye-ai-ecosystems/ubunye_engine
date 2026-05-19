@@ -233,7 +233,11 @@ class Engine:
             if not reader_cls:
                 raise ReaderNotFoundError(
                     f"Reader plugin '{rtype}' not found.",
-                    context={"Format": rtype, "Input": name, "Installed": sorted(self.registry.readers)},
+                    context={
+                        "Format": rtype,
+                        "Input": name,
+                        "Installed": sorted(self.registry.readers),
+                    },
                     hint=f"Check the 'format' field in CONFIG.inputs.{name}. "
                     f"Installed reader plugins: {', '.join(sorted(self.registry.readers))}",
                 )
@@ -278,14 +282,21 @@ class Engine:
             if not writer_cls:
                 raise WriterNotFoundError(
                     f"Writer plugin '{wtype}' not found.",
-                    context={"Format": wtype, "Output": name, "Installed": sorted(self.registry.writers)},
+                    context={
+                        "Format": wtype,
+                        "Output": name,
+                        "Installed": sorted(self.registry.writers),
+                    },
                     hint=f"Check the 'format' field in CONFIG.outputs.{name}. "
                     f"Installed writer plugins: {', '.join(sorted(self.registry.writers))}",
                 )
             if name not in outputs_map:
                 raise TransformOutputError(
                     f"Transform did not return output '{name}' expected by config.",
-                    context={"Missing output": name, "Available outputs": sorted(outputs_map.keys())},
+                    context={
+                        "Missing output": name,
+                        "Available outputs": sorted(outputs_map.keys()),
+                    },
                     hint="Ensure your transform returns a dict with keys matching CONFIG.outputs.",
                 )
             with chain.step(ctx, f"Writer:{wtype}", {"output": name}):

@@ -214,7 +214,11 @@ def _extract_records(response_json: Any, root_key: Optional[str]) -> List[Dict[s
         if not isinstance(response_json, dict) or root_key not in response_json:
             raise SourceReadError(
                 f"Expected response dict with key '{root_key}'.",
-                context={"Format": "rest_api", "root_key": root_key, "Actual type": type(response_json).__name__},
+                context={
+                    "Format": "rest_api",
+                    "root_key": root_key,
+                    "Actual type": type(response_json).__name__,
+                },
                 hint=f"Check response.root_key in your config. The API returned a {type(response_json).__name__}.",
             )
         records = response_json[root_key]
@@ -233,7 +237,11 @@ def _extract_records(response_json: Any, root_key: Optional[str]) -> List[Dict[s
     if not isinstance(records, list):
         raise SourceReadError(
             f"Extracted value at root_key='{root_key}' is not a list.",
-            context={"Format": "rest_api", "root_key": root_key, "Actual type": type(records).__name__},
+            context={
+                "Format": "rest_api",
+                "root_key": root_key,
+                "Actual type": type(records).__name__,
+            },
             hint="The value under response.root_key must be a JSON array of records.",
         )
     return records

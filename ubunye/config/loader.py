@@ -83,9 +83,7 @@ def load_config(
     except ValidationError as exc:
         unknown = _extract_unknown_field_errors(exc)
         if unknown:
-            raise ConfigFieldError(
-                _format_unknown_fields(unknown, str(config_path))
-            ) from exc
+            raise ConfigFieldError(_format_unknown_fields(unknown, str(config_path))) from exc
         raise ValueError(_format_validation_error(exc, str(config_path))) from exc
 
     if profile and profile not in cfg.ENGINE.profiles:
@@ -171,9 +169,7 @@ def _extract_unknown_field_errors(
     return results
 
 
-def _walk_model(
-    root: Type[BaseModel], loc_parts: Tuple[Any, ...]
-) -> Optional[Type[BaseModel]]:
+def _walk_model(root: Type[BaseModel], loc_parts: Tuple[Any, ...]) -> Optional[Type[BaseModel]]:
     """Resolve the Pydantic model class at a given location path."""
     model: Type[BaseModel] = root
     for part in loc_parts:
@@ -195,9 +191,7 @@ def _walk_model(
     return model
 
 
-def _format_unknown_fields(
-    unknowns: List[Tuple[str, str, List[str]]], config_path: str
-) -> str:
+def _format_unknown_fields(unknowns: List[Tuple[str, str, List[str]]], config_path: str) -> str:
     """Format unknown-field errors with typo suggestions."""
     lines = [f"Unknown fields in {config_path}:\n"]
     for section, field, valid_fields in unknowns:

@@ -456,7 +456,11 @@ class ModelRegistry:
             available = sorted(record.versions) or ["(none)"]
             raise VersionNotFoundError(
                 f"Version '{version}' not found in {record.use_case}/{record.model_name}.",
-                context={"Version": version, "Model": f"{record.use_case}/{record.model_name}", "Available": available},
+                context={
+                    "Version": version,
+                    "Model": f"{record.use_case}/{record.model_name}",
+                    "Available": available,
+                },
                 hint="Check the version string or list versions with 'ubunye models list'.",
             )
         return mv

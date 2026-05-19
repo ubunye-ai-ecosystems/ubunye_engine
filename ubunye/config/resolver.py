@@ -74,10 +74,7 @@ def _resolve_node(
 ) -> Any:
     """Recursively walk the config structure and resolve string values."""
     if isinstance(node, dict):
-        return {
-            k: _resolve_node(v, jinja_env, variables, available_vars)
-            for k, v in node.items()
-        }
+        return {k: _resolve_node(v, jinja_env, variables, available_vars) for k, v in node.items()}
 
     if isinstance(node, list):
         return [_resolve_node(item, jinja_env, variables, available_vars) for item in node]

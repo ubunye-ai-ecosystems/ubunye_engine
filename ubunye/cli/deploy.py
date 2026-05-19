@@ -23,7 +23,12 @@ deploy_app = typer.Typer(
 @deploy_app.command("databricks")
 def deploy_databricks(
     usecase_dir: Path = typer.Option(
-        ..., "-d", "--usecase-dir", exists=True, file_okay=False, help="Root directory of pipelines."
+        ...,
+        "-d",
+        "--usecase-dir",
+        exists=True,
+        file_okay=False,
+        help="Root directory of pipelines.",
     ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Usecase name."),
     package: str = typer.Option(..., "-p", "--package", help="Pipeline/package name."),
@@ -38,7 +43,9 @@ def deploy_databricks(
         None, "--host", help="Databricks host for ad-hoc deploy (skips targets.yaml)."
     ),
     token: Optional[str] = typer.Option(
-        None, "--token", help="Env var name holding the Databricks token (default: DATABRICKS_TOKEN)."
+        None,
+        "--token",
+        help="Env var name holding the Databricks token (default: DATABRICKS_TOKEN).",
     ),
 ) -> None:
     """Deploy a task to Databricks as a scheduled job."""

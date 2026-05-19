@@ -254,9 +254,7 @@ class TestUndefinedTemplateVariables:
             "VERSION": "0.1.0",
             "CONFIG": {
                 "inputs": {"s": {"format": "hive", "db_name": "db", "tbl_name": "t"}},
-                "outputs": {
-                    "s": {"format": "s3", "path": "s3://bucket/{{ ds }}/"}
-                },
+                "outputs": {"s": {"format": "s3", "path": "s3://bucket/{{ ds }}/"}},
             },
         }
         task_dir = _write_config(tmp_path, cfg)
