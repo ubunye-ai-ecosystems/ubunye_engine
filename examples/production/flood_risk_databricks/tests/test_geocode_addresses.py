@@ -9,6 +9,7 @@ object. Ensures the fallback chain (strict -> no language -> no idxSet),
 from __future__ import annotations
 
 import sys
+import urllib.parse
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -54,7 +55,8 @@ class FakeSession:
     def get(self, url, params=None, timeout=None, verify=None):
         self.calls.append({"url": url, "params": dict(params or {})})
         for addr, payload in self.payload_by_address.items():
-            if addr.replace(" ", "%20") in url or addr.replace(",", "%2C") in url or addr in url:
+            encoded = urllib.parse.quote(addr, safe="")
+            if encoded in url or addr in url:
                 return FakeResponse(200, payload)
         return FakeResponse(200, {"results": []})
 

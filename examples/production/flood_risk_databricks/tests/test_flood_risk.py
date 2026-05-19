@@ -37,7 +37,12 @@ def _make_post(endpoint_payloads: Dict[str, Any]):
 
     def _post(url, headers=None, params=None, json=None, timeout=None, verify=None):
         calls.append({"url": url, "json": json, "headers": headers})
-        return FakePostResponse(200, endpoint_payloads.get(url, []))
+        full = endpoint_payloads.get(url, [])
+        if json and "geometries" in json:
+            ids = {g["id"] for g in json["geometries"]}
+            batch = [r for r in full if r.get("id") in ids]
+            return FakePostResponse(200, batch)
+        return FakePostResponse(200, full)
 
     _post.calls = calls  # type: ignore[attr-defined]
     return _post
