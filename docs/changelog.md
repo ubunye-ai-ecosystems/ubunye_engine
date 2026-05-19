@@ -7,6 +7,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] — v0.2.0: Modularity + Distributed + Performance
+
+### Added
+
+- **Formal `typing.Protocol` interfaces for four pluggable seams.**
+  `DeployAdapter`, `RegistryBackend`, `LineageBackend`, and `AuthBackend`
+  in `ubunye.interfaces` define structural contracts that backends satisfy
+  without inheriting from a base class. Cross-boundary dataclasses
+  (`DeployContext`, `DeployResult`, `ModelVersionInfo`, `LineageRecord`,
+  `Credentials`) accompany each protocol so callers never depend on a
+  concrete backend's internal types.
+
+- **Background metadata worker (Decision 1: non-blocking writes).**
+  `ubunye._internal.MetadataWorker` dispatches lineage and registry
+  metadata writes to a daemon thread with a bounded queue (default 1 000,
+  configurable via `UBUNYE_METADATA_QUEUE_SIZE`). Queue overflow drops the
+  oldest pending write and logs a warning. Flush timeout configurable via
+  `UBUNYE_METADATA_FLUSH_TIMEOUT` (default 30 s). Uses a worker-thread
+  pattern — async/await fights Spark's threading model.
+
+- **Graceful degradation with fallback manifests (Decision 2).** When a
+  metadata write fails, the record is appended to
+  `~/.ubunye/fallback/{run_id}/{kind}.jsonl`. Pipeline execution
+  continues. Auth failures are excluded — they propagate immediately.
+
+- **`ubunye sync` CLI command.** Replays fallback manifests against
+  configured backends with idempotent deduplication (key:
+  `run_id + task + recorded_at`). Sub-commands: `ubunye sync lineage`,
+  `ubunye sync registry`. Processed manifests are archived to
+  `~/.ubunye/fallback/synced/`.
+
+- **Entry-point discovery for backend groups.** Four new entry-point
+  groups in `pyproject.toml`: `ubunye.deploy_adapters`,
+  `ubunye.registry_backends`, `ubunye.lineage_backends`,
+  `ubunye.auth_backends`. Third-party packages register backends by
+  adding entry points under these groups.
+
+- **Environment-based auto-detection** (`ubunye._internal.auto_detect`).
+  Registry: MLflow on Databricks, filesystem elsewhere. Lineage: Delta
+  when `UBUNYE_LINEAGE_TABLE` is set, filesystem otherwise. Auth: service
+  principal when both `DATABRICKS_CLIENT_ID` and
+  `DATABRICKS_CLIENT_SECRET` are set, token when `DATABRICKS_TOKEN` is
+  set, raises `AuthNotFoundError` otherwise.
+
+- **Schema evolution (Decision 3).** Every cross-boundary dataclass
+  separates strict core fields from a flexible `metadata: Dict[str, str]`.
+  Core fields never change without a major version bump. Every record
+  stamps `engine_version`. Extra metadata keys survive round-trip
+  through the filesystem lineage store.
+
+- **Interfaces documentation page** (`docs/interfaces.md`) covering
+  protocols, dataclasses, design principles, discovery, auto-detection,
+  fallback manifests, and how to write a custom backend.
+
+- **39 conformance and failure-mode tests** covering protocol isinstance
+  checks, entry-point discovery, auto-detect logic, lineage/registry
+  backend surfaces, non-blocking write timing, queue overflow, fallback
+  manifest creation, sync dedup, auth propagation, and schema evolution
+  metadata flexibility.
+
+- **`ServicePrincipalAuthBackend`** — OAuth M2M authentication using
+  `DATABRICKS_CLIENT_ID` + `DATABRICKS_CLIENT_SECRET`. Entry point
+  `ubunye.auth_backends:service_principal`. Takes priority over token
+  auth when both are available (via auto-detect).
+
+- **`MLflowRegistryBackend`** — model registry that combines filesystem
+  storage with MLflow experiment/run logging. Logs metrics, params, and
+  stage transitions to MLflow when installed; falls back gracefully when
+  MLflow is unavailable. Entry point `ubunye.registry_backends:mlflow`.
+
+- **`DeltaLineageBackend`** — lineage backend targeting Delta tables via
+  Spark SQL on Databricks. Falls back to JSONL-based local storage when
+  no active SparkSession is available, enabling unit tests without Spark.
+  Entry point `ubunye.lineage_backends:delta`.
+
+- **24 Phase 2 backend tests** covering service principal auth (protocol
+  conformance, env var resolution, error cases, entry-point discovery),
+  MLflow registry (full CRUD lifecycle, promotion gates, metadata
+  round-trip), and Delta lineage (record/get/search, metadata
+  preservation, not-found errors).
+
+- **Performance benchmark suite** (`benchmarks/bench_engine.py`). Nine
+  benchmarks covering config loading (plain and Jinja), entry-point
+  discovery (cached and cold), lineage I/O (write, read, search),
+  metadata worker throughput, and registry registration. Reports ops/sec,
+  p50/p99 latencies, mean, and stdev. Results saved to
+  `benchmarks/results.json` for before/after comparison.
+
+### Changed
+
+- **Filtered entry-point loading.** `_load_group()` in
+  `ubunye._internal.discovery` now calls
+  `importlib.metadata.entry_points(group=group)` instead of loading all
+  groups and filtering. Cached discovery is near-zero cost.
+
+- **O(1) lineage lookup by run ID.** `FileSystemLineageStore.get_run()`
+  uses a `run_id→Path` index instead of `rglob("*.json")`. The index is
+  built lazily on first lookup and updated incrementally on writes.
+  ~34% faster reads.
+
+- **In-memory RunContext cache for lineage search.** Parsed RunContext
+  objects are cached on first load and reused by subsequent `search()`
+  and `list_runs()` calls, avoiding repeated JSON parsing and disk I/O.
+  ~51% faster searches across 100 records.
+
+### Fixed
+
+- **flood_risk_databricks CI**: Added missing `pandas` and `pyarrow`
+  dependencies to the workflow's test-install step.
+
+- **device_mapping_etl_databricks tests**: Replaced inferred column-name
+  list with an explicit `MI_SCHEMA` (`StructType`) so PySpark can handle
+  `None` values in nullable columns without `CANNOT_DETERMINE_TYPE`.
+
+---
+
 ## [0.1.8] — 2026-05-19
 
 ### Added
