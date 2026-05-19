@@ -65,6 +65,7 @@ nav:
   - Deployment: deployment.md
   - Developer Guide: dev_guide.md
   - Contributing: contributing.md
+  - Error Reference: errors.md
   - Changelog: changelog.md
 
 markdown_extensions:

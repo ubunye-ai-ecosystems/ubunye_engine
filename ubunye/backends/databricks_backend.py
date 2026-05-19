@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Optional
 
+from ubunye.core.errors import SparkSessionError
 from ubunye.core.interfaces import Backend
 
 if TYPE_CHECKING:
@@ -45,10 +46,11 @@ class DatabricksBackend(Backend):
 
         active = SparkSession.getActiveSession()
         if active is None:
-            raise RuntimeError(
-                "No active SparkSession found. "
-                "DatabricksBackend expects Databricks (or another environment) "
-                "to have an active session. Use SparkBackend if you need to create one."
+            raise SparkSessionError(
+                "No active SparkSession found.",
+                context={"Backend": "DatabricksBackend"},
+                hint="DatabricksBackend expects an active session. "
+                "Use SparkBackend if you need to create one.",
             )
         self._spark = active
 
@@ -66,8 +68,10 @@ class DatabricksBackend(Backend):
     @property
     def spark(self) -> "SparkSession":
         if self._spark is None:
-            raise RuntimeError(
-                "Spark session not attached. Call start() first or use context manager."
+            raise SparkSessionError(
+                "Spark session not attached.",
+                context={"Backend": "DatabricksBackend"},
+                hint="Call start() first or use the backend as a context manager.",
             )
         return self._spark
 

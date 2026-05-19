@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 import importlib.metadata as md
+import logging
 import os
 import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
 from ubunye.backends.spark_backend import SparkBackend  # default backend
+from ubunye.core.errors import (
+    ReaderNotFoundError,
+    TransformNotFoundError,
+    TransformOutputError,
+    WriterNotFoundError,
+)
 from ubunye.core.hooks import Hook, HookChain
 from ubunye.core.interfaces import Backend, Reader, Transform, Writer
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -170,11 +179,12 @@ class Engine:
         """
         inputs_cfg = cfg.get("CONFIG", {}).get("inputs", {}) or {}
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
-        transform_cfg = cfg.get("CONFIG", {}).get("transform", {"type": "noop"}) or {"type": "noop"}
+        transform_cfg = cfg.get("CONFIG", {}).get("transform") or {}
 
         # Preflight validation
         self._validate_io_configs(inputs_cfg, outputs_cfg)
         transforms = self._normalize_transforms(transform_cfg)
+        self._warn_deprecated_noop(transforms)
         self._validate_transforms_exist(transforms)
 
         # Resolve context for observability
@@ -221,9 +231,11 @@ class Engine:
             rtype = icfg["format"]
             reader_cls = self.registry.readers.get(rtype)
             if not reader_cls:
-                raise KeyError(
-                    f"Reader plugin '{rtype}' not found for input '{name}'. "
-                    f"Installed: {sorted(self.registry.readers)}"
+                raise ReaderNotFoundError(
+                    f"Reader plugin '{rtype}' not found.",
+                    context={"Format": rtype, "Input": name, "Installed": sorted(self.registry.readers)},
+                    hint=f"Check the 'format' field in CONFIG.inputs.{name}. "
+                    f"Installed reader plugins: {', '.join(sorted(self.registry.readers))}",
                 )
             with chain.step(ctx, f"Reader:{rtype}", {"input": name}):
                 sources[name] = reader_cls().read(icfg, self.backend)
@@ -238,14 +250,17 @@ class Engine:
     ) -> Dict[str, Any]:
         outputs_map: Dict[str, Any] = dict(sources)
         for tcfg in transforms:
-            ttype = tcfg["type"]
+            ttype = tcfg.get("type")
+            if ttype is None:
+                continue
             tcls = self.registry.transforms[ttype]
             with chain.step(ctx, f"Transform:{ttype}", None):
                 outputs_map = tcls().apply(outputs_map, tcfg, self.backend)
             if not isinstance(outputs_map, dict):
-                raise TypeError(
-                    f"Transform '{ttype}' must return a dict[str, DataFrame], "
-                    f"got {type(outputs_map)}"
+                raise TransformOutputError(
+                    f"Transform '{ttype}' must return a dict[str, DataFrame].",
+                    context={"Transform": ttype, "Actual type": type(outputs_map).__name__},
+                    hint="The apply() method must return a dict mapping output names to DataFrames.",
                 )
         return outputs_map
 
@@ -261,12 +276,18 @@ class Engine:
             wtype = ocfg["format"]
             writer_cls = self.registry.writers.get(wtype)
             if not writer_cls:
-                raise KeyError(
-                    f"Writer plugin '{wtype}' not found for output '{name}'. "
-                    f"Installed: {sorted(self.registry.writers)}"
+                raise WriterNotFoundError(
+                    f"Writer plugin '{wtype}' not found.",
+                    context={"Format": wtype, "Output": name, "Installed": sorted(self.registry.writers)},
+                    hint=f"Check the 'format' field in CONFIG.outputs.{name}. "
+                    f"Installed writer plugins: {', '.join(sorted(self.registry.writers))}",
                 )
             if name not in outputs_map:
-                raise KeyError(f"Transform did not return output '{name}' expected by config.")
+                raise TransformOutputError(
+                    f"Transform did not return output '{name}' expected by config.",
+                    context={"Missing output": name, "Available outputs": sorted(outputs_map.keys())},
+                    hint="Ensure your transform returns a dict with keys matching CONFIG.outputs.",
+                )
             with chain.step(ctx, f"Writer:{wtype}", {"output": name}):
                 writer_cls().write(outputs_map[name], ocfg, self.backend)
 
@@ -289,14 +310,34 @@ class Engine:
             return tcfg
         raise TypeError("CONFIG.transform must be a dict or a list of dicts")
 
+    @staticmethod
+    def _warn_deprecated_noop(transforms: Iterable[Dict[str, Any]]) -> None:
+        for t in transforms:
+            ttype = t.get("type")
+            if ttype == "noop":
+                import warnings
+
+                warnings.warn(
+                    "transform.type: noop is deprecated and can be removed. "
+                    "When type is omitted the engine defaults to the Task class "
+                    "in transformations.py. Remove the 'type: noop' line from "
+                    "your config.yaml.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+
     def _validate_transforms_exist(self, transforms: Iterable[Dict[str, Any]]) -> None:
         missing = []
         for t in transforms:
             ttype = t.get("type")
+            if ttype is None:
+                continue
             if ttype not in self.registry.transforms:
                 missing.append(ttype)
         if missing:
-            raise KeyError(
-                f"Transform plugin(s) not found: {missing}. "
-                f"Installed: {sorted(self.registry.transforms)}"
+            raise TransformNotFoundError(
+                f"Transform plugin(s) not found: {missing}.",
+                context={"Missing": missing, "Installed": sorted(self.registry.transforms)},
+                hint="Check the 'type' field in CONFIG.transform. "
+                f"Installed transform plugins: {', '.join(sorted(self.registry.transforms))}",
             )

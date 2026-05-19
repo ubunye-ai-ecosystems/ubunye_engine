@@ -1,7 +1,11 @@
 """Typed config schema using Pydantic v2.
 
-All models use strict validation. Enums inherit from `str` so they can be used
-directly as dict keys and compared to plain strings throughout the codebase.
+All models use strict validation with ``extra="forbid"`` so that typos in
+config keys are caught at load time rather than silently ignored. The one
+exception is :class:`IOConfig`, which keeps ``extra="allow"`` because
+connector plugins read arbitrary keys from the config dict. Plugin-specific
+fields should go in the ``options`` sub-dict; top-level extras on IOConfig
+are a conscious tradeoff documented in the PR that introduced strict mode.
 """
 
 from __future__ import annotations
@@ -61,6 +65,8 @@ class OrchestrationType(str, Enum):
 class EngineProfile(BaseModel):
     """Profile-specific Spark configuration overrides."""
 
+    model_config = ConfigDict(extra="forbid")
+
     spark_conf: Dict[str, str] = Field(default_factory=dict)
     catalog: Optional[str] = None
     schema_name: Optional[str] = None
@@ -68,6 +74,8 @@ class EngineProfile(BaseModel):
 
 class EngineConfig(BaseModel):
     """Spark/compute settings with optional per-profile overrides."""
+
+    model_config = ConfigDict(extra="forbid")
 
     spark_conf: Dict[str, str] = Field(default_factory=dict)
     profiles: Dict[str, EngineProfile] = Field(default_factory=dict)
@@ -147,9 +155,17 @@ class IOConfig(BaseModel):
 
 
 class TransformConfig(BaseModel):
-    """Transform plugin configuration."""
+    """Transform plugin configuration.
 
-    type: str = "noop"
+    ``type`` is optional.  When omitted the engine assumes that a
+    ``transformations.py`` Task class supplies the logic — no explicit
+    ``type: noop`` is needed.  Existing configs that still declare
+    ``type: noop`` continue to work but emit a deprecation warning.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Optional[str] = None
     params: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -161,7 +177,7 @@ class TransformConfig(BaseModel):
 class RegistryConfig(BaseModel):
     """Configuration for model registry integration within a transform."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     store: str
     use_case: Optional[str] = "default"
@@ -175,7 +191,7 @@ class RegistryConfig(BaseModel):
 class ModelTransformParams(BaseModel):
     """Typed params for ``transform.type: model`` — for documentation and validation."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     action: Literal["train", "predict"]
     model_class: str
@@ -187,6 +203,8 @@ class ModelTransformParams(BaseModel):
 
 class TaskConfig(BaseModel):
     """The ``CONFIG`` section of a task: inputs, transform, outputs."""
+
+    model_config = ConfigDict(extra="forbid")
 
     inputs: Dict[str, IOConfig]
     transform: TransformConfig = Field(default_factory=TransformConfig)
@@ -209,7 +227,7 @@ class TaskConfig(BaseModel):
 class OrchestrationConfig(BaseModel):
     """Orchestration export metadata."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     type: OrchestrationType
     schedule: Optional[str] = None
@@ -237,6 +255,8 @@ class UbunyeConfig(BaseModel):
     registry, orchestrator metadata).
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     MODEL: JobType = JobType.ETL
     VERSION: str = DEFAULT_VERSION
     ENGINE: EngineConfig = Field(default_factory=EngineConfig)
@@ -255,13 +275,31 @@ class UbunyeConfig(BaseModel):
     def merged_spark_conf(self, profile: str | None = None) -> Dict[str, str]:
         """Return base spark_conf merged with the named profile's overrides."""
         conf = dict(self.ENGINE.spark_conf)
-        if profile and profile in self.ENGINE.profiles:
+        if profile and self.ENGINE.profiles:
+            if profile not in self.ENGINE.profiles:
+                from ubunye.core.errors import ConfigProfileError
+
+                available = sorted(self.ENGINE.profiles.keys())
+                raise ConfigProfileError(
+                    f"Profile '{profile}' not found.",
+                    context={"Profile": profile, "Available": available},
+                    hint=f"Valid profiles: {', '.join(available)}",
+                )
             conf.update(self.ENGINE.profiles[profile].spark_conf)
         return conf
 
     def resolved_catalog(self, profile: str | None = None) -> Optional[str]:
         """Return the catalog name, with profile override if available."""
-        if profile and profile in self.ENGINE.profiles:
+        if profile and self.ENGINE.profiles:
+            if profile not in self.ENGINE.profiles:
+                from ubunye.core.errors import ConfigProfileError
+
+                available = sorted(self.ENGINE.profiles.keys())
+                raise ConfigProfileError(
+                    f"Profile '{profile}' not found.",
+                    context={"Profile": profile, "Available": available},
+                    hint=f"Valid profiles: {', '.join(available)}",
+                )
             override = self.ENGINE.profiles[profile].catalog
             if override is not None:
                 return override
@@ -269,7 +307,16 @@ class UbunyeConfig(BaseModel):
 
     def resolved_schema(self, profile: str | None = None) -> Optional[str]:
         """Return the schema name, with profile override if available."""
-        if profile and profile in self.ENGINE.profiles:
+        if profile and self.ENGINE.profiles:
+            if profile not in self.ENGINE.profiles:
+                from ubunye.core.errors import ConfigProfileError
+
+                available = sorted(self.ENGINE.profiles.keys())
+                raise ConfigProfileError(
+                    f"Profile '{profile}' not found.",
+                    context={"Profile": profile, "Available": available},
+                    hint=f"Valid profiles: {', '.join(available)}",
+                )
             override = self.ENGINE.profiles[profile].schema_name
             if override is not None:
                 return override

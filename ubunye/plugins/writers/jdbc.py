@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
 
@@ -48,12 +49,20 @@ class JdbcWriter(Writer):
         """
         for key in self.REQUIRED:
             if key not in cfg or not cfg.get(key):
-                raise ValueError(f"JDBC writer requires '{key}'")
+                raise SinkWriteError(
+                    f"JDBC writer requires '{key}'.",
+                    context={"Format": "jdbc", "Missing": key},
+                    hint=f"Set '{key}' in your JDBC output config.",
+                )
 
         url = cfg["url"]
         dbtable = cfg["table"] or cfg.get("dbtable")
         if not dbtable:
-            raise ValueError("Provide 'table' (or 'dbtable') for JDBC writer")
+            raise SinkWriteError(
+                "JDBC writer requires 'table' or 'dbtable'.",
+                context={"Format": "jdbc"},
+                hint="Set table: 'schema.table' in your JDBC output config.",
+            )
 
         driver = cfg.get("driver")
         user = cfg.get("user")
