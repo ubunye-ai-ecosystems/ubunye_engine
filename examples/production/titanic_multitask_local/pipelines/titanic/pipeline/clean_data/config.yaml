@@ -22,8 +22,7 @@ CONFIG:
         header: "true"
         inferSchema: "true"
         mode: "FAILFAST"
-  transform:
-    type: noop
+  transform: {}
   outputs:
     cleaned:
       format: s3

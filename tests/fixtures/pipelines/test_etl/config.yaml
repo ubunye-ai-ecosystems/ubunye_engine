@@ -17,8 +17,7 @@ CONFIG:
       options:
         header: "true"
         inferSchema: "true"
-  transform:
-    type: noop
+  transform: {}
   outputs:
     source:
       format: s3

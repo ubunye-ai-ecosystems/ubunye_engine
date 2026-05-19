@@ -1,0 +1,138 @@
+name: examples/absa_flood_risk_databricks
+
+# CI + CD for the ABSA flood-risk pipeline (two chained tasks:
+# TomTom geocoding + JBA flood metrics).
+#
+# Responsibilities:
+#   1. Run unit tests (no live TomTom or JBA calls - HTTP is faked).
+#   2. Validate the Asset Bundle statically.
+#   3. Deploy the bundle to the ``nonprod`` target on merge to main,
+#      passing UC identifiers and the source-table name via ``--var``.
+#      The TomTom API key and JBA basic-auth token are NOT handled
+#      here - they live in a Databricks secret scope (default:
+#      ``absa-flood``) and are read by the notebook wrapper at runtime.
+#   4. Optionally trigger a run after deploy via workflow_dispatch.
+#
+# Secrets required (service-principal OAuth flow - paid workspace only):
+#   DATABRICKS_HOST
+#   DATABRICKS_CLIENT_ID
+#   DATABRICKS_CLIENT_SECRET
+#   TELM_CATALOG
+#   TELM_SCHEMA
+#   ADDRESS_SOURCE_TABLE
+# PAT fallback (DATABRICKS_TOKEN) is also accepted for completeness, but
+# this example is designed around the OAuth flow. See docs/databricks-auth.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/production/absa_flood_risk_databricks/**"
+      - ".github/workflows/absa_flood_risk_databricks.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "examples/production/absa_flood_risk_databricks/**"
+      - ".github/workflows/absa_flood_risk_databricks.yml"
+  workflow_dispatch:
+    inputs:
+      run_after_deploy:
+        description: "Trigger the job after deploying"
+        type: boolean
+        default: false
+
+concurrency:
+  group: absa-flood-risk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      EXAMPLE_DIR: examples/production/absa_flood_risk_databricks
+      DATABRICKS_HOST:          ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN:         ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_CLIENT_ID:     ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      TELM_CATALOG:             ${{ secrets.TELM_CATALOG }}
+      TELM_SCHEMA:              ${{ secrets.TELM_SCHEMA }}
+      ADDRESS_SOURCE_TABLE:     ${{ secrets.ADDRESS_SOURCE_TABLE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Set up Java 17 (required by PySpark)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[spark,dev]"
+
+      - name: Unit tests (Spark, local mode)
+        run: pytest "${EXAMPLE_DIR}/tests" -v
+
+      - name: Check for Databricks secrets
+        # Accept either auth flow: PAT (HOST+TOKEN) or service principal
+        # OAuth (HOST+CLIENT_ID+CLIENT_SECRET). Also require TELM_CATALOG,
+        # TELM_SCHEMA, and ADDRESS_SOURCE_TABLE - deploying without them
+        # would leave Jinja templates unresolved at runtime.
+        id: check_secrets
+        run: |
+          if [[ -z "${DATABRICKS_HOST}" ]]; then
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::DATABRICKS_HOST not set - skipping bundle deploy."
+          elif [[ -z "${TELM_CATALOG}" || -z "${TELM_SCHEMA}" || -z "${ADDRESS_SOURCE_TABLE}" ]]; then
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::TELM_CATALOG / TELM_SCHEMA / ADDRESS_SOURCE_TABLE not all set - skipping bundle deploy."
+          elif [[ -n "${DATABRICKS_TOKEN}" ]] || \
+               [[ -n "${DATABRICKS_CLIENT_ID}" && -n "${DATABRICKS_CLIENT_SECRET}" ]]; then
+            echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Neither DATABRICKS_TOKEN nor DATABRICKS_CLIENT_ID+SECRET set - skipping bundle deploy."
+          fi
+
+      - name: Install Databricks CLI
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        uses: databricks/setup-cli@main
+
+      - name: databricks bundle validate
+        if: steps.check_secrets.outputs.has_secrets == 'true'
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: |
+          databricks bundle validate --target nonprod \
+            --var="telm_catalog=${TELM_CATALOG}" \
+            --var="telm_schema=${TELM_SCHEMA}" \
+            --var="address_source_table=${ADDRESS_SOURCE_TABLE}"
+
+      - name: databricks bundle deploy (nonprod)
+        if: ${{ steps.check_secrets.outputs.has_secrets == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: |
+          databricks bundle deploy --target nonprod \
+            --var="telm_catalog=${TELM_CATALOG}" \
+            --var="telm_schema=${TELM_SCHEMA}" \
+            --var="address_source_table=${ADDRESS_SOURCE_TABLE}"
+
+      - name: databricks bundle run (manual trigger only)
+        if: ${{ steps.check_secrets.outputs.has_secrets == 'true' && github.event_name == 'workflow_dispatch' && inputs.run_after_deploy }}
+        working-directory: ${{ env.EXAMPLE_DIR }}
+        run: |
+          databricks bundle run absa_flood_risk --target nonprod \
+            --var="telm_catalog=${TELM_CATALOG}" \
+            --var="telm_schema=${TELM_SCHEMA}" \
+            --var="address_source_table=${ADDRESS_SOURCE_TABLE}"

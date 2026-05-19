@@ -9,8 +9,7 @@ CONFIG:
       format: hive
       db_name: raw_db
       tbl_name: claims
-  transform:
-    type: noop
+  transform: {}
   outputs:
     sink:
       format: s3

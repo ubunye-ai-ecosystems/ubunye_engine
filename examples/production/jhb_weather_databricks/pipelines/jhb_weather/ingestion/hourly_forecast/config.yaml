@@ -42,9 +42,7 @@ CONFIG:
         requests_per_second: 2
         retry_on: [429, 503]
         max_retries: 3
-  transform:
-    # Overridden at runtime by execute_user_task -> transformations.py.
-    type: noop
+  transform: {}
   outputs:
     jhb_hourly_forecast:
       format: unity

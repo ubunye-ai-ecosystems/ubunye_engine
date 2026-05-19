@@ -8,8 +8,7 @@ CONFIG:
     features:
       format: s3
       path: "s3a://bucket/features/"
-  transform:
-    type: noop
+  transform: {}
   outputs:
     predictions:
       format: s3

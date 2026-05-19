@@ -3,7 +3,7 @@
 import pytest
 import yaml
 
-from ubunye.config.loader import load_config
+from ubunye.config.loader import ConfigFieldError, ConfigTemplateError, load_config
 
 
 def _write_config(tmp_path, config_dict, task_name="task"):
@@ -153,3 +153,130 @@ class TestConfigLoader:
         with pytest.raises(ValueError) as exc_info:
             load_config(task_dir)
         assert "s3" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# Strict validation — unknown fields
+# ---------------------------------------------------------------------------
+
+
+class TestUnknownFieldDetection:
+    def test_top_level_typo_with_suggestion(self, tmp_path):
+        bad = dict(_BASE, ENGNE={})
+        task_dir = _write_config(tmp_path, bad)
+        with pytest.raises(ConfigFieldError, match="ENGNE") as exc_info:
+            load_config(task_dir)
+        assert "ENGINE" in str(exc_info.value)
+
+    def test_nested_engine_typo(self, tmp_path):
+        cfg = dict(_BASE, ENGINE={"profles": {"dev": {}}})
+        task_dir = _write_config(tmp_path, cfg)
+        with pytest.raises(ConfigFieldError, match="profles") as exc_info:
+            load_config(task_dir)
+        assert "profiles" in str(exc_info.value)
+
+    def test_no_close_match_shows_valid_fields(self, tmp_path):
+        bad = dict(_BASE, ZZZZZ="junk")
+        task_dir = _write_config(tmp_path, bad)
+        with pytest.raises(ConfigFieldError, match="Valid fields are") as exc_info:
+            load_config(task_dir)
+        assert "CONFIG" in str(exc_info.value)
+        assert "ENGINE" in str(exc_info.value)
+
+    def test_multiple_unknown_fields(self, tmp_path):
+        bad = dict(_BASE, ENGNE={}, VERION="1.0.0")
+        task_dir = _write_config(tmp_path, bad)
+        with pytest.raises(ConfigFieldError) as exc_info:
+            load_config(task_dir)
+        msg = str(exc_info.value)
+        assert "ENGNE" in msg
+        assert "VERION" in msg
+
+    def test_io_config_allows_plugin_extras(self, tmp_path):
+        """IOConfig extra fields (plugin keys) must NOT trigger ConfigFieldError."""
+        cfg = {
+            "MODEL": "etl",
+            "VERSION": "0.1.0",
+            "CONFIG": {
+                "inputs": {
+                    "api": {
+                        "format": "rest_api",
+                        "url": "https://example.com",
+                        "headers": {"X-Key": "val"},
+                        "pagination": {"type": "offset"},
+                    }
+                },
+                "outputs": {"s": {"format": "hive", "db_name": "db", "tbl_name": "t"}},
+            },
+        }
+        task_dir = _write_config(tmp_path, cfg)
+        result = load_config(task_dir)
+        assert result.CONFIG.inputs["api"].model_extra["headers"]["X-Key"] == "val"
+
+    def test_orchestration_typo(self, tmp_path):
+        bad = dict(_BASE, ORCHESTRATION={"type": "airflow", "retires": 5})
+        task_dir = _write_config(tmp_path, bad)
+        with pytest.raises(ConfigFieldError, match="retires") as exc_info:
+            load_config(task_dir)
+        assert "retries" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# Strict validation — undefined template variables
+# ---------------------------------------------------------------------------
+
+
+class TestUndefinedTemplateVariables:
+    def test_undefined_env_var_raises_template_error(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("NOPE", raising=False)
+        cfg = {
+            "MODEL": "etl",
+            "VERSION": "0.1.0",
+            "CONFIG": {
+                "inputs": {
+                    "src": {
+                        "format": "jdbc",
+                        "url": "jdbc:postgresql://db:5432/test",
+                        "table": "t",
+                        "password": "{{ env.NOPE }}",
+                    }
+                },
+                "outputs": {"s": {"format": "hive", "db_name": "db", "tbl_name": "t"}},
+            },
+        }
+        task_dir = _write_config(tmp_path, cfg)
+        with pytest.raises(ConfigTemplateError, match="NOPE"):
+            load_config(task_dir)
+
+    def test_undefined_cli_var_raises_template_error(self, tmp_path):
+        cfg = {
+            "MODEL": "etl",
+            "VERSION": "0.1.0",
+            "CONFIG": {
+                "inputs": {"s": {"format": "hive", "db_name": "db", "tbl_name": "t"}},
+                "outputs": {
+                    "s": {"format": "s3", "path": "s3://bucket/{{ ds }}/"}
+                },
+            },
+        }
+        task_dir = _write_config(tmp_path, cfg)
+        with pytest.raises(ConfigTemplateError, match="ds"):
+            load_config(task_dir)
+
+    def test_default_filter_still_works(self, tmp_path):
+        cfg = {
+            "MODEL": "etl",
+            "VERSION": "0.1.0",
+            "CONFIG": {
+                "inputs": {"s": {"format": "hive", "db_name": "db", "tbl_name": "t"}},
+                "outputs": {
+                    "s": {
+                        "format": "s3",
+                        "path": "s3://bucket/{{ ds | default('1970-01-01') }}/",
+                    }
+                },
+            },
+        }
+        task_dir = _write_config(tmp_path, cfg)
+        result = load_config(task_dir)
+        assert result.CONFIG.outputs["s"].path == "s3://bucket/1970-01-01/"

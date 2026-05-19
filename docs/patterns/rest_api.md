@@ -24,8 +24,7 @@ CONFIG:
       response:
         root_key: rates
 
-  transform:
-    type: noop
+  transform: {}
 
   outputs:
     rates:
