@@ -46,6 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   users can find notebook cell output that `databricks bundle run` does not
   stream to stdout.
 
+- **`ubunye init github-actions` command.** Generates a GitHub Actions workflow
+  for any pipeline — validates config and runs tests on PRs, deploys to
+  Databricks via `ubunye deploy databricks` on merge to main. Supports
+  `--no-deploy` for CI-only workflows, `--extras` for pip install extras
+  (auto-includes Java setup when `spark` is present), and `--target` for the
+  Databricks deploy target. The `init` command is now a sub-app:
+  `ubunye init pipeline` (formerly `ubunye init`) and
+  `ubunye init github-actions`.
+
 ### Fixed
 
 - **Promotion gate failure now propagates.** `PromotionBlockedError` was
@@ -62,6 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   config, hiding typos in `--mode` / `--profile` flags.
 
 ### Changed
+
+- **`ubunye init` is now a sub-app** with two subcommands:
+  `ubunye init pipeline` (the previous `ubunye init`) and
+  `ubunye init github-actions`. This is a breaking CLI change — update
+  any scripts that call `ubunye init -d ...` to `ubunye init pipeline -d ...`.
 
 - **`[ml]` extra no longer installs `torch`.** Use `[ml-torch]` for
   PyTorch workloads. This saves ~1 GB of CUDA wheel downloads in CI for
