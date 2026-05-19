@@ -1,5 +1,6 @@
 """Tests for the ``ubunye deploy databricks`` CLI command."""
 
+import re
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +10,8 @@ from typer.testing import CliRunner
 from ubunye.cli.main import app
 
 runner = CliRunner()
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def _scaffold_task(base_dir, usecase, pipeline, task_name):
@@ -97,12 +100,13 @@ class TestDeployDatabricksCLI:
     def test_help_shows_flags(self):
         result = runner.invoke(app, ["deploy", "databricks", "--help"])
         assert result.exit_code == 0
-        assert "--target" in result.output
-        assert "--dry-run" in result.output
-        assert "-d" in result.output
-        assert "-u" in result.output
-        assert "-p" in result.output
-        assert "-t" in result.output
+        clean = _ANSI_RE.sub("", result.output)
+        assert "--target" in clean
+        assert "--dry-run" in clean
+        assert "-d" in clean
+        assert "-u" in clean
+        assert "-p" in clean
+        assert "-t" in clean
 
     def test_deploy_help(self):
         result = runner.invoke(app, ["deploy", "--help"])

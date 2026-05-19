@@ -98,6 +98,7 @@ picks OAuth, but leaving a stale PAT around defeats the point of moving off it.
 Every Databricks workflow in `.github/workflows/*_databricks*.yml` exports
 the same env block:
 
+[% raw %]
 ```yaml
 env:
   DATABRICKS_HOST:          ${{ secrets.DATABRICKS_HOST }}
@@ -105,10 +106,12 @@ env:
   DATABRICKS_CLIENT_ID:     ${{ secrets.DATABRICKS_CLIENT_ID }}
   DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
 ```
+[% endraw %]
 
 The `Check for Databricks secrets` step gates the deploy on *either* flow
 being wired up:
 
+[% raw %]
 ```bash
 if [[ -z "${DATABRICKS_HOST}" ]]; then
   has_secrets=false
@@ -119,6 +122,7 @@ else
   has_secrets=false
 fi
 ```
+[% endraw %]
 
 If the gate is false, the workflow runs the unit tests and portability diff
 but skips `bundle validate` / `deploy` / `run`. This keeps PRs from forks
