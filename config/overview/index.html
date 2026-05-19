@@ -382,17 +382,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../../deployment/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../../deployment/" class="md-tabs__link">
+          
+  
   
   Deployment
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -428,6 +429,25 @@
     
   
   Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../errors/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Error Reference
 
       </a>
     </li>
@@ -822,6 +842,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strict-field-checking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strict field checking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#strict-template-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strict template variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1627,9 +1675,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../deployment/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -1643,7 +1709,107 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/databricks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Databricks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../databricks-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Databricks Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1690,6 +1856,33 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error Reference
   
 
     
@@ -1785,6 +1978,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strict-field-checking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strict field checking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#strict-template-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strict template variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1902,9 +2123,21 @@ You can use environment variables, CLI-injected variables, and filters anywhere 
 <hr />
 <h2 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
 <p>Ubunye validates the rendered YAML against strict Pydantic v2 models.
-Run validation before deploying:</p>
+Unknown fields are rejected with typo suggestions; undefined Jinja
+variables fail immediately. Run validation before deploying:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ubunye<span class="w"> </span>validate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>etl<span class="w"> </span>-t<span class="w"> </span>claims
 </code></pre></div>
+<h3 id="strict-field-checking">Strict field checking<a class="headerlink" href="#strict-field-checking" title="Permanent link">&para;</a></h3>
+<p>All config sections use <code>extra="forbid"</code> — a typo like <code>ENGNE</code> triggers a
+<code>ConfigFieldError</code> with a "Did you mean?" suggestion. The one exception is
+<code>IOConfig</code> (inputs/outputs entries), which allows extra fields so that
+connector plugins can read plugin-specific keys like <code>headers</code>, <code>pagination</code>,
+<code>auth</code>, etc.</p>
+<h3 id="strict-template-variables">Strict template variables<a class="headerlink" href="#strict-template-variables" title="Permanent link">&para;</a></h3>
+<p>The Jinja resolver uses <code>StrictUndefined</code> — any <code>{{ var }}</code> that isn't
+provided as a CLI variable or environment variable raises immediately instead
+of silently producing an empty string. Use <code>| default(...)</code> for optional
+values.</p>
 <hr />
 <h2 id="reference-pages">Reference pages<a class="headerlink" href="#reference-pages" title="Permanent link">&para;</a></h2>
 <table>
@@ -1959,7 +2192,7 @@ Run validation before deploying:</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 21, 2026 10:58:51 UTC">April 21, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="May 19, 2026 09:17:30 UTC">May 19, 2026</span>
   </span>
 
     

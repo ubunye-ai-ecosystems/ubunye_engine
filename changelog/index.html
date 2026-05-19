@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/changelog/">
       
       
-        <link rel="prev" href="../contributing/">
+        <link rel="prev" href="../errors/">
       
       
       
@@ -378,17 +378,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../deployment/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../deployment/" class="md-tabs__link">
+          
+  
   
   Deployment
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -424,6 +425,25 @@
     
   
   Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../errors/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Error Reference
 
       </a>
     </li>
@@ -1531,9 +1551,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../deployment/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -1547,7 +1585,107 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/databricks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Databricks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../databricks-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Databricks Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1594,6 +1732,33 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error Reference
   
 
     
@@ -1673,13 +1838,74 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#unreleased" class="md-nav__link">
+  <a href="#018-2026-05-19" class="md-nav__link">
     <span class="md-ellipsis">
       
-        [Unreleased]
+        [0.1.8] — 2026-05-19
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="[0.1.8] — 2026-05-19">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1696,28 +1922,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#changed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changed
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#added" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Added
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#changed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1729,7 +1933,29 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed" class="md-nav__link">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Fixed
@@ -1757,28 +1983,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#changed_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changed
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#added_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Added
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#changed_3" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1790,7 +1994,29 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_1" class="md-nav__link">
+  <a href="#added_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Fixed
@@ -1818,7 +2044,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_2" class="md-nav__link">
+  <a href="#added_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -1868,13 +2094,74 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#unreleased" class="md-nav__link">
+  <a href="#018-2026-05-19" class="md-nav__link">
     <span class="md-ellipsis">
       
-        [Unreleased]
+        [0.1.8] — 2026-05-19
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="[0.1.8] — 2026-05-19">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1891,28 +2178,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#changed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changed
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#added" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Added
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#changed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1924,7 +2189,29 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed" class="md-nav__link">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Fixed
@@ -1952,28 +2239,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#changed_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changed
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#added_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Added
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#changed_3" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1985,7 +2250,29 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_1" class="md-nav__link">
+  <a href="#added_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Fixed
@@ -2013,7 +2300,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_2" class="md-nav__link">
+  <a href="#added_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2058,10 +2345,174 @@
 <p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>
 and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <hr />
-<h2 id="unreleased">[Unreleased]<a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="018-2026-05-19">[0.1.8] — 2026-05-19<a class="headerlink" href="#018-2026-05-19" title="Permanent link">&para;</a></h2>
+<h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
+<ul>
+<li>
+<p><strong><code>ubunye deploy databricks</code> command.</strong> End-to-end deployment from a local
+  <code>config.yaml</code> to a running Databricks job — handles auth, file upload to
+  <code>/Workspace/</code>, wrapper notebook generation, and idempotent job
+  creation/update via the Databricks SDK. Uses a two-level <code>targets.yaml</code>
+  lookup (usecase-level defaults, task-level overrides). Supports <code>--dry-run</code>
+  for previewing the job spec without deploying. New optional dependency:
+  <code>pip install ubunye-engine[databricks]</code>.</p>
+</li>
+<li>
+<p><strong>Deploy error types.</strong> <code>DeployError</code> base class with <code>AuthNotFoundError</code>,
+  <code>AuthInvalidError</code>, <code>TargetNotFoundError</code>, <code>WorkspaceUploadError</code>, and
+  <code>BundleDeployError</code> — all follow the dual-inheritance pattern
+  (<code>DeployError(UbunyeError, RuntimeError)</code>).</p>
+</li>
+<li>
+<p><strong>Structured error messages across the engine.</strong> Every user-facing exception
+  now inherits from <code>UbunyeError</code> (with optional <code>context</code> dict and <code>hint</code>
+  string) <strong>and</strong> the stdlib type it replaces (dual inheritance for backward
+  compatibility). New exception classes: <code>TaskNotFoundError</code>,
+  <code>TaskClassMissingError</code>, <code>ReaderNotFoundError</code>, <code>WriterNotFoundError</code>,
+  <code>TransformNotFoundError</code>, <code>TransformOutputError</code>, <code>MonitorNotFoundError</code>,
+  <code>SourceReadError</code>, <code>SinkWriteError</code>, <code>SparkSessionError</code>, <code>ModelLoadError</code>,
+  <code>ModelNotFittedError</code>, <code>VersionExistsError</code>, <code>VersionNotFoundError</code>,
+  <code>PromotionBlockedError</code>, <code>RegistryNotFoundError</code>,
+  <code>LineageRecordNotFoundError</code>, and <code>ConfigProfileError</code>. Existing config
+  errors (<code>ConfigFieldError</code>, <code>ConfigTemplateError</code>) migrated from
+  <code>ubunye.config.loader</code> to <code>ubunye.core.errors</code>. See the new
+  <a href="../errors/">Error Reference</a> for the full hierarchy and examples.</p>
+</li>
+<li>
+<p><strong>Hook failure logging.</strong> <code>HookChain</code> now logs a structured warning when a
+  hook's <code>task()</code> or <code>step()</code> context manager raises, instead of silently
+  swallowing the exception.</p>
+</li>
+<li>
+<p><strong>CI workflows link to the Databricks job UI</strong> after <code>bundle run</code>, so
+  users can find notebook cell output that <code>databricks bundle run</code> does not
+  stream to stdout.</p>
+</li>
+<li>
+<p><strong><code>ubunye init github-actions</code> command.</strong> Generates a GitHub Actions workflow
+  for any pipeline — validates config and runs tests on PRs, deploys to
+  Databricks via <code>ubunye deploy databricks</code> on merge to main. Supports
+  <code>--no-deploy</code> for CI-only workflows, <code>--extras</code> for pip install extras
+  (auto-includes Java setup when <code>spark</code> is present), and <code>--target</code> for the
+  Databricks deploy target. The <code>init</code> command is now a sub-app:
+  <code>ubunye init pipeline</code> (formerly <code>ubunye init</code>) and
+  <code>ubunye init github-actions</code>.</p>
+</li>
+</ul>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>
+<p><strong>Promotion gate failure now propagates.</strong> <code>PromotionBlockedError</code> was
+  silently caught by the titanic training task's <code>except ValueError</code> (via
+  dual inheritance). Gate failures now re-raise — CI goes red when a model
+  fails its quality gate instead of reporting green.</p>
+</li>
+<li>
+<p><strong><code>typer[all]</code> replaced with plain <code>typer</code>.</strong> Typer &gt;= 0.24 dropped
+  the <code>[all]</code> extra, causing pip warnings on install.</p>
+</li>
+<li>
+<p><strong><code>merged_spark_conf()</code> / <code>resolved_catalog()</code> / <code>resolved_schema()</code> now
+  raise <code>ConfigProfileError</code></strong> when profiles are defined but the requested
+  profile doesn't match. Previously these methods silently returned the base
+  config, hiding typos in <code>--mode</code> / <code>--profile</code> flags.</p>
+</li>
+</ul>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>
+<p><strong><code>ubunye init</code> is now a sub-app</strong> with two subcommands:
+  <code>ubunye init pipeline</code> (the previous <code>ubunye init</code>) and
+  <code>ubunye init github-actions</code>. This is a breaking CLI change — update
+  any scripts that call <code>ubunye init -d ...</code> to <code>ubunye init pipeline -d ...</code>.</p>
+</li>
+<li>
+<p><strong><code>[ml]</code> extra no longer installs <code>torch</code>.</strong> Use <code>[ml-torch]</code> for
+  PyTorch workloads. This saves ~1 GB of CUDA wheel downloads in CI for
+  sklearn-only pipelines.</p>
+</li>
+<li>
+<p><strong><code>CONFIG.transform.type</code> is now optional.</strong> When omitted, the engine
+  defaults to loading the user's <code>Task</code> class from <code>transformations.py</code> —
+  no <code>type: noop</code> declaration needed. Existing configs with <code>type: noop</code>
+  continue to work but emit a <code>DeprecationWarning</code> advising removal.
+  All scaffolded configs, production examples, test fixtures, and docs
+  have been updated to omit the field.</p>
+</li>
+<li>
+<p><strong>Unknown config fields are now rejected at load time.</strong> All Pydantic
+  models (except <code>IOConfig</code>) use <code>extra="forbid"</code>. A typo like <code>ENGNE</code>
+  raises <code>ConfigFieldError</code> with a "Did you mean 'ENGINE'?" suggestion
+  via <code>difflib.get_close_matches</code>. <code>IOConfig</code> retains <code>extra="allow"</code>
+  so plugin-specific keys (REST API <code>headers</code>, <code>pagination</code>, etc.) pass
+  through to connectors. <strong>Breaking:</strong> configs with unknown top-level or
+  nested fields that were previously silently ignored will now fail.</p>
+</li>
+<li>
+<p><strong>Undefined Jinja template variables fail immediately.</strong> The resolver
+  now uses <code>StrictUndefined</code> instead of <code>DebugUndefined</code>. A reference
+  to <code>{{ ds }}</code> without passing <code>ds</code> as a CLI variable raises
+  <code>ConfigTemplateError</code> listing available variables. The <code>| default()</code>
+  filter continues to work.</p>
+</li>
+</ul>
+<h3 id="added_1">Added<a class="headerlink" href="#added_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>
+<p><strong>Production reference example: device mapping ETL (Databricks, paid
+  workspace)</strong> — <code>examples/production/device_mapping_etl_databricks/</code>
+  ports a legacy policy-device mapping script onto Ubunye. Three Unity
+  Catalog reads, one Unity Catalog Delta sink, a monthly Databricks Jobs
+  schedule (2nd of month, 06:00 UTC), and a dedicated GitHub Actions
+  workflow (<code>.github/workflows/device_mapping_etl_databricks.yml</code>) that
+  gates <code>bundle deploy</code> on OAuth service-principal secrets plus
+  <code>TELM_CATALOG</code> / <code>TELM_SCHEMA</code> environment secrets. No catalog/schema
+  identifiers are committed — values flow through DAB <code>--var</code> flags at
+  deploy time, keeping confidential Unity Catalog names out of source
+  control. Corrects a latent bug in the original script where the
+  IMEI-first-detection-adjusted <code>installation_datetime_final</code> was
+  computed but never selected into the final output.</p>
+</li>
+<li>
+<p><strong>Production reference example: flood-risk (two-task pipeline,
+  paid Databricks + Unity Catalog).</strong> A port of the legacy flood-detection
+  notebook to Ubunye as <code>examples/production/flood_risk_databricks/</code>,
+  split into two chained tasks:</p>
+</li>
+<li><code>geocode_addresses</code> — reads <code>(id, address)</code> rows from a UC source
+    table, calls TomTom Search (top-1 per id, three-step parameter
+    fallback, 429 retry), writes <code>address_geocoded</code>.</li>
+<li><code>flood_risk</code> — reads <code>address_geocoded</code>, calls JBA <code>floodscores</code> and
+    <code>flooddepths</code> in batches of 10, merges the two responses on <code>id</code>,
+    renames ~60 nested keys to snake-case, writes <code>address_flood_risk</code>.</li>
+</ul>
+<p>Quarterly schedule (1st of Jan/Apr/Jul/Oct at 06:00 UTC). TomTom and
+  JBA credentials live in a Databricks secret scope (<code>flood-risk</code> by
+  default) and are read by the notebook wrapper; Unity Catalog
+  identifiers and the source-table name come from GitHub environment
+  secrets through <code>--var</code> at deploy time. Also corrects the legacy
+  <code>"Base "</code> → <code>"Basic "</code> auth-header typo and strips the Zscaler cert
+  probing block that belongs on corporate networks, not serverless.
+  OAuth-gated GH Actions workflow
+  (<code>.github/workflows/flood_risk_databricks.yml</code>) runs Spark + fake-
+  HTTP unit tests, validates the bundle, and deploys to the <code>nonprod</code>
+  target when all three UC secrets are present. See the example's
+  <code>README.md</code>.</p>
+<h3 id="added_2">Added<a class="headerlink" href="#added_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Service principal + OAuth auth for Databricks CI.</strong> The four Databricks
+  example workflows (<code>databricks_deploy.yml</code>, <code>jhb_weather_databricks.yml</code>,
+  <code>multitask_databricks.yml</code>, <code>titanic_ml_databricks.yml</code>) now pass
+  <code>DATABRICKS_CLIENT_ID</code> / <code>DATABRICKS_CLIENT_SECRET</code> alongside the existing
+  <code>DATABRICKS_TOKEN</code> env var. The secrets gate accepts either flow: PAT
+  (<code>HOST</code> + <code>TOKEN</code>) or OAuth (<code>HOST</code> + <code>CLIENT_ID</code> + <code>CLIENT_SECRET</code>). The
+  Databricks CLI auto-selects OAuth when both client vars are set. New
+  reference page <code>docs/databricks-auth.md</code> walks through service principal
+  creation, workspace/UC grants, secret rotation, and verification.</li>
+</ul>
 <hr />
 <h2 id="017-2026-04-21">[0.1.7] — 2026-04-21<a class="headerlink" href="#017-2026-04-21" title="Permanent link">&para;</a></h2>
-<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<h3 id="changed_1">Changed<a class="headerlink" href="#changed_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>MODEL</code> and <code>VERSION</code> are now optional at the top level of <code>config.yaml</code>.</strong>
   <code>MODEL</code> defaults to <code>etl</code> and <code>VERSION</code> defaults to <code>"0.0.0-dev"</code>. The semver
@@ -2072,7 +2523,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
   common case. Set them explicitly when job type or version is load-bearing
   (lineage, model registry, orchestrator metadata).</li>
 </ul>
-<h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
+<h3 id="added_3">Added<a class="headerlink" href="#added_3" title="Permanent link">&para;</a></h3>
 <ul>
 <li>
 <p><strong>Production reference example: Titanic multi-task pipeline (local)</strong> —
@@ -2110,14 +2561,14 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
   the example's <code>README.md</code>.</p>
 </li>
 </ul>
-<h3 id="changed_1">Changed<a class="headerlink" href="#changed_1" title="Permanent link">&para;</a></h3>
+<h3 id="changed_2">Changed<a class="headerlink" href="#changed_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>GitHub Actions bumped to Node 24-capable majors.</strong> <code>actions/checkout@v4</code>
   → <code>@v6</code>, <code>actions/setup-python@v5</code> → <code>@v6</code> across all nine workflow files.
   Resolves the deprecation warning surfaced on 2026-04-16 runs ahead of the
   Node 20 removal deadline (2026-09-16). No behavioural change.</li>
 </ul>
-<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li>
 <p><strong>Undefined CLI template variables silently leaked into resolved configs.</strong>
@@ -2148,7 +2599,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 </ul>
 <hr />
 <h2 id="016-2026-04-15">[0.1.6] — 2026-04-15<a class="headerlink" href="#016-2026-04-15" title="Permanent link">&para;</a></h2>
-<h3 id="changed_2">Changed<a class="headerlink" href="#changed_2" title="Permanent link">&para;</a></h3>
+<h3 id="changed_3">Changed<a class="headerlink" href="#changed_3" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>titanic_databricks</code> DAB switched to serverless + Unity Catalog.</strong> Removed
   the <code>new_cluster</code> block and the DBFS bootstrap; the notebook now provisions
@@ -2178,7 +2629,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
   silent drift between pandas and Spark paths. Unit-test CI steps now install
   Java 17 + <code>ubunye-engine[spark,dev]</code> on the runner.</li>
 </ul>
-<h3 id="added_1">Added<a class="headerlink" href="#added_1" title="Permanent link">&para;</a></h3>
+<h3 id="added_4">Added<a class="headerlink" href="#added_4" title="Permanent link">&para;</a></h3>
 <ul>
 <li>
 <p><strong>Production reference example: JHB hourly weather (REST API → Unity Catalog)</strong> —
@@ -2312,7 +2763,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <p><strong>Test infrastructure</strong> — 288 unit tests, all Spark-free in <code>tests/unit/</code>.</p>
 </li>
 </ul>
-<h3 id="changed_3">Changed<a class="headerlink" href="#changed_3" title="Permanent link">&para;</a></h3>
+<h3 id="changed_4">Changed<a class="headerlink" href="#changed_4" title="Permanent link">&para;</a></h3>
 <ul>
 <li>
 <p><code>databricks_expoter.py</code> renamed to <code>databricks_exporter.py</code> (typo fix). Not
@@ -2341,7 +2792,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li><code>ubunye/cli/main.py</code> — mounted <code>models_app</code>, <code>lineage_app</code>, <code>test_app</code> Typer sub-apps; added notebook scaffolding to <code>init</code>.</li>
 <li><code>pyproject.toml</code> — added <code>model</code> entry point under <code>ubunye.transforms</code>.</li>
 </ul>
-<h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Permanent link">&para;</a></h3>
+<h3 id="fixed_2">Fixed<a class="headerlink" href="#fixed_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Unity Catalog writer collapsed plugin dispatch with Spark source format.</strong>
   <code>UnityTableWriter.write()</code> was reading <code>cfg["format"]</code> and passing it to
@@ -2354,7 +2805,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 </ul>
 <hr />
 <h2 id="010-2025-09-11">[0.1.0] — 2025-09-11<a class="headerlink" href="#010-2025-09-11" title="Permanent link">&para;</a></h2>
-<h3 id="added_2">Added<a class="headerlink" href="#added_2" title="Permanent link">&para;</a></h3>
+<h3 id="added_5">Added<a class="headerlink" href="#added_5" title="Permanent link">&para;</a></h3>
 <ul>
 <li>First alpha release of Ubunye Engine.</li>
 <li>Config-first ETL framework built on Apache Spark.</li>
@@ -2389,7 +2840,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 21, 2026 11:13:22 UTC">April 21, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="May 19, 2026 16:37:32 UTC">May 19, 2026</span>
   </span>
 
     
