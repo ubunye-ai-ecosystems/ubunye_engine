@@ -27,7 +27,8 @@ Databricks workspace and are gated on secrets; treat them as integration probes,
 ## CLI surface
 
 `ubunye <cmd> --help` is authoritative — don't hard-code flag tables here. Top-level commands:
-`init`, `validate`, `config`, `plan`, `run`, `test run`, `export {airflow,databricks}`,
+`init {pipeline,github-actions}`, `validate`, `config`, `plan`, `run`, `test run`,
+`deploy {databricks}`, `export {airflow,databricks}`,
 `lineage {show,list,compare,search,trace}`, `models {list,info,promote,demote,rollback,archive,compare}`,
 `plugins`, `version`.
 
