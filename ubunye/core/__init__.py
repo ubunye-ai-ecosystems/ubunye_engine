@@ -1,8 +1,12 @@
 from ubunye.core.errors import (
+    AuthInvalidError,
+    AuthNotFoundError,
+    BundleDeployError,
     ConfigError,
     ConfigFieldError,
     ConfigProfileError,
     ConfigTemplateError,
+    DeployError,
     LineageRecordNotFoundError,
     ModelLoadError,
     ModelNotFittedError,
@@ -15,6 +19,7 @@ from ubunye.core.errors import (
     SinkWriteError,
     SourceReadError,
     SparkSessionError,
+    TargetNotFoundError,
     TaskClassMissingError,
     TaskNotFoundError,
     TransformNotFoundError,
@@ -22,5 +27,6 @@ from ubunye.core.errors import (
     UbunyeError,
     VersionExistsError,
     VersionNotFoundError,
+    WorkspaceUploadError,
     WriterNotFoundError,
 )
