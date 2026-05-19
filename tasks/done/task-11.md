@@ -1,5 +1,7 @@
 # task-11 — `typer[all]` extra missing from pyproject.toml
 
+**Status:** done (2026-05-19)
+
 **Discovered by:** fire-test of `titanic_local` (run 24513418103, 2026-04-16)
 
 ## Symptom

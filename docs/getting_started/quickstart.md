@@ -207,6 +207,18 @@ catching patterns.
 
 ---
 
+## 9. (Optional) Deploy to Databricks
+
+```bash
+pip install ubunye-engine[databricks]
+ubunye deploy databricks -d pipelines -u demo -p etl -t hello_world --target dev --dry-run
+```
+
+See the full [Databricks Deployment Guide](../deployment/databricks.md) for
+setting up `targets.yaml` and deploying for real.
+
+---
+
 ## What's next?
 
 | Topic | Link |
@@ -214,7 +226,7 @@ catching patterns.
 | Full YAML schema | [Config Reference](../config/overview.md) |
 | All built-in connectors | [Connectors](../connectors/overview.md) |
 | Python API reference | [API Reference](../api.md) |
-| Deploying to Databricks | [Deployment](../deployment.md) |
+| Deploying to Databricks | [Deployment](../deployment/databricks.md) |
 | Training and versioning ML models | [Model Contract](../ml/model_contract.md) |
 | CLI flags and sub-commands | [CLI Reference](../cli.md) |
 | Writing custom plugins | [Plugin Guide](../connectors/plugin_guide.md) |

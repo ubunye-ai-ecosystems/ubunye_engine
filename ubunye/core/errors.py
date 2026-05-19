@@ -177,3 +177,32 @@ class RegistryNotFoundError(UbunyeError, FileNotFoundError):
 
 class LineageRecordNotFoundError(UbunyeError, FileNotFoundError):
     """Raised when a lineage record file does not exist."""
+
+
+# ---------------------------------------------------------------------------
+# Deploy errors
+# ---------------------------------------------------------------------------
+
+
+class DeployError(UbunyeError, RuntimeError):
+    """Base for deployment errors."""
+
+
+class AuthNotFoundError(DeployError):
+    """Raised when Databricks auth credentials are missing."""
+
+
+class AuthInvalidError(DeployError):
+    """Raised when Databricks auth credentials are rejected."""
+
+
+class TargetNotFoundError(DeployError):
+    """Raised when a deploy target (dev/prod) is not configured."""
+
+
+class WorkspaceUploadError(DeployError):
+    """Raised when uploading files to Databricks workspace fails."""
+
+
+class BundleDeployError(DeployError):
+    """Raised when job creation/update on Databricks fails."""

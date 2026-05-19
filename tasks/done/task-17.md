@@ -1,5 +1,7 @@
 # task-17 — CI installs torch (GPU wheels, ~1 GB) for sklearn-only tests in titanic_ml_databricks
 
+**Status:** done (2026-05-19)
+
 **Example:** `titanic_ml_databricks`
 **Step:** "Install test dependencies" (`pip install -e ".[ml,dev]"`)
 

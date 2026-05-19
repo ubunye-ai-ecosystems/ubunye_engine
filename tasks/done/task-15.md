@@ -1,5 +1,7 @@
 # task-15: Notebook cell output not surfaced in CI — blind to runtime assertion failures
 
+**Status:** done (2026-05-19)
+
 ## Symptom
 The `databricks bundle run (manual trigger only)` step in CI logs only two lines of
 job-level status:

@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ubunye deploy databricks` command.** End-to-end deployment from a local
+  `config.yaml` to a running Databricks job — handles auth, file upload to
+  `/Workspace/`, wrapper notebook generation, and idempotent job
+  creation/update via the Databricks SDK. Uses a two-level `targets.yaml`
+  lookup (usecase-level defaults, task-level overrides). Supports `--dry-run`
+  for previewing the job spec without deploying. New optional dependency:
+  `pip install ubunye-engine[databricks]`.
+
+- **Deploy error types.** `DeployError` base class with `AuthNotFoundError`,
+  `AuthInvalidError`, `TargetNotFoundError`, `WorkspaceUploadError`, and
+  `BundleDeployError` — all follow the dual-inheritance pattern
+  (`DeployError(UbunyeError, RuntimeError)`).
+
 - **Structured error messages across the engine.** Every user-facing exception
   now inherits from `UbunyeError` (with optional `context` dict and `hint`
   string) **and** the stdlib type it replaces (dual inheritance for backward
@@ -29,7 +42,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hook's `task()` or `step()` context manager raises, instead of silently
   swallowing the exception.
 
+- **CI workflows link to the Databricks job UI** after `bundle run`, so
+  users can find notebook cell output that `databricks bundle run` does not
+  stream to stdout.
+
 ### Fixed
+
+- **Promotion gate failure now propagates.** `PromotionBlockedError` was
+  silently caught by the titanic training task's `except ValueError` (via
+  dual inheritance). Gate failures now re-raise — CI goes red when a model
+  fails its quality gate instead of reporting green.
+
+- **`typer[all]` replaced with plain `typer`.** Typer >= 0.24 dropped
+  the `[all]` extra, causing pip warnings on install.
 
 - **`merged_spark_conf()` / `resolved_catalog()` / `resolved_schema()` now
   raise `ConfigProfileError`** when profiles are defined but the requested
@@ -37,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   config, hiding typos in `--mode` / `--profile` flags.
 
 ### Changed
+
+- **`[ml]` extra no longer installs `torch`.** Use `[ml-torch]` for
+  PyTorch workloads. This saves ~1 GB of CUDA wheel downloads in CI for
+  sklearn-only pipelines.
 
 - **`CONFIG.transform.type` is now optional.** When omitted, the engine
   defaults to loading the user's `Task` class from `transformations.py` —
@@ -61,12 +90,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Production reference example: client telematics ETL (Databricks, paid
-  workspace)** — `examples/production/client_telematics_etl_databricks/`
+- **Production reference example: device mapping ETL (Databricks, paid
+  workspace)** — `examples/production/device_mapping_etl_databricks/`
   ports a legacy policy-device mapping script onto Ubunye. Three Unity
   Catalog reads, one Unity Catalog Delta sink, a monthly Databricks Jobs
   schedule (2nd of month, 06:00 UTC), and a dedicated GitHub Actions
-  workflow (`.github/workflows/client_telematics_etl_databricks.yml`) that
+  workflow (`.github/workflows/device_mapping_etl_databricks.yml`) that
   gates `bundle deploy` on OAuth service-principal secrets plus
   `TELM_CATALOG` / `TELM_SCHEMA` environment secrets. No catalog/schema
   identifiers are committed — values flow through DAB `--var` flags at
@@ -75,9 +104,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   IMEI-first-detection-adjusted `installation_datetime_final` was
   computed but never selected into the final output.
 
-- **Production reference example: client flood-risk (two-task pipeline,
+- **Production reference example: flood-risk (two-task pipeline,
   paid Databricks + Unity Catalog).** A port of the legacy flood-detection
-  notebook to Ubunye as `examples/production/client_flood_risk_databricks/`,
+  notebook to Ubunye as `examples/production/flood_risk_databricks/`,
   split into two chained tasks:
   - `geocode_addresses` — reads `(id, address)` rows from a UC source
     table, calls TomTom Search (top-1 per id, three-step parameter
@@ -87,14 +116,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     renames ~60 nested keys to snake-case, writes `address_flood_risk`.
 
   Quarterly schedule (1st of Jan/Apr/Jul/Oct at 06:00 UTC). TomTom and
-  JBA credentials live in a Databricks secret scope (`client-flood` by
+  JBA credentials live in a Databricks secret scope (`flood-risk` by
   default) and are read by the notebook wrapper; Unity Catalog
   identifiers and the source-table name come from GitHub environment
   secrets through `--var` at deploy time. Also corrects the legacy
   `"Base "` → `"Basic "` auth-header typo and strips the Zscaler cert
   probing block that belongs on corporate networks, not serverless.
   OAuth-gated GH Actions workflow
-  (`.github/workflows/client_flood_risk_databricks.yml`) runs Spark + fake-
+  (`.github/workflows/flood_risk_databricks.yml`) runs Spark + fake-
   HTTP unit tests, validates the bundle, and deploys to the `nonprod`
   target when all three UC secrets are present. See the example's
   `README.md`.

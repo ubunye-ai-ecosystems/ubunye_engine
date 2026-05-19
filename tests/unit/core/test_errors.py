@@ -3,10 +3,14 @@
 import pytest
 
 from ubunye.core.errors import (
+    AuthInvalidError,
+    AuthNotFoundError,
+    BundleDeployError,
     ConfigError,
     ConfigFieldError,
     ConfigProfileError,
     ConfigTemplateError,
+    DeployError,
     LineageRecordNotFoundError,
     ModelLoadError,
     ModelNotFittedError,
@@ -19,6 +23,7 @@ from ubunye.core.errors import (
     SinkWriteError,
     SourceReadError,
     SparkSessionError,
+    TargetNotFoundError,
     TaskClassMissingError,
     TaskNotFoundError,
     TransformNotFoundError,
@@ -26,6 +31,7 @@ from ubunye.core.errors import (
     UbunyeError,
     VersionExistsError,
     VersionNotFoundError,
+    WorkspaceUploadError,
     WriterNotFoundError,
 )
 
@@ -90,6 +96,12 @@ class TestDualInheritance:
             (PromotionBlockedError, ValueError),
             (RegistryNotFoundError, FileNotFoundError),
             (LineageRecordNotFoundError, FileNotFoundError),
+            (DeployError, RuntimeError),
+            (AuthNotFoundError, RuntimeError),
+            (AuthInvalidError, RuntimeError),
+            (TargetNotFoundError, RuntimeError),
+            (WorkspaceUploadError, RuntimeError),
+            (BundleDeployError, RuntimeError),
         ],
     )
     def test_isinstance_stdlib(self, cls, stdlib_base):
@@ -116,3 +128,12 @@ class TestSubclassChains:
     def test_registry_hierarchy(self):
         assert issubclass(VersionExistsError, RegistryError)
         assert issubclass(RegistryError, ValueError)
+
+    def test_deploy_hierarchy(self):
+        assert issubclass(AuthNotFoundError, DeployError)
+        assert issubclass(AuthInvalidError, DeployError)
+        assert issubclass(TargetNotFoundError, DeployError)
+        assert issubclass(WorkspaceUploadError, DeployError)
+        assert issubclass(BundleDeployError, DeployError)
+        assert issubclass(DeployError, UbunyeError)
+        assert issubclass(DeployError, RuntimeError)
