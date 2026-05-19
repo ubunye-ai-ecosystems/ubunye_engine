@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytest.importorskip("databricks", reason="databricks-sdk not installed")
+
 from ubunye.core.errors import AuthInvalidError, AuthNotFoundError
 from ubunye.deploy.databricks.auth import resolve_auth
 from ubunye.deploy.databricks.targets import DatabricksTargetConfig
