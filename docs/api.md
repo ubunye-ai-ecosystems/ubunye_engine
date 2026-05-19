@@ -54,9 +54,12 @@ results = ubunye.run_pipeline(
 
 ---
 
-## Interfaces
+## Interfaces (Protocols)
 
-::: ubunye.core.interfaces
+See the full [Interfaces](interfaces.md) page for design principles,
+discovery, and auto-detection.
+
+::: ubunye.interfaces
     options:
       show_root_heading: true
       show_source: false
