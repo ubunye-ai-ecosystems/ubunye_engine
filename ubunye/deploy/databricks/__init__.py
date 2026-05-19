@@ -37,7 +37,7 @@ def deploy_task(
     from ubunye.deploy.databricks.auth import resolve_auth
     from ubunye.deploy.databricks.bundle import deploy_job
     from ubunye.deploy.databricks.notebook import generate_notebook
-    from ubunye.deploy.databricks.targets import load_targets, resolve_target
+    from ubunye.deploy.databricks.targets import resolve_target
     from ubunye.deploy.databricks.workspace import upload_task_files
 
     task_dir = Path(task_dir)
