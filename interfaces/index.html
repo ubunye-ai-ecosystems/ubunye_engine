@@ -1,0 +1,4426 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Config-first, Spark-native framework for ETL + ML pipelines powering intelligent systems">
+      
+      
+      
+        <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/interfaces/">
+      
+      
+        <link rel="prev" href="../ml/registry/">
+      
+      
+        <link rel="next" href="../cli/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Interfaces - Ubunye Engine</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#interfaces-protocol-apis" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Ubunye Engine" class="md-header__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
+      
+  <img src="../assets/ubunye-logo-black-v3.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ubunye Engine
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Interfaces
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ubunye-ai-ecosystems/ubunye_engine
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../getting_started/install/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../config/overview/" class="md-tabs__link">
+          
+  
+  
+  Config Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../connectors/overview/" class="md-tabs__link">
+          
+  
+  
+  Connectors
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../patterns/rag/" class="md-tabs__link">
+          
+  
+  
+  Patterns
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ml/model_contract/" class="md-tabs__link">
+          
+  
+  
+  ML
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Interfaces
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../dev_guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Developer Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../errors/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Error Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Ubunye Engine" class="md-nav__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
+      
+  <img src="../assets/ubunye-logo-black-v3.png" alt="logo">
+
+    </a>
+    Ubunye Engine
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ubunye-ai-ecosystems/ubunye_engine
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/structure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Config Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inputs & Outputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engine & Profiles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/transform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/jinja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Jinja Templating
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connectors
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Connectors
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connectors/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connectors/hive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connectors/jdbc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JDBC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connectors/unity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unity Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connectors/s3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    S3 / Delta
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connectors/rest_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REST API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connectors/plugin_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing a Plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patterns
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Patterns
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/rag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RAG Document Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Feature Store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/drift/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drift Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/rest_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REST API Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ML
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    ML
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ml/model_contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ml/registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design principles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design principles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision-1-non-blocking-metadata-writes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision 1 — Non-blocking metadata writes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-2-graceful-degradation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision 2 — Graceful degradation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-3-schema-evolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision 3 — Schema evolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protocols" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocols
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Protocols">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deployadapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeployAdapter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DeployAdapter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        deploy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="deploy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.deploy--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.deploy--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.get_job_url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_job_url
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="get_job_url">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.get_job_url--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.validate_target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_target
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="validate_target">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.validate_target--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeployContext
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeployResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registrybackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RegistryBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RegistryBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        delete
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.demote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        demote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="get">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.get--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.get--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.list_versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list_versions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.promote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        promote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.register" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="register">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.register--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.ModelVersionInfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ModelVersionInfo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lineagebackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LineageBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LineageBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.compact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.get_run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="get_run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.get_run--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        record
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="record">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.record--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        search
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="search">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.search--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageRecord" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LineageRecord
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authbackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AuthBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AuthBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.resolve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="resolve">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.resolve--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.resolve--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.resolve--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="validate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.validate--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.Credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credentials
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#discovery-and-auto-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discovery and auto-detection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Discovery and auto-detection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#entry-point-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry-point groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fallback-manifests-and-ubunye-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fallback manifests and ubunye sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-a-custom-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing a custom backend
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/databricks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Databricks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../databricks-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Databricks Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design principles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design principles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision-1-non-blocking-metadata-writes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision 1 — Non-blocking metadata writes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-2-graceful-degradation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision 2 — Graceful degradation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-3-schema-evolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision 3 — Schema evolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protocols" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocols
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Protocols">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deployadapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeployAdapter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DeployAdapter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        deploy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="deploy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.deploy--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.deploy--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.get_job_url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_job_url
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="get_job_url">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.get_job_url--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.validate_target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_target
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="validate_target">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployAdapter.validate_target--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeployContext
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.deploy.DeployResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeployResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registrybackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RegistryBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RegistryBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        delete
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.demote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        demote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="get">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.get--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.get--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.list_versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list_versions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.promote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        promote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.register" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="register">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.RegistryBackend.register--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.registry.ModelVersionInfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ModelVersionInfo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lineagebackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LineageBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LineageBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.compact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.get_run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="get_run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.get_run--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        record
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="record">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.record--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        search
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="search">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageBackend.search--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.lineage.LineageRecord" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LineageRecord
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authbackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AuthBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AuthBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.resolve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="resolve">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.resolve--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.resolve--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Returns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.resolve--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="validate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.AuthBackend.validate--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raises
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.interfaces.auth.Credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credentials
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#discovery-and-auto-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discovery and auto-detection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Discovery and auto-detection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#entry-point-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry-point groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fallback-manifests-and-ubunye-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fallback manifests and ubunye sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-a-custom-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing a custom backend
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/interfaces.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="interfaces-protocol-apis">Interfaces (Protocol APIs)<a class="headerlink" href="#interfaces-protocol-apis" title="Permanent link">&para;</a></h1>
+<p>Ubunye Engine defines four formal <code>typing.Protocol</code> interfaces for its
+pluggable seams.  Any class that implements the required methods satisfies
+the protocol — no inheritance needed.</p>
+<p>Implementations are discovered at runtime via
+<a href="https://packaging.python.org/en/latest/specifications/entry-points/">entry-point groups</a>
+and environment-based auto-detection.</p>
+<hr />
+<h2 id="design-principles">Design principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
+<p>Three production-policy decisions shape how every interface behaves:</p>
+<h3 id="decision-1-non-blocking-metadata-writes">Decision 1 — Non-blocking metadata writes<a class="headerlink" href="#decision-1-non-blocking-metadata-writes" title="Permanent link">&para;</a></h3>
+<p><code>record()</code>, <code>register()</code>, and <code>promote()</code> dispatch their metadata updates
+to a <strong>background worker thread</strong> with a bounded queue (default 1 000,
+configurable via <code>UBUNYE_METADATA_QUEUE_SIZE</code>).</p>
+<ul>
+<li>Queue overflow: drop oldest pending write, log a warning.</li>
+<li>Shutdown: <code>flush()</code> drains with a configurable timeout (default 30 s,
+  <code>UBUNYE_METADATA_FLUSH_TIMEOUT</code>).</li>
+<li>Artifact writes (model files) remain synchronous — the method returns
+  only after the model is safely stored.</li>
+</ul>
+<p>Uses a worker-thread pattern, not <code>async</code>/<code>await</code> — async fights Spark's
+threading model in Python.</p>
+<h3 id="decision-2-graceful-degradation">Decision 2 — Graceful degradation<a class="headerlink" href="#decision-2-graceful-degradation" title="Permanent link">&para;</a></h3>
+<p>When a metadata write fails, the record is appended to a local <strong>fallback
+manifest</strong> at <code>~/.ubunye/fallback/{run_id}/{kind}.jsonl</code>.  Pipeline
+execution continues.  <code>ubunye sync lineage</code> (or <code>ubunye sync registry</code>)
+replays the manifest with idempotent deduplication (key:
+<code>run_id + task + recorded_at</code>).</p>
+<p><strong>Auth is excluded</strong> — authentication failures always propagate
+immediately.  A pipeline must not execute with invalid credentials.</p>
+<h3 id="decision-3-schema-evolution">Decision 3 — Schema evolution<a class="headerlink" href="#decision-3-schema-evolution" title="Permanent link">&para;</a></h3>
+<p>Every cross-boundary dataclass separates <strong>strict core fields</strong> from a
+flexible <code>metadata: Dict[str, str]</code>:</p>
+<ul>
+<li>Core fields never change without a major engine version bump.</li>
+<li>New data goes into <code>metadata</code> — old clients ignore unknown keys, new
+  clients write new keys without touching the schema.</li>
+<li>Every record stamps <code>engine_version</code> so downstream consumers can filter
+  by writer version.</li>
+</ul>
+<hr />
+<h2 id="protocols">Protocols<a class="headerlink" href="#protocols" title="Permanent link">&para;</a></h2>
+<h3 id="deployadapter">DeployAdapter<a class="headerlink" href="#deployadapter" title="Permanent link">&para;</a></h3>
+<p>Deploys a task's config and artifacts to a remote environment.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeployAdapter</span><span class="p">,</span> <span class="n">DeployContext</span><span class="p">,</span> <span class="n">DeployResult</span>
+</code></pre></div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="typing.Protocol">Protocol</span></code></p>
+
+
+
+        <p>Structural interface for deployment backends.</p>
+<p>Each adapter is responsible for:</p>
+<ol>
+<li>Validating that the target dict contains the fields it needs.</li>
+<li>Preparing artifacts (notebooks, config bundles) for the target.</li>
+<li>Uploading artifacts and creating/updating the remote job.</li>
+<li>Returning a :class:<code>DeployResult</code> with job metadata.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="ubunye.interfaces.deploy.DeployAdapter.name" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">name</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#ubunye.interfaces.deploy.DeployAdapter.name" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">name</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Short identifier for this adapter (e.g. <code>"databricks"</code>).</p>
+
+    </div>
+
+</div>
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.deploy.DeployAdapter.deploy" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">deploy</span>
+
+
+<a href="#ubunye.interfaces.deploy.DeployAdapter.deploy" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">deploy</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Deploy a task to the target environment.</p>
+<h6 id="ubunye.interfaces.deploy.DeployAdapter.deploy--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.deploy.DeployAdapter.deploy--parameters" title="Permanent link">&para;</a></h6>
+<p>ctx:
+    Task metadata, config dict, and filesystem paths.
+target:
+    Adapter-specific target configuration (validated by the
+    adapter via :meth:<code>validate_target</code>).
+dry_run:
+    If <code>True</code>, build and return the job spec without making
+    any remote API calls.</p>
+<h6 id="ubunye.interfaces.deploy.DeployAdapter.deploy--returns">Returns<a class="headerlink" href="#ubunye.interfaces.deploy.DeployAdapter.deploy--returns" title="Permanent link">&para;</a></h6>
+<p>DeployResult
+    Job metadata including name, id, spec, and workspace path.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.deploy.DeployAdapter.get_job_url" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">get_job_url</span>
+
+
+<a href="#ubunye.interfaces.deploy.DeployAdapter.get_job_url" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get_job_url</span><span class="p">(</span><span class="n">job_id</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return a browser URL to the deployed job.</p>
+<h6 id="ubunye.interfaces.deploy.DeployAdapter.get_job_url--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.deploy.DeployAdapter.get_job_url--parameters" title="Permanent link">&para;</a></h6>
+<p>job_id:
+    The job identifier returned by :meth:<code>deploy</code>.
+target:
+    The same target dict, which typically contains the host URL.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.deploy.DeployAdapter.validate_target" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">validate_target</span>
+
+
+<a href="#ubunye.interfaces.deploy.DeployAdapter.validate_target" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">validate_target</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Validate adapter-specific target config.</p>
+<h6 id="ubunye.interfaces.deploy.DeployAdapter.validate_target--raises">Raises<a class="headerlink" href="#ubunye.interfaces.deploy.DeployAdapter.validate_target--raises" title="Permanent link">&para;</a></h6>
+<p>ubunye.core.errors.TargetNotFoundError
+    When required keys are missing or values are invalid.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="ubunye.interfaces.deploy.DeployContext" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ubunye.interfaces.deploy.DeployContext</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ubunye.interfaces.deploy.DeployContext" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Structured metadata for a deploy operation.</p>
+<p>Callers construct this from CLI flags and the parsed config; the
+adapter never derives task identity from filesystem paths.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="ubunye.interfaces.deploy.DeployResult" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ubunye.interfaces.deploy.DeployResult</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ubunye.interfaces.deploy.DeployResult" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Returned by :meth:<code>DeployAdapter.deploy</code>.</p>
+<p><code>metadata</code> carries adapter-specific extras (notebook source, cluster
+id, etc.) without polluting the core fields.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><p><strong>Built-in</strong>: <code>DatabricksDeployAdapter</code> — entry point <code>ubunye.deploy_adapters:databricks</code>.</p>
+<hr />
+<h3 id="registrybackend">RegistryBackend<a class="headerlink" href="#registrybackend" title="Permanent link">&para;</a></h3>
+<p>Model lifecycle management: register, promote, demote, delete.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegistryBackend</span><span class="p">,</span> <span class="n">ModelVersionInfo</span>
+</code></pre></div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="typing.Protocol">Protocol</span></code></p>
+
+
+
+        <p>Structural interface for model registries.</p>
+<p>Concrete implementations: <code>FilesystemRegistryBackend</code> (built-in),
+<code>MLflowRegistryBackend</code> (Phase 2).</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.registry.RegistryBackend.delete" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">delete</span>
+
+
+<a href="#ubunye.interfaces.registry.RegistryBackend.delete" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">delete</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Remove a version and its artifacts.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.registry.RegistryBackend.demote" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">demote</span>
+
+
+<a href="#ubunye.interfaces.registry.RegistryBackend.demote" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">demote</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">to_stage</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Demote a version to a lower stage.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.registry.RegistryBackend.get" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">get</span>
+
+
+<a href="#ubunye.interfaces.registry.RegistryBackend.get" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Retrieve a model version by exact version or active stage.</p>
+<h6 id="ubunye.interfaces.registry.RegistryBackend.get--returns">Returns<a class="headerlink" href="#ubunye.interfaces.registry.RegistryBackend.get--returns" title="Permanent link">&para;</a></h6>
+<p>tuple of (artifact_path, ModelVersionInfo)
+    <code>artifact_path</code> is an opaque string — it may be a local
+    path, an MLflow artifact URI, or a cloud storage URL.
+    Callers pass it to <code>ModelClass.load(artifact_path)</code>.</p>
+<h6 id="ubunye.interfaces.registry.RegistryBackend.get--raises">Raises<a class="headerlink" href="#ubunye.interfaces.registry.RegistryBackend.get--raises" title="Permanent link">&para;</a></h6>
+<p>ubunye.core.errors.VersionNotFoundError
+    When no matching version exists.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.registry.RegistryBackend.list_versions" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">list_versions</span>
+
+
+<a href="#ubunye.interfaces.registry.RegistryBackend.list_versions" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">list_versions</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>List all registered versions, newest first.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.registry.RegistryBackend.promote" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">promote</span>
+
+
+<a href="#ubunye.interfaces.registry.RegistryBackend.promote" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">promote</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">to_stage</span><span class="p">,</span> <span class="n">gates</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">promoted_by</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Promote a version to a higher lifecycle stage.</p>
+<p>If <code>gates</code> are provided, all checks must pass before the
+transition.  On gate failure, raises
+:class:<code>~ubunye.core.errors.PromotionBlockedError</code> — this is
+NOT caught by the graceful degradation layer (auth and gate
+failures must propagate).</p>
+<p>Metadata update is non-blocking per Decision 1.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.registry.RegistryBackend.register" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">register</span>
+
+
+<a href="#ubunye.interfaces.registry.RegistryBackend.register" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">register</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage_run_id</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Register a trained model as a new version.</p>
+<p>Artifact writes are synchronous — the method returns only after
+the model is safely persisted.  Index/metadata updates are
+non-blocking per Decision 1.</p>
+<h6 id="ubunye.interfaces.registry.RegistryBackend.register--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.registry.RegistryBackend.register--parameters" title="Permanent link">&para;</a></h6>
+<p>use_case:
+    Logical namespace (e.g. <code>"fraud_detection"</code>).
+model_name:
+    Model identifier within the use case.
+version:
+    Explicit semver string, or <code>None</code> for auto-increment.
+model:
+    A trained model instance whose <code>save()</code>/<code>metadata()</code>
+    methods will be called by the backend.
+metrics:
+    Training metrics dict.
+metadata:
+    Optional flexible key-value pairs (Decision 3).
+lineage_run_id:
+    Optional lineage run ID for cross-referencing.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="ubunye.interfaces.registry.ModelVersionInfo" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ubunye.interfaces.registry.ModelVersionInfo</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ubunye.interfaces.registry.ModelVersionInfo" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Cross-boundary model version record (Decision 3 compliant).</p>
+<p>Core fields are strict; everything else goes into <code>metadata</code>.
+Every record stamps <code>engine_version</code> so downstream consumers can
+filter by writer version.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><p><strong>Built-in</strong>:</p>
+<ul>
+<li><code>FilesystemRegistryBackend</code> — entry point <code>ubunye.registry_backends:filesystem</code>.</li>
+<li><code>MLflowRegistryBackend</code> — entry point <code>ubunye.registry_backends:mlflow</code>.
+  Layers MLflow experiment/run logging on top of filesystem storage.
+  MLflow logging is best-effort — never blocks the pipeline.</li>
+</ul>
+<hr />
+<h3 id="lineagebackend">LineageBackend<a class="headerlink" href="#lineagebackend" title="Permanent link">&para;</a></h3>
+<p>Run provenance: record, search, compact.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">LineageBackend</span><span class="p">,</span> <span class="n">LineageRecord</span>
+</code></pre></div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="typing.Protocol">Protocol</span></code></p>
+
+
+
+        <p>Structural interface for lineage storage backends.</p>
+<p>Concrete implementations: <code>FilesystemLineageBackend</code> (built-in),
+<code>DeltaLineageBackend</code> (Phase 2).</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.lineage.LineageBackend.compact" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">compact</span>
+
+
+<a href="#ubunye.interfaces.lineage.LineageBackend.compact" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">compact</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Optimize the underlying storage.</p>
+<p>For filesystem backends this is a no-op.  For Delta backends
+this triggers <code>OPTIMIZE</code> on the lineage table.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.lineage.LineageBackend.get_run" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">get_run</span>
+
+
+<a href="#ubunye.interfaces.lineage.LineageBackend.get_run" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get_run</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Load a single run record by ID.</p>
+<h6 id="ubunye.interfaces.lineage.LineageBackend.get_run--raises">Raises<a class="headerlink" href="#ubunye.interfaces.lineage.LineageBackend.get_run--raises" title="Permanent link">&para;</a></h6>
+<p>ubunye.core.errors.LineageRecordNotFoundError
+    When no record exists for <code>run_id</code>.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.lineage.LineageBackend.record" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">record</span>
+
+
+<a href="#ubunye.interfaces.lineage.LineageBackend.record" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">record</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Persist a lineage record (non-blocking per Decision 1).</p>
+<p>Creates or overwrites the record for the given <code>run_id</code>.
+Typically called twice per task: once at start
+(<code>status="running"</code>) and once at end (<code>status="success"</code>
+or <code>"error"</code>).</p>
+<p>The actual write is dispatched to a background worker thread.
+On failure, the record is written to a fallback manifest
+(Decision 2).</p>
+<h6 id="ubunye.interfaces.lineage.LineageBackend.record--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.lineage.LineageBackend.record--parameters" title="Permanent link">&para;</a></h6>
+<p>record:
+    The lineage record to persist.  Callers construct this
+    with the current engine version and task metadata.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.lineage.LineageBackend.search" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">search</span>
+
+
+<a href="#ubunye.interfaces.lineage.LineageBackend.search" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">search</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">usecase</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pipeline</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">since</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Search across recorded runs with optional filters.</p>
+<h6 id="ubunye.interfaces.lineage.LineageBackend.search--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.lineage.LineageBackend.search--parameters" title="Permanent link">&para;</a></h6>
+<p>task:
+    Filter by task name.
+usecase:
+    Filter by use case.
+pipeline:
+    Filter by pipeline.
+status:
+    Filter by status (<code>"success"</code>, <code>"error"</code>, <code>"running"</code>).
+since:
+    ISO-8601 datetime; only return runs recorded at or after.
+limit:
+    Maximum number of records to return.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="ubunye.interfaces.lineage.LineageRecord" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ubunye.interfaces.lineage.LineageRecord</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ubunye.interfaces.lineage.LineageRecord" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Cross-boundary lineage record (Decision 3 compliant).</p>
+<p>Core columns are strict; everything else goes into <code>metadata</code>.
+Every record stamps <code>engine_version</code> so analysts can filter by
+writer version.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><p><strong>Built-in</strong>:</p>
+<ul>
+<li><code>FileSystemLineageStore</code> — entry point <code>ubunye.lineage_backends:filesystem</code>.
+  Uses a <code>run_id→Path</code> index for O(1) lookups and an in-memory
+  <code>RunContext</code> cache to avoid repeated JSON parsing on search.</li>
+<li><code>DeltaLineageBackend</code> — entry point <code>ubunye.lineage_backends:delta</code>.
+  Writes to a Delta table via Spark SQL on Databricks; falls back to
+  JSONL files locally.</li>
+</ul>
+<hr />
+<h3 id="authbackend">AuthBackend<a class="headerlink" href="#authbackend" title="Permanent link">&para;</a></h3>
+<p>Credential resolution and validation.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuthBackend</span><span class="p">,</span> <span class="n">Credentials</span>
+</code></pre></div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="typing.Protocol">Protocol</span></code></p>
+
+
+
+        <p>Structural interface for authentication backends.</p>
+<p>Concrete implementations: <code>TokenAuthBackend</code> (built-in),
+<code>ServicePrincipalAuthBackend</code> (Phase 2).</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.auth.AuthBackend.resolve" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">resolve</span>
+
+
+<a href="#ubunye.interfaces.auth.AuthBackend.resolve" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">resolve</span><span class="p">(</span><span class="n">workspace_url</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Resolve credentials for the given workspace.</p>
+<h6 id="ubunye.interfaces.auth.AuthBackend.resolve--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.auth.AuthBackend.resolve--parameters" title="Permanent link">&para;</a></h6>
+<p>workspace_url:
+    The Databricks (or other) workspace host URL.
+**kwargs:
+    Backend-specific hints (e.g. <code>token_env="MY_TOKEN"</code>).</p>
+<h6 id="ubunye.interfaces.auth.AuthBackend.resolve--returns">Returns<a class="headerlink" href="#ubunye.interfaces.auth.AuthBackend.resolve--returns" title="Permanent link">&para;</a></h6>
+<p>Credentials
+    Populated credentials ready for client construction.</p>
+<h6 id="ubunye.interfaces.auth.AuthBackend.resolve--raises">Raises<a class="headerlink" href="#ubunye.interfaces.auth.AuthBackend.resolve--raises" title="Permanent link">&para;</a></h6>
+<p>ubunye.core.errors.AuthNotFoundError
+    When credentials cannot be located (missing env var, etc.).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.interfaces.auth.AuthBackend.validate" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">validate</span>
+
+
+<a href="#ubunye.interfaces.auth.AuthBackend.validate" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">validate</span><span class="p">(</span><span class="n">credentials</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Validate that credentials are accepted by the workspace.</p>
+<p>Returns <code>True</code> on success.</p>
+<h6 id="ubunye.interfaces.auth.AuthBackend.validate--raises">Raises<a class="headerlink" href="#ubunye.interfaces.auth.AuthBackend.validate--raises" title="Permanent link">&para;</a></h6>
+<p>ubunye.core.errors.AuthInvalidError
+    When the workspace rejects the credentials.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="ubunye.interfaces.auth.Credentials" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ubunye.interfaces.auth.Credentials</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ubunye.interfaces.auth.Credentials" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Resolved authentication credentials.</p>
+<p>The <code>auth_type</code> field tells callers which fields are populated.
+<code>metadata</code> carries backend-specific extras (e.g. token expiry,
+scope, tenant ID) without polluting the core fields.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><p><strong>Built-in</strong>:</p>
+<ul>
+<li><code>TokenAuthBackend</code> — entry point <code>ubunye.auth_backends:token</code>.</li>
+<li><code>ServicePrincipalAuthBackend</code> — entry point <code>ubunye.auth_backends:service_principal</code>.
+  Uses <code>DATABRICKS_CLIENT_ID</code> + <code>DATABRICKS_CLIENT_SECRET</code> for OAuth M2M auth.</li>
+</ul>
+<hr />
+<h2 id="discovery-and-auto-detection">Discovery and auto-detection<a class="headerlink" href="#discovery-and-auto-detection" title="Permanent link">&para;</a></h2>
+<h3 id="entry-point-groups">Entry-point groups<a class="headerlink" href="#entry-point-groups" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Built-in name</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ubunye.deploy_adapters</code></td>
+<td><code>databricks</code></td>
+<td><code>DatabricksDeployAdapter</code></td>
+</tr>
+<tr>
+<td><code>ubunye.registry_backends</code></td>
+<td><code>filesystem</code></td>
+<td><code>FilesystemRegistryBackend</code></td>
+</tr>
+<tr>
+<td><code>ubunye.registry_backends</code></td>
+<td><code>mlflow</code></td>
+<td><code>MLflowRegistryBackend</code></td>
+</tr>
+<tr>
+<td><code>ubunye.lineage_backends</code></td>
+<td><code>filesystem</code></td>
+<td><code>FileSystemLineageStore</code></td>
+</tr>
+<tr>
+<td><code>ubunye.lineage_backends</code></td>
+<td><code>delta</code></td>
+<td><code>DeltaLineageBackend</code></td>
+</tr>
+<tr>
+<td><code>ubunye.auth_backends</code></td>
+<td><code>token</code></td>
+<td><code>TokenAuthBackend</code></td>
+</tr>
+<tr>
+<td><code>ubunye.auth_backends</code></td>
+<td><code>service_principal</code></td>
+<td><code>ServicePrincipalAuthBackend</code></td>
+</tr>
+</tbody>
+</table>
+<p>Third-party packages register backends by adding entry points under these
+groups in their <code>pyproject.toml</code>.</p>
+<h3 id="auto-detection">Auto-detection<a class="headerlink" href="#auto-detection" title="Permanent link">&para;</a></h3>
+<p>When no backend is explicitly configured, the engine probes the
+environment:</p>
+<table>
+<thead>
+<tr>
+<th>Seam</th>
+<th>Probe</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Registry</td>
+<td><code>DATABRICKS_RUNTIME_VERSION</code> + <code>mlflow</code> importable</td>
+<td><code>"mlflow"</code></td>
+</tr>
+<tr>
+<td>Registry</td>
+<td>Otherwise</td>
+<td><code>"filesystem"</code></td>
+</tr>
+<tr>
+<td>Lineage</td>
+<td><code>UBUNYE_LINEAGE_TABLE</code> env var set</td>
+<td><code>"delta"</code></td>
+</tr>
+<tr>
+<td>Lineage</td>
+<td>Otherwise</td>
+<td><code>"filesystem"</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><code>DATABRICKS_CLIENT_ID</code> + <code>DATABRICKS_CLIENT_SECRET</code></td>
+<td><code>"service_principal"</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><code>DATABRICKS_TOKEN</code></td>
+<td><code>"token"</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>None</td>
+<td>Raises <code>AuthNotFoundError</code></td>
+</tr>
+</tbody>
+</table>
+<p>Service principal takes priority over token when both are set.</p>
+<hr />
+<h2 id="fallback-manifests-and-ubunye-sync">Fallback manifests and <code>ubunye sync</code><a class="headerlink" href="#fallback-manifests-and-ubunye-sync" title="Permanent link">&para;</a></h2>
+<p>When a metadata write fails (Decision 2), the record is appended to:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>~/.ubunye/fallback/{run_id}/{kind}.jsonl
+</code></pre></div>
+<p>Each line is a JSON object with all record fields plus a <code>_fallback_at</code>
+timestamp.</p>
+<p>Replay with:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>lineage<span class="w">                    </span><span class="c1"># replay all lineage manifests</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>lineage<span class="w"> </span>--run-id<span class="w"> </span>abc123<span class="w">    </span><span class="c1"># replay a specific run</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>registry<span class="w">                   </span><span class="c1"># replay all registry manifests</span>
+</code></pre></div>
+<p>Deduplication key: <code>run_id + task + recorded_at</code>.  Replayed manifests are
+archived to <code>~/.ubunye/fallback/synced/</code>.</p>
+<hr />
+<h2 id="writing-a-custom-backend">Writing a custom backend<a class="headerlink" href="#writing-a-custom-backend" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Implement the protocol methods (no base class needed).</li>
+<li>
+<p>Register the entry point in your <code>pyproject.toml</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;ubunye.lineage_backends&quot;</span><span class="k">]</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">my_backend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my_package.lineage:MyLineageBackend&quot;</span>
+</code></pre></div>
+</li>
+<li>
+<p>Install the package (<code>pip install -e .</code>).</p>
+</li>
+<li>
+<p>The engine discovers it automatically:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye._internal.discovery</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_lineage_backend</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="bp">cls</span> <span class="o">=</span> <span class="n">get_lineage_backend</span><span class="p">(</span><span class="s2">&quot;my_backend&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">store</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+</code></pre></div>
+</li>
+</ol>
+
+
+
+
+
+
+
+  
+    
+  
+  
+    
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="May 19, 2026 21:17:01 UTC">May 19, 2026</span>
+  </span>
+
+    
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Created">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="May 19, 2026 21:17:01 UTC">May 19, 2026</span>
+  </span>
+
+    
+    
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      © 2026 Ubunye
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tabs", "navigation.tracking", "navigation.sections", "navigation.expand", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
