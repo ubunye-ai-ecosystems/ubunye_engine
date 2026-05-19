@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ubunye-engine"
-version = "0.1.8"
+version = "0.2.0"
 description = "Config-first, Spark-native ETL/ML engine with a modular plugin system"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -56,6 +56,21 @@ lineage = "ubunye.lineage.recorder:LineageRecorder"
 events     = "ubunye.telemetry.hooks.events:EventLoggerHook"
 otel       = "ubunye.telemetry.hooks.otel:OTelHook"
 prometheus = "ubunye.telemetry.hooks.prometheus:PrometheusHook"
+
+[project.entry-points."ubunye.deploy_adapters"]
+databricks = "ubunye.deploy.databricks:DatabricksDeployAdapter"
+
+[project.entry-points."ubunye.registry_backends"]
+filesystem = "ubunye.models.registry:FilesystemRegistryBackend"
+mlflow = "ubunye.models.mlflow_registry:MLflowRegistryBackend"
+
+[project.entry-points."ubunye.lineage_backends"]
+filesystem = "ubunye.lineage.storage:FileSystemLineageStore"
+delta = "ubunye.lineage.delta_store:DeltaLineageBackend"
+
+[project.entry-points."ubunye.auth_backends"]
+token = "ubunye.deploy.databricks.auth:TokenAuthBackend"
+service_principal = "ubunye.deploy.databricks.auth:ServicePrincipalAuthBackend"
 
 [tool.setuptools.packages.find]
 include = ["ubunye*"]

@@ -15,6 +15,52 @@ from __future__ import annotations
 from datetime import datetime
 
 import pytest
+from pyspark.sql.types import (
+    DoubleType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
+)
+
+MI_SCHEMA = StructType([
+    StructField("source_data", StringType(), True),
+    StructField("policy_no", StringType(), True),
+    StructField("policy_number", StringType(), True),
+    StructField("policy_inception_date", TimestampType(), True),
+    StructField("item_inception_date", TimestampType(), True),
+    StructField("cancelled_date", TimestampType(), True),
+    StructField("eff_from_date", TimestampType(), True),
+    StructField("eff_to_date", TimestampType(), True),
+    StructField("section_code", StringType(), True),
+    StructField("cover_code", StringType(), True),
+    StructField("item_description", StringType(), True),
+    StructField("veh_make", StringType(), True),
+    StructField("veh_model", StringType(), True),
+    StructField("registration", StringType(), True),
+    StructField("vin_number", StringType(), True),
+    StructField("imei_number", StringType(), True),
+    StructField("cover_premium", DoubleType(), True),
+    StructField("cover_sum_insured", DoubleType(), True),
+    StructField("cover_description", StringType(), True),
+    StructField("policy_status", StringType(), True),
+    StructField("cover_status", StringType(), True),
+    StructField("lob_asset_id", StringType(), True),
+    StructField("item_no_raw", StringType(), True),
+    StructField("policy_cancellation_reason_code", StringType(), True),
+    StructField("end_date", TimestampType(), True),
+    StructField("effective_from_date", TimestampType(), True),
+    StructField("effective_to_date", TimestampType(), True),
+    StructField("effective_year_month", StringType(), True),
+    StructField("effective_year", IntegerType(), True),
+    StructField("effective_quarter", IntegerType(), True),
+    StructField("effective_month", IntegerType(), True),
+    StructField("effective_year_quarter", StringType(), True),
+    StructField("item_cancelled_date", TimestampType(), True),
+    StructField("premium_collected", DoubleType(), True),
+    StructField("active_lob_asset_id", StringType(), True),
+])
 from transformations import (  # noqa: E402 (conftest mutates sys.path)
     OUTPUT_COLUMNS,
     _correct_installation,
@@ -130,18 +176,7 @@ def test_end_to_end_schema_matches_contract(spark):
                 100.0, "A1",
             )
         ],
-        [
-            "source_data", "policy_no", "policy_number", "policy_inception_date", "item_inception_date",
-            "cancelled_date", "eff_from_date", "eff_to_date",
-            "section_code", "cover_code", "item_description", "veh_make", "veh_model", "registration",
-            "vin_number", "imei_number",
-            "cover_premium", "cover_sum_insured", "cover_description", "policy_status", "cover_status",
-            "lob_asset_id", "item_no_raw", "policy_cancellation_reason_code",
-            "end_date", "effective_from_date", "effective_to_date",
-            "effective_year_month", "effective_year", "effective_quarter", "effective_month",
-            "effective_year_quarter", "item_cancelled_date",
-            "premium_collected", "active_lob_asset_id",
-        ],
+        MI_SCHEMA,
     )
 
     pdd = spark.createDataFrame(
@@ -177,18 +212,7 @@ def test_right_join_keeps_mi_rows_without_device(spark):
                 50.0, "A_UNSEEN",
             )
         ],
-        [
-            "source_data", "policy_no", "policy_number", "policy_inception_date", "item_inception_date",
-            "cancelled_date", "eff_from_date", "eff_to_date",
-            "section_code", "cover_code", "item_description", "veh_make", "veh_model", "registration",
-            "vin_number", "imei_number",
-            "cover_premium", "cover_sum_insured", "cover_description", "policy_status", "cover_status",
-            "lob_asset_id", "item_no_raw", "policy_cancellation_reason_code",
-            "end_date", "effective_from_date", "effective_to_date",
-            "effective_year_month", "effective_year", "effective_quarter", "effective_month",
-            "effective_year_quarter", "item_cancelled_date",
-            "premium_collected", "active_lob_asset_id",
-        ],
+        MI_SCHEMA,
     )
     pdd = spark.createDataFrame(
         [],

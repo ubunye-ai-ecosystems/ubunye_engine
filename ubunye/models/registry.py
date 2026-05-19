@@ -17,6 +17,7 @@ automatically archived to ensure there is only one production version at a time.
 
 from __future__ import annotations
 
+import importlib.metadata as _meta
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -30,8 +31,17 @@ from ubunye.core.errors import (
     VersionExistsError,
     VersionNotFoundError,
 )
+from ubunye.interfaces.registry import ModelVersionInfo
 from ubunye.models.base import UbunyeModel
 from ubunye.models.gates import PromotionGate
+
+
+def _engine_version() -> str:
+    try:
+        return _meta.version("ubunye-engine")
+    except _meta.PackageNotFoundError:
+        return "unknown"
+
 
 # ---------------------------------------------------------------------------
 # Enums and Dataclasses
@@ -67,6 +77,32 @@ class ModelVersion:
         # Coerce stage string back to enum (needed when deserialising from dict)
         if isinstance(self.stage, str):
             self.stage = ModelStage(self.stage)
+
+    def to_info(self, *, name: str = "", artifact_path: str = "") -> ModelVersionInfo:
+        """Convert to the cross-boundary :class:`ModelVersionInfo` type."""
+        meta: Dict[str, str] = {}
+        if self.lineage_run_id:
+            meta["lineage_run_id"] = self.lineage_run_id
+        if self.config_hash:
+            meta["config_hash"] = self.config_hash
+        if self.promoted_by:
+            meta["promoted_by"] = self.promoted_by
+        if self.promoted_to_staging:
+            meta["promoted_to_staging"] = self.promoted_to_staging
+        if self.promoted_to_prod:
+            meta["promoted_to_prod"] = self.promoted_to_prod
+        if self.archived_at:
+            meta["archived_at"] = self.archived_at
+        return ModelVersionInfo(
+            name=name,
+            version=self.version,
+            stage=self.stage.value if isinstance(self.stage, ModelStage) else self.stage,
+            created_at=self.registered_at,
+            engine_version=_engine_version(),
+            artifact_path=artifact_path,
+            metrics=dict(self.metrics),
+            metadata=meta,
+        )
 
 
 @dataclass
@@ -464,6 +500,146 @@ class ModelRegistry:
                 hint="Check the version string or list versions with 'ubunye models list'.",
             )
         return mv
+
+
+# ---------------------------------------------------------------------------
+# FilesystemRegistryBackend — RegistryBackend protocol adapter
+# ---------------------------------------------------------------------------
+
+
+class FilesystemRegistryBackend:
+    """Adapts :class:`ModelRegistry` to the :class:`RegistryBackend` protocol.
+
+    Delegates all operations to the underlying ``ModelRegistry`` and
+    converts between the legacy ``ModelVersion`` type and the protocol's
+    ``ModelVersionInfo``.
+
+    The filesystem backend is intentionally synchronous — local disk
+    writes are fast enough that the overhead of a background worker
+    thread is counterproductive.  Network-backed implementations
+    (e.g. ``MLflowRegistryBackend``) will use
+    :class:`~ubunye._internal.metadata_worker.MetadataWorker` for
+    non-blocking index updates while keeping artifact writes synchronous.
+    """
+
+    def __init__(self, store_path: str) -> None:
+        self._registry = ModelRegistry(store_path)
+        self._store_path = store_path
+
+    def flush(self, timeout: Optional[float] = None) -> int:
+        """No-op for filesystem backend — writes are synchronous."""
+        return 0
+
+    def register(
+        self,
+        *,
+        use_case: str,
+        model_name: str,
+        version: Optional[str],
+        model: Any,
+        metrics: Dict[str, Any],
+        metadata: Optional[Dict[str, str]] = None,
+        lineage_run_id: Optional[str] = None,
+    ) -> ModelVersionInfo:
+        mv = self._registry.register(
+            use_case=use_case,
+            model_name=model_name,
+            version=version,
+            model=model,
+            metrics=metrics,
+            lineage_run_id=lineage_run_id,
+        )
+        artifact_path = str(self._registry._version_dir(use_case, model_name, mv.version) / "model")
+        info = mv.to_info(name=model_name, artifact_path=artifact_path)
+        if metadata:
+            info.metadata.update(metadata)
+        return info
+
+    def get(
+        self,
+        *,
+        use_case: str,
+        model_name: str,
+        version: Optional[str] = None,
+        stage: Optional[str] = None,
+    ) -> Tuple[str, ModelVersionInfo]:
+        model_stage = ModelStage(stage) if stage else None
+        artifact_path, mv = self._registry.get_model(
+            use_case=use_case,
+            model_name=model_name,
+            version=version,
+            stage=model_stage,
+        )
+        return artifact_path, mv.to_info(name=model_name, artifact_path=artifact_path)
+
+    def list_versions(
+        self,
+        *,
+        use_case: str,
+        model_name: str,
+    ) -> List[ModelVersionInfo]:
+        versions = self._registry.list_versions(use_case, model_name)
+        return [
+            mv.to_info(
+                name=model_name,
+                artifact_path=str(
+                    self._registry._version_dir(use_case, model_name, mv.version) / "model"
+                ),
+            )
+            for mv in versions
+        ]
+
+    def promote(
+        self,
+        *,
+        use_case: str,
+        model_name: str,
+        version: str,
+        to_stage: str,
+        gates: Optional[Dict[str, Any]] = None,
+        promoted_by: Optional[str] = None,
+    ) -> ModelVersionInfo:
+        mv = self._registry.promote(
+            use_case=use_case,
+            model_name=model_name,
+            version=version,
+            to_stage=ModelStage(to_stage),
+            promoted_by=promoted_by,
+            gates=gates,
+        )
+        return mv.to_info(name=model_name)
+
+    def demote(
+        self,
+        *,
+        use_case: str,
+        model_name: str,
+        version: str,
+        to_stage: str,
+    ) -> ModelVersionInfo:
+        mv = self._registry.demote(
+            use_case=use_case,
+            model_name=model_name,
+            version=version,
+            to_stage=ModelStage(to_stage),
+        )
+        return mv.to_info(name=model_name)
+
+    def delete(
+        self,
+        *,
+        use_case: str,
+        model_name: str,
+        version: str,
+    ) -> None:
+        import shutil
+
+        version_dir = self._registry._version_dir(use_case, model_name, version)
+        if version_dir.exists():
+            shutil.rmtree(version_dir)
+        record = self._registry._load_record(use_case, model_name)
+        record.versions.pop(version, None)
+        self._registry._save_record(record)
 
 
 # ---------------------------------------------------------------------------
