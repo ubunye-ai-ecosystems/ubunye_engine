@@ -45,8 +45,7 @@ CONFIG:
         - name: country_code
           type: string
 
-  transform:
-    type: noop
+  transform: {}
 
   outputs:
     risk_alerts:

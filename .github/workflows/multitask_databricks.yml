@@ -124,3 +124,7 @@ jobs:
         if: ${{ steps.check_secrets.outputs.has_secrets == 'true' && github.event_name == 'workflow_dispatch' && inputs.run_after_deploy }}
         working-directory: ${{ env.EXAMPLE_DIR }}
         run: databricks bundle run titanic_multitask --target nonprod
+
+      - name: Notebook output link
+        if: ${{ steps.check_secrets.outputs.has_secrets == 'true' && github.event_name == 'workflow_dispatch' && inputs.run_after_deploy }}
+        run: echo "::notice::Notebook cell output is only visible in the Databricks job UI. Visit ${DATABRICKS_HOST}/#job/list to find the run."

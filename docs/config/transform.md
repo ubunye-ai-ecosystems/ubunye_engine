@@ -8,34 +8,33 @@
 
 ```yaml
 CONFIG:
+  transform: {}           # type is optional — defaults to Task class
+```
+
+When `type` is omitted (or the section is `{}`), the engine uses the `Task` subclass
+from `transformations.py` in the task directory. This is the recommended form for all
+standard pipelines.
+
+If you need a specific transform plugin, set `type` explicitly:
+
+```yaml
+CONFIG:
   transform:
-    type: noop      # required — transform type name
-    params: {}      # optional — passed to the transform plugin
+    type: model           # explicit plugin name
+    params: {}            # optional — passed to the transform plugin
 ```
 
 ---
 
 ## Built-in transform types
 
-### `noop` — pass-through
+### Default — Task class (recommended)
 
-The default transform. Passes all inputs straight to outputs with no modification.
-Useful for pure connector moves (e.g. Hive → Delta).
-
-```yaml
-transform:
-  type: noop
-```
-
----
-
-### `task` — Python Task class
-
-Loads `transformations.py` from the task directory and calls the `Task` subclass.
+When `transform` has no `type`, the engine loads `transformations.py` and calls the
+user's `Task` subclass. This is the standard pattern for ETL and ML pipelines.
 
 ```yaml
-transform:
-  type: task
+transform: {}
 ```
 
 **`transformations.py`:**

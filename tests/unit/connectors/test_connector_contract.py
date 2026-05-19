@@ -109,8 +109,8 @@ class PluginContractTest(ABC):
     # ------------------------------------------------------------------
 
     def test_bad_read_cfg_raises(self):
-        """Missing required field should raise ValueError (not KeyError or AttributeError)."""
-        with pytest.raises((ValueError, KeyError, TypeError)):
+        """Missing required field should raise a meaningful error."""
+        with pytest.raises((ValueError, KeyError, TypeError, IOError)):
             self.make_reader().read(self.bad_read_cfg(), _make_backend())
 
 
@@ -207,19 +207,27 @@ class TestJdbcPlugin(PluginContractTest):
     # --- JDBC-specific ---
 
     def test_read_requires_url(self):
-        with pytest.raises(ValueError, match="url"):
+        from ubunye.core.errors import SourceReadError
+
+        with pytest.raises(SourceReadError, match="url"):
             self.make_reader().read({"format": "jdbc"}, _make_backend())
 
     def test_read_requires_table_or_sql(self):
-        with pytest.raises(ValueError):
+        from ubunye.core.errors import SourceReadError
+
+        with pytest.raises(SourceReadError):
             self.make_reader().read({"format": "jdbc", "url": "jdbc:x"}, _make_backend())
 
     def test_write_requires_url(self):
-        with pytest.raises(ValueError, match="url"):
+        from ubunye.core.errors import SinkWriteError
+
+        with pytest.raises(SinkWriteError, match="url"):
             self.make_writer().write(_make_df(), {"format": "jdbc", "table": "t"}, _make_backend())
 
     def test_write_requires_table(self):
-        with pytest.raises(ValueError):
+        from ubunye.core.errors import SinkWriteError
+
+        with pytest.raises(SinkWriteError):
             self.make_writer().write(
                 _make_df(), {"format": "jdbc", "url": "jdbc:x"}, _make_backend()
             )
@@ -278,7 +286,9 @@ class TestS3Plugin(PluginContractTest):
     # --- S3Reader-specific ---
 
     def test_read_requires_path(self):
-        with pytest.raises(ValueError, match="path"):
+        from ubunye.core.errors import SourceReadError
+
+        with pytest.raises(SourceReadError, match="path"):
             self.make_reader().read({"format": "s3"}, _make_backend())
 
     def test_read_calls_spark_read_format_load(self):
@@ -326,7 +336,9 @@ class TestS3Plugin(PluginContractTest):
     # --- S3Writer-specific ---
 
     def test_write_requires_path(self):
-        with pytest.raises(ValueError, match="path"):
+        from ubunye.core.errors import SinkWriteError
+
+        with pytest.raises(SinkWriteError, match="path"):
             self.make_writer().write(_make_df(), {"format": "s3"}, _make_backend())
 
     def test_write_calls_df_write_save(self):
@@ -401,7 +413,9 @@ class TestUnityPlugin(PluginContractTest):
         spark.sql.assert_called_once_with("SELECT 1")
 
     def test_read_missing_table_raises(self):
-        with pytest.raises(ValueError):
+        from ubunye.core.errors import SourceReadError
+
+        with pytest.raises(SourceReadError):
             self.make_reader().read(self.bad_read_cfg(), _make_backend())
 
     def test_write_calls_save_as_table(self):
@@ -493,13 +507,17 @@ class TestRestApiPlugin(PluginContractTest):
     # --- REST-specific ---
 
     def test_read_requires_url(self):
-        with pytest.raises((ValueError, KeyError)):
+        from ubunye.core.errors import SourceReadError
+
+        with pytest.raises(SourceReadError):
             with patch("requests.Session"):
                 self.make_reader().read(self.bad_read_cfg(), _make_backend())
 
     def test_write_requires_url(self):
+        from ubunye.core.errors import SinkWriteError
+
         df = MagicMock()
         df.toLocalIterator.return_value = iter([])
-        with pytest.raises((ValueError, KeyError)):
+        with pytest.raises(SinkWriteError):
             with patch("requests.Session"):
                 self.make_writer().write(df, {"format": "rest_api"}, _make_backend())

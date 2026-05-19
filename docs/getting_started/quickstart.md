@@ -45,8 +45,7 @@ CONFIG:
       db_name: default
       tbl_name: sample_data
 
-  transform:
-    type: noop        # pass-through; replace with your transform type
+  transform: {}
 
   outputs:
     sink:
@@ -146,6 +145,80 @@ The Python API auto-detects an active SparkSession (Databricks) and reuses it.
 
 ---
 
+## Common errors
+
+The engine validates configs strictly and gives structured, actionable error
+messages across all subsystems. Every error includes context and a hint.
+
+**Unknown field (typo)**
+
+```
+Unknown fields in pipelines/fraud/ingestion/claim_etl/config.yaml:
+
+  (top level):
+    Unknown field 'ENGNE'
+    Did you mean 'ENGINE'?
+```
+
+**Undefined template variable**
+
+```
+Template resolution failed for config.yaml:
+  Undefined variable 'ds' in config value 's3://bucket/{{ ds }}/'.
+  Available variables: ['env']. Use '| default(...)' for optional values.
+```
+
+Fix: pass the variable via CLI (`--var ds=2025-01-01`) or add a default
+(`{{ ds | default('1970-01-01') }}`).
+
+**Missing transformations.py**
+
+```
+TaskNotFoundError: Missing transformations.py at .../hello_world/transformations.py.
+
+  Task dir:      pipelines/demo/etl/hello_world
+  Expected file: pipelines/demo/etl/hello_world/transformations.py
+  Hint: Run 'ubunye init' to scaffold a new task, or check the directory path.
+```
+
+**Unknown reader plugin**
+
+```
+ReaderNotFoundError: Reader plugin 'hve' not found.
+
+  Format:    hve
+  Input:     source
+  Installed: ['hive', 'jdbc', 'rest_api', 's3', 'unity']
+  Hint: Check the 'format' field in CONFIG.inputs.source.
+```
+
+**Invalid profile**
+
+```
+ConfigProfileError: Profile 'staging' not found.
+
+  Profile:   staging
+  Available: ['dev', 'prod']
+  Hint: Valid profiles: dev, prod
+```
+
+See the full [Error Reference](../errors.md) for the complete hierarchy and
+catching patterns.
+
+---
+
+## 9. (Optional) Deploy to Databricks
+
+```bash
+pip install ubunye-engine[databricks]
+ubunye deploy databricks -d pipelines -u demo -p etl -t hello_world --target dev --dry-run
+```
+
+See the full [Databricks Deployment Guide](../deployment/databricks.md) for
+setting up `targets.yaml` and deploying for real.
+
+---
+
 ## What's next?
 
 | Topic | Link |
@@ -153,7 +226,7 @@ The Python API auto-detects an active SparkSession (Databricks) and reuses it.
 | Full YAML schema | [Config Reference](../config/overview.md) |
 | All built-in connectors | [Connectors](../connectors/overview.md) |
 | Python API reference | [API Reference](../api.md) |
-| Deploying to Databricks | [Deployment](../deployment.md) |
+| Deploying to Databricks | [Deployment](../deployment/databricks.md) |
 | Training and versioning ML models | [Model Contract](../ml/model_contract.md) |
 | CLI flags and sub-commands | [CLI Reference](../cli.md) |
 | Writing custom plugins | [Plugin Guide](../connectors/plugin_guide.md) |

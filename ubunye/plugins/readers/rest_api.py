@@ -49,6 +49,7 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
     import requests
 
+from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 log = logging.getLogger(__name__)
@@ -211,9 +212,10 @@ def _extract_records(response_json: Any, root_key: Optional[str]) -> List[Dict[s
     """
     if root_key:
         if not isinstance(response_json, dict) or root_key not in response_json:
-            raise ValueError(
-                f"Expected response dict with key '{root_key}', "
-                f"got: {type(response_json).__name__}"
+            raise SourceReadError(
+                f"Expected response dict with key '{root_key}'.",
+                context={"Format": "rest_api", "root_key": root_key, "Actual type": type(response_json).__name__},
+                hint=f"Check response.root_key in your config. The API returned a {type(response_json).__name__}.",
             )
         records = response_json[root_key]
     elif isinstance(response_json, list):
@@ -222,10 +224,18 @@ def _extract_records(response_json: Any, root_key: Optional[str]) -> List[Dict[s
         # No root_key specified and response is a dict — treat values as single record
         records = [response_json]
     else:
-        raise ValueError(f"Cannot extract records from response of type {type(response_json)}")
+        raise SourceReadError(
+            f"Cannot extract records from response of type {type(response_json).__name__}.",
+            context={"Format": "rest_api", "Actual type": type(response_json).__name__},
+            hint="The API response must be a JSON array or object.",
+        )
 
     if not isinstance(records, list):
-        raise ValueError(f"Extracted value at root_key='{root_key}' is not a list: {type(records)}")
+        raise SourceReadError(
+            f"Extracted value at root_key='{root_key}' is not a list.",
+            context={"Format": "rest_api", "root_key": root_key, "Actual type": type(records).__name__},
+            hint="The value under response.root_key must be a JSON array of records.",
+        )
     return records
 
 
@@ -332,8 +342,10 @@ def _paginate(
             current_params = {}  # next_link URLs already carry their own params
 
     else:
-        raise ValueError(
-            f"Unknown pagination type '{pag_type}'. " "Expected one of: offset, cursor, next_link"
+        raise SourceReadError(
+            f"Unknown pagination type '{pag_type}'.",
+            context={"Format": "rest_api", "pagination.type": pag_type},
+            hint="Expected one of: offset, cursor, next_link.",
         )
 
 
@@ -366,9 +378,10 @@ def _build_schema(schema_cfg: List[Dict[str, str]]):
         raw_type = col.get("type", "string").lower()
         type_class_name = type_map.get(raw_type)
         if not type_class_name:
-            raise ValueError(
-                f"Unsupported schema type '{raw_type}' for column '{name}'. "
-                f"Supported: {sorted(type_map)}"
+            raise SourceReadError(
+                f"Unsupported schema type '{raw_type}' for column '{name}'.",
+                context={"Format": "rest_api", "Column": name, "Type": raw_type},
+                hint=f"Supported types: {', '.join(sorted(type_map))}",
             )
         spark_type = getattr(T, type_class_name)()
         fields.append(T.StructField(name, spark_type, nullable=True))
@@ -399,7 +412,11 @@ class RestApiReader(Reader):
         pyspark.sql.DataFrame
         """
         if not cfg.get("url"):
-            raise ValueError("RestApiReader requires 'url' in config")
+            raise SourceReadError(
+                "RestApiReader requires 'url' in config.",
+                context={"Format": "rest_api"},
+                hint="Set url: 'https://api.example.com/...' in your input config.",
+            )
 
         session = _build_session(cfg)
         all_records: List[Dict[str, Any]] = []

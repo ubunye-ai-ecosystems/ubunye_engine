@@ -18,8 +18,7 @@ CONFIG:
       format: s3
       path: "{{ env.TITANIC_CLEAN_PATH }}/dt={{ dt | default('latest') }}"
       file_format: parquet
-  transform:
-    type: noop
+  transform: {}
   outputs:
     survival_summary:
       format: s3

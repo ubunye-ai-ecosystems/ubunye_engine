@@ -26,6 +26,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Optional
 
+from ubunye.core.errors import LineageRecordNotFoundError
 from ubunye.lineage.context import RunContext
 
 
@@ -123,9 +124,10 @@ class FileSystemLineageStore(LineageStore):
         task_dir = self._task_dir_from_path(task_path)
         record_path = task_dir / f"{run_id}.json"
         if not record_path.exists():
-            raise FileNotFoundError(
-                f"No lineage record found for task '{task_path}' run '{run_id}'. "
-                f"Expected: {record_path}"
+            raise LineageRecordNotFoundError(
+                f"No lineage record found for task '{task_path}' run '{run_id}'.",
+                context={"Task": task_path, "Run ID": run_id, "Expected": str(record_path)},
+                hint="Check the task path and run ID, or list runs with 'ubunye lineage list'.",
             )
         return self._load_file(record_path)
 

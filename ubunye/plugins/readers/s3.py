@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 
@@ -26,7 +27,11 @@ class S3Reader(Reader):
     def read(self, cfg: dict, backend) -> Any:
         path = cfg.get("path")
         if not path:
-            raise ValueError("'path' is required for S3Reader")
+            raise SourceReadError(
+                "'path' is required for S3Reader.",
+                context={"Format": "s3"},
+                hint="Set path: 's3a://bucket/prefix/' in your input config.",
+            )
 
         fmt = cfg.get("file_format", "parquet")
         options: dict = cfg.get("options") or {}

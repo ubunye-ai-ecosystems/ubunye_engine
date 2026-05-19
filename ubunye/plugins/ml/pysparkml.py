@@ -10,6 +10,8 @@ from typing import Any, Optional
 from pyspark.ml import Estimator, PipelineModel
 from pyspark.sql import DataFrame as SparkDF
 
+from ubunye.core.errors import ModelNotFittedError
+
 from .base import BaseModel, FeatureSchema
 
 
@@ -34,13 +36,19 @@ class SparkMLModel(BaseModel):
 
     def _predict_core(self, X: SparkDF, proba: bool = False) -> SparkDF:
         if self.pipeline_model is None:
-            raise RuntimeError("Model not fitted or loaded.")
+            raise ModelNotFittedError(
+                "Model not fitted or loaded.",
+                hint="Call train() or load() before predict().",
+            )
         # Spark model returns a DataFrame with prediction columns
         return self.pipeline_model.transform(X)
 
     def _save_core(self, path: Path) -> None:
         if self.pipeline_model is None:
-            raise RuntimeError("Nothing to save; fit or load first.")
+            raise ModelNotFittedError(
+                "Nothing to save; model not fitted or loaded.",
+                hint="Call train() or load() before save().",
+            )
         self.pipeline_model.write().overwrite().save(str(path / "spark_pipeline_model"))
 
     def _load_core(self, path: Path) -> None:

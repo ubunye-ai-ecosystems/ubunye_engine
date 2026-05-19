@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib.metadata as md
 from typing import Any, Dict, List, Protocol
 
+from ubunye.core.errors import MonitorNotFoundError
+
 
 class Monitor(Protocol):
     """Runtime monitor hooks for logging and drift observability."""
@@ -40,7 +42,11 @@ def load_monitors(cfg: dict) -> List[Monitor]:
         if mtype not in registry:
             if entry.get("optional"):
                 continue
-            raise KeyError(f"Monitor plugin '{mtype}' not found. Installed: {sorted(registry)}")
+            raise MonitorNotFoundError(
+                f"Monitor plugin '{mtype}' not found.",
+                context={"Type": mtype, "Installed": sorted(registry)},
+                hint=f"Check the 'type' field in CONFIG.monitors. Installed: {', '.join(sorted(registry))}",
+            )
         params = entry.get("params", {}) or {}
         instances.append(registry[mtype](**params))
     return instances

@@ -14,8 +14,7 @@ CONFIG:
       format: hive
       db_name: fraud_db
       tbl_name: raw_claims
-  transform:
-    type: noop
+  transform: {}
   outputs:
     bronze:
       format: s3

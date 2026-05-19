@@ -24,6 +24,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from ubunye.core.errors import (
+    PromotionBlockedError,
+    RegistryNotFoundError,
+    VersionExistsError,
+    VersionNotFoundError,
+)
 from ubunye.models.base import UbunyeModel
 from ubunye.models.gates import PromotionGate
 
@@ -135,9 +141,10 @@ class ModelRegistry:
             version = self._next_version(record)
 
         if version in record.versions:
-            raise ValueError(
-                f"Version '{version}' already exists for {use_case}/{model_name}. "
-                "Use a different version string or set auto_version=True."
+            raise VersionExistsError(
+                f"Version '{version}' already exists for {use_case}/{model_name}.",
+                context={"Version": version, "Model": f"{use_case}/{model_name}"},
+                hint="Use a different version string or set auto_version=True.",
             )
 
         # Persist model artifacts
@@ -200,7 +207,11 @@ class ModelRegistry:
             failed = gate.failed_gates(mv.metrics, mv.metadata)
             if failed:
                 details = "\n".join(f"  - {r.gate_name}: {r.message}" for r in failed)
-                raise ValueError(f"Promotion blocked — {len(failed)} gate(s) failed:\n{details}")
+                raise PromotionBlockedError(
+                    f"Promotion blocked — {len(failed)} gate(s) failed:\n{details}",
+                    context={"Version": version, "Target stage": to_stage.value},
+                    hint="Fix the failing gates or adjust thresholds in promotion_gates config.",
+                )
 
         now = _utcnow()
 
@@ -319,11 +330,16 @@ class ModelRegistry:
         elif stage is not None:
             mv = record.get_active_version(stage)
             if mv is None:
-                raise ValueError(
-                    f"No version of '{model_name}' is currently in stage '{stage.value}'."
+                raise VersionNotFoundError(
+                    f"No version of '{model_name}' is currently in stage '{stage.value}'.",
+                    context={"Model": model_name, "Stage": stage.value},
+                    hint="Register and promote a model version to this stage first.",
                 )
         else:
-            raise ValueError("Specify either 'version' or 'stage'.")
+            raise VersionNotFoundError(
+                "Specify either 'version' or 'stage'.",
+                hint="Pass version='x.y.z' or stage=ModelStage.PRODUCTION.",
+            )
 
         model_path = str(self._version_dir(use_case, model_name, mv.version) / "model")
         return model_path, mv
@@ -388,8 +404,10 @@ class ModelRegistry:
     def _load_record(self, use_case: str, model_name: str) -> ModelRecord:
         path = self._registry_path(use_case, model_name)
         if not path.exists():
-            raise FileNotFoundError(
-                f"No registry found for '{use_case}/{model_name}'. " f"Expected: {path}"
+            raise RegistryNotFoundError(
+                f"No registry found for '{use_case}/{model_name}'.",
+                context={"Model": f"{use_case}/{model_name}", "Expected": str(path)},
+                hint="Register a model version first with registry.register().",
             )
         data = json.loads(path.read_text(encoding="utf-8"))
         versions = {k: ModelVersion(**v) for k, v in data.get("versions", {}).items()}
@@ -435,10 +453,11 @@ class ModelRegistry:
     def _get_version_or_raise(record: ModelRecord, version: str) -> ModelVersion:
         mv = record.versions.get(version)
         if mv is None:
-            available = ", ".join(record.versions) or "(none)"
-            raise ValueError(
-                f"Version '{version}' not found in {record.use_case}/{record.model_name}. "
-                f"Available: {available}"
+            available = sorted(record.versions) or ["(none)"]
+            raise VersionNotFoundError(
+                f"Version '{version}' not found in {record.use_case}/{record.model_name}.",
+                context={"Version": version, "Model": f"{record.use_case}/{record.model_name}", "Available": available},
+                hint="Check the version string or list versions with 'ubunye models list'.",
             )
         return mv
 

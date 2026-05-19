@@ -64,9 +64,11 @@ nav:
   - API Reference: api.md
   - Deployment:
       - Overview: deployment.md
+      - Databricks: deployment/databricks.md
       - Databricks Authentication: databricks-auth.md
   - Developer Guide: dev_guide.md
   - Contributing: contributing.md
+  - Error Reference: errors.md
   - Changelog: changelog.md
 
 markdown_extensions:

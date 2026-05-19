@@ -15,7 +15,6 @@ Commands:
 
 from __future__ import annotations
 
-import json
 import uuid
 from pathlib import Path
 from typing import List, Optional
@@ -23,7 +22,9 @@ from typing import List, Optional
 import typer
 
 from ubunye.backends.spark_backend import SparkBackend
+from ubunye.cli.deploy import deploy_app
 from ubunye.cli.export import export_app
+from ubunye.cli.init import init_app
 from ubunye.cli.lineage import lineage_app
 from ubunye.cli.models import models_app
 from ubunye.cli.test_cmd import test_app
@@ -34,7 +35,9 @@ from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
 
 app = typer.Typer(add_completion=False, help="Ubunye Engine CLI")
+app.add_typer(deploy_app)
 app.add_typer(export_app)
+app.add_typer(init_app)
 app.add_typer(lineage_app)
 app.add_typer(models_app)
 app.add_typer(test_app)
@@ -42,199 +45,6 @@ app.add_typer(test_app)
 
 def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path:
     return usecase_dir / usecase / package / task
-
-
-def _md_cell(source: str) -> dict:
-    return {"cell_type": "markdown", "metadata": {}, "source": [source]}
-
-
-def _code_cell(source: str) -> dict:
-    return {
-        "cell_type": "code",
-        "metadata": {},
-        "source": [source],
-        "execution_count": None,
-        "outputs": [],
-    }
-
-
-def _build_dev_notebook(task: str, usecase: str, package: str) -> dict:
-    """Build a Jupyter notebook dict for interactive Databricks development."""
-    class_name = "".join(s.capitalize() for s in task.replace("-", "_").split("_"))
-    cells = [
-        _md_cell("## Parameters"),
-        _code_cell(
-            'dbutils.widgets.text("effective_year_month", "202501")\n'
-            'dbutils.widgets.dropdown("mode", "nonprod", ["nonprod", "prod"])\n'
-            "\n"
-            'dt = dbutils.widgets.get("effective_year_month")\n'
-            'mode = dbutils.widgets.get("mode")'
-        ),
-        _md_cell("## Setup"),
-        _code_cell("%pip install ubunye-engine -q"),
-        _code_cell(
-            "from ubunye.config import load_config\n"
-            "from ubunye.core.runtime import Registry\n"
-            "from ubunye.backends.databricks_backend import DatabricksBackend\n"
-            "\n"
-            f'task_dir = "{usecase}/{package}/{task}"\n'
-            'cfg = load_config(task_dir, variables={"dt": dt, "mode": mode})\n'
-            "\n"
-            "backend = DatabricksBackend()\n"
-            "backend.start()\n"
-            "reg = Registry.from_entrypoints()\n"
-            "\n"
-            'print(f"Config loaded: {len(cfg.CONFIG.inputs)} inputs, {len(cfg.CONFIG.outputs)} outputs")'
-        ),
-        _md_cell("## Extract\nRead all inputs defined in config.yaml"),
-        _code_cell(
-            "sources = {}\n"
-            "for name, icfg in cfg.CONFIG.inputs.items():\n"
-            "    reader_cls = reg.readers[icfg.format]\n"
-            '    sources[name] = reader_cls().read(icfg.model_dump(mode="json"), backend)\n'
-            '    print(f"{name}: {sources[name].count()} rows")'
-        ),
-        _md_cell("## Inspect Sources"),
-        _code_cell(
-            "for name, df in sources.items():\n"
-            '    print(f"--- {name} ---")\n'
-            "    display(df.limit(20))"
-        ),
-        _md_cell("## Transform"),
-        _code_cell(
-            "import sys, importlib.util\n"
-            "\n"
-            f'spec = importlib.util.spec_from_file_location("transformations", f"{{task_dir}}/transformations.py")\n'
-            "mod = importlib.util.module_from_spec(spec)\n"
-            "spec.loader.exec_module(mod)\n"
-            "\n"
-            f'task_obj = mod.{class_name}(config=cfg.model_dump(mode="json"))\n'
-            "task_obj.setup()\n"
-            "outputs = task_obj.transform(sources)\n"
-            "\n"
-            'print(f"Transform returned: {{list(outputs.keys())}}")'
-        ),
-        _md_cell("## Inspect Outputs"),
-        _code_cell(
-            "for name, df in outputs.items():\n"
-            '    print(f"--- {name}: {df.count()} rows ---")\n'
-            "    display(df.limit(20))"
-        ),
-        _md_cell(
-            "## Load (disabled by default)\nUncomment to write outputs. **Review carefully before running in prod.**"
-        ),
-        _code_cell(
-            "# WARNING: Uncomment to write outputs to the configured destinations.\n"
-            "# for name, ocfg in cfg.CONFIG.outputs.items():\n"
-            "#     writer_cls = reg.writers[ocfg.format]\n"
-            '#     writer_cls().write(outputs[name], ocfg.model_dump(mode="json"), backend)\n'
-            '#     print(f"Written: {name}")'
-        ),
-        _md_cell("## Sandbox\nSpark session is available for free exploration."),
-        _code_cell(
-            "spark = backend.spark\n"
-            "\n"
-            "# Example:\n"
-            "# spark.sql('SELECT 1').show()\n"
-            "# display(spark.catalog.listTables())"
-        ),
-    ]
-    return {
-        "nbformat": 4,
-        "nbformat_minor": 5,
-        "metadata": {
-            "kernelspec": {
-                "display_name": "Python 3",
-                "language": "python",
-                "name": "python3",
-            },
-            "language_info": {"name": "python", "version": "3.9.0"},
-        },
-        "cells": cells,
-    }
-
-
-@app.command()
-def init(
-    usecase_dir: Path = typer.Option(
-        ..., "-d", "--usecase-dir", help="Specifies the directory path for the use case."
-    ),
-    usecase: str = typer.Option(..., "-u", "--usecase", help="Selects the desired use case."),
-    package: str = typer.Option(
-        ..., "-p", "--package", help="Selects a package from the specified use case."
-    ),
-    task_list: List[str] = typer.Option(
-        ..., "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."
-    ),
-    overwrite: bool = typer.Option(False, help="Overwrite existing files"),
-):
-    """Scaffold task folders with config.yaml and transformations.py."""
-    for task in task_list:
-        target = _task_path(usecase_dir, usecase, package, task)
-        cfg_file = target / "config.yaml"
-        feat_file = target / "transformations.py"
-        target.mkdir(parents=True, exist_ok=True)
-
-        if cfg_file.exists() and not overwrite:
-            typer.echo(f"exists: {cfg_file}")
-        else:
-            cfg = f"""MODEL: "etl"
-VERSION: "0.1.0"
-ENGINE:
-  spark_conf:
-    spark.sql.shuffle.partitions: "50"
-
-CONFIG:
-  inputs:
-    tx_data:
-      format: unity
-      db_name: raw_db
-      tbl_name: {task}_input
-  transform:
-    type: noop
-  outputs:
-    output_features:
-      format: s3
-      path: "s3a://your-bucket/{usecase}/{package}/{task}/{{{{ dt | default('1970-01-01') }}}}"
-      mode: overwrite
-"""
-            cfg_file.write_text(cfg, encoding="utf-8")
-            typer.echo(f"created: {cfg_file}")
-
-        if feat_file.exists() and not overwrite:
-            typer.echo(f"exists: {feat_file}")
-        else:
-            class_name = "".join(s.capitalize() for s in task.replace("-", "_").split("_"))
-            feat = f"""from typing import Dict, Any
-from ubunye.core.interfaces import Task
-
-class {class_name}(Task):
-    \"\"\"User-defined Spark transformation task.\"\"\"
-    def setup(self) -> None:
-        pass
-
-    def transform(self, sources: Dict[str, Any]) -> Dict[str, Any]:
-        # Replace with your pure DataFrame transformations.
-        df = sources.get("tx_data")
-        return {{"output_features": df}}
-"""
-            feat_file.write_text(feat, encoding="utf-8")
-            typer.echo(f"created: {feat_file}")
-
-        # --- Dev notebook ---
-        nb_dir = target / "notebooks"
-        nb_dir.mkdir(parents=True, exist_ok=True)
-        nb_file = nb_dir / f"{task}_dev.ipynb"
-        if nb_file.exists() and not overwrite:
-            typer.echo(f"exists: {nb_file}")
-        else:
-            nb_file.write_text(
-                json.dumps(_build_dev_notebook(task, usecase, package), indent=1),
-                encoding="utf-8",
-            )
-            typer.echo(f"created: {nb_file}")
-
-    typer.secho("[OK] Scaffold complete", fg=typer.colors.GREEN)
 
 
 @app.command()

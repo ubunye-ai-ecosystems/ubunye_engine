@@ -1,0 +1,5 @@
+targets:
+  dev:
+    host: "https://dbc-f8f358c5-61e0.cloud.databricks.com"
+    token_env: DATABRICKS_TOKEN
+    workspace_path: /Workspace/ubunye

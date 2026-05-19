@@ -1,4 +1,6 @@
-from .loader import load_config as load_config
+from ubunye.core.errors import ConfigFieldError, ConfigTemplateError
+
+from .loader import load_config
 from .schema import UbunyeConfig
 
 # Backward-compatible alias — code that previously imported TaskConfig as the
