@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
     import requests
 
+from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
 log = logging.getLogger(__name__)
@@ -173,7 +174,11 @@ class RestApiWriter(Writer):
         ValueError  if ``url`` is missing from cfg.
         """
         if not cfg.get("url"):
-            raise ValueError("RestApiWriter requires 'url' in config")
+            raise SinkWriteError(
+                "RestApiWriter requires 'url' in config.",
+                context={"Format": "rest_api"},
+                hint="Set url: 'https://api.example.com/...' in your output config.",
+            )
 
         url: str = cfg["url"]
         batch_size: int = int(cfg.get("batch_size") or _DEFAULT_BATCH_SIZE)
@@ -212,9 +217,10 @@ class RestApiWriter(Writer):
         )
 
         if failure_count > 0:
-            raise RuntimeError(
-                f"RestApiWriter: {failure_count} batch(es) failed posting to {url}. "
-                "Check logs for details."
+            raise SinkWriteError(
+                f"RestApiWriter: {failure_count} batch(es) failed posting to {url}.",
+                context={"Format": "rest_api", "URL": url, "Failed batches": failure_count},
+                hint="Check logs for per-batch HTTP errors.",
             )
 
     def _flush_batch(

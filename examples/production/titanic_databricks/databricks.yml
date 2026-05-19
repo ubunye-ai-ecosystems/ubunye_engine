@@ -1,3 +1,7 @@
+# This file is now optional - `ubunye deploy databricks` generates an equivalent
+# job spec automatically. Kept here as reference for users who want to see what
+# Ubunye produces under the hood, or for teams who prefer hand-managed bundles.
+#
 # Databricks Asset Bundle — Titanic Survival pipeline.
 #
 # Uses serverless compute and writes the result as a Unity Catalog managed

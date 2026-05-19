@@ -25,3 +25,10 @@ Gaps the current examples *won't* hit — see `todo/task-04.md` through
 - Don't release intermediate patch versions — let 0.1.7 accumulate.
 - If a fix is risky or non-obvious, capture the repro in a new unit test
   before touching the engine.
+
+## Completed in v0.1.7
+
+- task-11: `typer[all]` extra missing from pyproject.toml (done)
+- task-15: Notebook cell output not surfaced in CI (done)
+- task-17: CI installs torch for sklearn-only tests (done)
+- task-18: AUC promotion gate failure silently swallowed (done)

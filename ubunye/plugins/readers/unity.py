@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 
@@ -36,8 +37,10 @@ class UnityTableReader(Reader):
             # allow split pieces
             catalog, schema, name = cfg.get("catalog"), cfg.get("schema"), cfg.get("tbl_name")
             if not (catalog and schema and name):
-                raise ValueError(
-                    "Provide 'table' (catalog.schema.table) or catalog/schema/tbl_name, or 'sql'."
+                raise SourceReadError(
+                    "Unity reader requires 'table', catalog/schema/tbl_name, or 'sql'.",
+                    context={"Format": "unity"},
+                    hint="Set table: 'catalog.schema.table' or provide catalog, schema, and tbl_name.",
                 )
             table = f"{catalog}.{schema}.{name}"
 

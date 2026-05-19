@@ -21,7 +21,7 @@ _HIVE_INPUT = {"format": "hive", "db_name": "db", "tbl_name": "tbl"}
 _HIVE_OUTPUT = {"format": "hive", "db_name": "db", "tbl_name": "out"}
 _MINIMAL_CONFIG = {
     "inputs": {"source": _HIVE_INPUT},
-    "transform": {"type": "noop"},
+    "transform": {},
     "outputs": {"sink": _HIVE_OUTPUT},
 }
 
@@ -284,12 +284,28 @@ class TestIOConfig:
 
 
 class TestTransformConfig:
-    def test_default_noop(self):
+    def test_default_type_is_none(self):
         t = TransformConfig()
-        assert t.type == "noop"
+        assert t.type is None
         assert t.params == {}
+
+    def test_explicit_noop_still_accepted(self):
+        t = TransformConfig(type="noop")
+        assert t.type == "noop"
 
     def test_custom_transform(self):
         t = TransformConfig(type="model", params={"action": "train", "model_class": "FraudModel"})
         assert t.type == "model"
         assert t.params["action"] == "train"
+
+    def test_omitted_transform_section_defaults_to_none(self):
+        cfg = UbunyeConfig(
+            MODEL="etl",
+            VERSION="0.1.0",
+            CONFIG={
+                "inputs": {"source": _HIVE_INPUT},
+                "transform": {},
+                "outputs": {"sink": _HIVE_OUTPUT},
+            },
+        )
+        assert cfg.CONFIG.transform.type is None

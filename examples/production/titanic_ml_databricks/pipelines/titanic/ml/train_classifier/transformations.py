@@ -28,6 +28,7 @@ _TASK_DIR = str(Path(__file__).resolve().parent)
 if _TASK_DIR not in sys.path:
     sys.path.insert(0, _TASK_DIR)
 
+from ubunye.core.errors import PromotionBlockedError
 from ubunye.core.interfaces import Task
 from ubunye.models.registry import ModelRegistry, ModelStage
 
@@ -74,6 +75,8 @@ class TrainTitanicClassifier(Task):
                 gates={"min_auc": MIN_AUC},
             )
             promoted_to = "staging"
+        except PromotionBlockedError:
+            raise
         except ValueError as exc:
             promotion_error = str(exc).splitlines()[0]
 

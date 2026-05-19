@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 
@@ -57,7 +58,11 @@ class JdbcReader(Reader):
         # ---- validate minimal settings ----
         for key in self.REQUIRED:
             if key not in cfg or not cfg.get(key):
-                raise ValueError(f"JDBC reader requires '{key}'")
+                raise SourceReadError(
+                    f"JDBC reader requires '{key}'.",
+                    context={"Format": "jdbc", "Missing": key},
+                    hint=f"Set '{key}' in your JDBC input config.",
+                )
 
         url = cfg["url"]
         driver = cfg.get("driver")
@@ -68,7 +73,11 @@ class JdbcReader(Reader):
         dbtable = cfg.get("table") or cfg.get("dbtable")
         sql = cfg.get("sql")
         if not dbtable and not sql:
-            raise ValueError("Provide either 'table'/'dbtable' or 'sql' for JDBC reader")
+            raise SourceReadError(
+                "JDBC reader requires 'table', 'dbtable', or 'sql'.",
+                context={"Format": "jdbc"},
+                hint="Set table: 'schema.table' or sql: 'SELECT ...' in your input config.",
+            )
 
         if sql and not dbtable:
             # Spark needs a subquery wrapped in parentheses with an alias.

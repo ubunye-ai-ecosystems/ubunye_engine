@@ -51,11 +51,27 @@ See [Jinja Templating](jinja.md) for all supported syntax.
 ## Validation
 
 Ubunye validates the rendered YAML against strict Pydantic v2 models.
-Run validation before deploying:
+Unknown fields are rejected with typo suggestions; undefined Jinja
+variables fail immediately. Run validation before deploying:
 
 ```bash
 ubunye validate -d pipelines -u fraud -p etl -t claims
 ```
+
+### Strict field checking
+
+All config sections use `extra="forbid"` — a typo like `ENGNE` triggers a
+`ConfigFieldError` with a "Did you mean?" suggestion. The one exception is
+`IOConfig` (inputs/outputs entries), which allows extra fields so that
+connector plugins can read plugin-specific keys like `headers`, `pagination`,
+`auth`, etc.
+
+### Strict template variables
+
+The Jinja resolver uses `StrictUndefined` — any `{{ var }}` that isn't
+provided as a CLI variable or environment variable raises immediately instead
+of silently producing an empty string. Use `| default(...)` for optional
+values.
 
 ---
 

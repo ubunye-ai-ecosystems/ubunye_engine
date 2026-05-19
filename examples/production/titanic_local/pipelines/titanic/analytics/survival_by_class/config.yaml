@@ -31,9 +31,7 @@ CONFIG:
         header: "true"
         inferSchema: "true"
         mode: "FAILFAST"
-  transform:
-    # Overridden at runtime by execute_user_task → transformations.py.
-    type: noop
+  transform: {}
   outputs:
     survival_by_class:
       format: s3

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Optional
 
+from ubunye.core.errors import SparkSessionError
 from ubunye.core.interfaces import Backend
 
 if TYPE_CHECKING:  # only for type checkers; no runtime dependency on pyspark
@@ -94,8 +95,10 @@ class SparkBackend(Backend):
             If `start()` has not been called.
         """
         if self._spark is None:
-            raise RuntimeError(
-                "Spark session not started. Call start() first or use context manager."
+            raise SparkSessionError(
+                "Spark session not started.",
+                context={"Backend": "SparkBackend"},
+                hint="Call start() first or use the backend as a context manager.",
             )
         return self._spark
 

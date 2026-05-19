@@ -17,6 +17,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, Optional
 
+from ubunye.core.errors import TaskClassMissingError, TaskNotFoundError
 from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend, Task
 from ubunye.core.runtime import Engine, EngineContext, Registry
@@ -26,9 +27,10 @@ def _load_task_class(task_dir: Path) -> type:
     """Import ``transformations.py`` and return the first Task subclass."""
     fc_path = task_dir / "transformations.py"
     if not fc_path.exists():
-        raise FileNotFoundError(
-            f"Missing transformations.py at {fc_path}. "
-            "Each task directory must contain a transformations.py with a Task subclass."
+        raise TaskNotFoundError(
+            f"Missing transformations.py at {fc_path}.",
+            context={"Task dir": str(task_dir), "Expected file": str(fc_path)},
+            hint="Run 'ubunye init' to scaffold a new task, or check the directory path.",
         )
 
     spec = importlib.util.spec_from_file_location("transformations", str(fc_path))
@@ -40,9 +42,10 @@ def _load_task_class(task_dir: Path) -> type:
         if isinstance(attr, type) and issubclass(attr, Task) and attr is not Task:
             return attr
 
-    raise RuntimeError(
-        f"No Task subclass found in {fc_path}. "
-        "Define a class that subclasses ubunye.core.interfaces.Task."
+    raise TaskClassMissingError(
+        f"No Task subclass found in {fc_path}.",
+        context={"File": str(fc_path)},
+        hint="Define a class that subclasses ubunye.core.interfaces.Task.",
     )
 
 

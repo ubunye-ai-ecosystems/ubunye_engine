@@ -13,14 +13,16 @@ dependencies = [
   "pyyaml>=6",
   "jinja2>=3",
   "pydantic>=2",
-  "typer[all]>=0.12",
+  "typer>=0.12",
   # pyspark is large; declare as optional so users can choose version
 ]
 
 [project.optional-dependencies]
 spark = ["pyspark>=3.3"]
-ml = ["scikit-learn", "torch", "mlflow"]
+ml = ["scikit-learn", "mlflow"]
+ml-torch = ["scikit-learn", "torch", "mlflow"]
 dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build"]
+databricks = ["databricks-sdk>=0.20"]
 
 [project.scripts]
 ubunye = "ubunye.cli.main:app"

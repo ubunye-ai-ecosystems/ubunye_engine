@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Type
 
+from ubunye.core.errors import ModelLoadError
 from ubunye.models.base import UbunyeModel
 
 
@@ -48,7 +49,11 @@ def load_model_class(task_dir: Optional[str], class_name: str) -> Type[UbunyeMod
     """
     parts = class_name.rsplit(".", 1)
     if len(parts) == 1:
-        raise ImportError(f"class_name must be in the form 'module.ClassName', got '{class_name}'.")
+        raise ModelLoadError(
+            f"class_name must be in the form 'module.ClassName', got '{class_name}'.",
+            context={"class_name": class_name},
+            hint="Use a dotted path like 'model.MyModel' or 'models.risk.FraudModel'.",
+        )
     module_path_str, cls_name = parts
 
     if task_dir is not None:
@@ -58,15 +63,17 @@ def load_model_class(task_dir: Optional[str], class_name: str) -> Type[UbunyeMod
 
     cls = getattr(module, cls_name, None)
     if cls is None:
-        raise ImportError(
-            f"Class '{cls_name}' not found in module '{module_path_str}'. "
-            f"Make sure the class is defined at the module level."
+        raise ModelLoadError(
+            f"Class '{cls_name}' not found in module '{module_path_str}'.",
+            context={"Module": module_path_str, "Class": cls_name},
+            hint="Make sure the class is defined at the module level.",
         )
 
     if not (isinstance(cls, type) and issubclass(cls, UbunyeModel)):
-        raise TypeError(
-            f"'{cls_name}' must subclass UbunyeModel. "
-            f"Add 'from ubunye.models.base import UbunyeModel' and inherit from it."
+        raise ModelLoadError(
+            f"'{cls_name}' must subclass UbunyeModel.",
+            context={"Class": cls_name, "Actual base": type(cls).__name__},
+            hint="Add 'from ubunye.models.base import UbunyeModel' and inherit from it.",
         )
 
     return cls
@@ -92,16 +99,22 @@ def _load_from_file(task_dir: str, module_path_str: str, full_class_name: str):
         module_file = candidate_pkg
         import_name = module_path_str.replace(".", "_ubunye_tmp_")
     else:
-        raise FileNotFoundError(
-            f"Model file not found. Looked for:\n"
-            f"  {candidate_file}\n"
-            f"  {candidate_pkg}\n"
-            f"when trying to load '{full_class_name}' from task_dir='{task_dir}'."
+        raise ModelLoadError(
+            "Model file not found.",
+            context={
+                "Looked for": f"{candidate_file} or {candidate_pkg}",
+                "class_name": full_class_name,
+                "task_dir": task_dir,
+            },
+            hint="Check that the model file exists in your task directory.",
         )
 
     spec = importlib.util.spec_from_file_location(import_name, str(module_file))
     if spec is None or spec.loader is None:
-        raise ImportError(f"Could not create module spec from {module_file}.")
+        raise ModelLoadError(
+            f"Could not create module spec from {module_file}.",
+            context={"File": str(module_file)},
+        )
 
     module = importlib.util.module_from_spec(spec)
     # Temporarily add task_dir to sys.path so relative imports inside the module work
@@ -123,8 +136,8 @@ def _load_from_sys_path(module_path_str: str, full_class_name: str):
     try:
         return importlib.import_module(module_path_str)
     except ModuleNotFoundError as exc:
-        raise ImportError(
-            f"Could not import '{module_path_str}' when loading '{full_class_name}'. "
-            f"Either provide task_dir or ensure the module is on sys.path. "
-            f"Original error: {exc}"
+        raise ModelLoadError(
+            f"Could not import '{module_path_str}' when loading '{full_class_name}'.",
+            context={"Module": module_path_str, "class_name": full_class_name},
+            hint="Provide task_dir or ensure the module is on sys.path.",
         ) from exc

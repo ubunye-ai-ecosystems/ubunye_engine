@@ -1,5 +1,7 @@
 # task-18 — AUC promotion gate failure is silently swallowed; CI is green even when model quality gate fails
 
+**Status:** done (2026-05-19)
+
 **Example:** `titanic_ml_databricks`
 **Step:** "databricks bundle run (manual trigger only)" → `train_titanic.py` notebook → `TrainTitanicClassifier.transform()`
 

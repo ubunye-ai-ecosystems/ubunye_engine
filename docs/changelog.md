@@ -7,7 +7,140 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.1.7] — 2026-05-19
+
+### Added
+
+- **`ubunye deploy databricks` command.** End-to-end deployment from a local
+  `config.yaml` to a running Databricks job — handles auth, file upload to
+  `/Workspace/`, wrapper notebook generation, and idempotent job
+  creation/update via the Databricks SDK. Uses a two-level `targets.yaml`
+  lookup (usecase-level defaults, task-level overrides). Supports `--dry-run`
+  for previewing the job spec without deploying. New optional dependency:
+  `pip install ubunye-engine[databricks]`.
+
+- **Deploy error types.** `DeployError` base class with `AuthNotFoundError`,
+  `AuthInvalidError`, `TargetNotFoundError`, `WorkspaceUploadError`, and
+  `BundleDeployError` — all follow the dual-inheritance pattern
+  (`DeployError(UbunyeError, RuntimeError)`).
+
+- **Structured error messages across the engine.** Every user-facing exception
+  now inherits from `UbunyeError` (with optional `context` dict and `hint`
+  string) **and** the stdlib type it replaces (dual inheritance for backward
+  compatibility). New exception classes: `TaskNotFoundError`,
+  `TaskClassMissingError`, `ReaderNotFoundError`, `WriterNotFoundError`,
+  `TransformNotFoundError`, `TransformOutputError`, `MonitorNotFoundError`,
+  `SourceReadError`, `SinkWriteError`, `SparkSessionError`, `ModelLoadError`,
+  `ModelNotFittedError`, `VersionExistsError`, `VersionNotFoundError`,
+  `PromotionBlockedError`, `RegistryNotFoundError`,
+  `LineageRecordNotFoundError`, and `ConfigProfileError`. Existing config
+  errors (`ConfigFieldError`, `ConfigTemplateError`) migrated from
+  `ubunye.config.loader` to `ubunye.core.errors`. See the new
+  [Error Reference](errors.md) for the full hierarchy and examples.
+
+- **Hook failure logging.** `HookChain` now logs a structured warning when a
+  hook's `task()` or `step()` context manager raises, instead of silently
+  swallowing the exception.
+
+- **CI workflows link to the Databricks job UI** after `bundle run`, so
+  users can find notebook cell output that `databricks bundle run` does not
+  stream to stdout.
+
+- **`ubunye init github-actions` command.** Generates a GitHub Actions workflow
+  for any pipeline — validates config and runs tests on PRs, deploys to
+  Databricks via `ubunye deploy databricks` on merge to main. Supports
+  `--no-deploy` for CI-only workflows, `--extras` for pip install extras
+  (auto-includes Java setup when `spark` is present), and `--target` for the
+  Databricks deploy target. The `init` command is now a sub-app:
+  `ubunye init pipeline` (formerly `ubunye init`) and
+  `ubunye init github-actions`.
+
+### Fixed
+
+- **Promotion gate failure now propagates.** `PromotionBlockedError` was
+  silently caught by the titanic training task's `except ValueError` (via
+  dual inheritance). Gate failures now re-raise — CI goes red when a model
+  fails its quality gate instead of reporting green.
+
+- **`typer[all]` replaced with plain `typer`.** Typer >= 0.24 dropped
+  the `[all]` extra, causing pip warnings on install.
+
+- **`merged_spark_conf()` / `resolved_catalog()` / `resolved_schema()` now
+  raise `ConfigProfileError`** when profiles are defined but the requested
+  profile doesn't match. Previously these methods silently returned the base
+  config, hiding typos in `--mode` / `--profile` flags.
+
+### Changed
+
+- **`ubunye init` is now a sub-app** with two subcommands:
+  `ubunye init pipeline` (the previous `ubunye init`) and
+  `ubunye init github-actions`. This is a breaking CLI change — update
+  any scripts that call `ubunye init -d ...` to `ubunye init pipeline -d ...`.
+
+- **`[ml]` extra no longer installs `torch`.** Use `[ml-torch]` for
+  PyTorch workloads. This saves ~1 GB of CUDA wheel downloads in CI for
+  sklearn-only pipelines.
+
+- **`CONFIG.transform.type` is now optional.** When omitted, the engine
+  defaults to loading the user's `Task` class from `transformations.py` —
+  no `type: noop` declaration needed. Existing configs with `type: noop`
+  continue to work but emit a `DeprecationWarning` advising removal.
+  All scaffolded configs, production examples, test fixtures, and docs
+  have been updated to omit the field.
+
+- **Unknown config fields are now rejected at load time.** All Pydantic
+  models (except `IOConfig`) use `extra="forbid"`. A typo like `ENGNE`
+  raises `ConfigFieldError` with a "Did you mean 'ENGINE'?" suggestion
+  via `difflib.get_close_matches`. `IOConfig` retains `extra="allow"`
+  so plugin-specific keys (REST API `headers`, `pagination`, etc.) pass
+  through to connectors. **Breaking:** configs with unknown top-level or
+  nested fields that were previously silently ignored will now fail.
+
+- **Undefined Jinja template variables fail immediately.** The resolver
+  now uses `StrictUndefined` instead of `DebugUndefined`. A reference
+  to `{{ ds }}` without passing `ds` as a CLI variable raises
+  `ConfigTemplateError` listing available variables. The `| default()`
+  filter continues to work.
+
+### Added
+
+- **Production reference example: device mapping ETL (Databricks, paid
+  workspace)** — `examples/production/device_mapping_etl_databricks/`
+  ports a legacy policy-device mapping script onto Ubunye. Three Unity
+  Catalog reads, one Unity Catalog Delta sink, a monthly Databricks Jobs
+  schedule (2nd of month, 06:00 UTC), and a dedicated GitHub Actions
+  workflow (`.github/workflows/device_mapping_etl_databricks.yml`) that
+  gates `bundle deploy` on OAuth service-principal secrets plus
+  `TELM_CATALOG` / `TELM_SCHEMA` environment secrets. No catalog/schema
+  identifiers are committed — values flow through DAB `--var` flags at
+  deploy time, keeping confidential Unity Catalog names out of source
+  control. Corrects a latent bug in the original script where the
+  IMEI-first-detection-adjusted `installation_datetime_final` was
+  computed but never selected into the final output.
+
+- **Production reference example: flood-risk (two-task pipeline,
+  paid Databricks + Unity Catalog).** A port of the legacy flood-detection
+  notebook to Ubunye as `examples/production/flood_risk_databricks/`,
+  split into two chained tasks:
+  - `geocode_addresses` — reads `(id, address)` rows from a UC source
+    table, calls TomTom Search (top-1 per id, three-step parameter
+    fallback, 429 retry), writes `address_geocoded`.
+  - `flood_risk` — reads `address_geocoded`, calls JBA `floodscores` and
+    `flooddepths` in batches of 10, merges the two responses on `id`,
+    renames ~60 nested keys to snake-case, writes `address_flood_risk`.
+
+  Quarterly schedule (1st of Jan/Apr/Jul/Oct at 06:00 UTC). TomTom and
+  JBA credentials live in a Databricks secret scope (`flood-risk` by
+  default) and are read by the notebook wrapper; Unity Catalog
+  identifiers and the source-table name come from GitHub environment
+  secrets through `--var` at deploy time. Also corrects the legacy
+  `"Base "` → `"Basic "` auth-header typo and strips the Zscaler cert
+  probing block that belongs on corporate networks, not serverless.
+  OAuth-gated GH Actions workflow
+  (`.github/workflows/flood_risk_databricks.yml`) runs Spark + fake-
+  HTTP unit tests, validates the bundle, and deploys to the `nonprod`
+  target when all three UC secrets are present. See the example's
+  `README.md`.
 
 ### Added
 

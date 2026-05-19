@@ -70,8 +70,7 @@ CONFIG:
       format: hive
       db_name: raw
       tbl_name: claims
-  transform:
-    type: noop
+  transform: {}
   outputs:
     clean_claims:
       format: delta

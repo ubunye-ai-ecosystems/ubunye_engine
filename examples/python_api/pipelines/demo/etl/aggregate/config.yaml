@@ -10,8 +10,7 @@ CONFIG:
     clean_events:
       format: s3
       path: "/tmp/ubunye_demo/clean_events"
-  transform:
-    type: noop
+  transform: {}
   outputs:
     summary:
       format: s3

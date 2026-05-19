@@ -30,6 +30,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
 
@@ -39,7 +40,11 @@ def _qualify(cfg: Dict[str, Any]) -> str:
         return table
     catalog, schema, name = cfg.get("catalog"), cfg.get("schema"), cfg.get("tbl_name")
     if not (catalog and schema and name):
-        raise ValueError("Provide 'table' (catalog.schema.table) or catalog/schema/tbl_name.")
+        raise SinkWriteError(
+            "Unity writer requires 'table' or catalog/schema/tbl_name.",
+            context={"Format": "unity"},
+            hint="Set table: 'catalog.schema.table' or provide catalog, schema, and tbl_name.",
+        )
     return f"{catalog}.{schema}.{name}"
 
 

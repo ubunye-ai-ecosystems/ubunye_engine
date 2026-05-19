@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from ubunye.core.errors import UbunyeError
 from ubunye.core.interfaces import Backend, Transform
 from ubunye.models.loader import load_model_class
 from ubunye.models.registry import ModelRegistry, ModelStage
@@ -72,8 +73,10 @@ class ModelTransform(Transform):
         elif action == "predict":
             return self._predict(inputs, cfg, backend)
         else:
-            raise ValueError(
-                f"Unknown model action: '{action}'. " f"Set params.action to 'train' or 'predict'."
+            raise UbunyeError(
+                f"Unknown model action: '{action}'.",
+                context={"action": action},
+                hint="Set params.action to 'train' or 'predict'.",
             )
 
     # ------------------------------------------------------------------
