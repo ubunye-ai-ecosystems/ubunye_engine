@@ -16,11 +16,14 @@ Usage
 
 from __future__ import annotations
 
+import difflib
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import yaml
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
+
+from ubunye.core.errors import ConfigFieldError, ConfigProfileError, ConfigTemplateError
 
 from .resolver import resolve_config
 from .schema import UbunyeConfig
@@ -68,19 +71,29 @@ def load_config(
 
     try:
         resolved = resolve_config(raw, cli_vars=variables or {})
+    except ConfigTemplateError:
+        raise
     except ValueError as exc:
-        raise ValueError(f"Template resolution failed for {config_path}:\n  {exc}") from exc
+        raise ConfigTemplateError(
+            f"Template resolution failed for {config_path}:\n  {exc}"
+        ) from exc
 
     try:
         cfg = UbunyeConfig.model_validate(resolved)
     except ValidationError as exc:
+        unknown = _extract_unknown_field_errors(exc)
+        if unknown:
+            raise ConfigFieldError(
+                _format_unknown_fields(unknown, str(config_path))
+            ) from exc
         raise ValueError(_format_validation_error(exc, str(config_path))) from exc
 
     if profile and profile not in cfg.ENGINE.profiles:
         available = sorted(cfg.ENGINE.profiles.keys())
-        raise ValueError(
-            f"Profile '{profile}' is not defined in {config_path}. "
-            f"Available profiles: {available or ['(none)']}"
+        raise ConfigProfileError(
+            f"Profile '{profile}' is not defined in {config_path}.",
+            context={"Profile": profile, "Available": available or ["(none)"]},
+            hint=f"Check your --profile flag. Valid profiles: {', '.join(available) or '(none defined)'}",
         )
 
     return cfg
@@ -133,4 +146,67 @@ def _format_validation_error(exc: ValidationError, config_path: str) -> str:
             lines.append(f"    - {msg}")
         lines.append("")
 
+    return "\n".join(lines).rstrip()
+
+
+def _extract_unknown_field_errors(
+    exc: ValidationError,
+) -> List[Tuple[str, str, List[str]]]:
+    """Pull unknown-field errors from a Pydantic ``ValidationError``.
+
+    Returns a list of ``(section_path, unknown_field, valid_fields)`` tuples —
+    one per ``extra_forbidden`` error in *exc*.
+    """
+    results: List[Tuple[str, str, List[str]]] = []
+    for error in exc.errors():
+        if error["type"] != "extra_forbidden":
+            continue
+        loc = error["loc"]
+        unknown_field = str(loc[-1])
+        parent_loc = loc[:-1]
+        parent_model = _walk_model(UbunyeConfig, parent_loc)
+        valid = sorted(parent_model.model_fields.keys()) if parent_model else []
+        section = ".".join(str(p) for p in parent_loc) if parent_loc else "(top level)"
+        results.append((section, unknown_field, valid))
+    return results
+
+
+def _walk_model(
+    root: Type[BaseModel], loc_parts: Tuple[Any, ...]
+) -> Optional[Type[BaseModel]]:
+    """Resolve the Pydantic model class at a given location path."""
+    model: Type[BaseModel] = root
+    for part in loc_parts:
+        part_str = str(part)
+        if part_str not in model.model_fields:
+            return model
+        annotation = model.model_fields[part_str].annotation
+        # Unwrap Optional[X] → X
+        origin = getattr(annotation, "__origin__", None)
+        if origin is type(None):
+            return model
+        args = getattr(annotation, "__args__", None)
+        if args:
+            annotation = next((a for a in args if a is not type(None)), annotation)
+        if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+            model = annotation
+        else:
+            return model
+    return model
+
+
+def _format_unknown_fields(
+    unknowns: List[Tuple[str, str, List[str]]], config_path: str
+) -> str:
+    """Format unknown-field errors with typo suggestions."""
+    lines = [f"Unknown fields in {config_path}:\n"]
+    for section, field, valid_fields in unknowns:
+        lines.append(f"  {section}:")
+        lines.append(f"    Unknown field '{field}'")
+        matches = difflib.get_close_matches(field, valid_fields, n=1, cutoff=0.6)
+        if matches:
+            lines.append(f"    Did you mean '{matches[0]}'?")
+        else:
+            lines.append(f"    Valid fields are: {', '.join(valid_fields)}")
+        lines.append("")
     return "\n".join(lines).rstrip()

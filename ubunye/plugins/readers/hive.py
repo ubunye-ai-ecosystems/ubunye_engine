@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 
@@ -21,5 +22,9 @@ class HiveReader(Reader):
         db = cfg.get("db_name")
         tbl = cfg.get("tbl_name")
         if not (db and tbl):
-            raise ValueError("Provide either 'sql' or both 'db_name' and 'tbl_name'")
+            raise SourceReadError(
+                "Hive reader requires either 'sql' or both 'db_name' and 'tbl_name'.",
+                context={"Format": "hive"},
+                hint="Set sql: 'SELECT ...' or set both db_name and tbl_name in your input config.",
+            )
         return spark.table(f"{db}.{tbl}")

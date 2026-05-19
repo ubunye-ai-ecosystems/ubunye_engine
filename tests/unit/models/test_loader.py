@@ -73,9 +73,11 @@ class TestLoadModelClass:
         instance = cls()
         assert instance is not None
 
-    def test_missing_model_file_raises_file_not_found(self, tmp_path):
-        """If model.py does not exist in task_dir, FileNotFoundError is raised."""
-        with pytest.raises(FileNotFoundError, match="Model file not found"):
+    def test_missing_model_file_raises_model_load_error(self, tmp_path):
+        """If model.py does not exist in task_dir, ModelLoadError is raised."""
+        from ubunye.core.errors import ModelLoadError
+
+        with pytest.raises(ModelLoadError, match="Model file not found"):
             load_model_class(str(tmp_path), "model.MyModel")
 
     def test_missing_class_raises_import_error(self, tmp_path):
@@ -84,10 +86,12 @@ class TestLoadModelClass:
         with pytest.raises(ImportError, match="NonExistent"):
             load_model_class(str(tmp_path), "model.NonExistent")
 
-    def test_non_ubunye_model_raises_type_error(self, tmp_path):
-        """A class not inheriting UbunyeModel raises TypeError."""
+    def test_non_ubunye_model_raises_model_load_error(self, tmp_path):
+        """A class not inheriting UbunyeModel raises ModelLoadError."""
+        from ubunye.core.errors import ModelLoadError
+
         (tmp_path / "model.py").write_text(_NOT_UBUNYE_MODEL_CODE, encoding="utf-8")
-        with pytest.raises(TypeError, match="UbunyeModel"):
+        with pytest.raises(ModelLoadError, match="UbunyeModel"):
             load_model_class(str(tmp_path), "model.BadModel")
 
     def test_load_from_nested_module(self, tmp_path):

@@ -8,5 +8,15 @@ except PackageNotFoundError:
     __version__ = "unknown"
 
 from ubunye.api import run_pipeline, run_task
+from ubunye.core.errors import UbunyeError
 
-__all__ = ["core", "config", "cli", "plugins", "backends", "run_task", "run_pipeline"]
+__all__ = [
+    "core",
+    "config",
+    "cli",
+    "plugins",
+    "backends",
+    "run_task",
+    "run_pipeline",
+    "UbunyeError",
+]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from unittest.mock import MagicMock
 
 import pytest
@@ -58,11 +59,39 @@ class TestEngineValidation:
             engine._normalize_transforms("noop")
 
     def test_missing_transform_plugin_raises(self, engine):
-        with pytest.raises(KeyError, match="not found"):
+        from ubunye.core.errors import TransformNotFoundError
+
+        with pytest.raises(TransformNotFoundError, match="not found"):
             engine._validate_transforms_exist([{"type": "nonexistent"}])
 
     def test_registered_transform_does_not_raise(self, engine):
         engine._validate_transforms_exist([{"type": "noop"}])
+
+    def test_none_type_skipped_in_validation(self, engine):
+        engine._validate_transforms_exist([{"type": None}])
+
+    def test_none_type_skipped_in_validation_missing_key(self, engine):
+        engine._validate_transforms_exist([{}])
+
+    def test_noop_emits_deprecation_warning(self, engine):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            engine._warn_deprecated_noop([{"type": "noop"}])
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "noop is deprecated" in str(w[0].message)
+
+    def test_none_type_no_deprecation_warning(self, engine):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            engine._warn_deprecated_noop([{"type": None}])
+            assert len(w) == 0
+
+    def test_model_type_no_deprecation_warning(self, engine):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            engine._warn_deprecated_noop([{"type": "model"}])
+            assert len(w) == 0
 
 
 class TestEngineContext:

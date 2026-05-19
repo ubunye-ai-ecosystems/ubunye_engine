@@ -10,8 +10,11 @@ not swallow hook exceptions.
 
 from __future__ import annotations
 
+import logging
 from contextlib import ExitStack, contextmanager
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ubunye.core.runtime import EngineContext
@@ -68,8 +71,7 @@ class HookChain:
                 try:
                     stack.enter_context(h.task(ctx, cfg, state))
                 except Exception:
-                    # Broken hook must not break the run
-                    pass
+                    logger.warning("Hook %s.task() failed: %s", type(h).__name__, _exc_oneliner())
             yield
 
     @contextmanager
@@ -84,5 +86,12 @@ class HookChain:
                 try:
                     stack.enter_context(h.step(ctx, name, meta))
                 except Exception:
-                    pass
+                    logger.warning("Hook %s.step() failed: %s", type(h).__name__, _exc_oneliner())
             yield
+
+
+def _exc_oneliner() -> str:
+    import sys
+
+    exc = sys.exc_info()[1]
+    return f"{type(exc).__name__}: {exc}" if exc else "unknown"
