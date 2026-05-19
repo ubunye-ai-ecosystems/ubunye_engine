@@ -1,9 +1,7 @@
 """Tests for the ``ubunye deploy databricks`` CLI command."""
 
 import re
-from unittest.mock import MagicMock, patch
 
-import pytest
 import yaml
 from typer.testing import CliRunner
 
