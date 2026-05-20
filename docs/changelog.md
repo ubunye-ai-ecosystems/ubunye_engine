@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Interactive notebook API (`ubunye.notebook`).** New `ubunye.notebook()`
+  factory returns a `NotebookContext` for step-by-step task execution in
+  Databricks notebooks. Data scientists can call `ctx.read()`,
+  `ctx.transform()`, and `ctx.write()` in separate cells, inspecting
+  DataFrames between stages. Environment variables referenced via
+  `{{ env.VAR }}` in config.yaml are auto-resolved from Databricks widgets
+  and secrets — no manual `os.environ` setup required.
+
+- **Public step methods on `Engine`.** `Engine.read_inputs()`,
+  `Engine.apply_transforms()`, and `Engine.write_outputs()` expose the
+  pipeline stages individually for interactive and advanced use cases.
+
+- **`extract_env_references()` utility.** Scans raw YAML text for
+  `{{ env.VAR }}` patterns before Jinja resolution, enabling automatic
+  env-var discovery.
+
+---
+
 ## [0.1.9] — 2026-05-19
 
 ### Added

@@ -52,6 +52,7 @@ nav:
       - REST API: connectors/rest_api.md
       - Writing a Plugin: connectors/plugin_guide.md
   - Patterns:
+      - Notebook Prototyping: patterns/notebook.md
       - RAG Document Pipeline: patterns/rag.md
       - Feature Store: patterns/features.md
       - Drift Detection: patterns/drift.md

@@ -21,9 +21,20 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import Environment, StrictUndefined, UndefinedError
+
+_ENV_REF_RE = re.compile(r"\{\{\s*env\.(\w+)")
+
+
+def extract_env_references(raw_yaml: str) -> Set[str]:
+    """Return the set of env-var names referenced via ``{{ env.X }}`` in raw YAML.
+
+    Operates on the raw text *before* Jinja resolution so it catches every
+    reference regardless of ``| default()`` filters.
+    """
+    return set(_ENV_REF_RE.findall(raw_yaml))
 
 
 def resolve_config(

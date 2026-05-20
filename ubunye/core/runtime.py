@@ -187,16 +187,8 @@ class Engine:
         self._warn_deprecated_noop(transforms)
         self._validate_transforms_exist(transforms)
 
-        # Resolve context for observability
-        task_name = self.context.task_name or cfg.get("TASK_NAME") or "unknown_task"
-        profile = self.context.profile or cfg.get("ENGINE", {}).get("active_profile") or "default"
-        ctx = EngineContext(run_id=self.context.run_id, profile=profile, task_name=task_name)
-
-        if self._hooks_override is not None:
-            hook_list = self._hooks_override
-        else:
-            hook_list = _default_hooks(cfg) + self._extra_hooks
-        chain = HookChain(hook_list)
+        ctx = self._resolve_context(cfg)
+        chain = self._build_hook_chain(cfg)
         state: Dict[str, Any] = {"outputs": None}
 
         if dry_run:
@@ -216,6 +208,50 @@ class Engine:
             finally:
                 if self._manage_backend:
                     self.backend.stop()
+
+    def read_inputs(self, cfg: dict) -> Dict[str, Any]:
+        """Read all inputs defined in ``CONFIG.inputs``.
+
+        Returns a dict mapping input name to DataFrame — suitable for
+        interactive inspection before calling :meth:`apply_transforms`.
+        """
+        inputs_cfg = cfg.get("CONFIG", {}).get("inputs", {}) or {}
+        outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
+        self._validate_io_configs(inputs_cfg, outputs_cfg)
+        ctx = self._resolve_context(cfg)
+        chain = self._build_hook_chain(cfg)
+        return self._read_inputs(ctx, chain, inputs_cfg)
+
+    def apply_transforms(self, sources: Dict[str, Any], cfg: dict) -> Dict[str, Any]:
+        """Apply configured transforms to *sources*.
+
+        Returns a dict mapping output name to DataFrame.
+        """
+        transform_cfg = cfg.get("CONFIG", {}).get("transform") or {}
+        transforms = self._normalize_transforms(transform_cfg)
+        self._validate_transforms_exist(transforms)
+        ctx = self._resolve_context(cfg)
+        chain = self._build_hook_chain(cfg)
+        return self._apply_transforms(ctx, chain, sources, transforms)
+
+    def write_outputs(self, outputs: Dict[str, Any], cfg: dict) -> None:
+        """Write *outputs* to the sinks defined in ``CONFIG.outputs``."""
+        outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
+        ctx = self._resolve_context(cfg)
+        chain = self._build_hook_chain(cfg)
+        self._write_outputs(ctx, chain, outputs_cfg, outputs)
+
+    # ---------- shared helpers ----------
+
+    def _resolve_context(self, cfg: dict) -> EngineContext:
+        task_name = self.context.task_name or cfg.get("TASK_NAME") or "unknown_task"
+        profile = self.context.profile or cfg.get("ENGINE", {}).get("active_profile") or "default"
+        return EngineContext(run_id=self.context.run_id, profile=profile, task_name=task_name)
+
+    def _build_hook_chain(self, cfg: dict) -> HookChain:
+        if self._hooks_override is not None:
+            return HookChain(self._hooks_override)
+        return HookChain(_default_hooks(cfg) + self._extra_hooks)
 
     # ---------- pipeline stages ----------
 

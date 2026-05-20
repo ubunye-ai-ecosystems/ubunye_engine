@@ -44,6 +44,55 @@ results = ubunye.run_pipeline(
 
 ---
 
+## Notebook API (Interactive)
+
+Step-by-step execution for prototyping in Databricks notebooks.
+Environment variables referenced via `{{ env.VAR }}` in config.yaml are
+auto-resolved from widgets and secrets — no manual `os.environ` setup.
+
+```python
+import ubunye
+
+ctx = ubunye.notebook(
+    "/Workspace/pipelines/claims/claim_etl",
+    mode="PROD",
+    dt="2026-01-01",
+)
+
+sources = ctx.read()
+sources["raw_claims"].display()
+
+outputs = ctx.transform(sources)
+outputs["bronze_claims"].show()
+
+ctx.write(outputs)
+```
+
+::: ubunye.notebook.notebook
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 3
+
+::: ubunye.notebook.NotebookContext
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 3
+      members:
+        - read
+        - transform
+        - write
+        - run
+        - config
+        - config_dict
+        - env_vars
+        - spark
+        - task_name
+        - close
+
+---
+
 ## Core Engine
 
 ::: ubunye.core.runtime.Engine

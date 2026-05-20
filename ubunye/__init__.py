@@ -9,6 +9,7 @@ except PackageNotFoundError:
 
 from ubunye.api import run_pipeline, run_task
 from ubunye.core.errors import UbunyeError
+from ubunye.notebook import notebook
 
 __all__ = [
     "core",
@@ -18,5 +19,6 @@ __all__ = [
     "backends",
     "run_task",
     "run_pipeline",
+    "notebook",
     "UbunyeError",
 ]
