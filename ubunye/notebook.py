@@ -177,9 +177,7 @@ class NotebookContext:
             self._task_obj = task_obj
 
             reg = Registry.from_entrypoints()
-            reg.register_transform(
-                _USER_TASK_TRANSFORM_KEY, _make_user_task_transform(task_obj)
-            )
+            reg.register_transform(_USER_TASK_TRANSFORM_KEY, _make_user_task_transform(task_obj))
             self._cfg_dict = {
                 **self._cfg_dict,
                 "CONFIG": {
@@ -194,9 +192,7 @@ class NotebookContext:
         # --- Phase E: build engine ---
         run_id = str(uuid.uuid4())
         lineage_hooks = self._build_lineage_hooks(lineage, lineage_dir)
-        self._context = EngineContext(
-            run_id=run_id, profile=mode, task_name=self._task_path.name
-        )
+        self._context = EngineContext(run_id=run_id, profile=mode, task_name=self._task_path.name)
         self._engine = Engine(
             backend=self._backend,
             registry=reg,
