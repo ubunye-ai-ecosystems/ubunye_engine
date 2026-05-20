@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -11,6 +12,10 @@ import yaml
 
 from ubunye.config.resolver import extract_env_references
 from ubunye.notebook import NotebookContext, _auto_resolve_env
+
+# Resolve the actual module object to avoid the name collision between
+# ubunye.notebook (module) and ubunye.notebook (function exported in __init__).
+_notebook_mod = sys.modules["ubunye.notebook"]
 
 # ---------------------------------------------------------------------------
 # extract_env_references
@@ -167,7 +172,7 @@ def env_task_dir(tmp_path: Path) -> Path:
     return task
 
 
-@patch("ubunye.notebook._detect_backend")
+@patch.object(_notebook_mod, "_detect_backend")
 class TestNotebookContext:
     def test_construction_loads_config(self, mock_detect, notebook_task_dir):
         mock_detect.return_value = MagicMock()
@@ -295,7 +300,7 @@ class TestNotebookContext:
 # ---------------------------------------------------------------------------
 
 
-@patch("ubunye.notebook._detect_backend")
+@patch.object(_notebook_mod, "_detect_backend")
 class TestNotebookFactory:
     def test_returns_context(self, mock_detect, notebook_task_dir):
         mock_detect.return_value = MagicMock()
