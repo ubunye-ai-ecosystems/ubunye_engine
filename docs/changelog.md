@@ -23,6 +23,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The `delta`, `hive` and `binary` connectors now exist.** All three were
+  declared in `FormatType`, accepted by config validation, and documented — but
+  had no plugin registered behind them, so any pipeline using them died with
+  `ReaderNotFoundError` / `WriterNotFoundError`.
+
+  | Format | Reader | Writer |
+  |---|---|---|
+  | `delta` | **new** — by path, table, or SQL; time travel via `version_as_of` / `timestamp_as_of` | **new** — all six write modes |
+  | `hive` | already existed | **new** — all six write modes, `partitionBy` |
+  | `binary` | **new** — Spark's `binaryFile` source, one row per file | none: the source is read-only |
+
+  A test now asserts that **every** format in `FormatType` resolves to a
+  registered plugin, so this class of gap fails in CI rather than in a pipeline.
+
+- **`format: binary` in `CONFIG.outputs` is rejected at config load.** Spark's
+  `binaryFile` source cannot write. The failure now happens in `ubunye validate`,
+  with a reason, instead of after the transform has already run.
+
 - **Four new write modes.** `CONFIG.outputs.*.mode` previously accepted only
   `overwrite`, `append` and `merge` — and of those, `merge` was never
   implemented. The full set is now:

@@ -229,6 +229,22 @@ class TaskConfig(BaseModel):
             raise ValueError("CONFIG.outputs must define at least one output")
         return self
 
+    @model_validator(mode="after")
+    def _check_writable_outputs(self) -> "TaskConfig":
+        """Spark's ``binaryFile`` source can read but not write.
+
+        Caught here rather than at write time, so the pipeline fails in
+        ``ubunye validate`` instead of after the transform has already run.
+        """
+        read_only = [name for name, out in self.outputs.items() if out.format == FormatType.BINARY]
+        if read_only:
+            raise ValueError(
+                f"format 'binary' is read-only and cannot be used as an output "
+                f"(CONFIG.outputs: {', '.join(sorted(read_only))}). "
+                f"Write files with format 's3' instead."
+            )
+        return self
+
 
 # ---------------------------------------------------------------------------
 # ORCHESTRATION sub-model
