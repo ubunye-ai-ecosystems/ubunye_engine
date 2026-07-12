@@ -1,0 +1,41 @@
+/* Ubunye Engine — docs theme overrides */
+
+/* ---------------------------------------------------------------------------
+   Logo
+   Material's default header logo is 1.2rem tall, which renders the Ubunye mark
+   as an unreadable speck. Scale it up and give the header room to hold it.
+   --------------------------------------------------------------------------- */
+
+.md-header__button.md-logo {
+  padding: 0.2rem;
+  margin-right: 0.2rem;
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 2.2rem;
+  width: auto;
+}
+
+/* The mobile drawer repeats the logo in its title bar — scale that too, or the
+   mark shrinks again exactly where the screen is smallest. */
+.md-nav__title .md-nav__button.md-logo img,
+.md-nav__title .md-nav__button.md-logo svg {
+  height: 2.6rem;
+  width: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Collapsible navigation
+   With navigation.tabs/sections/expand removed, sections collapse by default.
+   These only tidy up the affordance so it reads as clickable.
+   --------------------------------------------------------------------------- */
+
+.md-nav__item--nested > .md-nav__link {
+  font-weight: 600;
+}
+
+/* Make the expand/collapse arrow obvious rather than a faint hairline. */
+.md-nav__icon {
+  opacity: 0.85;
+}
