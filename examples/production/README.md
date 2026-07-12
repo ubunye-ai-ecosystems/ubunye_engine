@@ -41,6 +41,7 @@ Start with the one that matches your runtime.
 
 ---
 
+<!-- --8<-- [start:portability] -->
 ## The portability contract
 
 The file that contains the business logic —
@@ -120,6 +121,9 @@ faster and cheaper to iterate on.
 
 ---
 
+<!-- --8<-- [end:portability] -->
+
+<!-- --8<-- [start:community-edition] -->
 ## Community Edition vs. a standard Databricks workspace
 
 The Databricks example is targeted at **Community Edition** so it works on a
@@ -149,7 +153,7 @@ single-node cluster conf, change the storage format, and swap PAT for OAuth
 
 These are not fixable from inside the example — they are constraints of the
 platform itself and are documented honestly in
-[`titanic_databricks/README.md`](./titanic_databricks/README.md):
+[`titanic_databricks/README.md`](https://github.com/ubunye-ai-ecosystems/ubunye_engine/blob/main/examples/production/titanic_databricks/README.md):
 
 1. New CE signups have been closed. Existing workspaces still work but new
    ones may need to use the Databricks "Free Edition" successor, which has
@@ -165,3 +169,4 @@ platform itself and are documented honestly in
 
 None of these are worked around silently. If any of them bite in CI, the
 workflow fails with the underlying tool's own error message.
+<!-- --8<-- [end:community-edition] -->

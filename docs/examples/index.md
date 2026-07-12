@@ -51,9 +51,13 @@ Pick the one that matches your runtime.
 !!! note "Community Edition vs paid workspace"
 
     The Titanic, weather and multi-task examples run on a Databricks **Community
-    Edition** workspace. Flood Risk and Device Mapping need a **paid** one — they read
-    existing Unity Catalog tables and call external APIs. The full CE-vs-paid matrix
-    and the portability contract live in the
-    [examples README on GitHub](https://github.com/ubunye-ai-ecosystems/ubunye_engine/tree/main/examples/production).
+    Edition** workspace — free, no cloud spend. Flood Risk and Device Mapping need a
+    **paid** one, because they read existing Unity Catalog tables. The full matrix,
+    and what to undo when you move off CE, is on the
+    [Databricks Community Edition](community-edition.md) page.
+
+---
+
+--8<-- "examples/production/README.md:portability"
 
 [:material-github: Browse all examples on GitHub](https://github.com/ubunye-ai-ecosystems/ubunye_engine/tree/main/examples){ .md-button }

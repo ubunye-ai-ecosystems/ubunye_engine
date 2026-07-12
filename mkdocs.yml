@@ -58,6 +58,7 @@ nav:
       - Writing a Plugin: connectors/plugin_guide.md
   - Examples:
       - Overview: examples/index.md
+      - Databricks Community Edition: examples/community-edition.md
       - Titanic (Local): examples/titanic-local.md
       - Titanic (Databricks): examples/titanic-databricks.md
       - Titanic ML (Databricks): examples/titanic-ml-databricks.md
