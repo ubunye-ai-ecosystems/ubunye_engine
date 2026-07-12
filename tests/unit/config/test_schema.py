@@ -253,7 +253,15 @@ class TestIOConfig:
             IOConfig(format="hive", db_name="db", tbl_name="t", mode="upsert")
 
     def test_valid_modes(self):
-        for mode in ("overwrite", "append", "merge"):
+        for mode in (
+            "overwrite",
+            "append",
+            "errorifexists",
+            "error",
+            "ignore",
+            "merge",
+            "overwrite_partitions",
+        ):
             io = IOConfig(format="hive", db_name="db", tbl_name="t", mode=mode)
             assert io.mode == WriteMode(mode)
 

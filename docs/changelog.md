@@ -9,12 +9,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- **The `s3` writer now defaults to `mode: append`, not `overwrite`.** Every other
+  writer already defaulted to `append`; the same config key meant "insert" on one
+  connector and "destroy and replace" on another. All writers are now consistent,
+  and the default is the mode that cannot lose data by accident.
+
+  **Action required:** any `s3` output that omitted `mode` and relied on the
+  implicit overwrite must now say `mode: overwrite` explicitly. Nothing fails
+  loudly — the write succeeds, it just appends. Grep your configs for `format: s3`
+  outputs with no `mode` key before upgrading.
+
+### Added
+
+- **Four new write modes.** `CONFIG.outputs.*.mode` previously accepted only
+  `overwrite`, `append` and `merge` — and of those, `merge` was never
+  implemented. The full set is now:
+
+  | Mode | Behaviour |
+  |---|---|
+  | `errorifexists` (alias `error`) | Fail if the target exists — Spark's own default |
+  | `ignore` | No-op if the target exists |
+  | `merge` | Delta MERGE (upsert) on `merge_keys`; creates the target on first run |
+  | `overwrite_partitions` | Replace only the partitions in the DataFrame, via `partitionBy` (dynamic) or `replace_where` (Delta predicate) |
+
+- **`ubunye.core.write_modes`.** Mode semantics live in one module rather than
+  in each connector. Writers declare the modes they support; a mode a connector
+  cannot honour raises `SinkWriteError` **before any rows are written** instead
+  of being silently downgraded. JDBC accepts Spark's four native modes only;
+  `rest_api` is append-only.
+
+- **`partitionBy`, `merge_keys` and `replace_where` on the `s3` writer.**
+
 ### Fixed
+
+- **`mode: merge` crashed at runtime.** It passed config validation and was
+  documented (with `merge_keys`), but no writer implemented it — the string was
+  handed to `df.write.mode("merge")`, which Spark rejects with
+  `IllegalArgumentException: Unknown save mode`. It now performs a real Delta
+  MERGE.
+
+- **`errorifexists` and `ignore` were unreachable.** The JDBC and Unity writer
+  docstrings claimed support, but the `WriteMode` enum rejected both at config
+  load, so no `config.yaml` could ever set them.
+
+- **The `s3` writer silently dropped `options`.** `mergeSchema`, `overwriteSchema`
+  and friends were documented but never applied to the Spark writer.
 
 - **Stale tests in `tests/test_rest_api_plugin.py`.** Five tests still expected
   `ValueError` where the engine has raised typed `SourceReadError` /
   `SinkWriteError` for some time. They had been failing at HEAD unnoticed because
   CI only runs `tests/unit`.
+
+- **`overwrite_partitions` refuses an unpartitioned target.** Dynamic partition
+  overwrite without partitions is a full-table wipe; the engine now fails the
+  config instead of quietly destroying data. The session-level
+  `spark.sql.sources.partitionOverwriteMode` conf is restored after each write
+  rather than leaking into later writes.
 
 ---
 

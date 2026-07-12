@@ -81,17 +81,24 @@ def test_invalid_semver_rejected(version):
 # ---------------------------------------------------------------------------
 
 
-@given(mode=st.sampled_from(["overwrite", "append", "merge"]))
+_VALID_MODES = [
+    "overwrite",
+    "append",
+    "errorifexists",
+    "error",
+    "ignore",
+    "merge",
+    "overwrite_partitions",
+]
+
+
+@given(mode=st.sampled_from(_VALID_MODES))
 def test_valid_write_modes_accepted(mode):
     io = IOConfig(format="hive", db_name="db", tbl_name="t", mode=mode)
     assert io.mode.value == mode
 
 
-@given(
-    mode=st.text(min_size=1, max_size=20).filter(
-        lambda s: s not in ("overwrite", "append", "merge")
-    )
-)
+@given(mode=st.text(min_size=1, max_size=20).filter(lambda s: s not in _VALID_MODES))
 @settings(max_examples=30)
 def test_invalid_write_modes_rejected(mode):
     with pytest.raises(Exception):

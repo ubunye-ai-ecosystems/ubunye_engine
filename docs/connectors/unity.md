@@ -48,6 +48,33 @@ CONFIG:
       mode: append
 ```
 
+### MERGE (upsert)
+
+Matched rows are updated on `merge_keys`, unmatched rows inserted. The first run
+creates the table.
+
+```yaml
+    claims_curated:
+      format: unity
+      table: main.fraud.claims_curated
+      mode: merge
+      merge_keys: [policy_id, ds]
+```
+
+### Partition overwrite (backfills)
+
+Replace only the partitions in the incoming DataFrame:
+
+```yaml
+    claims_daily:
+      format: unity
+      table: main.fraud.claims_daily
+      mode: overwrite_partitions
+      partitionBy: [ds]
+      # or, as a Delta predicate:
+      # replace_where: "ds = '{{ dt }}'"
+```
+
 ---
 
 ## Fields
@@ -59,7 +86,10 @@ CONFIG:
 | `db_name` | string | Conditional | Schema name (without catalog) |
 | `tbl_name` | string | Conditional | Table name |
 | `sql` | string | Conditional | Spark SQL query |
-| `mode` | `overwrite` \| `append` | No | Write mode (outputs only) |
+| `mode` | see [Write modes](../config/io.md#write-modes) | No | Default `append`. All six modes supported |
+| `partitionBy` | list | No | Partition columns; required for `mode: overwrite_partitions` unless `replace_where` is set |
+| `merge_keys` | list \| string | Conditional | Required for `mode: merge` |
+| `replace_where` | string | No | Delta predicate for `mode: overwrite_partitions` |
 | `options` | dict | No | Spark reader/writer options |
 
 ---
