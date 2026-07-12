@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Stale tests in `tests/test_rest_api_plugin.py`.** Five tests still expected
+  `ValueError` where the engine has raised typed `SourceReadError` /
+  `SinkWriteError` for some time. They had been failing at HEAD unnoticed because
+  CI only runs `tests/unit`.
+
+---
+
 ## [0.2.0] — 2026-05-20
 
 ### Added
