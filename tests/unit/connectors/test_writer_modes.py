@@ -137,21 +137,34 @@ class TestS3WriterModes:
 
         assert all(c.args[0] != "merge_keys" for c in df.write.option.call_args_list)
 
-    def test_overwrite_partitions_sets_dynamic_conf_around_the_write(self):
-        spark = MagicMock()
-        spark.conf.get.return_value = "STATIC"
+    def test_overwrite_partitions_on_delta_uses_the_delta_write_option(self):
+        """Spark ignores partitionOverwriteMode on a path write (verified against
+        Spark 4.1 in the integration tier). Delta honours it as a write option."""
         df = _df()
 
         S3Writer().write(
             df,
-            {"path": "s3a://b/out/", "mode": "overwrite_partitions", "partitionBy": ["dt"]},
-            _backend(spark),
+            {
+                "path": "s3a://b/out/",
+                "file_format": "delta",
+                "mode": "overwrite_partitions",
+                "partitionBy": ["dt"],
+            },
+            _backend(),
         )
 
-        key = "spark.sql.sources.partitionOverwriteMode"
-        assert spark.conf.set.call_args_list[0].args == (key, "DYNAMIC")
-        assert spark.conf.set.call_args_list[-1].args == (key, "STATIC")
+        df.write.option.assert_any_call("partitionOverwriteMode", "dynamic")
         df.write.mode.assert_called_once_with("overwrite")
+
+    def test_overwrite_partitions_on_a_non_delta_path_is_refused(self):
+        """The dead end: Spark cannot do this on a path write, and doing it anyway
+        silently wipes every other partition. Refuse instead."""
+        with pytest.raises(SinkWriteError, match="cannot be done safely on a non-Delta path"):
+            S3Writer().write(
+                _df(),
+                {"path": "s3a://b/out/", "mode": "overwrite_partitions", "partitionBy": ["dt"]},
+                _backend(),
+            )
 
     def test_overwrite_partitions_with_replace_where_uses_the_predicate(self):
         df = _df()
@@ -235,6 +248,18 @@ class TestUnityWriterModes:
 
         df.write.option.assert_any_call("replaceWhere", "ds = '2026-01-01'")
         df.write.mode.assert_called_once_with("overwrite")
+
+    def test_overwrite_partitions_without_predicate_uses_delta_dynamic(self):
+        """Unity tables are Delta by default, so the Delta write option applies."""
+        df = _df()
+
+        UnityTableWriter().write(
+            df,
+            {"table": "main.f.c", "mode": "overwrite_partitions", "partitionBy": ["ds"]},
+            _backend(),
+        )
+
+        df.write.option.assert_any_call("partitionOverwriteMode", "dynamic")
 
 
 # ---------------------------------------------------------------------------

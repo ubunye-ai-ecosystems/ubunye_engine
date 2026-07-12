@@ -156,7 +156,6 @@ class TestResolveOverwritePartitions:
         )
         assert resolved.is_overwrite_partitions
         assert resolved.save_mode == "overwrite"
-        assert resolved.needs_dynamic_partition_conf
 
     def test_replace_where_predicate_wins_over_dynamic_conf(self):
         resolved = write_modes.resolve(
@@ -167,7 +166,6 @@ class TestResolveOverwritePartitions:
             file_format="delta",
         )
         assert resolved.options == {"replaceWhere": "dt = '2026-01-01'"}
-        assert not resolved.needs_dynamic_partition_conf
 
     def test_unpartitioned_without_predicate_raises(self):
         """Dynamic overwrite of an unpartitioned target is a silent full wipe."""
