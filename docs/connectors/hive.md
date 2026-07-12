@@ -42,9 +42,9 @@ CONFIG:
       format: hive
       db_name: clean
       tbl_name: claims
-      mode: overwrite       # overwrite | append
+      mode: overwrite
+      file_format: parquet
       options:
-        fileFormat: parquet
         compression: snappy
 ```
 
@@ -55,10 +55,13 @@ CONFIG:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `format` | `"hive"` | Yes | Selects this connector |
-| `db_name` | string | Conditional | Database name (required unless `sql` is set) |
-| `tbl_name` | string | Conditional | Table name (required unless `sql` is set) |
-| `sql` | string | Conditional | SQL query (alternative to `db_name` + `tbl_name`) |
-| `mode` | `overwrite` \| `append` | No | Write mode (outputs only) |
+| `db_name` | string | Conditional | Database name (required unless `sql` / `table` is set) |
+| `tbl_name` | string | Conditional | Table name (required unless `sql` / `table` is set) |
+| `table` | string | Conditional | `db.table`, as an alternative to `db_name` + `tbl_name` |
+| `sql` | string | Conditional | SQL query for reads (alternative to `db_name` + `tbl_name`) |
+| `file_format` | string | No | `parquet` (default), `orc`, `delta` |
+| `mode` | see [Write modes](../config/io.md#write-modes) | No | Default `append`. All six modes supported; `mode: merge` requires `file_format: delta` |
+| `partitionBy` | list | No | Partition columns |
 | `options` | dict | No | Spark reader/writer options |
 
 ---
@@ -77,6 +80,8 @@ ENGINE:
 
 ## Partitioned writes
 
+`partitionBy` is a top-level list, not a Spark option:
+
 ```yaml
   outputs:
     events_partitioned:
@@ -84,8 +89,20 @@ ENGINE:
       db_name: clean
       tbl_name: events
       mode: overwrite
-      options:
-        partitionBy: event_date
+      partitionBy: [event_date]
+```
+
+To re-run a single day without dropping the rest of the table, use
+`mode: overwrite_partitions` instead of `overwrite`:
+
+```yaml
+  outputs:
+    events_partitioned:
+      format: hive
+      db_name: clean
+      tbl_name: events
+      mode: overwrite_partitions
+      partitionBy: [event_date]
 ```
 
 Or use Spark's `partitionBy` via the options dict — keys are passed as

@@ -31,14 +31,20 @@ ubunye = "ubunye.cli.main:app"
 hive = "ubunye.plugins.readers.hive:HiveReader"
 jdbc = "ubunye.plugins.readers.jdbc:JdbcReader"
 s3 = "ubunye.plugins.readers.s3:S3Reader"
+delta = "ubunye.plugins.readers.delta:DeltaReader"
+binary = "ubunye.plugins.readers.binary:BinaryReader"
 unity = "ubunye.plugins.readers.unity:UnityTableReader"
 rest_api = "ubunye.plugins.readers.rest_api:RestApiReader"
 
 [project.entry-points."ubunye.writers"]
 s3 = "ubunye.plugins.writers.s3:S3Writer"
+delta = "ubunye.plugins.writers.delta:DeltaWriter"
+hive = "ubunye.plugins.writers.hive:HiveWriter"
 jdbc = "ubunye.plugins.writers.jdbc:JdbcWriter"
 unity = "ubunye.plugins.writers.unity:UnityTableWriter"
 rest_api = "ubunye.plugins.writers.rest_api:RestApiWriter"
+# No binary writer: Spark's binaryFile source is read-only. 'binary' in
+# CONFIG.outputs is rejected at config load (see config/schema.py).
 
 [project.entry-points."ubunye.transforms"]
 noop  = "ubunye.plugins.transforms.noop:NoOpTransform"

@@ -166,10 +166,13 @@ Not every connector can honour every mode. Asking for one it cannot do raises
 
 | Connector | Supported modes | Default |
 |---|---|---|
+| `delta` | all six | `append` |
 | `unity` | all six | `append` |
 | `s3` | all six (`merge` and `replace_where` need `file_format: delta`) | `append` |
+| `hive` | all six (`merge` needs `file_format: delta`) | `append` |
 | `jdbc` | native four only — no `merge` / `overwrite_partitions` | `append` |
 | `rest_api` | `append` (a REST sink has no table to merge into) | `append` |
+| `binary` | none — read-only; rejected in `CONFIG.outputs` | — |
 
 Every writer defaults to `append`: the mode that cannot destroy data you did not
 mean to destroy. Set `mode` explicitly when you want anything else.
