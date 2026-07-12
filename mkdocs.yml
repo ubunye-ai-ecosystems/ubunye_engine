@@ -10,10 +10,15 @@ theme:
   language: en
   features:
     - navigation.instant
-    - navigation.tabs
     - navigation.tracking
-    - navigation.sections
-    - navigation.expand
+    # Collapsible nav, desktop and mobile. Deliberately NOT set:
+    #   navigation.tabs     — puts top-level items in a header bar that overflows
+    #                         off-screen once there are a dozen of them
+    #   navigation.sections — renders sections as flat, always-open groups
+    #   navigation.expand   — force-expands everything, so nothing can collapse
+    # Without those three, Material's default applies: every section is a
+    # collapsible item in the sidebar (a drawer on mobile).
+    - navigation.top
     - toc.follow
     - content.code.copy
     - content.tabs.link
@@ -110,6 +115,9 @@ plugins:
             docstring_style: google
             separate_signature: true
             show_root_toc_entry: false
+
+extra_css:
+  - stylesheets/extra.css
 
 extra:
   social:
