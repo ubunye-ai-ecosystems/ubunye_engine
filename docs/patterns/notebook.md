@@ -79,8 +79,8 @@ is the lowercase env-var name. Override with `secrets_map`:
 ```python
 ctx = ubunye.notebook(
     task_dir,
-    secrets_scope="flood-risk",
-    secrets_map={"TOMTOM_API_KEY": "my-custom-key"},
+    secrets_scope="my-pipeline",
+    secrets_map={"API_KEY": "my-custom-key"},
 )
 ```
 
