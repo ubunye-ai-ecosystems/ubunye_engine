@@ -156,15 +156,23 @@ class TestS3WriterModes:
         df.write.option.assert_any_call("partitionOverwriteMode", "dynamic")
         df.write.mode.assert_called_once_with("overwrite")
 
-    def test_overwrite_partitions_on_a_non_delta_path_is_refused(self):
-        """The dead end: Spark cannot do this on a path write, and doing it anyway
-        silently wipes every other partition. Refuse instead."""
-        with pytest.raises(SinkWriteError, match="cannot be done safely on a non-Delta path"):
-            S3Writer().write(
-                _df(),
-                {"path": "s3a://b/out/", "mode": "overwrite_partitions", "partitionBy": ["dt"]},
-                _backend(),
-            )
+    def test_overwrite_partitions_on_a_parquet_path_uses_the_session_conf(self):
+        """Spark's file sources honour partitionOverwriteMode from the session conf
+        (verified on real Spark in the integration tier). It must be restored after."""
+        spark = MagicMock()
+        spark.conf.get.return_value = "STATIC"
+        df = _df()
+
+        S3Writer().write(
+            df,
+            {"path": "s3a://b/out/", "mode": "overwrite_partitions", "partitionBy": ["dt"]},
+            _backend(spark),
+        )
+
+        key = "spark.sql.sources.partitionOverwriteMode"
+        assert spark.conf.set.call_args_list[0].args == (key, "DYNAMIC")
+        assert spark.conf.set.call_args_list[-1].args == (key, "STATIC")
+        df.write.mode.assert_called_once_with("overwrite")
 
     def test_overwrite_partitions_with_replace_where_uses_the_predicate(self):
         df = _df()

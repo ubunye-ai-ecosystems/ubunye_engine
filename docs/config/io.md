@@ -168,7 +168,7 @@ Not every connector can honour every mode. Asking for one it cannot do raises
 |---|---|---|
 | `delta` | all six | `append` |
 | `unity` | all six | `append` |
-| `s3` | all six; `merge` and `overwrite_partitions` need `file_format: delta` | `append` |
+| `s3` | all six (`merge` and `replace_where` need `file_format: delta`) | `append` |
 | `hive` | all six (`merge` needs `file_format: delta`) | `append` |
 | `jdbc` | native four only — no `merge` / `overwrite_partitions` | `append` |
 | `rest_api` | `append` (a REST sink has no table to merge into) | `append` |
@@ -198,21 +198,21 @@ The backfill mode: re-run one day without wiping the rest of the table. Two ways
 to say which partitions to replace —
 
 ```yaml
-    # 1. Dynamic — replace whatever partitions the DataFrame contains (Delta)
+    # 1. Dynamic — replace whatever partitions the DataFrame contains
     daily_sales:
-      format: delta
-      path: s3://my-bucket/delta/sales/
+      format: s3
+      path: s3://my-bucket/sales/
       mode: overwrite_partitions
       partitionBy: [dt]
 
-    # 2. Predicate — replace exactly what the expression matches (Delta)
+    # 2. Predicate — replace exactly what the expression matches (Delta only)
     daily_sales:
       format: delta
       path: s3://my-bucket/delta/sales/
       mode: overwrite_partitions
       replace_where: "dt = '{{ dt }}'"
 
-    # 3. A non-Delta *table* — INSERT OVERWRITE of the incoming partitions
+    # 3. A table — INSERT OVERWRITE of just the incoming partitions
     daily_sales:
       format: hive
       db_name: clean
@@ -224,11 +224,7 @@ to say which partitions to replace —
 Without `partitionBy` or `replace_where`, dynamic overwrite silently degrades to a
 full-table wipe — so the engine refuses the config instead.
 
-!!! warning "Not supported: a non-Delta **path**"
-
-    Spark honours `partitionOverwriteMode=DYNAMIC` only for `INSERT OVERWRITE`
-    into a **table**. On a path write it is ignored, and the write replaces the
-    entire dataset — verified against Spark 4.1 in the integration tests. So
-    `mode: overwrite_partitions` on a plain Parquet/CSV **path** raises
-    `SinkWriteError` rather than quietly destroying the other partitions. Use
-    `file_format: delta`, or write to a table.
+Under the hood the engine picks the mechanism the target actually supports: Delta's
+own write option for Delta, `INSERT OVERWRITE` for an existing table, and Spark's
+`partitionOverwriteMode=DYNAMIC` for a path. Each route is covered by an
+integration test against a real Spark session.

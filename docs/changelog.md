@@ -92,14 +92,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `spark.sql.sources.partitionOverwriteMode` conf is restored after each write
   rather than leaking into later writes.
 
-- **`overwrite_partitions` refuses a non-Delta path, instead of silently wiping
-  it.** Spark honours `partitionOverwriteMode=DYNAMIC` only for `INSERT OVERWRITE`
-  into a *table* — on a path write it is ignored and the entire dataset is
-  replaced. The first implementation did exactly that, and the integration tests
-  caught it destroying the partitions it was supposed to preserve. The mode now
-  takes the mechanism that actually works for each target: Delta's own write
-  option for Delta, `INSERT OVERWRITE` for a non-Delta table, and a
-  `SinkWriteError` for a non-Delta path, where Spark simply cannot do it.
+- **`overwrite_partitions` now uses the mechanism each target actually supports:**
+  Delta's own `partitionOverwriteMode` write option for Delta, `INSERT OVERWRITE`
+  (column-aligned, since it is positional) for an existing table, and Spark's
+  session-level `partitionOverwriteMode=DYNAMIC` for a path. Every route is
+  covered by an integration test against a real Spark session and a real Delta
+  table.
 
 ---
 

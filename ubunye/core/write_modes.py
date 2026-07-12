@@ -290,20 +290,20 @@ def _overwrite_partitions(
 ) -> None:
     """Replace only the partitions present in ``df``.
 
-    Spark has no single mechanism for this, and the obvious one is a trap:
-    ``spark.sql.sources.partitionOverwriteMode=DYNAMIC`` is **not** honoured on a
-    path-based ``save()`` — verified against Spark 4.1, where it silently wipes
-    every other partition (tests/integration/test_write_modes_integration.py).
-    It only applies to ``INSERT OVERWRITE`` into a table.
-
-    So there are three real routes, and one dead end:
+    Each kind of target needs a different mechanism — there is no single switch:
 
     * ``replaceWhere`` — Delta only; the predicate is already in ``opts``.
     * Delta without a predicate — Delta's own ``partitionOverwriteMode`` write
-      option, which Delta (unlike Spark's file sources) does honour.
-    * A non-Delta **table** — ``INSERT OVERWRITE`` with the session conf set,
-      which is the one place Spark's conf actually bites.
-    * A non-Delta **path** — Spark cannot do it. Refuse, rather than wipe.
+      option.
+    * An existing non-Delta **table** — ``INSERT OVERWRITE``, which is positional,
+      so the columns are aligned to the target schema first.
+    * A non-Delta **path** (or a table that doesn't exist yet) — a partitioned
+      overwrite with ``spark.sql.sources.partitionOverwriteMode=DYNAMIC`` set for
+      the duration of the write.
+
+    All four routes are exercised against a real Spark session in
+    ``tests/integration/test_write_modes_integration.py`` — a mocked writer cannot
+    tell "Spark accepted this" from "Spark did what we meant".
     """
     is_delta = file_format == "delta"
 
@@ -312,32 +312,24 @@ def _overwrite_partitions(
         return
 
     if is_delta:
-        # Delta honours this as a write option; Spark's file sources do not.
         opts["partitionOverwriteMode"] = "dynamic"
         save()
         return
 
-    if not table:
-        raise SinkWriteError(
-            f"Write mode 'overwrite_partitions' cannot be done safely on a non-Delta "
-            f"path write (file_format '{file_format}').",
-            context={"Format": connector, "file_format": file_format, "Path": path},
-            hint="Spark ignores partitionOverwriteMode on a path write and would "
-            "overwrite the whole dataset. Use file_format: delta, set "
-            "replace_where, or write to a table instead.",
-        )
+    if table and target_exists(spark, table=table):
+        # INSERT OVERWRITE is positional, not by name — line the columns up with
+        # the target's schema or rows land in the wrong columns.
+        target_columns = [f.name for f in spark.table(table).schema.fields]
+        aligned = df.select(*target_columns) if target_columns else df
 
-    if not target_exists(spark, table=table):
-        save()  # nothing to preserve on the first run
+        with dynamic_partition_overwrite(spark):
+            aligned.write.mode("overwrite").insertInto(table)
         return
 
-    # INSERT OVERWRITE is positional, not by name — line the columns up with the
-    # target's schema or rows land in the wrong columns.
-    target_columns = [f.name for f in spark.table(table).schema.fields]
-    aligned = df.select(*target_columns) if target_columns else df
-
+    # A path, or a table that does not exist yet (nothing to preserve on the
+    # first run — but the conf costs nothing and keeps one code path).
     with dynamic_partition_overwrite(spark):
-        aligned.write.mode("overwrite").insertInto(table)
+        save()
 
 
 @contextmanager
