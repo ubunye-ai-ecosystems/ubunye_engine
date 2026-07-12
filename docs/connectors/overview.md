@@ -15,8 +15,8 @@ registered under the `ubunye.readers` or `ubunye.writers` entry point group.
 | [`jdbc`](jdbc.md) | Yes | Yes | PostgreSQL, MySQL, Oracle, SQL Server, … |
 | [`unity`](unity.md) | Yes | Yes | Databricks Unity Catalog (3-part names) |
 | [`s3`](s3.md) | Yes | Yes | S3, HDFS, ADLS — any Spark-readable path |
-| [`delta`](s3.md) | Yes | Yes | Delta Lake — by path or table name |
-| `binary` | Yes | No | Raw binary files |
+| [`delta`](s3.md) | Yes | Yes | Delta Lake — by path or table name; time travel |
+| [`binary`](s3.md) | Yes | No | Raw files (PDFs, images) — Spark's `binaryFile` source is read-only, so `format: binary` in `CONFIG.outputs` is rejected at config load |
 | [`rest_api`](rest_api.md) | Yes | Yes | HTTP REST with auth, pagination, retry |
 
 ---
@@ -30,10 +30,18 @@ The `PluginRegistry` discovers connectors at startup via Python entry points:
 [project.entry-points."ubunye.readers"]
 hive     = "ubunye.plugins.readers.hive:HiveReader"
 jdbc     = "ubunye.plugins.readers.jdbc:JdbcReader"
+s3       = "ubunye.plugins.readers.s3:S3Reader"
+delta    = "ubunye.plugins.readers.delta:DeltaReader"
+binary   = "ubunye.plugins.readers.binary:BinaryReader"
+unity    = "ubunye.plugins.readers.unity:UnityTableReader"
 rest_api = "ubunye.plugins.readers.rest_api:RestApiReader"
 
 [project.entry-points."ubunye.writers"]
 s3       = "ubunye.plugins.writers.s3:S3Writer"
+delta    = "ubunye.plugins.writers.delta:DeltaWriter"
+hive     = "ubunye.plugins.writers.hive:HiveWriter"
+jdbc     = "ubunye.plugins.writers.jdbc:JdbcWriter"
+unity    = "ubunye.plugins.writers.unity:UnityTableWriter"
 rest_api = "ubunye.plugins.writers.rest_api:RestApiWriter"
 ```
 

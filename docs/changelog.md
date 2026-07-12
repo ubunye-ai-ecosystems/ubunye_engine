@@ -7,6 +7,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Breaking
+
+- **The `s3` writer now defaults to `mode: append`, not `overwrite`.** Every other
+  writer already defaulted to `append`; the same config key meant "insert" on one
+  connector and "destroy and replace" on another. All writers are now consistent,
+  and the default is the mode that cannot lose data by accident.
+
+  **Action required:** any `s3` output that omitted `mode` and relied on the
+  implicit overwrite must now say `mode: overwrite` explicitly. Nothing fails
+  loudly — the write succeeds, it just appends. Grep your configs for `format: s3`
+  outputs with no `mode` key before upgrading.
+
+### Added
+
+- **The `delta`, `hive` and `binary` connectors now exist.** All three were
+  declared in `FormatType`, accepted by config validation, and documented — but
+  had no plugin registered behind them, so any pipeline using them died with
+  `ReaderNotFoundError` / `WriterNotFoundError`.
+
+  | Format | Reader | Writer |
+  |---|---|---|
+  | `delta` | **new** — by path, table, or SQL; time travel via `version_as_of` / `timestamp_as_of` | **new** — all six write modes |
+  | `hive` | already existed | **new** — all six write modes, `partitionBy` |
+  | `binary` | **new** — Spark's `binaryFile` source, one row per file | none: the source is read-only |
+
+  A test now asserts that **every** format in `FormatType` resolves to a
+  registered plugin, so this class of gap fails in CI rather than in a pipeline.
+
+- **`format: binary` in `CONFIG.outputs` is rejected at config load.** Spark's
+  `binaryFile` source cannot write. The failure now happens in `ubunye validate`,
+  with a reason, instead of after the transform has already run.
+
+- **Four new write modes.** `CONFIG.outputs.*.mode` previously accepted only
+  `overwrite`, `append` and `merge` — and of those, `merge` was never
+  implemented. The full set is now:
+
+  | Mode | Behaviour |
+  |---|---|
+  | `errorifexists` (alias `error`) | Fail if the target exists — Spark's own default |
+  | `ignore` | No-op if the target exists |
+  | `merge` | Delta MERGE (upsert) on `merge_keys`; creates the target on first run |
+  | `overwrite_partitions` | Replace only the partitions in the DataFrame — on Delta (dynamic or `replace_where`), or via `INSERT OVERWRITE` on a non-Delta table |
+
+- **Integration tests on a real Spark session.** The write modes are exercised
+  against a real JVM Spark (and a real Delta table) in CI, not just asserted
+  against mocks — `ignore` really leaves the target alone, `merge` really
+  upserts, and `overwrite_partitions` really leaves its neighbouring partitions
+  standing.
+
+- **`ubunye.core.write_modes`.** Mode semantics live in one module rather than
+  in each connector. Writers declare the modes they support; a mode a connector
+  cannot honour raises `SinkWriteError` **before any rows are written** instead
+  of being silently downgraded. JDBC accepts Spark's four native modes only;
+  `rest_api` is append-only.
+
+- **`partitionBy`, `merge_keys` and `replace_where` on the `s3` writer.**
+
+### Fixed
+
+- **`mode: merge` crashed at runtime.** It passed config validation and was
+  documented (with `merge_keys`), but no writer implemented it — the string was
+  handed to `df.write.mode("merge")`, which Spark rejects with
+  `IllegalArgumentException: Unknown save mode`. It now performs a real Delta
+  MERGE.
+
+- **`errorifexists` and `ignore` were unreachable.** The JDBC and Unity writer
+  docstrings claimed support, but the `WriteMode` enum rejected both at config
+  load, so no `config.yaml` could ever set them.
+
+- **The `s3` writer silently dropped `options`.** `mergeSchema`, `overwriteSchema`
+  and friends were documented but never applied to the Spark writer.
+
+- **Stale tests in `tests/test_rest_api_plugin.py`.** Five tests still expected
+  `ValueError` where the engine has raised typed `SourceReadError` /
+  `SinkWriteError` for some time. They had been failing at HEAD unnoticed because
+  CI only runs `tests/unit`.
+
+- **`overwrite_partitions` refuses an unpartitioned target.** Dynamic partition
+  overwrite without partitions is a full-table wipe; the engine now fails the
+  config instead of quietly destroying data. The session-level
+  `spark.sql.sources.partitionOverwriteMode` conf is restored after each write
+  rather than leaking into later writes.
+
+- **`overwrite_partitions` now uses the mechanism each target actually supports:**
+  Delta's own `partitionOverwriteMode` write option for Delta, `INSERT OVERWRITE`
+  (column-aligned, since it is positional) for an existing table, and Spark's
+  session-level `partitionOverwriteMode=DYNAMIC` for a path. Every route is
+  covered by an integration test against a real Spark session and a real Delta
+  table.
+
+---
+
 ## [0.2.0] — 2026-05-20
 
 ### Added

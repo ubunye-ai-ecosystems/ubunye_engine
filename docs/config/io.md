@@ -17,7 +17,7 @@ CONFIG:
   outputs:
     <logical_name>:
       format: <format_type>
-      mode: overwrite | append | merge
+      mode: append | overwrite | errorifexists | ignore | merge | overwrite_partitions
       # format-specific fields...
 ```
 
@@ -48,7 +48,7 @@ These fields apply to most formats:
 |---|---|---|
 | `format` | string | Required. One of the format types above. |
 | `options` | dict | Spark reader/writer options (e.g. `header`, `delimiter`). |
-| `mode` | `overwrite` \| `append` \| `merge` | Write mode (outputs only). |
+| `mode` | see [Write modes](#write-modes) | Write mode (outputs only). |
 
 ---
 
@@ -148,8 +148,83 @@ receives `auth`, `pagination`, and `headers` without schema changes.
 
 ## Write modes
 
+The first four are Spark's native `SaveMode` values. `merge` and
+`overwrite_partitions` are Ubunye's lakehouse modes — Spark has no save mode for
+either, so the engine implements them in `ubunye.core.write_modes`.
+
 | Mode | Behaviour |
 |---|---|
-| `overwrite` | Drop existing data and replace entirely |
 | `append` | Insert new rows without touching existing data |
-| `merge` | Delta MERGE (upsert); requires Delta format and merge keys in connector options |
+| `overwrite` | Drop existing data and replace entirely |
+| `errorifexists` | Fail if the target already exists (alias: `error`) |
+| `ignore` | Do nothing if the target already exists |
+| `merge` | Delta MERGE (upsert) on `merge_keys`. Creates the target on first run |
+| `overwrite_partitions` | Replace only the partitions present in the DataFrame; leave the rest of the table intact |
+
+Not every connector can honour every mode. Asking for one it cannot do raises
+`SinkWriteError` **before any rows are written** — it is never silently downgraded.
+
+| Connector | Supported modes | Default |
+|---|---|---|
+| `delta` | all six | `append` |
+| `unity` | all six | `append` |
+| `s3` | all six (`merge` and `replace_where` need `file_format: delta`) | `append` |
+| `hive` | all six (`merge` needs `file_format: delta`) | `append` |
+| `jdbc` | native four only — no `merge` / `overwrite_partitions` | `append` |
+| `rest_api` | `append` (a REST sink has no table to merge into) | `append` |
+| `binary` | none — read-only; rejected in `CONFIG.outputs` | — |
+
+Every writer defaults to `append`: the mode that cannot destroy data you did not
+mean to destroy. Set `mode` explicitly when you want anything else.
+
+### `merge`
+
+Requires `merge_keys` — the columns that identify a row. Matched rows are updated,
+unmatched rows inserted. On the first run the target does not exist yet, so the
+engine creates it with a plain overwrite instead of a MERGE.
+
+```yaml
+    customer_features:
+      format: s3
+      path: s3://my-bucket/delta/features/
+      file_format: delta
+      mode: merge
+      merge_keys: [id, dt]        # or options.merge_keys: "id,dt"
+```
+
+### `overwrite_partitions`
+
+The backfill mode: re-run one day without wiping the rest of the table. Two ways
+to say which partitions to replace —
+
+```yaml
+    # 1. Dynamic — replace whatever partitions the DataFrame contains
+    daily_sales:
+      format: s3
+      path: s3://my-bucket/sales/
+      mode: overwrite_partitions
+      partitionBy: [dt]
+
+    # 2. Predicate — replace exactly what the expression matches (Delta only)
+    daily_sales:
+      format: delta
+      path: s3://my-bucket/delta/sales/
+      mode: overwrite_partitions
+      replace_where: "dt = '{{ dt }}'"
+
+    # 3. A table — INSERT OVERWRITE of just the incoming partitions
+    daily_sales:
+      format: hive
+      db_name: clean
+      tbl_name: sales
+      mode: overwrite_partitions
+      partitionBy: [dt]
+```
+
+Without `partitionBy` or `replace_where`, dynamic overwrite silently degrades to a
+full-table wipe — so the engine refuses the config instead.
+
+Under the hood the engine picks the mechanism the target actually supports: Delta's
+own write option for Delta, `INSERT OVERWRITE` for an existing table, and Spark's
+`partitionOverwriteMode=DYNAMIC` for a path. Each route is covered by an
+integration test against a real Spark session.

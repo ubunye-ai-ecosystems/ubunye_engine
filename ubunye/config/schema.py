@@ -29,11 +29,22 @@ class JobType(str, Enum):
 
 
 class WriteMode(str, Enum):
-    """Valid write modes for output connectors."""
+    """Valid write modes for output connectors.
+
+    The first four are Spark's native ``SaveMode`` values (``ERROR`` is the
+    alias Spark also accepts for ``errorifexists``). ``MERGE`` and
+    ``OVERWRITE_PARTITIONS`` are Ubunye's lakehouse modes — see
+    ``ubunye.core.write_modes``. Not every connector supports every mode; the
+    writer raises ``SinkWriteError`` at write time if it cannot honour one.
+    """
 
     OVERWRITE = "overwrite"
     APPEND = "append"
+    ERRORIFEXISTS = "errorifexists"
+    ERROR = "error"
+    IGNORE = "ignore"
     MERGE = "merge"
+    OVERWRITE_PARTITIONS = "overwrite_partitions"
 
 
 class FormatType(str, Enum):
@@ -216,6 +227,22 @@ class TaskConfig(BaseModel):
             raise ValueError("CONFIG.inputs must define at least one input")
         if not self.outputs:
             raise ValueError("CONFIG.outputs must define at least one output")
+        return self
+
+    @model_validator(mode="after")
+    def _check_writable_outputs(self) -> "TaskConfig":
+        """Spark's ``binaryFile`` source can read but not write.
+
+        Caught here rather than at write time, so the pipeline fails in
+        ``ubunye validate`` instead of after the transform has already run.
+        """
+        read_only = [name for name, out in self.outputs.items() if out.format == FormatType.BINARY]
+        if read_only:
+            raise ValueError(
+                f"format 'binary' is read-only and cannot be used as an output "
+                f"(CONFIG.outputs: {', '.join(sorted(read_only))}). "
+                f"Write files with format 's3' instead."
+            )
         return self
 
 

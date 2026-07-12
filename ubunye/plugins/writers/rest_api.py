@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
     import requests
 
+from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
@@ -148,6 +149,31 @@ def _row_to_dict(row) -> Dict[str, Any]:
     return row.asDict(recursive=True)
 
 
+def _check_mode(cfg: Dict[str, Any]) -> None:
+    """POSTing rows to an endpoint is append-only — no save-mode semantics exist.
+
+    The lakehouse modes are rejected outright: a config asking a REST sink to
+    MERGE is a mistake, and silently POSTing instead would hide it. The native
+    Spark modes only warn, since configs predating this check may set them.
+    """
+    mode = (cfg.get("mode") or "").strip().lower()
+    if not mode or mode == "append":
+        return
+
+    if mode in write_modes.LAKEHOUSE_MODES:
+        raise SinkWriteError(
+            f"Write mode '{mode}' is not supported by the 'rest_api' connector.",
+            context={"Format": "rest_api", "Mode": mode, "Supported": ["append"]},
+            hint="A REST sink POSTs rows; it has no table to merge into. Use mode: append.",
+        )
+
+    log.warning(
+        "RestApiWriter: mode '%s' has no meaning for a REST sink — rows are POSTed "
+        "(append semantics) regardless. Remove the mode key or set mode: append.",
+        mode,
+    )
+
+
 class RestApiWriter(Writer):
     """Write a Spark DataFrame to a REST API endpoint in JSON batches.
 
@@ -179,6 +205,8 @@ class RestApiWriter(Writer):
                 context={"Format": "rest_api"},
                 hint="Set url: 'https://api.example.com/...' in your output config.",
             )
+
+        _check_mode(cfg)
 
         url: str = cfg["url"]
         batch_size: int = int(cfg.get("batch_size") or _DEFAULT_BATCH_SIZE)
