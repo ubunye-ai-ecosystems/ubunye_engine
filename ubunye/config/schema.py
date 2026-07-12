@@ -29,11 +29,22 @@ class JobType(str, Enum):
 
 
 class WriteMode(str, Enum):
-    """Valid write modes for output connectors."""
+    """Valid write modes for output connectors.
+
+    The first four are Spark's native ``SaveMode`` values (``ERROR`` is the
+    alias Spark also accepts for ``errorifexists``). ``MERGE`` and
+    ``OVERWRITE_PARTITIONS`` are Ubunye's lakehouse modes — see
+    ``ubunye.core.write_modes``. Not every connector supports every mode; the
+    writer raises ``SinkWriteError`` at write time if it cannot honour one.
+    """
 
     OVERWRITE = "overwrite"
     APPEND = "append"
+    ERRORIFEXISTS = "errorifexists"
+    ERROR = "error"
+    IGNORE = "ignore"
     MERGE = "merge"
+    OVERWRITE_PARTITIONS = "overwrite_partitions"
 
 
 class FormatType(str, Enum):

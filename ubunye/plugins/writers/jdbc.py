@@ -3,6 +3,7 @@ JDBC Writer plugin for Ubunye (Spark).
 
 Supports:
 - Writing to a table with mode: append|overwrite|errorifexists|ignore
+  (merge / overwrite_partitions are Delta-only and rejected here)
 - Credentials & driver
 - Extra options merged last (e.g., batchsize, truncate for overwrite, isolationLevel)
 
@@ -25,8 +26,14 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
+
+# Spark's JDBC sink speaks only the four native save modes. MERGE / dynamic
+# partition overwrite are lakehouse concepts with no JDBC equivalent — asking
+# for them is a config error, not something to silently downgrade.
+SUPPORTED_MODES = write_modes.NATIVE_SAVE_MODES
 
 
 class JdbcWriter(Writer):
@@ -67,9 +74,19 @@ class JdbcWriter(Writer):
         driver = cfg.get("driver")
         user = cfg.get("user")
         password = cfg.get("password")
-        mode = (cfg.get("mode") or "append").lower()
+        resolved = write_modes.resolve(
+            cfg,
+            connector="jdbc",
+            supported=SUPPORTED_MODES,
+            default="append",
+        )
 
-        writer = df.write.format("jdbc").mode(mode).option("url", url).option("dbtable", dbtable)
+        writer = (
+            df.write.format("jdbc")
+            .mode(resolved.save_mode)
+            .option("url", url)
+            .option("dbtable", dbtable)
+        )
 
         if driver:
             writer = writer.option("driver", driver)
