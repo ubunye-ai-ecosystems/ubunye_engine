@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
+from ubunye.core.errors import SinkWriteError, SourceReadError
 from ubunye.plugins.readers.rest_api import (
     RestApiReader,
     _build_session,
@@ -42,7 +43,7 @@ def _mock_response(json_data, status_code=200):
 def test_reader_requires_url():
     reader = RestApiReader()
     backend = MagicMock()
-    with pytest.raises(ValueError, match="url"):
+    with pytest.raises(SourceReadError, match="url"):
         reader.read({}, backend)
 
 
@@ -50,7 +51,7 @@ def test_writer_requires_url():
     writer = RestApiWriter()
     df = MagicMock()
     backend = MagicMock()
-    with pytest.raises(ValueError, match="url"):
+    with pytest.raises(SinkWriteError, match="url"):
         writer.write(df, {}, backend)
 
 
@@ -118,7 +119,7 @@ def test_extract_records_dict_no_root_key():
 
 def test_extract_records_missing_root_key_raises():
     resp = {"items": []}
-    with pytest.raises(ValueError, match="data"):
+    with pytest.raises(SourceReadError, match="data"):
         _extract_records(resp, root_key="data")
 
 
@@ -284,7 +285,7 @@ def test_paginate_unknown_type_raises():
     }
     session = MagicMock()
     session.request.return_value = _mock_response([])
-    with pytest.raises(ValueError, match="Unknown pagination type"):
+    with pytest.raises(SourceReadError, match="Unknown pagination type"):
         list(_paginate(cfg, session))
 
 
@@ -335,7 +336,7 @@ def test_writer_raises_on_batch_failure():
         "ubunye.plugins.writers.rest_api._post_batch",
         side_effect=requests.HTTPError("500"),
     ):
-        with pytest.raises(RuntimeError, match="failed posting"):
+        with pytest.raises(SinkWriteError, match="failed posting"):
             writer.write(df, cfg, backend)
 
 

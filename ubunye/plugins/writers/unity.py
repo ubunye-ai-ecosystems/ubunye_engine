@@ -7,7 +7,11 @@ OPTIMIZE / ZORDER / VACUUM on Databricks.
 
 Config keys:
   - table: "main.fraud.claims_curated"      # or catalog/schema/tbl_name
-  - mode: append|overwrite|errorifexists|ignore (default: append)
+  - mode: append|overwrite|errorifexists|ignore|merge|overwrite_partitions
+          (default: append)
+  - merge_keys: ["policy_id", "ds"]         # required for mode: merge
+  - replace_where: "ds = '2026-01-01'"      # optional Delta predicate for
+                                            # mode: overwrite_partitions
   - partitionBy: ["ds", "region"]           # optional
   - file_format: delta|parquet (default: delta)  # UC+Delta is the typical choice
                                                   # Note: the top-level ``format`` key is
@@ -30,8 +34,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
+
+SUPPORTED_MODES = write_modes.ALL_MODES
 
 
 def _qualify(cfg: Dict[str, Any]) -> str:
@@ -63,26 +70,34 @@ class UnityTableWriter(Writer):
         spark = backend.spark
         full_name = _qualify(cfg)
 
-        mode = (cfg.get("mode") or "append").lower()
         # The top-level cfg["format"] is the Ubunye plugin dispatch key
         # (always "unity" by the time we get here). The underlying Spark
         # source format lives in cfg["file_format"], matching the s3 writer.
         fmt = (cfg.get("file_format") or "delta").lower()
+
+        resolved = write_modes.resolve(
+            cfg,
+            connector="unity",
+            supported=SUPPORTED_MODES,
+            default="append",
+            file_format=fmt,
+        )
 
         partition_by: List[str] = list(cfg.get("partitionBy", []) or [])
         options: Dict[str, Any] = dict(cfg.get("options", {}) or {})
         comment: str | None = options.pop("comment", None)  # we'll set via SQL after creation
         tblprops: Dict[str, str] = dict(options.pop("tblproperties", {}) or {})
 
-        writer = df.write.mode(mode).format(fmt)
-        if partition_by:
-            writer = writer.partitionBy(*partition_by)
-
-        for k, v in options.items():
-            writer = writer.option(k, str(v))
-
-        # Use saveAsTable for UC managed table
-        writer.saveAsTable(full_name)
+        write_modes.apply(
+            df,
+            spark,
+            resolved,
+            connector="unity",
+            file_format=fmt,
+            table=full_name,  # saveAsTable — UC managed table
+            partition_by=partition_by,
+            options=options,
+        )
 
         # Post-create table comment / properties (Spark doesn't support via DataFrameWriter directly)
         if comment:

@@ -61,9 +61,9 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install dependencies (with Spark)
+      - name: Install dependencies (with Spark + Delta)
         run: |
-          pip install -e ".[dev,spark]"
+          pip install -e ".[dev,spark,delta]"
           pip install "pandas>=2.2.0"
 
       - name: Run integration tests

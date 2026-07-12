@@ -95,6 +95,27 @@ class TestUbunyeConfig:
         with pytest.raises(ValidationError):
             UbunyeConfig(**_make_config(CONFIG=bad_config))
 
+    def test_binary_output_raises(self):
+        """Spark's binaryFile source is read-only — reject it at validate time
+        rather than after the transform has already run."""
+        bad_config = {
+            "inputs": {"source": _HIVE_INPUT},
+            "outputs": {"docs": {"format": "binary", "path": "/mnt/out/"}},
+        }
+        with pytest.raises(ValidationError, match="read-only"):
+            UbunyeConfig(**_make_config(CONFIG=bad_config))
+
+    def test_binary_input_allowed(self):
+        cfg = UbunyeConfig(
+            **_make_config(
+                CONFIG={
+                    "inputs": {"docs": {"format": "binary", "path": "/mnt/raw/docs/"}},
+                    "outputs": {"sink": _HIVE_OUTPUT},
+                }
+            )
+        )
+        assert cfg.CONFIG.inputs["docs"].format.value == "binary"
+
     def test_engine_profiles_valid(self):
         cfg = UbunyeConfig(
             **_make_config(
@@ -253,7 +274,15 @@ class TestIOConfig:
             IOConfig(format="hive", db_name="db", tbl_name="t", mode="upsert")
 
     def test_valid_modes(self):
-        for mode in ("overwrite", "append", "merge"):
+        for mode in (
+            "overwrite",
+            "append",
+            "errorifexists",
+            "error",
+            "ignore",
+            "merge",
+            "overwrite_partitions",
+        ):
             io = IOConfig(format="hive", db_name="db", tbl_name="t", mode=mode)
             assert io.mode == WriteMode(mode)
 

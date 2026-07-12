@@ -82,7 +82,7 @@ CONFIG:
 | `sql` | string | Conditional | SQL query for reads (alternative to `table`) |
 | `user` | string | No | Database username |
 | `password` | string | No | Database password — use `{{ env.VAR }}` |
-| `mode` | `overwrite` \| `append` | No | Write mode (outputs only) |
+| `mode` | `append` \| `overwrite` \| `errorifexists` \| `ignore` | No | Default `append`. Spark's native save modes only; `merge` and `overwrite_partitions` are Delta-only and are rejected by this connector |
 | `options` | dict | No | Spark JDBC options |
 
 ---

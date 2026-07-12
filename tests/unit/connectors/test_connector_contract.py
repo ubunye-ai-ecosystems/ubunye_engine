@@ -352,7 +352,10 @@ class TestS3Plugin(PluginContractTest):
         df.write.mode.assert_called_once_with("overwrite")
         chain.save.assert_called_once_with("s3a://bucket/output/")
 
-    def test_write_defaults_mode_to_overwrite(self):
+    def test_write_defaults_mode_to_append(self):
+        """s3 used to default to 'overwrite' while every other writer defaulted to
+        'append' — the same config key with the opposite blast radius. All writers
+        now default to the non-destructive mode."""
         df = MagicMock()
         chain = MagicMock()
         df.write.mode.return_value = chain
@@ -360,7 +363,7 @@ class TestS3Plugin(PluginContractTest):
         chain.save = MagicMock()
 
         self.make_writer().write(df, {"format": "s3", "path": "/tmp/out"}, _make_backend())
-        df.write.mode.assert_called_once_with("overwrite")
+        df.write.mode.assert_called_once_with("append")
 
     def test_reader_is_reader_subclass(self):
         from ubunye.plugins.readers.s3 import S3Reader
