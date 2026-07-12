@@ -25,8 +25,6 @@ and CI enforces it with `diff -q` — if they ever drift, the build fails.
 | [Titanic Multi-Task (Local)](titanic-multitask-local.md) | Local SparkSession | CSV on disk | Intermediate + summary Parquet |
 | [Titanic Multi-Task (Databricks)](titanic-multitask-databricks.md) | Databricks serverless + UC | CSV on UC volume | UC Delta tables (intermediate + summary) |
 | [JHB Weather (Databricks)](jhb-weather.md) | Databricks + UC, scheduled | Open-Meteo REST API (no auth) | Unity Catalog Delta table |
-| [Flood Risk (Databricks)](flood-risk.md) | Databricks serverless + UC *(paid workspace)* | UC table of `(id, address)` | `address_geocoded` → `address_flood_risk` |
-| [Device Mapping ETL (Databricks)](device-mapping.md) | Databricks serverless + UC *(paid workspace)* | 3× UC tables | UC Delta policy/device/exposure mapping |
 | [Python API](python-api.md) | Notebook / library | — | Driving the engine from Python instead of the CLI |
 
 ---
@@ -50,10 +48,9 @@ Pick the one that matches your runtime.
 
 !!! note "Community Edition vs paid workspace"
 
-    The Titanic, weather and multi-task examples run on a Databricks **Community
-    Edition** workspace — free, no cloud spend. Flood Risk and Device Mapping need a
-    **paid** one, because they read existing Unity Catalog tables. The full matrix,
-    and what to undo when you move off CE, is on the
+    Every Databricks example here runs on a Databricks **Community Edition**
+    workspace — free, no cloud spend. What CE forces you to do differently, and what
+    to undo when you move to a paid workspace, is on the
     [Databricks Community Edition](community-edition.md) page.
 
 ---

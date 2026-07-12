@@ -65,8 +65,6 @@ nav:
       - Titanic Multi-Task (Local): examples/titanic-multitask-local.md
       - Titanic Multi-Task (Databricks): examples/titanic-multitask-databricks.md
       - JHB Weather (Databricks): examples/jhb-weather.md
-      - Flood Risk (Databricks): examples/flood-risk.md
-      - Device Mapping ETL (Databricks): examples/device-mapping.md
       - Python API: examples/python-api.md
   - Patterns:
       - Notebook Prototyping: patterns/notebook.md

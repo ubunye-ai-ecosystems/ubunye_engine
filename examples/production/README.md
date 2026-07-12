@@ -22,16 +22,14 @@ The short answer: the business logic does not change. The config shifts from
 | [`titanic_ml_databricks/`](./titanic_ml_databricks/) | Databricks serverless + UC (ML)     | CSV on UC volume             | Training audit log + predictions (UC Delta); MLflow + Model Registry |
 | [`titanic_multitask_local/`](./titanic_multitask_local/) | Local SparkSession             | CSV on disk                  | Intermediate + summary Parquet on disk |
 | [`titanic_multitask_databricks/`](./titanic_multitask_databricks/) | Databricks serverless + UC | CSV on UC volume | Unity Catalog Delta tables (intermediate + summary) |
-| [`device_mapping_etl_databricks/`](./device_mapping_etl_databricks/) | Databricks serverless + UC (paid workspace only) | 3x UC tables (policy-device details, user-IMEI, MI exposure) | UC Delta table (policy/device/exposure mapping) |
-| [`flood_risk_databricks/`](./flood_risk_databricks/) | Databricks serverless + UC (paid) | UC table with `(id, address)` | Unity Catalog Delta tables (`address_geocoded` → `address_flood_risk`) |
 
 The first two answer *"how much code changes when I move from laptop to
 Databricks?"* — the business logic is byte-identical across them. The third
 shows REST ingestion + Unity Catalog sinks with a scheduled Databricks job.
 The fourth is the end-to-end ML lifecycle counterpart: `UbunyeModel` +
 MLflow logging + filesystem-backed Model Registry on a UC volume, with
-promotion gates. The fifth and sixth are **multi-task chaining** pairs: two
-tasks run sequentially via `ubunye run -t task1 -t task2` (local) or
+promotion gates. The last two are a **multi-task chaining** pair: two tasks
+run sequentially via `ubunye run -t task1 -t task2` (local) or
 `ubunye.run_pipeline()` (Databricks), validating that the engine's
 sibling-module isolation works correctly. Their `transformations.py` files
 are byte-identical — only the configs change (s3 → unity).
