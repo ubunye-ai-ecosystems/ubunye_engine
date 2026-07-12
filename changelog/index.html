@@ -1140,62 +1140,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/flood-risk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Flood Risk (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../examples/device-mapping/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Device Mapping ETL (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../examples/python-api/" class="md-nav__link">
         
   
@@ -2106,17 +2050,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#added_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Added
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2146,7 +2079,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#added_6" class="md-nav__link">
+  <a href="#added_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2207,7 +2140,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#added_7" class="md-nav__link">
+  <a href="#added_6" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2257,7 +2190,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_8" class="md-nav__link">
+  <a href="#added_7" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2490,17 +2423,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#added_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Added
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2530,7 +2452,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#added_6" class="md-nav__link">
+  <a href="#added_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2591,7 +2513,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#added_7" class="md-nav__link">
+  <a href="#added_6" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2641,7 +2563,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_8" class="md-nav__link">
+  <a href="#added_7" class="md-nav__link">
     <span class="md-ellipsis">
       
         Added
@@ -2979,23 +2901,6 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 </li>
 </ul>
 <h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Permanent link">&para;</a></h3>
-<ul>
-<li>
-<p><strong>flood_risk_databricks tests</strong>: Added missing <code>pandas</code>/<code>pyarrow</code> to
-  CI workflow. Fixed <code>test_geocode_addresses.py</code> module-resolution
-  conflict (both tasks share <code>transformations.py</code> — geocode test now
-  re-orders <code>sys.path</code> and evicts the cached module). Fixed
-  <code>FakeSession</code> URL matching to use <code>urllib.parse.quote</code> so encoded
-  commas/spaces match. Fixed <code>_make_post</code> to return only the items
-  matching the batch request instead of the full payload (3 batches
-  were returning 3x the results).</p>
-</li>
-<li>
-<p><strong>device_mapping_etl_databricks tests</strong>: Replaced inferred column-name
-  list with an explicit <code>MI_SCHEMA</code> (<code>StructType</code>) so PySpark can handle
-  <code>None</code> values in nullable columns without <code>CANNOT_DETERMINE_TYPE</code>.</p>
-</li>
-</ul>
 <hr />
 <h2 id="018-2026-05-19">[0.1.8] — 2026-05-19<a class="headerlink" href="#018-2026-05-19" title="Permanent link">&para;</a></h2>
 <h3 id="added_3">Added<a class="headerlink" href="#added_3" title="Permanent link">&para;</a></h3>
@@ -3110,48 +3015,6 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 </ul>
 <h3 id="added_4">Added<a class="headerlink" href="#added_4" title="Permanent link">&para;</a></h3>
 <ul>
-<li>
-<p><strong>Production reference example: device mapping ETL (Databricks, paid
-  workspace)</strong> — <code>examples/production/device_mapping_etl_databricks/</code>
-  ports a legacy policy-device mapping script onto Ubunye. Three Unity
-  Catalog reads, one Unity Catalog Delta sink, a monthly Databricks Jobs
-  schedule (2nd of month, 06:00 UTC), and a dedicated GitHub Actions
-  workflow (<code>.github/workflows/device_mapping_etl_databricks.yml</code>) that
-  gates <code>bundle deploy</code> on OAuth service-principal secrets plus
-  <code>TELM_CATALOG</code> / <code>TELM_SCHEMA</code> environment secrets. No catalog/schema
-  identifiers are committed — values flow through DAB <code>--var</code> flags at
-  deploy time, keeping confidential Unity Catalog names out of source
-  control. Corrects a latent bug in the original script where the
-  IMEI-first-detection-adjusted <code>installation_datetime_final</code> was
-  computed but never selected into the final output.</p>
-</li>
-<li>
-<p><strong>Production reference example: flood-risk (two-task pipeline,
-  paid Databricks + Unity Catalog).</strong> A port of the legacy flood-detection
-  notebook to Ubunye as <code>examples/production/flood_risk_databricks/</code>,
-  split into two chained tasks:</p>
-</li>
-<li><code>geocode_addresses</code> — reads <code>(id, address)</code> rows from a UC source
-    table, calls TomTom Search (top-1 per id, three-step parameter
-    fallback, 429 retry), writes <code>address_geocoded</code>.</li>
-<li><code>flood_risk</code> — reads <code>address_geocoded</code>, calls JBA <code>floodscores</code> and
-    <code>flooddepths</code> in batches of 10, merges the two responses on <code>id</code>,
-    renames ~60 nested keys to snake-case, writes <code>address_flood_risk</code>.</li>
-</ul>
-<p>Quarterly schedule (1st of Jan/Apr/Jul/Oct at 06:00 UTC). TomTom and
-  JBA credentials live in a Databricks secret scope (<code>flood-risk</code> by
-  default) and are read by the notebook wrapper; Unity Catalog
-  identifiers and the source-table name come from GitHub environment
-  secrets through <code>--var</code> at deploy time. Also corrects the legacy
-  <code>"Base "</code> → <code>"Basic "</code> auth-header typo and strips the Zscaler cert
-  probing block that belongs on corporate networks, not serverless.
-  OAuth-gated GH Actions workflow
-  (<code>.github/workflows/flood_risk_databricks.yml</code>) runs Spark + fake-
-  HTTP unit tests, validates the bundle, and deploys to the <code>nonprod</code>
-  target when all three UC secrets are present. See the example's
-  <code>README.md</code>.</p>
-<h3 id="added_5">Added<a class="headerlink" href="#added_5" title="Permanent link">&para;</a></h3>
-<ul>
 <li><strong>Service principal + OAuth auth for Databricks CI.</strong> The four Databricks
   example workflows (<code>databricks_deploy.yml</code>, <code>jhb_weather_databricks.yml</code>,
   <code>multitask_databricks.yml</code>, <code>titanic_ml_databricks.yml</code>) now pass
@@ -3175,7 +3038,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
   common case. Set them explicitly when job type or version is load-bearing
   (lineage, model registry, orchestrator metadata).</li>
 </ul>
-<h3 id="added_6">Added<a class="headerlink" href="#added_6" title="Permanent link">&para;</a></h3>
+<h3 id="added_5">Added<a class="headerlink" href="#added_5" title="Permanent link">&para;</a></h3>
 <ul>
 <li>
 <p><strong>Production reference example: Titanic multi-task pipeline (local)</strong> —
@@ -3281,7 +3144,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
   silent drift between pandas and Spark paths. Unit-test CI steps now install
   Java 17 + <code>ubunye-engine[spark,dev]</code> on the runner.</li>
 </ul>
-<h3 id="added_7">Added<a class="headerlink" href="#added_7" title="Permanent link">&para;</a></h3>
+<h3 id="added_6">Added<a class="headerlink" href="#added_6" title="Permanent link">&para;</a></h3>
 <ul>
 <li>
 <p><strong>Production reference example: JHB hourly weather (REST API → Unity Catalog)</strong> —
@@ -3457,7 +3320,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 </ul>
 <hr />
 <h2 id="010-2025-09-11">[0.1.0] — 2025-09-11<a class="headerlink" href="#010-2025-09-11" title="Permanent link">&para;</a></h2>
-<h3 id="added_8">Added<a class="headerlink" href="#added_8" title="Permanent link">&para;</a></h3>
+<h3 id="added_7">Added<a class="headerlink" href="#added_7" title="Permanent link">&para;</a></h3>
 <ul>
 <li>First alpha release of Ubunye Engine.</li>
 <li>Config-first ETL framework built on Apache Spark.</li>
@@ -3492,7 +3355,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 18:56:27 UTC">July 12, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 22:09:38 UTC">July 12, 2026</span>
   </span>
 
     
