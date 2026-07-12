@@ -25,8 +25,6 @@ and CI enforces it with `diff -q` — if they ever drift, the build fails.
 | [Titanic Multi-Task (Local)](titanic-multitask-local.md) | Local SparkSession | CSV on disk | Intermediate + summary Parquet |
 | [Titanic Multi-Task (Databricks)](titanic-multitask-databricks.md) | Databricks serverless + UC | CSV on UC volume | UC Delta tables (intermediate + summary) |
 | [JHB Weather (Databricks)](jhb-weather.md) | Databricks + UC, scheduled | Open-Meteo REST API (no auth) | Unity Catalog Delta table |
-| [Flood Risk (Databricks)](flood-risk.md) | Databricks serverless + UC *(paid workspace)* | UC table of `(id, address)` | `address_geocoded` → `address_flood_risk` |
-| [Device Mapping ETL (Databricks)](device-mapping.md) | Databricks serverless + UC *(paid workspace)* | 3× UC tables | UC Delta policy/device/exposure mapping |
 | [Python API](python-api.md) | Notebook / library | — | Driving the engine from Python instead of the CLI |
 
 ---

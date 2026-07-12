@@ -230,19 +230,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **flood_risk_databricks tests**: Added missing `pandas`/`pyarrow` to
-  CI workflow. Fixed `test_geocode_addresses.py` module-resolution
-  conflict (both tasks share `transformations.py` — geocode test now
-  re-orders `sys.path` and evicts the cached module). Fixed
-  `FakeSession` URL matching to use `urllib.parse.quote` so encoded
-  commas/spaces match. Fixed `_make_post` to return only the items
-  matching the batch request instead of the full payload (3 batches
-  were returning 3x the results).
-
-- **device_mapping_etl_databricks tests**: Replaced inferred column-name
-  list with an explicit `MI_SCHEMA` (`StructType`) so PySpark can handle
-  `None` values in nullable columns without `CANNOT_DETERMINE_TYPE`.
-
 ---
 
 ## [0.1.8] — 2026-05-19
@@ -339,46 +326,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to `{{ ds }}` without passing `ds` as a CLI variable raises
   `ConfigTemplateError` listing available variables. The `| default()`
   filter continues to work.
-
-### Added
-
-- **Production reference example: device mapping ETL (Databricks, paid
-  workspace)** — `examples/production/device_mapping_etl_databricks/`
-  ports a legacy policy-device mapping script onto Ubunye. Three Unity
-  Catalog reads, one Unity Catalog Delta sink, a monthly Databricks Jobs
-  schedule (2nd of month, 06:00 UTC), and a dedicated GitHub Actions
-  workflow (`.github/workflows/device_mapping_etl_databricks.yml`) that
-  gates `bundle deploy` on OAuth service-principal secrets plus
-  `TELM_CATALOG` / `TELM_SCHEMA` environment secrets. No catalog/schema
-  identifiers are committed — values flow through DAB `--var` flags at
-  deploy time, keeping confidential Unity Catalog names out of source
-  control. Corrects a latent bug in the original script where the
-  IMEI-first-detection-adjusted `installation_datetime_final` was
-  computed but never selected into the final output.
-
-- **Production reference example: flood-risk (two-task pipeline,
-  paid Databricks + Unity Catalog).** A port of the legacy flood-detection
-  notebook to Ubunye as `examples/production/flood_risk_databricks/`,
-  split into two chained tasks:
-  - `geocode_addresses` — reads `(id, address)` rows from a UC source
-    table, calls TomTom Search (top-1 per id, three-step parameter
-    fallback, 429 retry), writes `address_geocoded`.
-  - `flood_risk` — reads `address_geocoded`, calls JBA `floodscores` and
-    `flooddepths` in batches of 10, merges the two responses on `id`,
-    renames ~60 nested keys to snake-case, writes `address_flood_risk`.
-
-  Quarterly schedule (1st of Jan/Apr/Jul/Oct at 06:00 UTC). TomTom and
-  JBA credentials live in a Databricks secret scope (`flood-risk` by
-  default) and are read by the notebook wrapper; Unity Catalog
-  identifiers and the source-table name come from GitHub environment
-  secrets through `--var` at deploy time. Also corrects the legacy
-  `"Base "` → `"Basic "` auth-header typo and strips the Zscaler cert
-  probing block that belongs on corporate networks, not serverless.
-  OAuth-gated GH Actions workflow
-  (`.github/workflows/flood_risk_databricks.yml`) runs Spark + fake-
-  HTTP unit tests, validates the bundle, and deploys to the `nonprod`
-  target when all three UC secrets are present. See the example's
-  `README.md`.
 
 ### Added
 
