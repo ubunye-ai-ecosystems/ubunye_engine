@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/plugin_guide/">
+        <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/jhb-weather/">
       
       
-        <link rel="prev" href="../rest_api/">
+        <link rel="prev" href="../titanic-multitask-databricks/">
       
       
-        <link rel="next" href="../../examples/">
+        <link rel="next" href="../flood-risk/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Writing a Plugin - Ubunye Engine</title>
+        <title>JHB Weather (Databricks) - Ubunye Engine</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#writing-a-plugin" class="md-skip">
+        <a href="#jhb_weather_databricks" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Writing a Plugin
+              JHB Weather (Databricks)
             
           </span>
         </div>
@@ -646,20 +646,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -680,7 +678,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -698,7 +696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overview/" class="md-nav__link">
+      <a href="../../connectors/overview/" class="md-nav__link">
         
   
   
@@ -726,7 +724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hive/" class="md-nav__link">
+      <a href="../../connectors/hive/" class="md-nav__link">
         
   
   
@@ -754,7 +752,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../jdbc/" class="md-nav__link">
+      <a href="../../connectors/jdbc/" class="md-nav__link">
         
   
   
@@ -782,7 +780,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../unity/" class="md-nav__link">
+      <a href="../../connectors/unity/" class="md-nav__link">
         
   
   
@@ -810,7 +808,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../s3/" class="md-nav__link">
+      <a href="../../connectors/s3/" class="md-nav__link">
         
   
   
@@ -838,7 +836,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../rest_api/" class="md-nav__link">
+      <a href="../../connectors/rest_api/" class="md-nav__link">
         
   
   
@@ -846,6 +844,258 @@
     
   
     REST API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../connectors/plugin_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing a Plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../titanic-local/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Titanic (Local)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../titanic-databricks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Titanic (Databricks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../titanic-ml-databricks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Titanic ML (Databricks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../titanic-multitask-local/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Titanic Multi-Task (Local)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../titanic-multitask-databricks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Titanic Multi-Task (Databricks)
   
 
     
@@ -882,7 +1132,7 @@
   <span class="md-ellipsis">
     
   
-    Writing a Plugin
+    JHB Weather (Databricks)
   
 
     
@@ -900,7 +1150,7 @@
   <span class="md-ellipsis">
     
   
-    Writing a Plugin
+    JHB Weather (Databricks)
   
 
     
@@ -926,10 +1176,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#plugin-types" class="md-nav__link">
+  <a href="#pipeline-shape" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Plugin types
+        Pipeline shape
       
     </span>
   </a>
@@ -937,10 +1187,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#writing-a-reader" class="md-nav__link">
+  <a href="#layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Writing a Reader
+        Layout
       
     </span>
   </a>
@@ -948,10 +1198,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#writing-a-writer" class="md-nav__link">
+  <a href="#running-locally-unit-tests-only" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Writing a Writer
+        Running locally (unit tests only)
       
     </span>
   </a>
@@ -959,65 +1209,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#writing-a-transform" class="md-nav__link">
+  <a href="#deploying-to-databricks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Writing a Transform
+        Deploying to Databricks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploying to Databricks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compute-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compute model
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#registering-via-entry-points" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Registering via entry points
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-your-plugin-in-a-config" class="md-nav__link">
+  <a href="#ci-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using your plugin in a config
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#backend-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Backend reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#testing-your-plugin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Testing your plugin
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#publishing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Publishing
+        CI workflow
       
     </span>
   </a>
@@ -1033,60 +1256,6 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Examples
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Examples
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
               
                 
   
@@ -1094,203 +1263,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/titanic-local/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic (Local)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/titanic-databricks/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/titanic-ml-databricks/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic ML (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/titanic-multitask-local/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic Multi-Task (Local)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/titanic-multitask-databricks/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic Multi-Task (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/jhb-weather/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    JHB Weather (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/flood-risk/" class="md-nav__link">
+      <a href="../flood-risk/" class="md-nav__link">
         
   
   
@@ -1318,7 +1291,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/device-mapping/" class="md-nav__link">
+      <a href="../device-mapping/" class="md-nav__link">
         
   
   
@@ -1346,7 +1319,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/python-api/" class="md-nav__link">
+      <a href="../python-api/" class="md-nav__link">
         
   
   
@@ -2060,10 +2033,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#plugin-types" class="md-nav__link">
+  <a href="#pipeline-shape" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Plugin types
+        Pipeline shape
       
     </span>
   </a>
@@ -2071,10 +2044,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#writing-a-reader" class="md-nav__link">
+  <a href="#layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Writing a Reader
+        Layout
       
     </span>
   </a>
@@ -2082,10 +2055,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#writing-a-writer" class="md-nav__link">
+  <a href="#running-locally-unit-tests-only" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Writing a Writer
+        Running locally (unit tests only)
       
     </span>
   </a>
@@ -2093,65 +2066,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#writing-a-transform" class="md-nav__link">
+  <a href="#deploying-to-databricks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Writing a Transform
+        Deploying to Databricks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploying to Databricks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compute-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compute model
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#registering-via-entry-points" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Registering via entry points
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-your-plugin-in-a-config" class="md-nav__link">
+  <a href="#ci-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using your plugin in a config
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#backend-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Backend reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#testing-your-plugin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Testing your plugin
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#publishing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Publishing
+        CI workflow
       
     </span>
   </a>
@@ -2175,7 +2121,7 @@
 
 
   
-    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/connectors/plugin_guide.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/examples/jhb-weather.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2183,161 +2129,126 @@
   
 
 
-<h1 id="writing-a-plugin">Writing a Plugin<a class="headerlink" href="#writing-a-plugin" title="Permanent link">&para;</a></h1>
-<p>Ubunye's connector and transform system is fully extensible via Python entry points.
-Any installed package that declares the right entry points is discovered automatically.</p>
-<hr />
-<h2 id="plugin-types">Plugin types<a class="headerlink" href="#plugin-types" title="Permanent link">&para;</a></h2>
+<p><a class="md-button" href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/tree/main/examples/production/jhb_weather_databricks">:material-github: Browse this example on GitHub</a></p>
+<h1 id="jhb_weather_databricks">jhb_weather_databricks<a class="headerlink" href="#jhb_weather_databricks" title="Permanent link">&para;</a></h1>
+<p>End-to-end production example: ingest hourly weather for Johannesburg from the
+<a href="https://open-meteo.com">Open-Meteo</a> REST API, explode the parallel hourly
+arrays into a tidy one-row-per-hour DataFrame, and write the result as a
+Unity Catalog Delta table.</p>
+<p>No API key is required - Open-Meteo is free for non-commercial use.</p>
+<h2 id="pipeline-shape">Pipeline shape<a class="headerlink" href="#pipeline-shape" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Open-Meteo /v1/forecast  -&gt;  rest_api reader  -&gt;  transform_weather_spark  -&gt;  Unity Catalog
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  (lat=-26.2041, lon=28.0473)    (single doc)    (explode hourly arrays)         (Delta table)
+</code></pre></div>
+<p>Output table: <code>&lt;catalog&gt;.&lt;schema&gt;.jhb_hourly_forecast</code>, partitioned by
+<code>forecast_date</code>. Columns:</p>
 <table>
 <thead>
 <tr>
-<th>Type</th>
-<th>Interface</th>
-<th>Entry point group</th>
+<th>column</th>
+<th>type</th>
+<th>note</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Reader</td>
-<td><code>ubunye.core.interfaces.Reader</code></td>
-<td><code>ubunye.readers</code></td>
+<td>latitude</td>
+<td>double</td>
+<td>repeats the request lat</td>
 </tr>
 <tr>
-<td>Writer</td>
-<td><code>ubunye.core.interfaces.Writer</code></td>
-<td><code>ubunye.writers</code></td>
+<td>longitude</td>
+<td>double</td>
+<td>repeats the request lon</td>
 </tr>
 <tr>
-<td>Transform</td>
-<td><code>ubunye.core.interfaces.Transform</code></td>
-<td><code>ubunye.transforms</code></td>
+<td>forecast_timestamp</td>
+<td>timestamp</td>
+<td>hourly tick in <code>Africa/Johannesburg</code></td>
 </tr>
 <tr>
-<td>Monitor</td>
-<td><code>ubunye.telemetry.monitors.Monitor</code></td>
-<td><code>ubunye.monitors</code></td>
+<td>forecast_date</td>
+<td>date</td>
+<td>partition key</td>
+</tr>
+<tr>
+<td>temperature_c</td>
+<td>double</td>
+<td></td>
+</tr>
+<tr>
+<td>relative_humidity_pct</td>
+<td>double</td>
+<td></td>
+</tr>
+<tr>
+<td>precipitation_mm</td>
+<td>double</td>
+<td></td>
+</tr>
+<tr>
+<td>wind_speed_kmh</td>
+<td>double</td>
+<td></td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="writing-a-reader">Writing a Reader<a class="headerlink" href="#writing-a-reader" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># my_package/readers/my_api.py</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">Reader</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyApiReader</span><span class="p">(</span><span class="n">Reader</span><span class="p">):</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">backend</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pyspark.sql.DataFrame&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n">spark</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">spark</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="n">url</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;url&quot;</span><span class="p">]</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="n">token</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;token&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="c1"># ... fetch data, convert to Spark DataFrame</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="n">rows</span> <span class="o">=</span> <span class="n">_fetch_all</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="k">return</span> <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+<h2 id="layout">Layout<a class="headerlink" href="#layout" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>jhb_weather_databricks/
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── README.md                               (this file)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>├── databricks.yml                          Asset Bundle: serverless job + targets
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>├── notebooks/
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│   └── run_jhb_weather.py                  Notebook wrapping ubunye.run_task()
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>├── pipelines/jhb_weather/ingestion/hourly_forecast/
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>│   ├── config.yaml                         rest_api reader -&gt; unity writer
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>│   └── transformations.py                  Spark transform (arrays_zip + explode)
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>└── tests/
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    ├── conftest.py                         sys.path + session-scoped SparkSession
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    └── test_transformations.py             PySpark unit tests (arrays_zip/explode)
 </code></pre></div>
-<p><code>cfg</code> is the full <code>IOConfig.model_dump()</code> for this input — includes <code>format</code>, <code>options</code>,
-and any extra fields declared in the YAML.</p>
-<hr />
-<h2 id="writing-a-writer">Writing a Writer<a class="headerlink" href="#writing-a-writer" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># my_package/writers/my_sink.py</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">Writer</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">MySinkWriter</span><span class="p">(</span><span class="n">Writer</span><span class="p">):</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="s2">&quot;pyspark.sql.DataFrame&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">backend</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="n">url</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;url&quot;</span><span class="p">]</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="n">mode</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mode&quot;</span><span class="p">,</span> <span class="s2">&quot;append&quot;</span><span class="p">)</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="c1"># ... write df to your sink</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        <span class="n">_send_to_sink</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">toPandas</span><span class="p">(),</span> <span class="n">url</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+<h2 id="running-locally-unit-tests-only">Running locally (unit tests only)<a class="headerlink" href="#running-locally-unit-tests-only" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[spark,dev]&quot;</span><span class="w"> </span>pyarrow
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pytest<span class="w"> </span>examples/production/jhb_weather_databricks/tests<span class="w"> </span>-v
 </code></pre></div>
-<hr />
-<h2 id="writing-a-transform">Writing a Transform<a class="headerlink" href="#writing-a-transform" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># my_package/transforms/my_transform.py</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transform</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyTransform</span><span class="p">(</span><span class="n">Transform</span><span class="p">):</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="n">inputs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>           <span class="c1"># {logical_name: DataFrame}</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">cfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>              <span class="c1"># TransformConfig.params dict</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="n">backend</span><span class="p">,</span>                <span class="c1"># SparkBackend (has .spark)</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>                  <span class="c1"># {logical_name: DataFrame}</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        <span class="n">df</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;source&quot;</span><span class="p">]</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        <span class="n">threshold</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;threshold&quot;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="n">df</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;score &gt; </span><span class="si">{</span><span class="n">threshold</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)}</span>
-</code></pre></div>
-<hr />
-<h2 id="registering-via-entry-points">Registering via entry points<a class="headerlink" href="#registering-via-entry-points" title="Permanent link">&para;</a></h2>
-<p>In your package's <code>pyproject.toml</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;ubunye.readers&quot;</span><span class="k">]</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">my_api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my_package.readers.my_api:MyApiReader&quot;</span>
+<p>The unit tests spin up a local <code>SparkSession</code> (session-scoped fixture),
+build a single-row DataFrame in the exact shape produced by the REST
+reader, and assert on the output of <code>transform_weather</code> - so the
+production code is the code under test. Requires Java 17 on PATH.</p>
+<h2 id="deploying-to-databricks">Deploying to Databricks<a class="headerlink" href="#deploying-to-databricks" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">DATABRICKS_HOST</span><span class="o">=</span>https://&lt;your-workspace&gt;.cloud.databricks.com
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">DATABRICKS_TOKEN</span><span class="o">=</span>&lt;pat&gt;
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;ubunye.writers&quot;</span><span class="k">]</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">my_sink</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my_package.writers.my_sink:MySinkWriter&quot;</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;ubunye.transforms&quot;</span><span class="k">]</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">my_transform</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my_package.transforms.my_transform:MyTransform&quot;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nb">cd</span><span class="w"> </span>examples/production/jhb_weather_databricks
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>databricks<span class="w"> </span>bundle<span class="w"> </span>validate<span class="w"> </span>--target<span class="w"> </span>nonprod
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>databricks<span class="w"> </span>bundle<span class="w"> </span>deploy<span class="w">  </span>--target<span class="w"> </span>nonprod
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>databricks<span class="w"> </span>bundle<span class="w"> </span>run<span class="w">     </span>jhb_weather_forecast<span class="w"> </span>--target<span class="w"> </span>nonprod
 </code></pre></div>
-<p>After <code>pip install -e .</code> (or publishing to PyPI):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ubunye<span class="w"> </span>plugins
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># Should list: my_api, my_sink, my_transform</span>
+<p>The bundle deploys a scheduled job that fires daily at 06:00
+<code>Africa/Johannesburg</code>. Override the Unity Catalog destination by setting the
+<code>weather_catalog</code> and <code>weather_schema</code> bundle variables (see <code>databricks.yml</code>).</p>
+<h3 id="compute-model">Compute model<a class="headerlink" href="#compute-model" title="Permanent link">&para;</a></h3>
+<p>The job uses <strong>serverless compute</strong> — no <code>new_cluster</code> block in
+<code>databricks.yml</code>. This is required on Databricks Free Edition (which does
+not allow classic-cluster creation) and works identically on paid
+workspaces. Dependencies are installed in-notebook via
+<code>%pip install ubunye-engine==&lt;ver&gt;</code>.</p>
+<p>The default <code>weather_catalog</code> is <code>workspace</code> because that is the catalog
+Free Edition provisions automatically. On a paid workspace, override to
+<code>main</code> (or your standard catalog) via:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>databricks<span class="w"> </span>bundle<span class="w"> </span>deploy<span class="w"> </span>--target<span class="w"> </span>nonprod<span class="w"> </span>--var<span class="o">=</span><span class="s2">&quot;weather_catalog=main&quot;</span>
 </code></pre></div>
-<hr />
-<h2 id="using-your-plugin-in-a-config">Using your plugin in a config<a class="headerlink" href="#using-your-plugin-in-a-config" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">CONFIG</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">inputs</span><span class="p">:</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my_api</span><span class="w">          </span><span class="c1"># matches the entry point key</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://...&quot;</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">      </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">env.TOKEN</span><span class="nv"> </span><span class="s">}}&quot;</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">  </span><span class="nt">transform</span><span class="p">:</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my_transform</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="nt">params</span><span class="p">:</span>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">      </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">    </span><span class="nt">result</span><span class="p">:</span>
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my_sink</span>
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://...&quot;</span>
-</code></pre></div>
-<hr />
-<h2 id="backend-reference">Backend reference<a class="headerlink" href="#backend-reference" title="Permanent link">&para;</a></h2>
-<p>The <code>backend</code> argument passed to <code>read</code>, <code>write</code>, and <code>apply</code> is a <code>SparkBackend</code> instance:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">backend</span><span class="o">.</span><span class="n">spark</span>          <span class="c1"># pyspark.sql.SparkSession</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">backend</span><span class="o">.</span><span class="n">spark_conf</span>     <span class="c1"># dict of active Spark config</span>
-</code></pre></div>
-<p>For Spark-free plugins (e.g. pure REST connectors), you can ignore <code>backend</code>.</p>
-<hr />
-<h2 id="testing-your-plugin">Testing your plugin<a class="headerlink" href="#testing-your-plugin" title="Permanent link">&para;</a></h2>
-<p>Write Spark-free unit tests using mock DataFrames:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">my_package.transforms.my_transform</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyTransform</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">MockBackend</span><span class="p">:</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="k">pass</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="k">class</span><span class="w"> </span><span class="nc">MockDF</span><span class="p">:</span>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>        <span class="k">return</span> <span class="bp">self</span>  <span class="c1"># stub</span>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_apply_passes_threshold</span><span class="p">():</span>
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="n">t</span> <span class="o">=</span> <span class="n">MyTransform</span><span class="p">()</span>
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="n">out</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">apply</span><span class="p">({</span><span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="n">MockDF</span><span class="p">()},</span> <span class="p">{</span><span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">},</span> <span class="n">MockBackend</span><span class="p">())</span>
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    <span class="k">assert</span> <span class="s2">&quot;output&quot;</span> <span class="ow">in</span> <span class="n">out</span>
-</code></pre></div>
-<p>For integration tests with real Spark:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.backends.spark_backend</span><span class="w"> </span><span class="kn">import</span> <span class="n">SparkBackend</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">spark</span><span class="p">():</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="k">with</span> <span class="n">SparkBackend</span><span class="p">(</span><span class="n">app_name</span><span class="o">=</span><span class="s2">&quot;plugin_test&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">be</span><span class="p">:</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        <span class="k">yield</span> <span class="n">be</span><span class="o">.</span><span class="n">spark</span>
-</code></pre></div>
-<hr />
-<h2 id="publishing">Publishing<a class="headerlink" href="#publishing" title="Permanent link">&para;</a></h2>
-<p>Package your plugin as a normal Python package and publish to PyPI.
-Users install it alongside <code>ubunye-engine</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pip<span class="w"> </span>install<span class="w"> </span>ubunye-engine<span class="w"> </span>my-ubunye-plugin
-</code></pre></div>
-<p>Entry points are discovered automatically — no code changes required in Ubunye.</p>
+<h2 id="ci-workflow">CI workflow<a class="headerlink" href="#ci-workflow" title="Permanent link">&para;</a></h2>
+<p><code>.github/workflows/jhb_weather_databricks.yml</code> runs on every push/PR that
+touches this directory:</p>
+<ol>
+<li>Unit tests (local PySpark; Java 17 on the runner)</li>
+<li>Smoke-check the Open-Meteo endpoint is reachable</li>
+<li>If <code>DATABRICKS_HOST</code> / <code>DATABRICKS_TOKEN</code> secrets are configured:</li>
+<li><code>databricks bundle validate</code> and <code>deploy --target nonprod</code></li>
+<li>Manual <code>workflow_dispatch</code> with <code>run_after_deploy: true</code> triggers the job.</li>
+</ol>
+<p>If the Databricks secrets are absent (e.g. forks, or before the workspace is
+wired up), steps 1-2 still run and steps 3-4 are skipped with a warning.</p>
 
 
 
@@ -2360,7 +2271,7 @@ Users install it alongside <code>ubunye-engine</code>:</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 21:41:47 UTC">July 12, 2026</span>
   </span>
 
     
@@ -2370,7 +2281,7 @@ Users install it alongside <code>ubunye-engine</code>:</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 21:41:47 UTC">July 12, 2026</span>
   </span>
 
     
