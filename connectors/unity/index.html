@@ -1164,6 +1164,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Write">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#merge-upsert" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MERGE (upsert)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#partition-overwrite-backfills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partition overwrite (backfills)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2036,6 +2064,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Write">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#merge-upsert" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MERGE (upsert)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#partition-overwrite-backfills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partition overwrite (backfills)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2145,6 +2201,25 @@
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.fraud.model_predictions</span>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">append</span>
 </code></pre></div>
+<h3 id="merge-upsert">MERGE (upsert)<a class="headerlink" href="#merge-upsert" title="Permanent link">&para;</a></h3>
+<p>Matched rows are updated on <code>merge_keys</code>, unmatched rows inserted. The first run
+creates the table.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="w">    </span><span class="nt">claims_curated</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unity</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.fraud.claims_curated</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">merge_keys</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">policy_id</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ds</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<h3 id="partition-overwrite-backfills">Partition overwrite (backfills)<a class="headerlink" href="#partition-overwrite-backfills" title="Permanent link">&para;</a></h3>
+<p>Replace only the partitions in the incoming DataFrame:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w">    </span><span class="nt">claims_daily</span><span class="p">:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unity</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.fraud.claims_daily</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">      </span><span class="nt">partitionBy</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ds</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="c1"># or, as a Delta predicate:</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="c1"># replace_where: &quot;ds = &#39;{{ dt }}&#39;&quot;</span>
+</code></pre></div>
 <hr />
 <h2 id="fields">Fields<a class="headerlink" href="#fields" title="Permanent link">&para;</a></h2>
 <table>
@@ -2189,9 +2264,27 @@
 </tr>
 <tr>
 <td><code>mode</code></td>
-<td><code>overwrite</code> | <code>append</code></td>
+<td>see <a href="../../config/io/#write-modes">Write modes</a></td>
 <td>No</td>
-<td>Write mode (outputs only)</td>
+<td>Default <code>append</code>. All six modes supported</td>
+</tr>
+<tr>
+<td><code>partitionBy</code></td>
+<td>list</td>
+<td>No</td>
+<td>Partition columns; required for <code>mode: overwrite_partitions</code> unless <code>replace_where</code> is set</td>
+</tr>
+<tr>
+<td><code>merge_keys</code></td>
+<td>list | string</td>
+<td>Conditional</td>
+<td>Required for <code>mode: merge</code></td>
+</tr>
+<tr>
+<td><code>replace_where</code></td>
+<td>string</td>
+<td>No</td>
+<td>Delta predicate for <code>mode: overwrite_partitions</code></td>
 </tr>
 <tr>
 <td><code>options</code></td>
@@ -2205,10 +2298,10 @@
 <h2 id="spark-configuration-for-unity-catalog">Spark configuration for Unity Catalog<a class="headerlink" href="#spark-configuration-for-unity-catalog" title="Permanent link">&para;</a></h2>
 <p>On Databricks, Unity Catalog is the default catalog when configured in the workspace.
 For local Spark sessions connecting to Databricks, set:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">ENGINE</span><span class="p">:</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">spark_conf</span><span class="p">:</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">spark.databricks.service.token</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">env.DATABRICKS_TOKEN</span><span class="nv"> </span><span class="s">}}&quot;</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="nt">spark.databricks.service.address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://{{</span><span class="nv"> </span><span class="s">env.DATABRICKS_HOST</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">ENGINE</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">spark_conf</span><span class="p">:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">spark.databricks.service.token</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">env.DATABRICKS_TOKEN</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="nt">spark.databricks.service.address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://{{</span><span class="nv"> </span><span class="s">env.DATABRICKS_HOST</span><span class="nv"> </span><span class="s">}}&quot;</span>
 </code></pre></div>
 <hr />
 <h2 id="access-control">Access control<a class="headerlink" href="#access-control" title="Permanent link">&para;</a></h2>
@@ -2270,7 +2363,7 @@ on the target table via the Databricks Catalog Explorer or <code>GRANT</code> SQ
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 17:38:46 UTC">July 12, 2026</span>
   </span>
 
     

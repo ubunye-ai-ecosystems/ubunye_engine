@@ -2107,13 +2107,13 @@ registered under the <code>ubunye.readers</code> or <code>ubunye.writers</code> 
 <td><a href="../s3/"><code>delta</code></a></td>
 <td>Yes</td>
 <td>Yes</td>
-<td>Delta Lake — by path or table name</td>
+<td>Delta Lake — by path or table name; time travel</td>
 </tr>
 <tr>
-<td><code>binary</code></td>
+<td><a href="../s3/"><code>binary</code></a></td>
 <td>Yes</td>
 <td>No</td>
-<td>Raw binary files</td>
+<td>Raw files (PDFs, images) — Spark's <code>binaryFile</code> source is read-only, so <code>format: binary</code> in <code>CONFIG.outputs</code> is rejected at config load</td>
 </tr>
 <tr>
 <td><a href="../rest_api/"><code>rest_api</code></a></td>
@@ -2130,11 +2130,19 @@ registered under the <code>ubunye.readers</code> or <code>ubunye.writers</code> 
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;ubunye.readers&quot;</span><span class="k">]</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">hive</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.readers.hive:HiveReader&quot;</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">jdbc</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.readers.jdbc:JdbcReader&quot;</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">rest_api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.readers.rest_api:RestApiReader&quot;</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;ubunye.writers&quot;</span><span class="k">]</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">s3</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.writers.s3:S3Writer&quot;</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">rest_api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.writers.rest_api:RestApiWriter&quot;</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">s3</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.readers.s3:S3Reader&quot;</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">delta</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.readers.delta:DeltaReader&quot;</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">binary</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.readers.binary:BinaryReader&quot;</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">unity</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.readers.unity:UnityTableReader&quot;</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">rest_api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.readers.rest_api:RestApiReader&quot;</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;ubunye.writers&quot;</span><span class="k">]</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">s3</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.writers.s3:S3Writer&quot;</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="n">delta</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.writers.delta:DeltaWriter&quot;</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="n">hive</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.writers.hive:HiveWriter&quot;</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">jdbc</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.writers.jdbc:JdbcWriter&quot;</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="n">unity</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.writers.unity:UnityTableWriter&quot;</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="n">rest_api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ubunye.plugins.writers.rest_api:RestApiWriter&quot;</span>
 </code></pre></div>
 <p>Any installed package that declares these entry points is automatically picked up.
 List all discovered connectors:</p>
@@ -2184,7 +2192,7 @@ custom Reader or Writer and registering it with the entry point system.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 10:29:37 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 17:39:52 UTC">July 12, 2026</span>
   </span>
 
     

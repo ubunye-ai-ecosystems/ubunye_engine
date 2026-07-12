@@ -995,6 +995,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Write modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        merge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overwrite_partitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        overwrite_partitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2224,6 +2252,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Write modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        merge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overwrite_partitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        overwrite_partitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2265,7 +2321,7 @@ and each value is an <code>IOConfig</code> — a connector declaration.</p>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="nt">&lt;logical_name&gt;</span><span class="p">:</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;format_type&gt;</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite | append | merge</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">append | overwrite | errorifexists | ignore | merge | overwrite_partitions</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">      </span><span class="c1"># format-specific fields...</span>
 </code></pre></div>
 <ul>
@@ -2344,7 +2400,7 @@ and each value is an <code>IOConfig</code> — a connector declaration.</p>
 </tr>
 <tr>
 <td><code>mode</code></td>
-<td><code>overwrite</code> | <code>append</code> | <code>merge</code></td>
+<td>see <a href="#write-modes">Write modes</a></td>
 <td>Write mode (outputs only).</td>
 </tr>
 </tbody>
@@ -2421,6 +2477,9 @@ through to the connector via <code>model_dump()</code>. This is how the REST API
 receives <code>auth</code>, <code>pagination</code>, and <code>headers</code> without schema changes.</p>
 <hr />
 <h2 id="write-modes">Write modes<a class="headerlink" href="#write-modes" title="Permanent link">&para;</a></h2>
+<p>The first four are Spark's native <code>SaveMode</code> values. <code>merge</code> and
+<code>overwrite_partitions</code> are Ubunye's lakehouse modes — Spark has no save mode for
+either, so the engine implements them in <code>ubunye.core.write_modes</code>.</p>
 <table>
 <thead>
 <tr>
@@ -2430,19 +2489,123 @@ receives <code>auth</code>, <code>pagination</code>, and <code>headers</code> wi
 </thead>
 <tbody>
 <tr>
-<td><code>overwrite</code></td>
-<td>Drop existing data and replace entirely</td>
-</tr>
-<tr>
 <td><code>append</code></td>
 <td>Insert new rows without touching existing data</td>
 </tr>
 <tr>
+<td><code>overwrite</code></td>
+<td>Drop existing data and replace entirely</td>
+</tr>
+<tr>
+<td><code>errorifexists</code></td>
+<td>Fail if the target already exists (alias: <code>error</code>)</td>
+</tr>
+<tr>
+<td><code>ignore</code></td>
+<td>Do nothing if the target already exists</td>
+</tr>
+<tr>
 <td><code>merge</code></td>
-<td>Delta MERGE (upsert); requires Delta format and merge keys in connector options</td>
+<td>Delta MERGE (upsert) on <code>merge_keys</code>. Creates the target on first run</td>
+</tr>
+<tr>
+<td><code>overwrite_partitions</code></td>
+<td>Replace only the partitions present in the DataFrame; leave the rest of the table intact</td>
 </tr>
 </tbody>
 </table>
+<p>Not every connector can honour every mode. Asking for one it cannot do raises
+<code>SinkWriteError</code> <strong>before any rows are written</strong> — it is never silently downgraded.</p>
+<table>
+<thead>
+<tr>
+<th>Connector</th>
+<th>Supported modes</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>delta</code></td>
+<td>all six</td>
+<td><code>append</code></td>
+</tr>
+<tr>
+<td><code>unity</code></td>
+<td>all six</td>
+<td><code>append</code></td>
+</tr>
+<tr>
+<td><code>s3</code></td>
+<td>all six (<code>merge</code> and <code>replace_where</code> need <code>file_format: delta</code>)</td>
+<td><code>append</code></td>
+</tr>
+<tr>
+<td><code>hive</code></td>
+<td>all six (<code>merge</code> needs <code>file_format: delta</code>)</td>
+<td><code>append</code></td>
+</tr>
+<tr>
+<td><code>jdbc</code></td>
+<td>native four only — no <code>merge</code> / <code>overwrite_partitions</code></td>
+<td><code>append</code></td>
+</tr>
+<tr>
+<td><code>rest_api</code></td>
+<td><code>append</code> (a REST sink has no table to merge into)</td>
+<td><code>append</code></td>
+</tr>
+<tr>
+<td><code>binary</code></td>
+<td>none — read-only; rejected in <code>CONFIG.outputs</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Every writer defaults to <code>append</code>: the mode that cannot destroy data you did not
+mean to destroy. Set <code>mode</code> explicitly when you want anything else.</p>
+<h3 id="merge"><code>merge</code><a class="headerlink" href="#merge" title="Permanent link">&para;</a></h3>
+<p>Requires <code>merge_keys</code> — the columns that identify a row. Matched rows are updated,
+unmatched rows inserted. On the first run the target does not exist yet, so the
+engine creates it with a plain overwrite instead of a MERGE.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="w">    </span><span class="nt">customer_features</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/delta/features/</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">      </span><span class="nt">file_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">      </span><span class="nt">merge_keys</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">id</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">dt</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># or options.merge_keys: &quot;id,dt&quot;</span>
+</code></pre></div>
+<h3 id="overwrite_partitions"><code>overwrite_partitions</code><a class="headerlink" href="#overwrite_partitions" title="Permanent link">&para;</a></h3>
+<p>The backfill mode: re-run one day without wiping the rest of the table. Two ways
+to say which partitions to replace —</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="w">    </span><span class="c1"># 1. Dynamic — replace whatever partitions the DataFrame contains</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="nt">daily_sales</span><span class="p">:</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/sales/</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">      </span><span class="nt">partitionBy</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">dt</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">    </span><span class="c1"># 2. Predicate — replace exactly what the expression matches (Delta only)</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span><span class="nt">daily_sales</span><span class="p">:</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/delta/sales/</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">      </span><span class="nt">replace_where</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dt</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">&#39;{{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">}}&#39;&quot;</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="w">    </span><span class="c1"># 3. A table — INSERT OVERWRITE of just the incoming partitions</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">    </span><span class="nt">daily_sales</span><span class="p">:</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hive</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="w">      </span><span class="nt">db_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clean</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="w">      </span><span class="nt">tbl_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sales</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">      </span><span class="nt">partitionBy</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">dt</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p>Without <code>partitionBy</code> or <code>replace_where</code>, dynamic overwrite silently degrades to a
+full-table wipe — so the engine refuses the config instead.</p>
+<p>Under the hood the engine picks the mechanism the target actually supports: Delta's
+own write option for Delta, <code>INSERT OVERWRITE</code> for an existing table, and Spark's
+<code>partitionOverwriteMode=DYNAMIC</code> for a path. Each route is covered by an
+integration test against a real Spark session.</p>
 
 
 
@@ -2465,7 +2628,7 @@ receives <code>auth</code>, <code>pagination</code>, and <code>headers</code> wi
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 18:36:16 UTC">July 12, 2026</span>
   </span>
 
     

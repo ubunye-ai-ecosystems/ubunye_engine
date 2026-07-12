@@ -1246,6 +1246,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#time-travel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time travel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#write_1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1261,6 +1272,17 @@
     <span class="md-ellipsis">
       
         MERGE (upsert)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#partition-overwrite-backfills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partition overwrite (backfills)
       
     </span>
   </a>
@@ -1288,6 +1310,17 @@
     <span class="md-ellipsis">
       
         Fields — delta
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fields-binary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fields — binary
       
     </span>
   </a>
@@ -2168,6 +2201,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#time-travel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time travel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#write_1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2183,6 +2227,17 @@
     <span class="md-ellipsis">
       
         MERGE (upsert)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#partition-overwrite-backfills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partition overwrite (backfills)
       
     </span>
   </a>
@@ -2210,6 +2265,17 @@
     <span class="md-ellipsis">
       
         Fields — delta
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fields-binary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fields — binary
       
     </span>
   </a>
@@ -2315,25 +2381,56 @@ data source format in <code>options</code>:</p>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.finance.transactions</span><span class="w">    </span><span class="c1"># or db_name + tbl_name</span>
 </code></pre></div>
+<h3 id="time-travel">Time travel<a class="headerlink" href="#time-travel" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="w">    </span><span class="nt">transactions</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/delta/transactions/</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">      </span><span class="nt">version_as_of</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12</span><span class="w">                   </span><span class="c1"># or timestamp_as_of: &quot;2026-01-01&quot;</span>
+</code></pre></div>
 <h3 id="write_1">Write<a class="headerlink" href="#write_1" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">CONFIG</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">predictions</span><span class="p">:</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/delta/predictions/</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">        </span><span class="nt">mergeSchema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">        </span><span class="nt">overwriteSchema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">CONFIG</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="nt">predictions</span><span class="p">:</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/delta/predictions/</span><span class="w">    </span><span class="c1"># or table: main.fraud.predictions</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">        </span><span class="nt">mergeSchema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">        </span><span class="nt">overwriteSchema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
 </code></pre></div>
+<p><code>format: delta</code> and <code>format: s3</code> + <code>file_format: delta</code> are equivalent — use whichever
+reads better. The <code>delta</code> connector addresses a table (by name or path); the <code>s3</code>
+connector addresses a path that happens to hold Delta files. Both support all six
+<a href="../../config/io/#write-modes">write modes</a>.</p>
 <h3 id="merge-upsert">MERGE (upsert)<a class="headerlink" href="#merge-upsert" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="w">    </span><span class="nt">customer_features</span><span class="p">:</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/delta/features/</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">        </span><span class="nt">merge_keys</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">id,dt</span><span class="w">    </span><span class="c1"># comma-separated; used by the Delta MERGE writer</span>
+<p>Matched rows are updated on <code>merge_keys</code>, unmatched rows inserted. The first run
+creates the table (there is nothing to merge into yet).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="w">    </span><span class="nt">customer_features</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/delta/features/</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">      </span><span class="nt">merge_keys</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">id</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">dt</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># or options.merge_keys: &quot;id,dt&quot;</span>
 </code></pre></div>
+<h3 id="partition-overwrite-backfills">Partition overwrite (backfills)<a class="headerlink" href="#partition-overwrite-backfills" title="Permanent link">&para;</a></h3>
+<p>Replace only the partitions in the incoming DataFrame — the rest of the table is
+untouched. Use <code>partitionBy</code> for Spark's dynamic partition overwrite, or
+<code>replace_where</code> for a Delta predicate.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="w">    </span><span class="nt">daily_sales</span><span class="p">:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/sales/</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">      </span><span class="nt">partitionBy</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">dt</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span><span class="c1"># Delta predicate form — replaces exactly what the expression matches</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">    </span><span class="nt">daily_sales_delta</span><span class="p">:</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/delta/sales/</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">      </span><span class="nt">file_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">      </span><span class="nt">replace_where</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dt</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">&#39;{{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">}}&#39;&quot;</span>
+</code></pre></div>
+<p>Without <code>partitionBy</code> or <code>replace_where</code> this mode is refused — dynamic overwrite
+of an unpartitioned target is a full-table wipe.</p>
 <hr />
 <h2 id="fields-s3">Fields — <code>s3</code><a class="headerlink" href="#fields-s3" title="Permanent link">&para;</a></h2>
 <table>
@@ -2359,16 +2456,40 @@ data source format in <code>options</code>:</p>
 <td>S3 / HDFS / local path</td>
 </tr>
 <tr>
-<td><code>mode</code></td>
-<td><code>overwrite</code> | <code>append</code></td>
+<td><code>file_format</code></td>
+<td>string</td>
 <td>No</td>
-<td>Write mode</td>
+<td><code>parquet</code> (default), <code>delta</code>, <code>csv</code>, <code>json</code>, <code>orc</code>, <code>avro</code></td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td>see <a href="../../config/io/#write-modes">Write modes</a></td>
+<td>No</td>
+<td>Default <code>append</code>. All six modes supported; <code>merge</code> and <code>replace_where</code> require <code>file_format: delta</code></td>
+</tr>
+<tr>
+<td><code>partitionBy</code></td>
+<td>list</td>
+<td>No</td>
+<td>Partition columns; required for <code>mode: overwrite_partitions</code> unless <code>replace_where</code> is set</td>
+</tr>
+<tr>
+<td><code>merge_keys</code></td>
+<td>list | string</td>
+<td>Conditional</td>
+<td>Required for <code>mode: merge</code></td>
+</tr>
+<tr>
+<td><code>replace_where</code></td>
+<td>string</td>
+<td>No</td>
+<td>Delta predicate for <code>mode: overwrite_partitions</code></td>
 </tr>
 <tr>
 <td><code>options</code></td>
 <td>dict</td>
 <td>No</td>
-<td>Spark reader/writer options</td>
+<td>Spark reader/writer options (e.g. <code>mergeSchema</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -2399,42 +2520,124 @@ data source format in <code>options</code>:</p>
 <td><code>table</code></td>
 <td>string</td>
 <td>Conditional</td>
-<td>Table name (alternative to <code>path</code>)</td>
+<td>Table name, or <code>db_name</code> + <code>tbl_name</code></td>
+</tr>
+<tr>
+<td><code>sql</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>Spark SQL query (reads only)</td>
 </tr>
 <tr>
 <td><code>mode</code></td>
-<td><code>overwrite</code> | <code>append</code> | <code>merge</code></td>
+<td>see <a href="../../config/io/#write-modes">Write modes</a></td>
 <td>No</td>
-<td>Write mode</td>
+<td>Default <code>append</code>. All six modes supported</td>
+</tr>
+<tr>
+<td><code>partitionBy</code></td>
+<td>list</td>
+<td>No</td>
+<td>Partition columns</td>
+</tr>
+<tr>
+<td><code>merge_keys</code></td>
+<td>list | string</td>
+<td>Conditional</td>
+<td>Required for <code>mode: merge</code></td>
+</tr>
+<tr>
+<td><code>replace_where</code></td>
+<td>string</td>
+<td>No</td>
+<td>Predicate for <code>mode: overwrite_partitions</code></td>
+</tr>
+<tr>
+<td><code>version_as_of</code></td>
+<td>int</td>
+<td>No</td>
+<td>Time travel by version (reads only)</td>
+</tr>
+<tr>
+<td><code>timestamp_as_of</code></td>
+<td>string</td>
+<td>No</td>
+<td>Time travel by timestamp (reads only)</td>
 </tr>
 <tr>
 <td><code>options</code></td>
 <td>dict</td>
 <td>No</td>
-<td>Spark reader/writer options; <code>merge_keys</code> for MERGE mode</td>
+<td>Spark reader/writer options</td>
+</tr>
+</tbody>
+</table>
+<h2 id="fields-binary">Fields — <code>binary</code><a class="headerlink" href="#fields-binary" title="Permanent link">&para;</a></h2>
+<p>Reads raw files (PDFs, images, audio) one row per file, with columns <code>path</code>,
+<code>modificationTime</code>, <code>length</code>, <code>content</code>. Spark's <code>binaryFile</code> source is
+<strong>read-only</strong> — <code>format: binary</code> in <code>CONFIG.outputs</code> is rejected at config load.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>format</code></td>
+<td><code>"binary"</code></td>
+<td>Yes</td>
+<td>Selects this connector</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Directory or file path</td>
+</tr>
+<tr>
+<td><code>path_glob_filter</code></td>
+<td>string</td>
+<td>No</td>
+<td>Only read matching files, e.g. <code>"*.pdf"</code></td>
+</tr>
+<tr>
+<td><code>recursive</code></td>
+<td>bool</td>
+<td>No</td>
+<td>Descend into sub-directories</td>
+</tr>
+<tr>
+<td><code>options</code></td>
+<td>dict</td>
+<td>No</td>
+<td>Spark reader options</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="spark-configuration-for-s3">Spark configuration for S3<a class="headerlink" href="#spark-configuration-for-s3" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">ENGINE</span><span class="p">:</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">spark_conf</span><span class="p">:</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="nt">spark.hadoop.fs.s3a.access.key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">env.AWS_ACCESS_KEY_ID</span><span class="nv"> </span><span class="s">}}&quot;</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="nt">spark.hadoop.fs.s3a.secret.key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">env.AWS_SECRET_ACCESS_KEY</span><span class="nv"> </span><span class="s">}}&quot;</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="nt">spark.hadoop.fs.s3a.endpoint</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;s3.amazonaws.com&quot;</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="c1"># For Delta Lake on open-source Spark:</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">    </span><span class="nt">spark.jars.packages</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;io.delta:delta-core_2.12:2.4.0&quot;</span>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span><span class="nt">spark.sql.extensions</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;io.delta.sql.DeltaSparkSessionExtension&quot;</span>
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">    </span><span class="nt">spark.sql.catalog.spark_catalog</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;org.apache.spark.sql.delta.catalog.DeltaCatalog&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">ENGINE</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">spark_conf</span><span class="p">:</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="nt">spark.hadoop.fs.s3a.access.key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">env.AWS_ACCESS_KEY_ID</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="nt">spark.hadoop.fs.s3a.secret.key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">env.AWS_SECRET_ACCESS_KEY</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="nt">spark.hadoop.fs.s3a.endpoint</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;s3.amazonaws.com&quot;</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">    </span><span class="c1"># For Delta Lake on open-source Spark:</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">    </span><span class="nt">spark.jars.packages</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;io.delta:delta-core_2.12:2.4.0&quot;</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">    </span><span class="nt">spark.sql.extensions</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;io.delta.sql.DeltaSparkSessionExtension&quot;</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">    </span><span class="nt">spark.sql.catalog.spark_catalog</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;org.apache.spark.sql.delta.catalog.DeltaCatalog&quot;</span>
 </code></pre></div>
 <p>On Databricks, Delta and S3 are pre-configured — no extra Spark settings needed.</p>
 <hr />
 <h2 id="partitioned-paths-with-jinja">Partitioned paths with Jinja<a class="headerlink" href="#partitioned-paths-with-jinja" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="nt">daily_events</span><span class="p">:</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;s3://my-bucket/delta/events/dt={{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default(&#39;2024-01-01&#39;)</span><span class="nv"> </span><span class="s">}}/&quot;</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">    </span><span class="nt">daily_events</span><span class="p">:</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;s3://my-bucket/delta/events/dt={{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default(&#39;2024-01-01&#39;)</span><span class="nv"> </span><span class="s">}}/&quot;</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite</span>
 </code></pre></div>
 
 
@@ -2458,7 +2661,7 @@ data source format in <code>options</code>:</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 18:36:16 UTC">July 12, 2026</span>
   </span>
 
     
