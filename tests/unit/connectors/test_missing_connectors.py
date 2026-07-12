@@ -160,19 +160,18 @@ class TestDeltaWriter:
         assert merge_sql and "MERGE INTO main.f.c AS t" in merge_sql[0]
 
     def test_overwrite_partitions(self):
-        spark = MagicMock()
-        spark.conf.get.return_value = "STATIC"
+        """Delta honours partitionOverwriteMode as a write option — Spark's file
+        sources do not (see the integration tier)."""
         df = _df()
 
         DeltaWriter().write(
             df,
             {"path": "s3a://b/d/", "mode": "overwrite_partitions", "partitionBy": ["dt"]},
-            _backend(spark),
+            _backend(),
         )
 
-        key = "spark.sql.sources.partitionOverwriteMode"
-        assert spark.conf.set.call_args_list[0].args == (key, "DYNAMIC")
-        assert spark.conf.set.call_args_list[-1].args == (key, "STATIC")
+        df.write.option.assert_any_call("partitionOverwriteMode", "dynamic")
+        df.write.mode.assert_called_once_with("overwrite")
 
     def test_no_target_raises(self):
         with pytest.raises(SinkWriteError, match="requires 'path' or 'table'"):

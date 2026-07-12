@@ -25,6 +25,7 @@ from pyspark.sql import SparkSession  # noqa: E402
 
 from ubunye.core.errors import SinkWriteError  # noqa: E402
 from ubunye.plugins.writers.delta import DeltaWriter  # noqa: E402
+from ubunye.plugins.writers.hive import HiveWriter  # noqa: E402
 from ubunye.plugins.writers.s3 import S3Writer  # noqa: E402
 
 pytestmark = pytest.mark.integration
@@ -165,14 +166,17 @@ class TestNativeModes:
 
 
 class TestOverwritePartitions:
-    def test_spark_itself_honours_dynamic_partition_overwrite(self, spark, tmp_path):
-        """Control experiment — no Ubunye code, just Spark.
+    def test_spark_path_write_ignores_the_dynamic_conf(self, spark, tmp_path):
+        """Documents the trap, with no Ubunye code in the path.
 
-        Establishes whether the idiom our writer relies on (partitionOverwriteMode
-        = DYNAMIC + mode overwrite + partitionBy on a path write) actually behaves
-        the way we think on *this* Spark version. If this fails, the bug is in our
-        understanding of Spark; if it passes and the next test fails, the bug is
-        in our plumbing. Told apart, not guessed at.
+        The obvious implementation of overwrite_partitions — set
+        partitionOverwriteMode=DYNAMIC and do a partitioned overwrite to a path —
+        does NOT work: Spark honours that conf only for INSERT OVERWRITE into a
+        table. On a path write it silently replaces the whole dataset. That is why
+        the engine refuses this combination instead of shipping it.
+
+        If a future Spark starts honouring it, this test fails and we can support
+        the parquet-path case properly.
         """
         path = _out(tmp_path)
         _rows(
@@ -190,37 +194,52 @@ class TestOverwritePartitions:
             spark.conf.set(PARTITION_OVERWRITE_KEY, previous)
 
         dts = {r["dt"] for r in spark.read.parquet(path).collect()}
-        assert "2026-01-01" in dts, (
-            f"Spark {spark.version} did NOT honour partitionOverwriteMode=DYNAMIC on a "
-            "path write — it wiped the untouched partition. The engine cannot implement "
-            "overwrite_partitions this way on this version."
+        assert dts == {"2026-01-02"}, (
+            f"Spark {spark.version} now honours partitionOverwriteMode on a path write. "
+            "The engine can stop refusing non-Delta path targets for overwrite_partitions."
         )
 
-    def test_replaces_only_the_incoming_partition(self, spark, backend, tmp_path):
+    def test_non_delta_path_is_refused_rather_than_wiped(self, spark, backend, tmp_path):
+        """The engine's answer to the trap above: fail the config, keep the data."""
+        path = _out(tmp_path)
+        S3Writer().write(
+            _rows(spark, [(1, "2026-01-01", 10.0)]),
+            {"path": path, "mode": "overwrite", "partitionBy": ["dt"]},
+            backend,
+        )
+
+        with pytest.raises(SinkWriteError, match="cannot be done safely on a non-Delta path"):
+            S3Writer().write(
+                _rows(spark, [(2, "2026-01-02", 20.0)]),
+                {"path": path, "mode": "overwrite_partitions", "partitionBy": ["dt"]},
+                backend,
+            )
+
+        # The data it refused to touch is still there.
+        assert spark.read.parquet(path).count() == 1
+
+    def test_delta_path_replaces_only_the_incoming_partition(self, spark, backend, tmp_path):
         """The whole point of the mode: re-run one day, leave the others standing."""
+        _requires_delta(spark)
         path = _out(tmp_path)
 
-        S3Writer().write(
+        DeltaWriter().write(
             _rows(
                 spark,
-                [
-                    (1, "2026-01-01", 10.0),
-                    (2, "2026-01-01", 20.0),
-                    (3, "2026-01-02", 30.0),
-                ],
+                [(1, "2026-01-01", 10.0), (2, "2026-01-01", 20.0), (3, "2026-01-02", 30.0)],
             ),
             {"path": path, "mode": "overwrite", "partitionBy": ["dt"]},
             backend,
         )
 
         # Re-run 2026-01-02 only.
-        S3Writer().write(
+        DeltaWriter().write(
             _rows(spark, [(4, "2026-01-02", 40.0), (5, "2026-01-02", 50.0)]),
             {"path": path, "mode": "overwrite_partitions", "partitionBy": ["dt"]},
             backend,
         )
 
-        result = spark.read.parquet(path)
+        result = spark.read.format("delta").load(path)
         by_dt = {
             r["dt"]: r["n"]
             for r in result.groupBy("dt").count().withColumnRenamed("count", "n").collect()
@@ -230,18 +249,35 @@ class TestOverwritePartitions:
         assert by_dt["2026-01-02"] == 2, "target partition was not replaced"
         assert sorted(r["id"] for r in result.collect()) == [1, 2, 4, 5]
 
-    def test_session_conf_is_restored_after_the_write(self, spark, backend, tmp_path):
-        """The conf is session-wide; leaking DYNAMIC would silently change the
-        behaviour of every later write in the same session."""
-        before = spark.conf.get(PARTITION_OVERWRITE_KEY, "STATIC")
+    def test_non_delta_table_uses_insert_overwrite(self, spark, backend, tmp_path):
+        """A parquet *table* can do it — INSERT OVERWRITE is where Spark's conf
+        actually bites. This is the route the hive writer takes."""
+        table = f"tbl_{uuid.uuid4().hex[:8]}"
 
-        S3Writer().write(
-            _rows(spark, [(1, "2026-01-01", 10.0)]),
-            {"path": _out(tmp_path), "mode": "overwrite_partitions", "partitionBy": ["dt"]},
+        HiveWriter().write(
+            _rows(
+                spark,
+                [(1, "2026-01-01", 10.0), (2, "2026-01-01", 20.0), (3, "2026-01-02", 30.0)],
+            ),
+            {"table": table, "mode": "overwrite", "partitionBy": ["dt"]},
             backend,
         )
 
-        assert spark.conf.get(PARTITION_OVERWRITE_KEY, "STATIC") == before
+        HiveWriter().write(
+            _rows(spark, [(4, "2026-01-02", 40.0)]),
+            {"table": table, "mode": "overwrite_partitions", "partitionBy": ["dt"]},
+            backend,
+        )
+
+        rows = spark.table(table).collect()
+        by_dt = {}
+        for r in rows:
+            by_dt.setdefault(r["dt"], []).append(r["id"])
+
+        assert sorted(by_dt["2026-01-01"]) == [1, 2], "untouched partition was destroyed"
+        assert by_dt["2026-01-02"] == [4], "target partition was not replaced"
+
+        spark.sql(f"DROP TABLE IF EXISTS {table}")
 
     def test_unpartitioned_target_is_refused(self, spark, backend, tmp_path):
         with pytest.raises(SinkWriteError, match="requires 'partitionBy' or 'replace_where'"):

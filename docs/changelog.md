@@ -50,7 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | `errorifexists` (alias `error`) | Fail if the target exists — Spark's own default |
   | `ignore` | No-op if the target exists |
   | `merge` | Delta MERGE (upsert) on `merge_keys`; creates the target on first run |
-  | `overwrite_partitions` | Replace only the partitions in the DataFrame, via `partitionBy` (dynamic) or `replace_where` (Delta predicate) |
+  | `overwrite_partitions` | Replace only the partitions in the DataFrame — on Delta (dynamic or `replace_where`), or via `INSERT OVERWRITE` on a non-Delta table |
+
+- **Integration tests on a real Spark session.** The write modes are exercised
+  against a real JVM Spark (and a real Delta table) in CI, not just asserted
+  against mocks — `ignore` really leaves the target alone, `merge` really
+  upserts, and `overwrite_partitions` really leaves its neighbouring partitions
+  standing.
 
 - **`ubunye.core.write_modes`.** Mode semantics live in one module rather than
   in each connector. Writers declare the modes they support; a mode a connector
@@ -85,6 +91,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   config instead of quietly destroying data. The session-level
   `spark.sql.sources.partitionOverwriteMode` conf is restored after each write
   rather than leaking into later writes.
+
+- **`overwrite_partitions` refuses a non-Delta path, instead of silently wiping
+  it.** Spark honours `partitionOverwriteMode=DYNAMIC` only for `INSERT OVERWRITE`
+  into a *table* — on a path write it is ignored and the entire dataset is
+  replaced. The first implementation did exactly that, and the integration tests
+  caught it destroying the partitions it was supposed to preserve. The mode now
+  takes the mechanism that actually works for each target: Delta's own write
+  option for Delta, `INSERT OVERWRITE` for a non-Delta table, and a
+  `SinkWriteError` for a non-Delta path, where Spark simply cannot do it.
 
 ---
 
