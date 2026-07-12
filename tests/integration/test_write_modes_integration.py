@@ -51,44 +51,14 @@ class _Backend:
 
 @pytest.fixture(scope="module")
 def spark():
-    """A real local Spark session, with Delta enabled when it is available.
-
-    Delta needs its extensions set at session-creation time, so it cannot be
-    turned on per-test. If the Delta jars can't be resolved (no network, version
-    skew with pyspark), fall back to a plain session — the Parquet-backed tests
-    still run and the Delta ones skip.
-    """
-    builder = (
+    """The session the conftest launched the JVM with (Delta-enabled when available)."""
+    return (
         SparkSession.builder.master("local[1]")
-        .appName("ubunye-write-modes-test")
+        .appName("ubunye-integration")
         .config("spark.sql.shuffle.partitions", "1")
         .config("spark.ui.enabled", "false")
-        .config("spark.driver.memory", "512m")
+        .getOrCreate()
     )
-
-    session = None
-    delta_on = False
-    if _HAS_DELTA:
-        try:
-            from delta import configure_spark_with_delta_pip
-
-            delta_builder = builder.config(
-                "spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension"
-            ).config(
-                "spark.sql.catalog.spark_catalog",
-                "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-            )
-            session = configure_spark_with_delta_pip(delta_builder).getOrCreate()
-            delta_on = True
-        except Exception:  # jars unavailable / version skew — fall back
-            session = None
-
-    if session is None:
-        session = builder.getOrCreate()
-
-    session._ubunye_delta_enabled = delta_on  # type: ignore[attr-defined]
-    yield session
-    session.stop()
 
 
 @pytest.fixture
@@ -97,8 +67,10 @@ def backend(spark) -> _Backend:
 
 
 def _requires_delta(spark) -> None:
-    if not getattr(spark, "_ubunye_delta_enabled", False):
-        pytest.skip("delta-spark not installed or Delta jars unavailable")
+    if not _HAS_DELTA:
+        pytest.skip("delta-spark not installed")
+    if "DeltaSparkSessionExtension" not in (spark.conf.get("spark.sql.extensions", "") or ""):
+        pytest.skip("Delta jars unavailable in this JVM")
 
 
 def _rows(spark, rows):
@@ -193,6 +165,37 @@ class TestNativeModes:
 
 
 class TestOverwritePartitions:
+    def test_spark_itself_honours_dynamic_partition_overwrite(self, spark, tmp_path):
+        """Control experiment — no Ubunye code, just Spark.
+
+        Establishes whether the idiom our writer relies on (partitionOverwriteMode
+        = DYNAMIC + mode overwrite + partitionBy on a path write) actually behaves
+        the way we think on *this* Spark version. If this fails, the bug is in our
+        understanding of Spark; if it passes and the next test fails, the bug is
+        in our plumbing. Told apart, not guessed at.
+        """
+        path = _out(tmp_path)
+        _rows(
+            spark,
+            [(1, "2026-01-01", 10.0), (2, "2026-01-01", 20.0), (3, "2026-01-02", 30.0)],
+        ).write.mode("overwrite").partitionBy("dt").format("parquet").save(path)
+
+        previous = spark.conf.get(PARTITION_OVERWRITE_KEY, "STATIC")
+        spark.conf.set(PARTITION_OVERWRITE_KEY, "DYNAMIC")
+        try:
+            _rows(spark, [(4, "2026-01-02", 40.0)]).write.mode("overwrite").partitionBy(
+                "dt"
+            ).format("parquet").save(path)
+        finally:
+            spark.conf.set(PARTITION_OVERWRITE_KEY, previous)
+
+        dts = {r["dt"] for r in spark.read.parquet(path).collect()}
+        assert "2026-01-01" in dts, (
+            f"Spark {spark.version} did NOT honour partitionOverwriteMode=DYNAMIC on a "
+            "path write — it wiped the untouched partition. The engine cannot implement "
+            "overwrite_partitions this way on this version."
+        )
+
     def test_replaces_only_the_incoming_partition(self, spark, backend, tmp_path):
         """The whole point of the mode: re-run one day, leave the others standing."""
         path = _out(tmp_path)
