@@ -50,11 +50,16 @@ class DatabricksExporter(OrchestratorExporter):
                         # "no such option" — nothing caught it because nothing ever ran
                         # the generated artifact.
                         "parameters": [
-                            "-d", str(Path(config_path).parents[3]),
-                            "-u", Path(config_path).parents[2].name,
-                            "-p", Path(config_path).parents[1].name,
-                            "-t", Path(config_path).parent.name,
-                            "-m", profile,
+                            "-d",
+                            str(Path(config_path).parents[3]),
+                            "-u",
+                            Path(config_path).parents[2].name,
+                            "-p",
+                            Path(config_path).parents[1].name,
+                            "-t",
+                            Path(config_path).parent.name,
+                            "-m",
+                            profile,
                         ],
                     },
                 }

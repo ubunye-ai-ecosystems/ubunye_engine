@@ -17,7 +17,16 @@ from ubunye.__main__ import main
 
 def test_it_runs_a_task_with_the_arguments_a_cloud_passes():
     with patch("ubunye.run_task") as run_task:
-        rc = main(["--task-dir", "/code/pipelines/sales/etl/daily", "--mode", "PROD", "--dt", "2026-07-13"])
+        rc = main(
+            [
+                "--task-dir",
+                "/code/pipelines/sales/etl/daily",
+                "--mode",
+                "PROD",
+                "--dt",
+                "2026-07-13",
+            ]
+        )
 
     assert rc == 0
     run_task.assert_called_once()

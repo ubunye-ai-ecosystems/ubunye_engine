@@ -73,6 +73,7 @@ def _requests():
         ) from exc
     return requests
 
+
 log = logging.getLogger(__name__)
 
 # Maps simple type names from config schema to PySpark type strings.

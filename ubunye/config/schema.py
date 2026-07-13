@@ -100,7 +100,6 @@ class EngineConfig(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-
 @lru_cache(maxsize=1)
 def _registered_formats() -> frozenset:
     """Every connector name the plugin system can actually load.

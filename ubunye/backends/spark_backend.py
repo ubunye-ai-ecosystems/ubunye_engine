@@ -84,13 +84,7 @@ class SparkBackend(Backend):
         if not requested:
             return
 
-        try:
-            from pyspark import SparkConf  # type: ignore
-
-            existing = SparkConf().get("spark.master", None)
-        except Exception:  # noqa: BLE001 — no pyspark, or no defaults; nothing to clash with
-            return
-
+        existing = self._platform_master()
         if existing and existing != requested:
             raise SparkSessionError(
                 "ENGINE.spark_conf sets 'spark.master', but the platform already chose one.",
@@ -101,6 +95,21 @@ class SparkBackend(Backend):
                 "succeeds, and bills you for a cluster it never used. The master belongs "
                 "to whoever launched the session, not to the task.",
             )
+
+    @staticmethod
+    def _platform_master() -> Optional[str]:
+        """Whatever master the launcher already put in the default SparkConf.
+
+        `spark-submit` populates it; a bare `python foo.py` does not. Its own method so
+        the guard above can be tested without pyspark installed — the unit tier does not
+        install Spark, and a test that has to be skipped is a test that does not run.
+        """
+        try:
+            from pyspark import SparkConf  # type: ignore
+
+            return SparkConf().get("spark.master", None)
+        except Exception:  # noqa: BLE001 — no pyspark, or no defaults; nothing to clash with
+            return None
 
     def stop(self) -> None:
         """Stop the SparkSession if running."""
