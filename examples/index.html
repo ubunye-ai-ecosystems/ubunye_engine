@@ -992,6 +992,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mlops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MLOps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relational-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relational databases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run-one-in-about-five-minutes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1729,6 +1751,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mlops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MLOps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relational-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relational databases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run-one-in-about-five-minutes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1768,9 +1812,10 @@
 <p>Worked, deployable pipelines live in their own repository:</p>
 <p><a class="md-button md-button--primary" href="https://github.com/ubunye-ai-ecosystems/ubunye-examples"><strong>ubunye-ai-ecosystems/ubunye-examples</strong> on GitHub</a></p>
 <p>They install the engine from PyPI (<code>ubunye-engine==0.3.0</code>), so what you run there is
-what you get from <code>pip install</code> — not an unreleased branch. <strong>Every one of them has
-been run on real Databricks</strong>, deployed as a Databricks Asset Bundle, with the output
-inspected. Not merely validated. Run.</p>
+what you get from <code>pip install</code> — not an unreleased branch. <strong>Examples 01–08 have been
+run on real Databricks</strong>, deployed as a Databricks Asset Bundle, with the output
+inspected. Not merely validated. Run. (Example 09 needs a classic cluster and has not —
+see the note against it.)</p>
 <hr />
 <h2 id="the-abstraction-they-all-share">The abstraction they all share<a class="headerlink" href="#the-abstraction-they-all-share" title="Permanent link">&para;</a></h2>
 <p>Every task is the same two files, whatever it does:</p>
@@ -1852,6 +1897,95 @@ with a warning label attached — it is a failed experiment, and it does not ent
 the registry at all, because somebody downstream will eventually load "the
 production model" without reading the label.</p>
 </div>
+<h2 id="mlops">MLOps<a class="headerlink" href="#mlops" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Example</th>
+<th>Tasks</th>
+<th>Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>07</strong></td>
+<td><a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/07_data_quality">Data quality — a contract, enforced</a></td>
+<td><code>validate_transactions</code></td>
+<td>Rules with severities; bad rows <strong>quarantined, not dropped</strong> — a dropped row is a silent data loss, a quarantined one is a bug report with the payload attached. The run fails when the breach is structural rather than incidental</td>
+</tr>
+<tr>
+<td><strong>08</strong></td>
+<td><a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/08_model_monitoring">Model monitoring &amp; rollback</a></td>
+<td><code>monitor_model</code></td>
+<td>Input drift vs <strong>target</strong> drift (PSI), decay against the registry baseline, and champion-vs-challengers on live data — then it <strong>acts</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition question">
+<p class="admonition-title">Why monitor at all? Isn't MLflow enough?</p>
+<p>MLflow is a <strong>logbook</strong>. It records what happened at <em>training</em> time and then never
+looks at the model again — it will happily keep reporting <code>test_r2 = 0.969</code> while
+the model is wrong on every row, and it cannot change what is serving.</p>
+<p>A gate stops a bad model being <strong>born</strong>. Monitoring catches the one that got past,
+and the one that was fine until the world moved. Example 08 runs one task against
+both failures, and the measured numbers are the lesson:</p>
+<ul>
+<li><strong>The world moved</strong> (fares inflate 35%): the <em>inputs</em> do not move at all — PSI
+  ≤ 0.005 — because inflation changes what a trip <em>costs</em>, not how far it <em>goes</em>.
+  An input-drift dashboard shows <strong>all green</strong> while live error goes 0.45 → 4.33.</li>
+<li><strong>A bad model was promoted</strong>: nothing drifts, and <em>nothing decays</em> — its live
+  error matches its own bad baseline, because it did not rot, it was <strong>born
+  broken</strong>. A decay-only monitor serves it forever.</li>
+</ul>
+<p>And the two need <strong>different remedies</strong>. A rollback only ever fixes a model that is
+worse than one you already had; it cannot fix a changed world, because every
+registered version learned the old one. So the monitor scores every version on the
+live window and rolls back only when the evidence says it would help — and says
+<em>retrain</em>, with the numbers, when it would not.</p>
+</div>
+<h2 id="relational-databases">Relational databases<a class="headerlink" href="#relational-databases" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Example</th>
+<th>Reads</th>
+<th>Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>09</strong></td>
+<td><a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/09_jdbc_ingest">JDBC — a real database</a></td>
+<td>RNAcentral's public Postgres — 54M rows</td>
+<td>The <code>jdbc</code> reader: a table read, SQL pushed down to the database, and a <strong>partitioned parallel read</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition danger">
+<p class="admonition-title">A JDBC read is single-threaded unless you tell it not to be</p>
+<p>Spark issues <strong>one</strong> query on <strong>one</strong> connection, and a single core drags the whole
+table through it — however big your cluster is. No warning, no error. The job is
+just slow forever, and the Spark UI shows one task at 100% while the rest of the
+cluster idles. This is why people conclude "JDBC is slow". JDBC is not slow; asking
+for 54 million rows down one socket is slow.</p>
+<p><code>partitionColumn</code> + <code>lowerBound</code> + <code>upperBound</code> + <code>numPartitions</code> splits it into N
+range queries that run in parallel. Two traps: those bounds are <strong>not a filter</strong>
+(rows outside them are still read — the end partitions are open-ended), and
+<code>numPartitions</code> is only a <strong>hint</strong> — Spark <em>silently ignores</em> the lot if
+<code>partitionColumn</code> is missing or not numeric, and hands back the single-threaded
+read you were trying to avoid. Assert on <code>rdd.getNumPartitions()</code>.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">This one needs a paid workspace — and has not been run on Databricks</p>
+<p>Serverless ships <strong>no JDBC drivers</strong> and <strong>cannot install a JAR</strong>, so this example
+needs a classic cluster, which a free workspace does not have. It is the only
+example in the repo that has <strong>not</strong> been run on Databricks, and it says so at the
+top of its own README. Its config, reader, pushed-down SQL, partitioned read and
+transformation <em>were</em> run against the live database on local Spark — what remains
+unverified is named rather than glossed over.</p>
+</div>
 <hr />
 <h2 id="run-one-in-about-five-minutes">Run one in about five minutes<a class="headerlink" href="#run-one-in-about-five-minutes" title="Permanent link">&para;</a></h2>
 <ol>
@@ -1899,7 +2033,7 @@ something at runtime, run it on the cluster before you believe it.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 13, 2026 07:19:06 UTC">July 13, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 13, 2026 11:08:52 UTC">July 13, 2026</span>
   </span>
 
     
