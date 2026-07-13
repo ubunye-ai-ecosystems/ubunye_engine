@@ -72,11 +72,16 @@ On paid workspaces with Unity Catalog, the minimum grants are:
 -- Replace <sp_id> with the service principal's Application ID.
 GRANT USE CATALOG ON CATALOG main TO `<sp_id>`;
 GRANT CREATE SCHEMA ON CATALOG main TO `<sp_id>`;
-GRANT USE SCHEMA, CREATE TABLE, CREATE VOLUME ON SCHEMA main.titanic TO `<sp_id>`;
+GRANT USE SCHEMA, CREATE TABLE, CREATE VOLUME ON SCHEMA main.ubunye_examples TO `<sp_id>`;
 ```
 
-(Replace `main` / `titanic` with whatever `titanic_catalog` / `titanic_schema`
-you deploy against — the example workflows default to `workspace` / `titanic`.)
+(Replace `main` / `ubunye_examples` with the catalog and schema you deploy against.
+The [examples repo](https://github.com/ubunye-ai-ecosystems/ubunye-examples) defaults
+to `workspace` / `ubunye_examples`.)
+
+`CREATE VOLUME` is not optional if you train models: the model registry is a
+directory of files, and a Unity Catalog volume is the only writable path on
+serverless compute — the executors cannot see the driver's `/tmp`.
 
 ### 5. Add the three secrets to GitHub
 
@@ -132,7 +137,7 @@ green.
 
 ## Verifying the wiring
 
-1. Push a trivial change under `examples/production/titanic_databricks/`
+1. Push a trivial change to the [examples repo](https://github.com/ubunye-ai-ecosystems/ubunye-examples)
    (e.g. edit its README) and merge it.
 2. Watch the `examples/titanic_databricks` workflow. The
    `databricks bundle deploy` step logs a line like

@@ -56,15 +56,7 @@ nav:
       - S3 / Delta: connectors/s3.md
       - REST API: connectors/rest_api.md
       - Writing a Plugin: connectors/plugin_guide.md
-  - Examples:
-      - Overview: examples/index.md
-      - Titanic (Local): examples/titanic-local.md
-      - Titanic (Databricks): examples/titanic-databricks.md
-      - Titanic ML (Databricks): examples/titanic-ml-databricks.md
-      - Titanic Multi-Task (Local): examples/titanic-multitask-local.md
-      - Titanic Multi-Task (Databricks): examples/titanic-multitask-databricks.md
-      - JHB Weather (Databricks): examples/jhb-weather.md
-      - Python API: examples/python-api.md
+  - Examples: examples/index.md
   - Patterns:
       - Notebook Prototyping: patterns/notebook.md
       - RAG Document Pipeline: patterns/rag.md
