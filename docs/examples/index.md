@@ -51,6 +51,36 @@ task. They differ in what `transformations.py` says, not in shape.
     the registry at all, because somebody downstream will eventually load "the
     production model" without reading the label.
 
+## MLOps
+
+| | Example | Tasks | Shows |
+|---|---|---|---|
+| **07** | [Data quality — a contract, enforced](https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/07_data_quality) | `validate_transactions` | Rules with severities; bad rows **quarantined, not dropped** — a dropped row is a silent data loss, a quarantined one is a bug report with the payload attached. The run fails when the breach is structural rather than incidental |
+| **08** | [Model monitoring & rollback](https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/08_model_monitoring) | `monitor_model` | Input drift vs **target** drift (PSI), decay against the registry baseline, and champion-vs-challengers on live data — then it **acts** |
+
+!!! question "Why monitor at all? Isn't MLflow enough?"
+
+    MLflow is a **logbook**. It records what happened at *training* time and then never
+    looks at the model again — it will happily keep reporting `test_r2 = 0.969` while
+    the model is wrong on every row, and it cannot change what is serving.
+
+    A gate stops a bad model being **born**. Monitoring catches the one that got past,
+    and the one that was fine until the world moved. Example 08 runs one task against
+    both failures, and the measured numbers are the lesson:
+
+    - **The world moved** (fares inflate 35%): the *inputs* do not move at all — PSI
+      ≤ 0.005 — because inflation changes what a trip *costs*, not how far it *goes*.
+      An input-drift dashboard shows **all green** while live error goes 0.45 → 4.33.
+    - **A bad model was promoted**: nothing drifts, and *nothing decays* — its live
+      error matches its own bad baseline, because it did not rot, it was **born
+      broken**. A decay-only monitor serves it forever.
+
+    And the two need **different remedies**. A rollback only ever fixes a model that is
+    worse than one you already had; it cannot fix a changed world, because every
+    registered version learned the old one. So the monitor scores every version on the
+    live window and rolls back only when the evidence says it would help — and says
+    *retrain*, with the numbers, when it would not.
+
 ---
 
 ## Run one in about five minutes
