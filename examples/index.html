@@ -16,7 +16,7 @@
         <link rel="prev" href="../connectors/plugin_guide/">
       
       
-        <link rel="next" href="titanic-local/">
+        <link rel="next" href="../patterns/notebook/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Overview - Ubunye Engine</title>
+        <title>Examples - Ubunye Engine</title>
       
     
     
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Examples
             
           </span>
         </div>
@@ -900,55 +900,6 @@
   
   
   
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Examples
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Examples
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-    
-  
-  
-  
     <li class="md-nav__item md-nav__item--active">
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
@@ -964,7 +915,7 @@
   <span class="md-ellipsis">
     
   
-    Overview
+    Examples
   
 
     
@@ -982,7 +933,7 @@
   <span class="md-ellipsis">
     
   
-    Overview
+    Examples
   
 
     
@@ -1008,10 +959,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-examples" class="md-nav__link">
+  <a href="#the-abstraction-they-all-share" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The examples
+        The abstraction they all share
       
     </span>
   </a>
@@ -1019,10 +970,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-start" class="md-nav__link">
+  <a href="#ingestion" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where to start
+        Ingestion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#machine-learning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Machine learning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-one-in-about-five-minutes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run one in about five minutes
       
     </span>
   </a>
@@ -1032,210 +1005,6 @@
     </ul>
   
 </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="titanic-local/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic (Local)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="titanic-databricks/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="titanic-ml-databricks/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic ML (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="titanic-multitask-local/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic Multi-Task (Local)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="titanic-multitask-databricks/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Titanic Multi-Task (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="jhb-weather/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    JHB Weather (Databricks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="python-api/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Python API
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
       
     </li>
   
@@ -1927,10 +1696,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-examples" class="md-nav__link">
+  <a href="#the-abstraction-they-all-share" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The examples
+        The abstraction they all share
       
     </span>
   </a>
@@ -1938,10 +1707,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-start" class="md-nav__link">
+  <a href="#ingestion" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where to start
+        Ingestion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#machine-learning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Machine learning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-one-in-about-five-minutes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run one in about five minutes
       
     </span>
   </a>
@@ -1974,99 +1765,118 @@
 
 
 <h1 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h1>
-<p>Fully worked, CI-deployed pipelines. Every one is self-contained — its own
-<code>config.yaml</code>, <code>transformations.py</code>, tests and GitHub Actions workflow — and every
-one runs in CI, so what you read here is what actually executes.</p>
-<p>They exist to answer one question:</p>
-<blockquote>
-<p><em>How much code changes when I move a Ubunye pipeline from my laptop to Databricks?</em></p>
-</blockquote>
-<p>The short answer: <strong>the business logic does not change.</strong> The config shifts from
-<code>file://</code> to <code>dbfs:/</code> and gains a deployment wrapper. That is all. The
-<code>transformations.py</code> in <code>titanic_local</code> and <code>titanic_databricks</code> is <em>byte-identical</em>,
-and CI enforces it with <code>diff -q</code> — if they ever drift, the build fails.</p>
+<p>Worked, deployable pipelines live in their own repository:</p>
+<p><a class="md-button md-button--primary" href="https://github.com/ubunye-ai-ecosystems/ubunye-examples"><strong>ubunye-ai-ecosystems/ubunye-examples</strong> on GitHub</a></p>
+<p>They install the engine from PyPI (<code>ubunye-engine==0.3.0</code>), so what you run there is
+what you get from <code>pip install</code> — not an unreleased branch. <strong>Every one of them has
+been run on real Databricks</strong>, deployed as a Databricks Asset Bundle, with the output
+inspected. Not merely validated. Run.</p>
 <hr />
-<h2 id="the-examples">The examples<a class="headerlink" href="#the-examples" title="Permanent link">&para;</a></h2>
+<h2 id="the-abstraction-they-all-share">The abstraction they all share<a class="headerlink" href="#the-abstraction-they-all-share" title="Permanent link">&para;</a></h2>
+<p>Every task is the same two files, whatever it does:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>&lt;usecase&gt;/&lt;package&gt;/&lt;task&gt;/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    config.yaml          where the data comes from, where it goes, Spark settings
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    transformations.py   the business rule
+</code></pre></div>
+<p><strong>ETL or ML is not a distinction the engine makes.</strong> Training a model is a task.
+Scoring with one is a task. Aggregating a table is a task. Embedding a document is a
+task. They differ in what <code>transformations.py</code> says, not in shape.</p>
+<hr />
+<h2 id="ingestion">Ingestion<a class="headerlink" href="#ingestion" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
+<th></th>
 <th>Example</th>
-<th>Runtime</th>
-<th>Input</th>
-<th>Output</th>
+<th>Reads</th>
+<th>Shows</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><a href="titanic-local/">Titanic (Local)</a></td>
-<td>Local SparkSession</td>
-<td>CSV on disk</td>
-<td>Parquet on disk</td>
+<td><strong>01</strong></td>
+<td><a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/01_ingest_tables_sql">Structured — tables + SQL</a></td>
+<td><code>samples.bakehouse</code></td>
+<td>Reading a table <em>and</em> pushing a join down as SQL; <code>merge</code> (safe to re-run) and <code>overwrite_partitions</code> (safe to backfill)</td>
 </tr>
 <tr>
-<td><a href="titanic-databricks/">Titanic (Databricks)</a></td>
-<td>Databricks serverless + UC</td>
-<td>CSV on UC volume</td>
-<td>Unity Catalog Delta table</td>
+<td><strong>02</strong></td>
+<td><a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/02_ingest_rest_api">Structured — REST API</a></td>
+<td>Open-Meteo public API</td>
+<td>The <code>rest_api</code> connector: query params, rate limiting, retries — and fanning one JSON document out into 168 rows</td>
 </tr>
 <tr>
-<td><a href="titanic-ml-databricks/">Titanic ML (Databricks)</a></td>
-<td>Databricks serverless + UC</td>
-<td>CSV on UC volume</td>
-<td>Predictions + training audit log; MLflow + Model Registry</td>
-</tr>
-<tr>
-<td><a href="titanic-multitask-local/">Titanic Multi-Task (Local)</a></td>
-<td>Local SparkSession</td>
-<td>CSV on disk</td>
-<td>Intermediate + summary Parquet</td>
-</tr>
-<tr>
-<td><a href="titanic-multitask-databricks/">Titanic Multi-Task (Databricks)</a></td>
-<td>Databricks serverless + UC</td>
-<td>CSV on UC volume</td>
-<td>UC Delta tables (intermediate + summary)</td>
-</tr>
-<tr>
-<td><a href="jhb-weather/">JHB Weather (Databricks)</a></td>
-<td>Databricks + UC, scheduled</td>
-<td>Open-Meteo REST API (no auth)</td>
-<td>Unity Catalog Delta table</td>
-</tr>
-<tr>
-<td><a href="python-api/">Python API</a></td>
-<td>Notebook / library</td>
-<td>—</td>
-<td>Driving the engine from Python instead of the CLI</td>
+<td><strong>03</strong></td>
+<td><a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/03_ingest_unstructured">Unstructured — text + files</a></td>
+<td>204 real customer reviews, plus <code>.txt</code> files on a volume</td>
+<td>Spark's <code>binaryFile</code> source; chunking text into overlapping windows, ready to embed</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="where-to-start">Where to start<a class="headerlink" href="#where-to-start" title="Permanent link">&para;</a></h2>
-<p>Pick the one that matches your runtime.</p>
-<ul>
-<li><strong>Never used the engine?</strong> → <a href="titanic-local/">Titanic (Local)</a>. Runs on a laptop,
-  no cloud account needed.</li>
-<li><strong>Moving to Databricks?</strong> → Read <a href="titanic-local/">Titanic (Local)</a> and
-  <a href="titanic-databricks/">Titanic (Databricks)</a> side by side. The diff between them
-  <em>is</em> the migration guide.</li>
-<li><strong>Chaining tasks?</strong> → the Multi-Task pair. Two tasks run in sequence via
-  <code>ubunye run -t task1 -t task2</code> (local) or <code>ubunye.run_pipeline()</code> (Databricks) —
-  which is what proves the engine's sibling-module isolation works.</li>
-<li><strong>Ingesting from an API?</strong> → <a href="jhb-weather/">JHB Weather</a>: REST in, Unity Catalog
-  out, on a schedule.</li>
-<li><strong>Doing ML?</strong> → <a href="titanic-ml-databricks/">Titanic ML</a>: <code>UbunyeModel</code>, MLflow
-  logging, a filesystem-backed Model Registry on a UC volume, and promotion gates.</li>
-</ul>
+<h2 id="machine-learning">Machine learning<a class="headerlink" href="#machine-learning" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Example</th>
+<th>Tasks</th>
+<th>Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>04</strong></td>
+<td><a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/04_ml_taxi_fare">The ML lifecycle</a></td>
+<td><code>feature_engineering</code> → <code>model_training</code> → <code>batch_inference</code></td>
+<td>The split written to a table; fit; judge on unseen data; <strong>gate</strong>; register; promote; MLflow — then score with whatever is in production</td>
+</tr>
+<tr>
+<td><strong>05</strong></td>
+<td><a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/05_rag_documents">RAG</a></td>
+<td><code>embed_chunks</code> → <code>answer_questions</code></td>
+<td>Open-source embeddings and an open-source LLM, both served in-workspace. Cosine retrieval, and every answer stored <strong>with the sources that produced it</strong></td>
+</tr>
+<tr>
+<td><strong>06</strong></td>
+<td><a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/06_finetune_llm">Distil an LLM</a></td>
+<td><code>label_reviews</code> → <code>finetune_classifier</code></td>
+<td>A large open-source LLM labels the corpus once (the teacher); <strong>DistilBERT fine-tunes on CPU</strong> (the student). A model you own — no endpoint, no per-call cost, no rate limit</td>
+</tr>
+</tbody>
+</table>
 <div class="admonition note">
-<p class="admonition-title">Community Edition vs paid workspace</p>
-<p>The Titanic, weather and multi-task examples run on a Databricks <strong>Community
-Edition</strong> workspace. Flood Risk and Device Mapping need a <strong>paid</strong> one — they read
-existing Unity Catalog tables and call external APIs. The full CE-vs-paid matrix
-and the portability contract live in the
-<a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/tree/main/examples/production">examples README on GitHub</a>.</p>
+<p class="admonition-title">A model that fails its gate is never registered</p>
+<p>In examples 04 and 06 the model is judged on data it has never seen, and
+registered <strong>only if it clears the bar</strong>. A model that cannot is not an artifact
+with a warning label attached — it is a failed experiment, and it does not enter
+the registry at all, because somebody downstream will eventually load "the
+production model" without reading the label.</p>
 </div>
-<p><a class="md-button" href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/tree/main/examples">:material-github: Browse all examples on GitHub</a></p>
+<hr />
+<h2 id="run-one-in-about-five-minutes">Run one in about five minutes<a class="headerlink" href="#run-one-in-about-five-minutes" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Sign up for <a href="https://www.databricks.com/learn/free-edition">Databricks Free Edition</a> — no credit card.</li>
+<li><strong>Workspace → Create → Git folder</strong>, and paste the repo URL. It is public, so you need no token.</li>
+<li>Open any notebook under <code>examples/*/notebooks/</code> and press <strong>Run all</strong>.</li>
+</ol>
+<p>The notebook installs the engine, creates the schema and volumes it needs, and runs
+the task. Nothing is downloaded from the internet.</p>
+<p>Or deploy the lot as a bundle:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>databricks<span class="w"> </span>bundle<span class="w"> </span>validate<span class="w"> </span>--target<span class="w"> </span>dev
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>databricks<span class="w"> </span>bundle<span class="w"> </span>deploy<span class="w">   </span>--target<span class="w"> </span>dev
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>databricks<span class="w"> </span>bundle<span class="w"> </span>run<span class="w"> </span>ml_taxi_fare<span class="w"> </span>--target<span class="w"> </span>dev
+</code></pre></div>
+<p>Everything is serverless — there is no <code>new_cluster</code> block anywhere in the bundle,
+because a free workspace has no other kind of compute.</p>
+<div class="admonition warning">
+<p class="admonition-title">Serverless blocks most of the internet</p>
+<p>Outbound access from serverless compute is restricted to a set of trusted
+domains, and which domains is not documented. Measured from the cluster:
+<code>api.open-meteo.com</code> and <code>pypi.org</code> are reachable; <strong><code>raw.githubusercontent.com</code>
+is not</strong>. That is why none of the examples download their own data — example 03
+commits its corpus to the repo instead. If you write a pipeline that fetches
+something at runtime, run it on the cluster before you believe it.</p>
+</div>
 
 
 
@@ -2089,7 +1899,7 @@ and the portability contract live in the
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 22:11:48 UTC">July 12, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 13, 2026 07:19:06 UTC">July 13, 2026</span>
   </span>
 
     
