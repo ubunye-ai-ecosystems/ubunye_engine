@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] — unreleased
+
+### Breaking
+
+- **`ENGINE.spark_conf` is now applied to a session the engine did not create — and
+  static keys raise instead of being ignored.**
+
+  Before, the conf was **silently discarded** whenever a SparkSession already existed.
+  That is *always* on Databricks, and equally in a notebook, an AWS Glue job, under
+  `spark-submit`, or in pytest. `DatabricksBackend` took no `conf` argument at all, and
+  `api.py` computed `merged_spark_conf(mode)` and then threw it away. So every
+  `ENGINE.spark_conf` and every `ENGINE.profiles` block did **nothing**, and nothing
+  said so. The config claimed one thing and the runtime did another.
+
+  Spark divides settings into *runtime* keys (`spark.sql.shuffle.partitions`) and
+  *static* ones (`spark.master`, `spark.sql.extensions`, `spark.driver.memory`) that
+  are fixed when the JVM starts. Runtime keys are now applied. Static keys are a
+  request the engine **cannot honour**, so they raise, naming every offending key at
+  once.
+
+  **Action required:** remove static keys from `ENGINE.spark_conf` and set them where
+  the session is actually created — a cluster policy, a job conf, `--conf` on
+  `spark-submit`. If your pipeline "worked" with them before, it was ignoring them.
+
+- **A config can no longer override a master the platform already chose.**
+
+  Under `spark-submit` — how EMR Serverless and Dataproc Serverless start every job —
+  the platform sets `spark.master` in the default SparkConf. A task that also set
+  `spark.master` won, and the job ran **entirely in the driver**: it ignored every
+  executor, finished, reported success, and billed for a cluster it never touched.
+  Nothing warned. The output was correct; there was just far less of it per minute
+  than there should have been, forever.
+
+  `SparkBackend` now refuses to start when the config's master disagrees with the
+  platform's.
+
+  **Action required:** delete `spark.master` from `ENGINE.spark_conf`. The master
+  belongs to whoever launched the session, not to the task.
+
+### Added
+
+- `AmbientSessionBackend` — an alias for `DatabricksBackend`, which contains **no
+  Databricks code at all**. It attaches to a session somebody else created and declines
+  to stop it, which is equally true of Glue, EMR, Dataproc, a notebook and pytest. The
+  name had convinced people the engine has a Databricks dependency here. It does not.
+
+---
+
 ## [0.3.0] — 2026-07-12
 
 ### Breaking
