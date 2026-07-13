@@ -5,9 +5,10 @@ Worked, deployable pipelines live in their own repository:
 [**ubunye-ai-ecosystems/ubunye-examples** on GitHub](https://github.com/ubunye-ai-ecosystems/ubunye-examples){ .md-button .md-button--primary }
 
 They install the engine from PyPI (`ubunye-engine==0.3.0`), so what you run there is
-what you get from `pip install` — not an unreleased branch. **Every one of them has
-been run on real Databricks**, deployed as a Databricks Asset Bundle, with the output
-inspected. Not merely validated. Run.
+what you get from `pip install` — not an unreleased branch. **Examples 01–08 have been
+run on real Databricks**, deployed as a Databricks Asset Bundle, with the output
+inspected. Not merely validated. Run. (Example 09 needs a classic cluster and has not —
+see the note against it.)
 
 ---
 
@@ -80,6 +81,36 @@ task. They differ in what `transformations.py` says, not in shape.
     registered version learned the old one. So the monitor scores every version on the
     live window and rolls back only when the evidence says it would help — and says
     *retrain*, with the numbers, when it would not.
+
+## Relational databases
+
+| | Example | Reads | Shows |
+|---|---|---|---|
+| **09** | [JDBC — a real database](https://github.com/ubunye-ai-ecosystems/ubunye-examples/tree/main/examples/09_jdbc_ingest) | RNAcentral's public Postgres — 54M rows | The `jdbc` reader: a table read, SQL pushed down to the database, and a **partitioned parallel read** |
+
+!!! danger "A JDBC read is single-threaded unless you tell it not to be"
+
+    Spark issues **one** query on **one** connection, and a single core drags the whole
+    table through it — however big your cluster is. No warning, no error. The job is
+    just slow forever, and the Spark UI shows one task at 100% while the rest of the
+    cluster idles. This is why people conclude "JDBC is slow". JDBC is not slow; asking
+    for 54 million rows down one socket is slow.
+
+    `partitionColumn` + `lowerBound` + `upperBound` + `numPartitions` splits it into N
+    range queries that run in parallel. Two traps: those bounds are **not a filter**
+    (rows outside them are still read — the end partitions are open-ended), and
+    `numPartitions` is only a **hint** — Spark *silently ignores* the lot if
+    `partitionColumn` is missing or not numeric, and hands back the single-threaded
+    read you were trying to avoid. Assert on `rdd.getNumPartitions()`.
+
+!!! warning "This one needs a paid workspace — and has not been run on Databricks"
+
+    Serverless ships **no JDBC drivers** and **cannot install a JAR**, so this example
+    needs a classic cluster, which a free workspace does not have. It is the only
+    example in the repo that has **not** been run on Databricks, and it says so at the
+    top of its own README. Its config, reader, pushed-down SQL, partitioned read and
+    transformation *were* run against the live database on local Spark — what remains
+    unverified is named rather than glossed over.
 
 ---
 
