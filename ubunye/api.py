@@ -63,7 +63,7 @@ def _detect_backend(
     if spark is not None:
         from ubunye.backends.databricks_backend import DatabricksBackend
 
-        return DatabricksBackend(spark=spark)
+        return DatabricksBackend(spark=spark, conf=spark_conf or {})
 
     # Probe for an active session without importing pyspark at module level
     try:
@@ -73,7 +73,10 @@ def _detect_backend(
         if active is not None:
             from ubunye.backends.databricks_backend import DatabricksBackend
 
-            return DatabricksBackend(spark=active)
+            # The conf is now PASSED, not dropped. Before 0.4.0 it was computed at the
+            # call site and then quietly discarded here, so ENGINE.spark_conf did
+            # nothing at all whenever a session already existed.
+            return DatabricksBackend(spark=active, conf=spark_conf or {})
     except ImportError:
         pass
 

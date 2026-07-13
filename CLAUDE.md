@@ -66,8 +66,8 @@ touching the runner.
 Readers, writers, transforms, ML models, monitors, and hooks are all discovered via
 `importlib.metadata` entry-point groups declared in `pyproject.toml`:
 
-- `ubunye.readers` — `hive`, `jdbc`, `s3`, `unity`, `rest_api`
-- `ubunye.writers` — `s3`, `jdbc`, `unity`, `rest_api`
+- `ubunye.readers` — `hive`, `jdbc`, `s3`, `delta`, `binary`, `unity`, `rest_api`
+- `ubunye.writers` — `s3`, `delta`, `hive`, `jdbc`, `unity`, `rest_api`
 - `ubunye.transforms` — `noop`, `model`
 - `ubunye.ml` — `sklearn`, `sparkml`
 - `ubunye.monitors` — `mlflow`, `lineage`
@@ -76,6 +76,11 @@ Readers, writers, transforms, ML models, monitors, and hooks are all discovered 
 The `format: <name>` field in a config selects the plugin. Adding a connector = write the class,
 register the entry point in `pyproject.toml`, reinstall with `pip install -e .`. Don't wire plugins
 by direct import inside the engine.
+
+As of 0.4.0 this is actually true. Before it, `format` was a closed enum in
+`config/schema.py`, so a correctly-registered plugin was rejected by config validation
+**before the registry was ever consulted** — the documented extension story did not work.
+`format` is now validated against the entry points themselves.
 
 ### Hooks vs. monitors
 
@@ -160,3 +165,30 @@ Hard invariants these agents preserve (and you should too):
 - `docs/` — full MkDocs site (`mkdocs serve` to preview). `mkdocs.yml` nav lists what exists.
 - `tasks/README.md` — scratchpad conventions.
 - `examples/production/README.md` — portability contract, CE-vs-paid-workspace matrix.
+
+## What the config owns, and what it does not (0.4.0)
+
+The hard-won boundary. A line belongs in a task only if it would **not** have to change
+when the task moves to a different platform.
+
+| | belongs to |
+|---|---|
+| what the data is, what the rule is | the **task** (`config.yaml`, `transformations.py`) |
+| which model answers, what a bad row is | **business logic** (`transformations.py` and its helpers) |
+| Spark distribution, master, JARs, metastore | the **platform** — never a config |
+| creating schemas, staging data, seeding | the **bootstrap** — allowed to differ per platform |
+| how the job is launched | the **runner** — notebook, CLI, `spark-submit` |
+
+Concretely, since 0.4.0:
+
+- **`ENGINE.spark_conf` is applied** to a session the engine did not create. Static keys
+  (`spark.master`, `spark.sql.extensions`, `spark.driver.*`) **raise** — they are fixed
+  when the JVM starts, and quietly ignoring them is how a pipeline comes to believe it
+  chose a master, or enabled Delta, and is wrong.
+- **A config cannot override the platform's `spark.master`.** Under `spark-submit` — how
+  EMR Serverless and Dataproc run every job — that made the whole job run in the driver:
+  ignoring every executor, succeeding, and billing for a cluster it never touched.
+- **`python -m ubunye`** exists, because a cloud has no shell and cannot call a console
+  script.
+- Jinja renders **values, not structure**. `{% if %}` blocks are impossible, and that is
+  deliberate: it is what keeps one config from quietly becoming three.

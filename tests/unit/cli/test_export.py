@@ -52,7 +52,13 @@ def test_export_airflow_uses_orchestration_block(tmp_path):
     assert '"owner": "fraud-team"' in dag_src
     assert '"retries": 5' in dag_src
     assert 'schedule_interval="0 2 * * *"' in dag_src
-    assert "--profile prod" in dag_src
+    # NOT "--profile prod": there is no --profile on `ubunye run`, and there never was.
+    # The old assertion enshrined the bug -- it checked that the exporter emitted a
+    # command the CLI would reject with "no such option". A test can only catch a broken
+    # artifact if it asserts the artifact WORKS, not that it looks the way it always has.
+    assert "-m prod" in dag_src
+    assert "ubunye run -d " in dag_src
+    assert "--profile" not in dag_src
 
 
 def test_export_airflow_without_orchestration_block_uses_defaults(tmp_path):
@@ -64,7 +70,13 @@ def test_export_airflow_without_orchestration_block_uses_defaults(tmp_path):
     assert result.exit_code == 0, result.stdout
     dag_src = out.read_text(encoding="utf-8")
     assert '"owner": "ubunye"' in dag_src  # exporter default
-    assert "--profile prod" in dag_src
+    # NOT "--profile prod": there is no --profile on `ubunye run`, and there never was.
+    # The old assertion enshrined the bug -- it checked that the exporter emitted a
+    # command the CLI would reject with "no such option". A test can only catch a broken
+    # artifact if it asserts the artifact WORKS, not that it looks the way it always has.
+    assert "-m prod" in dag_src
+    assert "ubunye run -d " in dag_src
+    assert "--profile" not in dag_src
 
 
 def test_export_databricks_flattens_nested_cluster_block(tmp_path):

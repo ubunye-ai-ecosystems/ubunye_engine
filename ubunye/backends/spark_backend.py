@@ -50,6 +50,11 @@ class SparkBackend(Backend):
         if self._spark is not None:
             return  # already started
 
+        # Check the config BEFORE importing Spark. A config that would hijack the
+        # platform's master is wrong whether or not pyspark is installed, and there is
+        # no sense loading a JVM to find that out.
+        self._check_master_not_hijacked()
+
         # Lazy import to avoid hard dependency during pip install
         from pyspark.sql import SparkSession  # type: ignore
 
@@ -57,6 +62,57 @@ class SparkBackend(Backend):
         for k, v in self._conf.items():
             builder = builder.config(k, v)
         self._spark = builder.getOrCreate()
+
+    def _check_master_not_hijacked(self) -> None:
+        """Refuse to let a config override a master the platform already chose.
+
+        This is the most expensive silent failure the engine had.
+
+        Under ``spark-submit`` — which is how AWS EMR Serverless and GCP Dataproc
+        Serverless start every job — the platform puts its own ``spark.master`` into the
+        default SparkConf. If a task's ``ENGINE.spark_conf`` also sets ``spark.master``,
+        the builder wins, and the job runs **entirely in the driver**: it ignores every
+        executor, finishes, reports success, and bills you for the whole cluster it
+        never touched.
+
+        Nothing warns you. The output is correct — there is just far less of it per
+        minute than there should be, forever.
+
+        Which master to use is a fact about *where the job landed*, not about *what the
+        job does*. It belongs to whoever launched the session. So if the platform has
+        already said, and the config disagrees, that is a bug in the config, and it is
+        one worth stopping for.
+        """
+        requested = self._conf.get("spark.master")
+        if not requested:
+            return
+
+        existing = self._platform_master()
+        if existing and existing != requested:
+            raise SparkSessionError(
+                "ENGINE.spark_conf sets 'spark.master', but the platform already chose one.",
+                context={"Platform's master": existing, "Config wants": requested},
+                hint="Remove 'spark.master' from ENGINE.spark_conf. Under spark-submit — "
+                "which is how EMR Serverless and Dataproc run every job — overriding it "
+                "makes the whole job run inside the driver: it ignores every executor, "
+                "succeeds, and bills you for a cluster it never used. The master belongs "
+                "to whoever launched the session, not to the task.",
+            )
+
+    @staticmethod
+    def _platform_master() -> Optional[str]:
+        """Whatever master the launcher already put in the default SparkConf.
+
+        `spark-submit` populates it; a bare `python foo.py` does not. Its own method so
+        the guard above can be tested without pyspark installed — the unit tier does not
+        install Spark, and a test that has to be skipped is a test that does not run.
+        """
+        try:
+            from pyspark import SparkConf  # type: ignore
+
+            return SparkConf().get("spark.master", None)
+        except Exception:  # noqa: BLE001 — no pyspark, or no defaults; nothing to clash with
+            return None
 
     def stop(self) -> None:
         """Stop the SparkSession if running."""

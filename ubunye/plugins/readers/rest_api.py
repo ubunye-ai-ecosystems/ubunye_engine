@@ -52,6 +52,28 @@ if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
+
+def _requests():
+    """Import `requests`, and say something useful if it is not there.
+
+    It used to be declared only in the `dev` extra, so `pip install ubunye-engine[spark]`
+    gave you a rest_api reader that could not make a request. On Databricks it worked by
+    accident, because the runtime preinstalls requests -- so the bug was invisible from
+    the one platform most people used, and surfaced the moment anyone left it, as a bare
+    `ModuleNotFoundError: No module named 'requests'` from inside a Spark job.
+    """
+    try:
+        import requests  # noqa: PLC0415
+    except ImportError as exc:  # pragma: no cover - exercised by the message, not the path
+        raise SourceReadError(
+            "The 'rest_api' connector needs the `requests` library, which is not installed.",
+            context={"Format": "rest_api"},
+            hint="pip install 'ubunye-engine[rest]'  (or add requests to your environment). "
+            "It is not installed by default because not every pipeline makes HTTP calls.",
+        ) from exc
+    return requests
+
+
 log = logging.getLogger(__name__)
 
 # Maps simple type names from config schema to PySpark type strings.
@@ -88,8 +110,8 @@ def _build_session(cfg: Dict[str, Any]) -> requests.Session:
 
     Headers declared at the top-level cfg['headers'] are also applied to the session.
     """
-    import requests
-    from requests.auth import HTTPBasicAuth
+    requests = _requests()
+    from requests.auth import HTTPBasicAuth  # noqa: PLC0415
 
     session = requests.Session()
 

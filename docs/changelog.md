@@ -7,6 +7,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] — 2026-07-13
+
+### Breaking
+
+- **`ENGINE.spark_conf` is now applied to a session the engine did not create — and
+  static keys raise instead of being ignored.**
+
+  Before, the conf was **silently discarded** whenever a SparkSession already existed.
+  That is *always* on Databricks, and equally in a notebook, an AWS Glue job, under
+  `spark-submit`, or in pytest. `DatabricksBackend` took no `conf` argument at all, and
+  `api.py` computed `merged_spark_conf(mode)` and then threw it away. So every
+  `ENGINE.spark_conf` and every `ENGINE.profiles` block did **nothing**, and nothing
+  said so. The config claimed one thing and the runtime did another.
+
+  Spark divides settings into *runtime* keys (`spark.sql.shuffle.partitions`) and
+  *static* ones (`spark.master`, `spark.sql.extensions`, `spark.driver.memory`) that
+  are fixed when the JVM starts. Runtime keys are now applied. Static keys are a
+  request the engine **cannot honour**, so they raise, naming every offending key at
+  once.
+
+  **Action required:** remove static keys from `ENGINE.spark_conf` and set them where
+  the session is actually created — a cluster policy, a job conf, `--conf` on
+  `spark-submit`. If your pipeline "worked" with them before, it was ignoring them.
+
+- **A config can no longer override a master the platform already chose.**
+
+  Under `spark-submit` — how EMR Serverless and Dataproc Serverless start every job —
+  the platform sets `spark.master` in the default SparkConf. A task that also set
+  `spark.master` won, and the job ran **entirely in the driver**: it ignored every
+  executor, finished, reported success, and billed for a cluster it never touched.
+  Nothing warned. The output was correct; there was just far less of it per minute
+  than there should have been, forever.
+
+  `SparkBackend` now refuses to start when the config's master disagrees with the
+  platform's.
+
+  **Action required:** delete `spark.master` from `ENGINE.spark_conf`. The master
+  belongs to whoever launched the session, not to the task.
+
+### Added
+
+- **`python -m ubunye` — an entry point a cloud can actually run.**
+
+  The engine could only be reached through its console script. AWS EMR Serverless and
+  GCP Dataproc Serverless do not give you a shell: they hand a **Python file** to
+  `spark-submit`. An engine reachable only through its CLI cannot run on either of them
+  — and you find that out after wiring up IAM, a bucket and a billing account.
+
+  ```bash
+  spark-submit --py-files deps.zip -m ubunye       --task-dir s3a://bucket/code/pipelines/sales/etl/daily --mode PROD
+  ```
+
+  It deliberately does not create a SparkSession: `spark-submit` already made one, with
+  the platform's master and executors, and the engine attaches to it.
+
+- **A `rest` extra.** `requests` lived only in the `dev` extra, so
+  `pip install ubunye-engine[spark]` shipped a `rest_api` reader that **could not make a
+  request**. It worked on Databricks by accident, because the runtime preinstalls it —
+  the bug was invisible from the one platform most people use, and appeared the moment
+  anyone left it, as a bare `ModuleNotFoundError` from inside a Spark job. A missing
+  `requests` now says what to install.
+
+- **`format` is now an open string, validated against the plugin registry.**
+
+  The docs said "adding a connector = write the class, register the entry point". That
+  was **false**: `format` was a closed enum, so a correctly-registered third-party
+  plugin was rejected by config validation *before the registry was ever consulted*.
+  The extension story the engine advertises did not work.
+
+  Any name the `ubunye.readers` / `ubunye.writers` entry points can load is now valid.
+  An unknown name still fails, and the error lists what is actually installed.
+
+  **Breaking:** `IOConfig.format` is a `str`, not a `FormatType`. Code doing
+  `cfg.format.value` must now use `cfg.format`.
+
+- `AmbientSessionBackend` — an alias for `DatabricksBackend`, which contains **no
+  Databricks code at all**. It attaches to a session somebody else created and declines
+  to stop it, which is equally true of Glue, EMR, Dataproc, a notebook and pytest. The
+  name had convinced people the engine has a Databricks dependency here. It does not.
+
+### Fixed
+
+- **`{{ dt | default('latest') }}` never fell back.** `ubunye run` passes
+  `{"dt": ..., "dtf": ..., "mode": ...}` unconditionally, and an omitted flag arrives as
+  `None`. Jinja treats `None` as *defined*, so `default()` did not fire — the template
+  rendered the literal string `"None"` and pipelines quietly wrote to paths like
+  `out/dt=None/`. Nothing errored; the data just went somewhere nobody meant. `None`
+  values are now dropped, so they are genuinely undefined. `StrictUndefined` still makes
+  a real typo fail loudly.
+
+- **`ENGINE.catalog` no longer breaks every non-Databricks Spark.** `set_catalog_and_schema`
+  issued `USE CATALOG`, which is a Unity Catalog statement — open-source Spark rejects it
+  outright with `PARSE_SYNTAX_ERROR`. It is now attempted and, if unsupported, logged and
+  skipped: the configs use three-part names anyway, which Spark resolves without it.
+
+- **`ubunye export airflow` and `ubunye export databricks` emitted artifacts that could
+  not run.** Both generated `ubunye run -c <config> --profile <p>` — and there is no `-c`
+  and no `--profile` on `ubunye run`. Every DAG and every `job.json` this exporter has
+  ever produced would fail on its first task with "no such option". The tests asserted
+  the broken flags, which is why nobody noticed: they checked the exporter still emitted
+  what it always had, rather than something that works.
+
+---
+
 ## [0.3.0] — 2026-07-12
 
 ### Breaking

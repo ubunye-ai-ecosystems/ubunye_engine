@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ubunye-engine"
-version = "0.3.0"
+version = "0.4.0"
 description = "Config-first, Spark-native ETL/ML engine with a modular plugin system"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -30,6 +30,11 @@ spark = ["pyspark>=3.3"]
 delta = ["delta-spark>=4.0"]
 ml = ["scikit-learn", "mlflow"]
 ml-torch = ["scikit-learn", "torch", "mlflow"]
+# The rest_api connector needs `requests`. It used to live ONLY in the dev extra, so
+# `pip install ubunye-engine[spark]` shipped a reader that could not make a request.
+# Nobody noticed because Databricks preinstalls requests -- the bug was invisible from
+# the one platform most people used, and appeared the moment anyone left it.
+rest = ["requests>=2.28"]
 dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build"]
 databricks = ["databricks-sdk>=0.20"]
 
