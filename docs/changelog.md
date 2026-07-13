@@ -48,6 +48,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`python -m ubunye` — an entry point a cloud can actually run.**
+
+  The engine could only be reached through its console script. AWS EMR Serverless and
+  GCP Dataproc Serverless do not give you a shell: they hand a **Python file** to
+  `spark-submit`. An engine reachable only through its CLI cannot run on either of them
+  — and you find that out after wiring up IAM, a bucket and a billing account.
+
+  ```bash
+  spark-submit --py-files deps.zip -m ubunye       --task-dir s3a://bucket/code/pipelines/sales/etl/daily --mode PROD
+  ```
+
+  It deliberately does not create a SparkSession: `spark-submit` already made one, with
+  the platform's master and executors, and the engine attaches to it.
+
+- **A `rest` extra.** `requests` lived only in the `dev` extra, so
+  `pip install ubunye-engine[spark]` shipped a `rest_api` reader that **could not make a
+  request**. It worked on Databricks by accident, because the runtime preinstalls it —
+  the bug was invisible from the one platform most people use, and appeared the moment
+  anyone left it, as a bare `ModuleNotFoundError` from inside a Spark job. A missing
+  `requests` now says what to install.
+
 - **`format` is now an open string, validated against the plugin registry.**
 
   The docs said "adding a connector = write the class, register the entry point". That
@@ -65,6 +86,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Databricks code at all**. It attaches to a session somebody else created and declines
   to stop it, which is equally true of Glue, EMR, Dataproc, a notebook and pytest. The
   name had convinced people the engine has a Databricks dependency here. It does not.
+
+### Fixed
+
+- **`ENGINE.catalog` no longer breaks every non-Databricks Spark.** `set_catalog_and_schema`
+  issued `USE CATALOG`, which is a Unity Catalog statement — open-source Spark rejects it
+  outright with `PARSE_SYNTAX_ERROR`. It is now attempted and, if unsupported, logged and
+  skipped: the configs use three-part names anyway, which Spark resolves without it.
+
+- **`ubunye export airflow` and `ubunye export databricks` emitted artifacts that could
+  not run.** Both generated `ubunye run -c <config> --profile <p>` — and there is no `-c`
+  and no `--profile` on `ubunye run`. Every DAG and every `job.json` this exporter has
+  ever produced would fail on its first task with "no such option". The tests asserted
+  the broken flags, which is why nobody noticed: they checked the exporter still emitted
+  what it always had, rather than something that works.
 
 ---
 

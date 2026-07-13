@@ -48,7 +48,18 @@ class AirflowExporter(OrchestratorExporter):
 
         # Command uses the same CLI the developer runs locally
         profile = opts.get("profile", "prod")
-        bash_cmd = f"ubunye run -c {config_path} --profile {profile}"
+        # The generated command must be one the CLI can actually run.
+        #
+        # This used to emit `ubunye run -c <config> --profile <p>`. There is no `-c` and
+        # no `--profile` on `ubunye run` — it takes -d/-u/-p/-t/-m. So every DAG this
+        # exporter has ever produced fails on its first task with "no such option", and
+        # nothing here caught it because nothing ever ran the output.
+        task_dir = Path(config_path).parent
+        usecase_dir = task_dir.parents[2]
+        bash_cmd = (
+            f"ubunye run -d {usecase_dir} -u {task_dir.parents[1].name} "
+            f"-p {task_dir.parent.name} -t {task_dir.name} -m {profile}"
+        )
 
         env = opts.get("env", {})  # e.g. JDBC creds via Airflow connections or env
 

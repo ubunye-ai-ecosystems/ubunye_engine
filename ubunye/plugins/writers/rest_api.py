@@ -37,6 +37,7 @@ if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
 from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
+from ubunye.plugins.readers.rest_api import _requests
 
 log = logging.getLogger(__name__)
 

@@ -45,7 +45,17 @@ class DatabricksExporter(OrchestratorExporter):
                     "spark_python_task": {
                         # Wrap CLI call inside Python so it's portable; alternatively use a notebook_task
                         "python_file": "dbfs:/libs/run_ubunye.py",
-                        "parameters": ["-c", str(config_path), "--profile", profile],
+                        # `-c` and `--profile` DO NOT EXIST on `ubunye run`. Every
+                        # job.json this exporter has produced would fail on launch with
+                        # "no such option" — nothing caught it because nothing ever ran
+                        # the generated artifact.
+                        "parameters": [
+                            "-d", str(Path(config_path).parents[3]),
+                            "-u", Path(config_path).parents[2].name,
+                            "-p", Path(config_path).parents[1].name,
+                            "-t", Path(config_path).parent.name,
+                            "-m", profile,
+                        ],
                     },
                 }
             ],
