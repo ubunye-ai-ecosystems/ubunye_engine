@@ -50,10 +50,13 @@ class SparkBackend(Backend):
         if self._spark is not None:
             return  # already started
 
+        # Check the config BEFORE importing Spark. A config that would hijack the
+        # platform's master is wrong whether or not pyspark is installed, and there is
+        # no sense loading a JVM to find that out.
+        self._check_master_not_hijacked()
+
         # Lazy import to avoid hard dependency during pip install
         from pyspark.sql import SparkSession  # type: ignore
-
-        self._check_master_not_hijacked()
 
         builder = SparkSession.builder.appName(self._app_name)
         for k, v in self._conf.items():
