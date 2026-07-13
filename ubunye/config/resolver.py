@@ -67,7 +67,16 @@ def resolve_config(
         ``| default()`` filter is applied.
     """
     env_source = _env if _env is not None else os.environ
-    variables = dict(cli_vars or {})
+    # Drop keys whose value is None.
+    #
+    # `ubunye run` passes {"dt": dt, "dtf": dtf, "mode": mode} unconditionally, and when
+    # a flag is omitted the value is None. Jinja treats None as DEFINED, so
+    # `{{ dt | default('latest') }}` did not fall back -- it rendered the literal string
+    # "None", and pipelines quietly wrote to paths like `out/dt=None/`.
+    #
+    # Undefined is what `default()` is for. StrictUndefined still makes a genuinely
+    # missing variable fail loudly; this only removes the ones that were never supplied.
+    variables = {k: v for k, v in (cli_vars or {}).items() if v is not None}
 
     jinja_env = Environment(undefined=StrictUndefined)
     jinja_env.globals["env"] = env_source

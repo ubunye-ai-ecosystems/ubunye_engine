@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.0] — unreleased
+## [0.4.0] — 2026-07-13
 
 ### Breaking
 
@@ -88,6 +88,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   name had convinced people the engine has a Databricks dependency here. It does not.
 
 ### Fixed
+
+- **`{{ dt | default('latest') }}` never fell back.** `ubunye run` passes
+  `{"dt": ..., "dtf": ..., "mode": ...}` unconditionally, and an omitted flag arrives as
+  `None`. Jinja treats `None` as *defined*, so `default()` did not fire — the template
+  rendered the literal string `"None"` and pipelines quietly wrote to paths like
+  `out/dt=None/`. Nothing errored; the data just went somewhere nobody meant. `None`
+  values are now dropped, so they are genuinely undefined. `StrictUndefined` still makes
+  a real typo fail loudly.
 
 - **`ENGINE.catalog` no longer breaks every non-Databricks Spark.** `set_catalog_and_schema`
   issued `USE CATALOG`, which is a Unity Catalog statement — open-source Spark rejects it
