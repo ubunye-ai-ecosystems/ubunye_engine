@@ -114,7 +114,7 @@ class TestUbunyeConfig:
                 }
             )
         )
-        assert cfg.CONFIG.inputs["docs"].format.value == "binary"
+        assert cfg.CONFIG.inputs["docs"].format == "binary"
 
     def test_engine_profiles_valid(self):
         cfg = UbunyeConfig(

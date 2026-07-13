@@ -48,6 +48,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`format` is now an open string, validated against the plugin registry.**
+
+  The docs said "adding a connector = write the class, register the entry point". That
+  was **false**: `format` was a closed enum, so a correctly-registered third-party
+  plugin was rejected by config validation *before the registry was ever consulted*.
+  The extension story the engine advertises did not work.
+
+  Any name the `ubunye.readers` / `ubunye.writers` entry points can load is now valid.
+  An unknown name still fails, and the error lists what is actually installed.
+
+  **Breaking:** `IOConfig.format` is a `str`, not a `FormatType`. Code doing
+  `cfg.format.value` must now use `cfg.format`.
+
 - `AmbientSessionBackend` — an alias for `DatabricksBackend`, which contains **no
   Databricks code at all**. It attaches to a session somebody else created and declines
   to stop it, which is equally true of Glue, EMR, Dataproc, a notebook and pytest. The

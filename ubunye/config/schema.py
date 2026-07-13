@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 from enum import Enum
+from functools import lru_cache
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -99,6 +100,36 @@ class EngineConfig(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+
+@lru_cache(maxsize=1)
+def _registered_formats() -> frozenset:
+    """Every connector name the plugin system can actually load.
+
+    Cached: entry-point discovery walks the installed distributions, and this is called
+    once per input and once per output. Uncached, a config with five IO blocks did five
+    full scans, and a property test caught it by blowing a 200ms deadline.
+
+    The engine advertises that adding a connector is "write the class, register the
+    entry point". That was not true: ``format`` was a closed enum, so a perfectly
+    well-registered plugin was rejected by config validation **before the registry was
+    ever consulted**. The documented extension story did not work.
+
+    Now the enum is only the list of connectors that ship in the box, and anything the
+    entry points can load is equally valid.
+    """
+    import importlib.metadata as md
+
+    names = {e.value for e in FormatType}
+    for group in ("ubunye.readers", "ubunye.writers"):
+        try:
+            eps = md.entry_points()
+            found = eps.get(group, []) if hasattr(eps, "get") else eps.select(group=group)
+            names.update(ep.name for ep in found)
+        except Exception:  # noqa: BLE001 — a broken third-party plugin must not break validation
+            pass
+    return frozenset(names)
+
+
 class IOConfig(BaseModel):
     """Input or output connector configuration.
 
@@ -109,7 +140,7 @@ class IOConfig(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    format: FormatType
+    format: str
     # Common fields shared across connectors
     db_name: Optional[str] = None
     tbl_name: Optional[str] = None
@@ -124,36 +155,49 @@ class IOConfig(BaseModel):
     password: Optional[str] = None
 
     @model_validator(mode="after")
+    def _check_format_is_registered(self) -> "IOConfig":
+        """The format must name a connector the plugin registry can actually load."""
+        known = _registered_formats()
+        if self.format not in known:
+            raise ValueError(
+                f"Unknown format '{self.format}'. "
+                f"Available connectors: {', '.join(sorted(known))}. "
+                "A third-party connector must be installed and registered under the "
+                "'ubunye.readers' or 'ubunye.writers' entry-point group."
+            )
+        return self
+
+    @model_validator(mode="after")
     def _check_format_requirements(self) -> "IOConfig":
         """Enforce format-specific required fields."""
         fmt = self.format
         errors: List[str] = []
 
-        if fmt == FormatType.HIVE:
+        if fmt == "hive":
             has_table = self.db_name and self.tbl_name
             if not has_table and not self.sql:
                 errors.append("format 'hive' requires either ('db_name' + 'tbl_name') or 'sql'")
 
-        elif fmt == FormatType.JDBC:
+        elif fmt == "jdbc":
             if not self.url:
                 errors.append("format 'jdbc' requires 'url'")
             if not self.table and not self.sql:
                 errors.append("format 'jdbc' requires 'table' or 'sql'")
 
-        elif fmt in (FormatType.S3, FormatType.BINARY):
+        elif fmt in ("s3", "binary"):
             if not self.path:
-                errors.append(f"format '{fmt.value}' requires 'path'")
+                errors.append(f"format '{fmt}' requires 'path'")
 
-        elif fmt == FormatType.DELTA:
+        elif fmt == "delta":
             if not self.path and not self.table:
                 errors.append("format 'delta' requires 'path' or 'table'")
 
-        elif fmt == FormatType.UNITY:
+        elif fmt == "unity":
             has_table_parts = self.db_name and self.tbl_name
             if not has_table_parts and not self.table and not self.sql:
                 errors.append("format 'unity' requires 'table', ('db_name' + 'tbl_name'), or 'sql'")
 
-        elif fmt == FormatType.REST_API:
+        elif fmt == "rest_api":
             # url may come from the declared field or from model_extra (plugin-specific)
             url = self.url or (self.model_extra or {}).get("url")
             if not url:
@@ -236,7 +280,7 @@ class TaskConfig(BaseModel):
         Caught here rather than at write time, so the pipeline fails in
         ``ubunye validate`` instead of after the transform has already run.
         """
-        read_only = [name for name, out in self.outputs.items() if out.format == FormatType.BINARY]
+        read_only = [name for name, out in self.outputs.items() if out.format == "binary"]
         if read_only:
             raise ValueError(
                 f"format 'binary' is read-only and cannot be used as an output "
