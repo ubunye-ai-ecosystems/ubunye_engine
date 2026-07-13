@@ -177,11 +177,11 @@ def plan(
         typer.echo(f"--- Task: {task} ---")
         typer.echo("Inputs (Extract):")
         for name, icfg in cfg.CONFIG.inputs.items():
-            typer.echo(f"  - {name}: {icfg.format.value}")
+            typer.echo(f"  - {name}: {icfg.format}")
         typer.echo(f"Transform (transformations.py): {cfg.CONFIG.transform.type}")
         typer.echo("Outputs (Load):")
         for name, ocfg in cfg.CONFIG.outputs.items():
-            typer.echo(f"  - {name}: {ocfg.format.value}")
+            typer.echo(f"  - {name}: {ocfg.format}")
         typer.echo()
 
 
