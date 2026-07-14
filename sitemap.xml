@@ -93,7 +93,23 @@
          <lastmod>2026-07-14</lastmod>
     </url>
     <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/anywhere/</loc>
+         <lastmod>2026-07-14</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/aws/</loc>
+         <lastmod>2026-07-14</lastmod>
+    </url>
+    <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/databricks/</loc>
+         <lastmod>2026-07-14</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/gcp/</loc>
+         <lastmod>2026-07-14</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/kubernetes/</loc>
          <lastmod>2026-07-14</lastmod>
     </url>
     <url>

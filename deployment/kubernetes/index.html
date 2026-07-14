@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/">
+        <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/kubernetes/">
       
       
-        <link rel="prev" href="../examples/run_anywhere/">
+        <link rel="prev" href="../../databricks-auth/">
       
       
-        <link rel="next" href="databricks/">
+        <link rel="next" href="../aws/">
       
       
         
       
       
-      <link rel="icon" href="../assets/favicon.ico">
+      <link rel="icon" href="../../assets/favicon.ico">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Overview - Ubunye Engine</title>
+        <title>Kubernetes - Ubunye Engine</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,11 +53,11 @@
       
     
     
-      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#deployment" class="md-skip">
+        <a href="#deploying-on-kubernetes" class="md-skip">
           Skip to content
         </a>
       
@@ -98,9 +98,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Ubunye Engine" class="md-header__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
+    <a href="../.." title="Ubunye Engine" class="md-header__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
       
-  <img src="../assets/ubunye-logo-black-v3.png" alt="logo">
+  <img src="../../assets/ubunye-logo-black-v3.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Kubernetes
             
           </span>
         </div>
@@ -233,9 +233,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Ubunye Engine" class="md-nav__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
+    <a href="../.." title="Ubunye Engine" class="md-nav__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
       
-  <img src="../assets/ubunye-logo-black-v3.png" alt="logo">
+  <img src="../../assets/ubunye-logo-black-v3.png" alt="logo">
 
     </a>
     Ubunye Engine
@@ -262,7 +262,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -336,7 +336,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting_started/install/" class="md-nav__link">
+      <a href="../../getting_started/install/" class="md-nav__link">
         
   
   
@@ -364,7 +364,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting_started/quickstart/" class="md-nav__link">
+      <a href="../../getting_started/quickstart/" class="md-nav__link">
         
   
   
@@ -392,7 +392,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting_started/structure/" class="md-nav__link">
+      <a href="../../getting_started/structure/" class="md-nav__link">
         
   
   
@@ -474,7 +474,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../config/overview/" class="md-nav__link">
+      <a href="../../config/overview/" class="md-nav__link">
         
   
   
@@ -502,7 +502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../config/io/" class="md-nav__link">
+      <a href="../../config/io/" class="md-nav__link">
         
   
   
@@ -530,7 +530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../config/engine/" class="md-nav__link">
+      <a href="../../config/engine/" class="md-nav__link">
         
   
   
@@ -558,7 +558,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../config/transform/" class="md-nav__link">
+      <a href="../../config/transform/" class="md-nav__link">
         
   
   
@@ -586,7 +586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../config/jinja/" class="md-nav__link">
+      <a href="../../config/jinja/" class="md-nav__link">
         
   
   
@@ -614,7 +614,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../config/orchestration/" class="md-nav__link">
+      <a href="../../config/orchestration/" class="md-nav__link">
         
   
   
@@ -696,7 +696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../connectors/overview/" class="md-nav__link">
+      <a href="../../connectors/overview/" class="md-nav__link">
         
   
   
@@ -724,7 +724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../connectors/hive/" class="md-nav__link">
+      <a href="../../connectors/hive/" class="md-nav__link">
         
   
   
@@ -752,7 +752,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../connectors/jdbc/" class="md-nav__link">
+      <a href="../../connectors/jdbc/" class="md-nav__link">
         
   
   
@@ -780,7 +780,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../connectors/unity/" class="md-nav__link">
+      <a href="../../connectors/unity/" class="md-nav__link">
         
   
   
@@ -808,7 +808,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../connectors/s3/" class="md-nav__link">
+      <a href="../../connectors/s3/" class="md-nav__link">
         
   
   
@@ -836,7 +836,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../connectors/rest_api/" class="md-nav__link">
+      <a href="../../connectors/rest_api/" class="md-nav__link">
         
   
   
@@ -864,7 +864,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../connectors/plugin_guide/" class="md-nav__link">
+      <a href="../../connectors/plugin_guide/" class="md-nav__link">
         
   
   
@@ -946,7 +946,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ml/model_contract/" class="md-nav__link">
+      <a href="../../ml/model_contract/" class="md-nav__link">
         
   
   
@@ -974,7 +974,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ml/registry/" class="md-nav__link">
+      <a href="../../ml/registry/" class="md-nav__link">
         
   
   
@@ -1056,7 +1056,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/" class="md-nav__link">
+      <a href="../../examples/" class="md-nav__link">
         
   
   
@@ -1084,7 +1084,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/ingestion/" class="md-nav__link">
+      <a href="../../examples/ingestion/" class="md-nav__link">
         
   
   
@@ -1112,7 +1112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/ml/" class="md-nav__link">
+      <a href="../../examples/ml/" class="md-nav__link">
         
   
   
@@ -1140,7 +1140,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/llm/" class="md-nav__link">
+      <a href="../../examples/llm/" class="md-nav__link">
         
   
   
@@ -1168,7 +1168,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/mlops/" class="md-nav__link">
+      <a href="../../examples/mlops/" class="md-nav__link">
         
   
   
@@ -1196,7 +1196,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/run_anywhere/" class="md-nav__link">
+      <a href="../../examples/run_anywhere/" class="md-nav__link">
         
   
   
@@ -1277,37 +1277,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -1323,159 +1296,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#where-you-can-deploy-today" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where you can deploy today
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-databricks-flow-in-detail" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The Databricks flow in detail
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#deployment-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deployment flow
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#databricks-asset-bundles" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Databricks Asset Bundles
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Databricks Asset Bundles">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#databricksyml-usecase-repo-root" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        databricks.yml (usecase repo root)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#job-definitions-bundlesyaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Job definitions (bundles/*.yaml)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#github-actions-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GitHub Actions workflow
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="GitHub Actions workflow">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#required-secrets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Required secrets
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#example-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#python-api-on-databricks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Python API on Databricks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dev-notebooks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dev notebooks
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1488,7 +1308,7 @@
   
   
     <li class="md-nav__item">
-      <a href="databricks/" class="md-nav__link">
+      <a href="../databricks/" class="md-nav__link">
         
   
   
@@ -1516,7 +1336,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../databricks-auth/" class="md-nav__link">
+      <a href="../../databricks-auth/" class="md-nav__link">
         
   
   
@@ -1541,10 +1361,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="kubernetes/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1560,6 +1407,81 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The shape
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-build-the-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Build the image
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-run-a-task-as-a-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Run a task as a Job
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-run-it-on-a-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Run it on a schedule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-honest-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two honest notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1572,7 +1494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="aws/" class="md-nav__link">
+      <a href="../aws/" class="md-nav__link">
         
   
   
@@ -1600,7 +1522,7 @@
   
   
     <li class="md-nav__item">
-      <a href="gcp/" class="md-nav__link">
+      <a href="../gcp/" class="md-nav__link">
         
   
   
@@ -1628,7 +1550,7 @@
   
   
     <li class="md-nav__item">
-      <a href="anywhere/" class="md-nav__link">
+      <a href="../anywhere/" class="md-nav__link">
         
   
   
@@ -1710,7 +1632,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../patterns/notebook/" class="md-nav__link">
+      <a href="../../patterns/notebook/" class="md-nav__link">
         
   
   
@@ -1738,7 +1660,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../patterns/rag/" class="md-nav__link">
+      <a href="../../patterns/rag/" class="md-nav__link">
         
   
   
@@ -1766,7 +1688,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../patterns/features/" class="md-nav__link">
+      <a href="../../patterns/features/" class="md-nav__link">
         
   
   
@@ -1794,7 +1716,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../patterns/drift/" class="md-nav__link">
+      <a href="../../patterns/drift/" class="md-nav__link">
         
   
   
@@ -1822,7 +1744,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../patterns/rest_api/" class="md-nav__link">
+      <a href="../../patterns/rest_api/" class="md-nav__link">
         
   
   
@@ -1850,7 +1772,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../patterns/hooks/" class="md-nav__link">
+      <a href="../../patterns/hooks/" class="md-nav__link">
         
   
   
@@ -1932,7 +1854,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli/" class="md-nav__link">
+      <a href="../../cli/" class="md-nav__link">
         
   
   
@@ -1960,7 +1882,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/" class="md-nav__link">
+      <a href="../../api/" class="md-nav__link">
         
   
   
@@ -1988,7 +1910,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../interfaces/" class="md-nav__link">
+      <a href="../../interfaces/" class="md-nav__link">
         
   
   
@@ -2016,7 +1938,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../errors/" class="md-nav__link">
+      <a href="../../errors/" class="md-nav__link">
         
   
   
@@ -2044,7 +1966,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../changelog/" class="md-nav__link">
+      <a href="../../changelog/" class="md-nav__link">
         
   
   
@@ -2126,7 +2048,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dev_guide/" class="md-nav__link">
+      <a href="../../dev_guide/" class="md-nav__link">
         
   
   
@@ -2154,7 +2076,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -2209,10 +2131,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#where-you-can-deploy-today" class="md-nav__link">
+  <a href="#the-shape" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where you can deploy today
+        The shape
       
     </span>
   </a>
@@ -2220,10 +2142,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-databricks-flow-in-detail" class="md-nav__link">
+  <a href="#1-build-the-image" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Databricks flow in detail
+        1. Build the image
       
     </span>
   </a>
@@ -2231,10 +2153,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#deployment-flow" class="md-nav__link">
+  <a href="#2-run-a-task-as-a-job" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deployment flow
+        2. Run a task as a Job
       
     </span>
   </a>
@@ -2242,88 +2164,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#databricks-asset-bundles" class="md-nav__link">
+  <a href="#3-run-it-on-a-schedule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Databricks Asset Bundles
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Databricks Asset Bundles">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#databricksyml-usecase-repo-root" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        databricks.yml (usecase repo root)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#job-definitions-bundlesyaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Job definitions (bundles/*.yaml)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#github-actions-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GitHub Actions workflow
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="GitHub Actions workflow">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#required-secrets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Required secrets
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#example-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#python-api-on-databricks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Python API on Databricks
+        3. Run it on a schedule
       
     </span>
   </a>
@@ -2331,10 +2175,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dev-notebooks" class="md-nav__link">
+  <a href="#two-honest-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dev notebooks
+        Two honest notes
       
     </span>
   </a>
@@ -2358,7 +2202,7 @@
 
 
   
-    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/deployment.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/deployment/kubernetes.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2366,256 +2210,52 @@
   
 
 
-<h1 id="deployment">Deployment<a class="headerlink" href="#deployment" title="Permanent link">&para;</a></h1>
-<p>Deployment means one thing here: something launches your task on a schedule, in
-an environment, with credentials. The task folder itself never changes. This
-page is the map; each environment has its own page with the exact steps.</p>
-<h2 id="where-you-can-deploy-today">Where you can deploy today<a class="headerlink" href="#where-you-can-deploy-today" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Environment</th>
-<th>Status</th>
-<th>Page</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Databricks</td>
-<td>Proven end to end, runs in CI on every merge</td>
-<td><a href="databricks/">Databricks</a></td>
-</tr>
-<tr>
-<td>Kubernetes</td>
-<td>Working manifests and images, run in CI on every pull request</td>
-<td><a href="kubernetes/">Kubernetes</a></td>
-</tr>
-<tr>
-<td>Docker</td>
-<td>Working images, the base for Kubernetes and the clouds</td>
-<td><a href="kubernetes/">Kubernetes</a></td>
-</tr>
-<tr>
-<td>AWS EMR Serverless</td>
-<td>Scripts and CI jobs written, waiting for an account</td>
-<td><a href="aws/">AWS</a></td>
-</tr>
-<tr>
-<td>GCP Dataproc Serverless</td>
-<td>Scripts and CI jobs written, waiting for an account</td>
-<td><a href="gcp/">GCP</a></td>
-</tr>
-<tr>
-<td>Anything with spark-submit</td>
-<td>Supported through <code>python -m ubunye</code></td>
-<td><a href="anywhere/">Anywhere</a></td>
-</tr>
-</tbody>
-</table>
-<p>One rule applies everywhere and is worth learning once: the task never chooses
-its own cluster. Leave <code>spark.master</code> out of your config. Whoever launches the
-job owns that decision, and the engine refuses a config that tries to override
-a platform's choice, because a silent single machine run on paid compute is
-worse than an error.</p>
-<hr />
-<h2 id="the-databricks-flow-in-detail">The Databricks flow in detail<a class="headerlink" href="#the-databricks-flow-in-detail" title="Permanent link">&para;</a></h2>
-<p>Ubunye pipelines run on Databricks via <strong>Databricks Asset Bundles (DABs)</strong> and are deployed through <strong>GitHub Actions</strong>.</p>
-<div class="admonition note">
-<p class="admonition-title">DABs belong in the usecase repo</p>
-<p>Bundle definitions (<code>bundles/</code>, <code>databricks.yml</code>) are usecase-specific and live in the
-usecase repository, not in the Ubunye Engine repo. The engine provides the runtime;
-the usecase repo defines the jobs.</p>
-</div>
-<hr />
-<h2 id="deployment-flow">Deployment flow<a class="headerlink" href="#deployment-flow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Push code → GitHub Actions validates → Merge to main → GitHub Actions deploys bundle → Databricks runs on schedule
+<h1 id="deploying-on-kubernetes">Deploying on Kubernetes<a class="headerlink" href="#deploying-on-kubernetes" title="Permanent link">&para;</a></h1>
+<p>This page shows how to run pipelines on a Kubernetes cluster. Everything here
+is working code from the examples repository, exercised in CI on every pull
+request against a disposable cluster.</p>
+<h2 id="the-shape">The shape<a class="headerlink" href="#the-shape" title="Permanent link">&para;</a></h2>
+<p>A pipeline on Kubernetes is a container image plus a Job manifest. The image
+carries Spark, Delta, the JDBC driver and the engine. Your task folders are
+copied in unchanged. Nothing in any pipeline knows it is inside a container.</p>
+<h2 id="1-build-the-image">1. Build the image<a class="headerlink" href="#1-build-the-image" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>build<span class="w"> </span>-f<span class="w"> </span>platforms/docker/Dockerfile<span class="w"> </span>-t<span class="w"> </span>ubunye-portable:latest<span class="w"> </span>.
 </code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Stage</th>
-<th>Where</th>
-<th>What happens</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>PR</td>
-<td>GitHub Actions</td>
-<td><code>ubunye validate --all</code> + <code>pytest</code></td>
-</tr>
-<tr>
-<td>Merge to main</td>
-<td>GitHub Actions</td>
-<td><code>databricks bundle deploy --target nonprod</code></td>
-</tr>
-<tr>
-<td>Production deploy</td>
-<td>GitHub Actions (manual)</td>
-<td><code>databricks bundle deploy --target prod</code></td>
-</tr>
-<tr>
-<td>Execution</td>
-<td>Databricks</td>
-<td>Scheduled job runs the pipeline</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="databricks-asset-bundles">Databricks Asset Bundles<a class="headerlink" href="#databricks-asset-bundles" title="Permanent link">&para;</a></h2>
-<p>Jobs are defined as code in the usecase repo.</p>
-<h3 id="databricksyml-usecase-repo-root"><code>databricks.yml</code> (usecase repo root)<a class="headerlink" href="#databricksyml-usecase-repo-root" title="Permanent link">&para;</a></h3>
-<p>Defines bundle name and deployment targets:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">bundle</span><span class="p">:</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;my-usecase-pipelines&quot;</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">include</span><span class="p">:</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;bundles/*.yaml&quot;</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nt">targets</span><span class="p">:</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">nonprod</span><span class="p">:</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">development</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="nt">workspace</span><span class="p">:</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${DATABRICKS_HOST}</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="nt">variables</span><span class="p">:</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;nonprod&quot;</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">      </span><span class="nt">unity_catalog</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;aws-db-nonprod-tl-catalog&quot;</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">  </span><span class="nt">prod</span><span class="p">:</span>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="nt">workspace</span><span class="p">:</span>
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${DATABRICKS_HOST}</span>
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">    </span><span class="nt">variables</span><span class="p">:</span>
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;prod&quot;</span>
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">      </span><span class="nt">unity_catalog</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;aws-db-prod-tl-catalog&quot;</span>
+<p>For machine learning pipelines there is a second image that adds the open
+source models with the weights already inside, so pods need no internet:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>build<span class="w"> </span>-f<span class="w"> </span>platforms/docker/Dockerfile.ml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--build-arg<span class="w"> </span><span class="nv">BASE</span><span class="o">=</span>ubunye-portable:latest<span class="w"> </span>-t<span class="w"> </span>ubunye-ml:latest<span class="w"> </span>.
 </code></pre></div>
-<h3 id="job-definitions-bundlesyaml">Job definitions (<code>bundles/*.yaml</code>)<a class="headerlink" href="#job-definitions-bundlesyaml" title="Permanent link">&para;</a></h3>
-<p>Each YAML file in <code>bundles/</code> defines a Databricks job:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">resources</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">jobs</span><span class="p">:</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">monthly_rewards</span><span class="p">:</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ubunye-monthly-rewards&quot;</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="nt">schedule</span><span class="p">:</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span><span class="nt">quartz_cron_expression</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">6</span><span class="nv"> </span><span class="s">1</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">?&quot;</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">        </span><span class="nt">timezone_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;UTC&quot;</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">      </span><span class="nt">tasks</span><span class="p">:</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">task_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;run_pipeline&quot;</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">          </span><span class="nt">python_wheel_task</span><span class="p">:</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">            </span><span class="nt">package_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ubunye_engine&quot;</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">            </span><span class="nt">entry_point</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ubunye&quot;</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">            </span><span class="nt">parameters</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;run&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;-d&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;-t&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p p-Indicator">]</span>
+<p>Push whichever you need to the registry your cluster pulls from.</p>
+<h2 id="2-run-a-task-as-a-job">2. Run a task as a Job<a class="headerlink" href="#2-run-a-task-as-a-job" title="Permanent link">&para;</a></h2>
+<p><code>platforms/k8s/job-template.yaml</code> takes any task:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sed<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;s|{{NAME}}|my-pipeline|&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span>-e<span class="w"> </span><span class="s2">&quot;s|{{ARGS}}|\&quot;examples/02_ingest_rest_api\&quot;, \&quot;weather\&quot;, \&quot;ingestion\&quot;, \&quot;hourly_forecast\&quot;|&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span>platforms/k8s/job-template.yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-
 </code></pre></div>
-<hr />
-<h2 id="github-actions-workflow">GitHub Actions workflow<a class="headerlink" href="#github-actions-workflow" title="Permanent link">&para;</a></h2>
-<p>The deploy workflow (<code>.github/workflows/deploy.yml</code> in the usecase repo) handles CI and CD:</p>
-<p><strong>On pull request:</strong></p>
-<ul>
-<li>Validates pipeline configs with <code>ubunye validate</code></li>
-<li>Runs unit tests with <code>pytest</code></li>
-</ul>
-<p><strong>On merge to main:</strong></p>
-<ul>
-<li>Deploys the Databricks Asset Bundle to nonprod</li>
-</ul>
-<h3 id="required-secrets">Required secrets<a class="headerlink" href="#required-secrets" title="Permanent link">&para;</a></h3>
-<p>Two auth flows are supported — pick one per workspace. See
-<a href="../databricks-auth/">Databricks Authentication</a> for the full setup.</p>
-<table>
-<thead>
-<tr>
-<th>Flow</th>
-<th>Secrets</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>PAT (Free Edition / single-user)</td>
-<td><code>DATABRICKS_HOST</code>, <code>DATABRICKS_TOKEN</code></td>
-</tr>
-<tr>
-<td>Service principal + OAuth <em>(recommended, paid workspaces)</em></td>
-<td><code>DATABRICKS_HOST</code>, <code>DATABRICKS_CLIENT_ID</code>, <code>DATABRICKS_CLIENT_SECRET</code></td>
-</tr>
-</tbody>
-</table>
-<p>The Databricks CLI auto-selects OAuth when <code>DATABRICKS_CLIENT_ID</code> and
-<code>DATABRICKS_CLIENT_SECRET</code> are both set; otherwise it falls back to PAT.</p>
-<h3 id="example-workflow">Example workflow<a class="headerlink" href="#example-workflow" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deploy</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">on</span><span class="p">:</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">push</span><span class="p">:</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="nt">jobs</span><span class="p">:</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="nt">validate</span><span class="p">:</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">    </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github.event_name == &#39;pull_request&#39;</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/setup-python@v5</span>
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> python-version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;3.11&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip install -e .[dev]</span>
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubunye validate -d ./pipelines -u my_usecase -p my_package --all</span>
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytest tests/unit/ -v --tb=short -m &quot;not integration&quot;</span>
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>
-<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">  </span><span class="nt">deploy-nonprod</span><span class="p">:</span>
-<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="w">    </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github.event_name == &#39;push&#39; &amp;&amp; github.ref == &#39;refs/heads/main&#39;</span>
-<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
-<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
-<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
-<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip install databricks-cli</span>
-<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">databricks bundle deploy --target nonprod</span>
-<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="w">        </span><span class="nt">env</span><span class="p">:</span>
-<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="w">          </span><span class="nt">DATABRICKS_HOST</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.DATABRICKS_HOST }}</span>
-<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a><span class="w">          </span><span class="nt">DATABRICKS_TOKEN</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.DATABRICKS_TOKEN }}</span>
+<p>The environment variables in the manifest are the whole configuration surface:
+where the data lives, what kind of table to write, and any secrets your
+connectors need. Mount them from Kubernetes Secrets in the usual way.</p>
+<h2 id="3-run-it-on-a-schedule">3. Run it on a schedule<a class="headerlink" href="#3-run-it-on-a-schedule" title="Permanent link">&para;</a></h2>
+<p>Wrap the same spec in a CronJob:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">batch/v1</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CronJob</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">metadata</span><span class="p">:</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubunye-nightly</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="nt">schedule</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0</span><span class="nv"> </span><span class="s">2</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*&quot;</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">jobTemplate</span><span class="p">:</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="nt">spec</span><span class="p">:</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">      </span><span class="c1"># the same template as the Job, unchanged</span>
 </code></pre></div>
-<hr />
-<h2 id="python-api-on-databricks">Python API on Databricks<a class="headerlink" href="#python-api-on-databricks" title="Permanent link">&para;</a></h2>
-<p>On Databricks, use the Python API instead of the CLI. The API reuses the active SparkSession:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ubunye</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Single task</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">task_dir</span><span class="o">=</span><span class="s2">&quot;/Workspace/pipelines/fraud_detection/ingestion/claim_etl&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;nonprod&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">&quot;202510&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">)</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1"># Multiple tasks</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="n">results</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_pipeline</span><span class="p">(</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="n">usecase_dir</span><span class="o">=</span><span class="s2">&quot;/Workspace/pipelines&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    <span class="n">usecase</span><span class="o">=</span><span class="s2">&quot;fraud_detection&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="n">package</span><span class="o">=</span><span class="s2">&quot;ingestion&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="n">tasks</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;claim_etl&quot;</span><span class="p">,</span> <span class="s2">&quot;feature_engineering&quot;</span><span class="p">],</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;nonprod&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">&quot;202510&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="p">)</span>
-</code></pre></div>
-<p>The Python API sets descriptive Spark app names (<code>ubunye:&lt;usecase&gt;.&lt;package&gt;.&lt;task&gt;</code>) for easy
-identification in the Spark UI and history server.</p>
-<div class="admonition tip">
-<p class="admonition-title">Why not the CLI on Databricks?</p>
-<p>The CLI creates a <strong>new</strong> SparkSession, wasting the one Databricks already has running.
-The Python API detects the active session and reuses it.</p>
-</div>
-<hr />
-<h2 id="dev-notebooks">Dev notebooks<a class="headerlink" href="#dev-notebooks" title="Permanent link">&para;</a></h2>
-<p><code>ubunye init</code> generates a dev notebook at <code>notebooks/&lt;task&gt;_dev.ipynb</code> for each task.
-The notebook mirrors the production pipeline interactively:</p>
-<ol>
-<li><strong>Parameters</strong> — <code>dbutils.widgets</code> for <code>effective_year_month</code> and <code>mode</code></li>
-<li><strong>Setup</strong> — loads config, creates <code>DatabricksBackend</code></li>
-<li><strong>Extract</strong> — reads all inputs, prints row counts</li>
-<li><strong>Inspect Sources</strong> — <code>display()</code> each input DataFrame</li>
-<li><strong>Transform</strong> — runs the <code>Task</code> class from <code>transformations.py</code></li>
-<li><strong>Inspect Outputs</strong> — <code>display()</code> each output DataFrame</li>
-<li><strong>Load</strong> — writes outputs (commented out by default)</li>
-<li><strong>Sandbox</strong> — Spark session exposed for free exploration</li>
-</ol>
-<p>The notebook reads from the same <code>config.yaml</code> so there is zero drift between dev and production.</p>
+<h2 id="two-honest-notes">Two honest notes<a class="headerlink" href="#two-honest-notes" title="Permanent link">&para;</a></h2>
+<p><strong>Storage.</strong> A pod's disk vanishes with the pod. Point <code>UBUNYE_DATA_ROOT</code> at
+object storage or a persistent volume, and give the model registry a mounted
+path or an <code>s3://</code> style location, which it supports directly since 0.5.0.</p>
+<p><strong>One pod or many.</strong> The manifests run Spark in local mode inside one pod,
+which is the honest shape for most scheduled jobs. To fan out across executor
+pods instead, set <code>SPARK_MASTER</code> to your cluster's API address and give the
+job a service account that may create pods. The task folders do not change.</p>
 
 
 
@@ -2648,7 +2288,7 @@ The notebook mirrors the production pipeline interactively:</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 20, 2026 01:55:54 UTC">March 20, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 14, 2026 14:41:23 UTC">July 14, 2026</span>
   </span>
 
     
@@ -2725,10 +2365,10 @@ The notebook mirrors the production pipeline interactively:</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
