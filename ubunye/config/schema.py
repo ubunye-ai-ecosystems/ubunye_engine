@@ -272,9 +272,22 @@ class TaskConfig(BaseModel):
                     # Registered for the other role only — e.g. `binary` can be read but
                     # not written. _check_writable_outputs says so more precisely.
                     continue
+
+                # STRUCTURAL, not nominal. The design philosophy (docs/interfaces.md,
+                # blog.md) is ports and adapters: "any class that implements the
+                # required methods satisfies the protocol — no inheritance needed."
+                # The first version of this called plugin.validate_config() directly,
+                # which made a duck-typed connector — one that implements read() and
+                # inherits nothing, exactly what the docs promise will work — crash
+                # with AttributeError. Asking is fine; DEMANDING an answer is a new
+                # inheritance requirement smuggled in through a method call.
+                declare = getattr(plugin, "validate_config", None)
+                if not callable(declare):
+                    continue  # declares nothing -> requires nothing. Its choice.
+
                 cfg = io.model_dump(exclude_none=True)
                 cfg.update(io.model_extra or {})
-                for problem in plugin.validate_config(cfg) or []:
+                for problem in declare(cfg) or []:
                     errors.append(f"{role}.{name}: {problem}")
 
         if errors:

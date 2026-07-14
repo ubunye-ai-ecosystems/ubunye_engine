@@ -74,15 +74,12 @@ class TestEveryFormatResolves:
             ), f"'{name}' cannot declare its own requirements"
 
     def test_every_registered_writer_implements_the_contract(self):
-        from ubunye.core.interfaces import Writer
-
         registry = Registry.from_entrypoints()
         assert registry.writers, "no writers registered at all"
         for name, cls in registry.writers.items():
-            assert issubclass(cls, Writer), f"'{name}' is registered but is not a Writer"
-            # It must be able to say what it can do, rather than the core deciding.
-            assert isinstance(cls.SUPPORTED_MODES, frozenset)
-            assert isinstance(cls.SUPPORTS_MERGE, bool)
+            assert callable(getattr(cls, "write", None)), f"'{name}' cannot write"
+            # Capabilities are read structurally, with defaults for the silent.
+            assert isinstance(getattr(cls, "SUPPORTS_MERGE", False), bool)
 
     def test_binary_has_no_writer(self):
         assert "binary" not in Registry.from_entrypoints().writers
