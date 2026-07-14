@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] — unreleased
 
+### Added
+
+- **`DataFramePort` — the data plane finally gets its port.** Specified in the founding
+  design notes and never shipped. The model layer always had its port (`UbunyeModel`:
+  the engine never imports sklearn or torch); the data layer never did, so every reader
+  returned and every transform received a `pyspark.sql.DataFrame` by fiat.
+  `ubunye.core.ports.DataFramePort` is a `runtime_checkable` **Protocol** — structural,
+  no inheritance — and a Spark DataFrame satisfies it **natively** (verified against a
+  real session, not assumed), which is what makes shipping it additive rather than a
+  rewrite. `ubunye.adapters.PandasDataFrameAdapter` makes pandas fit in thirty lines,
+  exactly as the design promised — including guarding the trap where `df.count()`
+  *exists* on pandas and means something else entirely (non-null counts per column).
+
+- **The plugin contract is structural again.** `validate_config`, `SUPPORTED_MODES` and
+  `SUPPORTS_MERGE` are read with `getattr` and defaults: a connector that declares
+  nothing requires nothing. The previous contract change accidentally demanded
+  inheritance — a duck-typed reader, the exact thing docs/interfaces.md promises will
+  work ("no inheritance needed"), crashed with `AttributeError`. Declaring is opt-in,
+  not a toll.
+
 ### Breaking
 
 - **The core no longer knows about any connector. It asks.**
