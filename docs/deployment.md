@@ -1,5 +1,30 @@
 # Deployment
 
+Deployment means one thing here: something launches your task on a schedule, in
+an environment, with credentials. The task folder itself never changes. This
+page is the map; each environment has its own page with the exact steps.
+
+## Where you can deploy today
+
+| Environment | Status | Page |
+|---|---|---|
+| Databricks | Proven end to end, runs in CI on every merge | [Databricks](deployment/databricks.md) |
+| Kubernetes | Working manifests and images, run in CI on every pull request | [Kubernetes](deployment/kubernetes.md) |
+| Docker | Working images, the base for Kubernetes and the clouds | [Kubernetes](deployment/kubernetes.md) |
+| AWS EMR Serverless | Scripts and CI jobs written, waiting for an account | [AWS](deployment/aws.md) |
+| GCP Dataproc Serverless | Scripts and CI jobs written, waiting for an account | [GCP](deployment/gcp.md) |
+| Anything with spark-submit | Supported through `python -m ubunye` | [Anywhere](deployment/anywhere.md) |
+
+One rule applies everywhere and is worth learning once: the task never chooses
+its own cluster. Leave `spark.master` out of your config. Whoever launches the
+job owns that decision, and the engine refuses a config that tries to override
+a platform's choice, because a silent single machine run on paid compute is
+worse than an error.
+
+---
+
+## The Databricks flow in detail
+
 Ubunye pipelines run on Databricks via **Databricks Asset Bundles (DABs)** and are deployed through **GitHub Actions**.
 
 !!! note "DABs belong in the usecase repo"
