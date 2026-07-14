@@ -75,3 +75,16 @@ jobs:
             --notes-file release_notes.md \
             --target "$GITHUB_SHA"
           echo "::notice::released ${{ steps.version.outputs.tag }} — the site badge updates on the next docs build"
+
+      - name: Wake the PyPI publish
+        if: steps.exists.outputs.yes == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Events created with the workflow token do not trigger other workflows, so
+        # the tag and release above will never wake publish_pypip on their own. An
+        # explicit dispatch is the documented exception. The publish still stops in
+        # the pypip environment and waits for a human approval; this only gets it to
+        # the waiting room.
+        run: |
+          gh workflow run publish_pypip.yml             --repo "$GITHUB_REPOSITORY"             --ref "${{ steps.version.outputs.tag }}"
+          echo "::notice::PyPI publish dispatched — it now waits for approval in the pypip environment"

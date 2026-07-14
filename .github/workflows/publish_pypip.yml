@@ -6,6 +6,12 @@ on:
       - 'v*' # a hand-pushed version tag still works
   release:
     types: [published]
+  workflow_dispatch:
+    # The release workflow calls this explicitly. It has to: GitHub does not let a
+    # workflow's own token wake other workflows through the events it creates (tag
+    # pushes, releases), and that is exactly how our automation creates them. Explicit
+    # dispatch is the documented exception to that rule. Found the honest way: v0.5.0
+    # was tagged and released and PyPI never heard about it.
     # Releases are now created automatically when the version in pyproject.toml
     # changes on main (see release_on_version_bump.yml). A tag created through the
     # release API does not reliably fire a tag push event, so listen for the release
