@@ -30,20 +30,25 @@ Databricks workspace and are gated on secrets; treat them as integration probes,
 `init {pipeline,github-actions}`, `validate`, `config`, `plan`, `run`, `test run`,
 `deploy {databricks}`, `export {airflow,databricks}`,
 `lineage {show,list,compare,search,trace}`, `models {list,info,promote,demote,rollback,archive,compare}`,
-`plugins`, `version`.
+`sync {lineage,registry}`, `plugins`, `version`. (`sync` replays fallback manifests written
+when a metadata backend was unreachable; it existed for a long time but was missing from
+this list.)
 
 **Non-obvious CLI gotchas** (every single one has bitten someone):
 
 - Timestamp flag is `-dt` / `--data-timestamp`, **not** `--dt`.
 - `--mode` / `-m` defaults to `DEV` (uppercase). Modes are case-sensitive when matching profile keys.
-- `validate` takes `--profile`; `run` takes `-m/--mode`. They are not aliases.
-- `validate` has `--all` for all tasks in a package; `run` does not — repeat `-t` instead.
+- `validate` takes `--profile` and, since 0.5.0, `-m/--mode` as an alias for it, so the
+  mental model matches `run`. Passing both with different values is an error.
+- Both `validate` and `run` accept `--all` for every task in the package (run gained it
+  in 0.5.0).
 - `test run` defaults profile to `test` and `--lineage` is **on** by default (opposite of `run`).
 - `lineage *` sub-commands use singular `--task` / `-t`, not `--task-list`.
 - `models *` sub-commands use `--use-case` (`-u`), `--model` (`-m`), `--store` (`-s`) — different
   flag shape from the pipeline commands.
-- `merged_spark_conf(mode)` silently returns base conf if `mode` doesn't match any profile key. No
-  error, no warning. Verify the profile name matches the YAML before blaming the engine.
+- `merged_spark_conf(mode)` raises `ConfigProfileError` when the mode names no profile
+  and other profiles exist. It only falls back to base conf silently when the config
+  defines no profiles at all.
 
 ## Architecture — the parts that aren't obvious from a single file
 

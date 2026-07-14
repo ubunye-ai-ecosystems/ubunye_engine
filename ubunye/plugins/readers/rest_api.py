@@ -304,7 +304,7 @@ def _paginate(
         page_size: int = int(pag_cfg.get("page_size") or 100)
         max_pages: int = int(pag_cfg.get("max_pages") or 0)
         offset_param: str = pag_cfg.get("offset_param", "offset")
-        current_params = dict(params)
+        current_params: Dict[str, Any] = dict(params)
         current_params.setdefault(offset_param, 0)
         page_count = 0
 
@@ -350,7 +350,7 @@ def _paginate(
         max_pages = int(pag_cfg.get("max_pages") or 0)
         page_count = 0
         current_url = url
-        current_params: Dict[str, Any] = dict(params)
+        current_params = dict(params)
 
         while current_url:
             resp = _fetch_page(

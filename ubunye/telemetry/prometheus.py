@@ -30,7 +30,7 @@ try:
 
     _PROM_ENABLED = True
 except Exception:  # pragma: no cover
-    Counter = Histogram = object  # type: ignore
+    Counter = Histogram = object
 
 
 if _PROM_ENABLED:
@@ -61,7 +61,7 @@ if _PROM_ENABLED:
         ["task", "profile", "step"],
     )
 else:
-    UBUNYE_TASK_RUNS = UBUNYE_STEP_DURATION = UBUNYE_ROWS = UBUNYE_BYTES = UBUNYE_ERRORS = None  # type: ignore
+    UBUNYE_TASK_RUNS = UBUNYE_STEP_DURATION = UBUNYE_ROWS = UBUNYE_BYTES = UBUNYE_ERRORS = None
 
 
 def start_prometheus_http_server(port: int = 8000) -> None:
@@ -116,13 +116,15 @@ def observe_step(
     if not _PROM_ENABLED:
         return
     try:
-        UBUNYE_STEP_DURATION.labels(task=task, profile=profile, step=step, status=status).observe(duration_sec)  # type: ignore
+        UBUNYE_STEP_DURATION.labels(task=task, profile=profile, step=step, status=status).observe(
+            duration_sec
+        )
         if rows is not None:
-            UBUNYE_ROWS.labels(task=task, profile=profile, step=step).inc(rows)  # type: ignore
+            UBUNYE_ROWS.labels(task=task, profile=profile, step=step).inc(rows)
         if bytes_ is not None:
-            UBUNYE_BYTES.labels(task=task, profile=profile, step=step).inc(bytes_)  # type: ignore
+            UBUNYE_BYTES.labels(task=task, profile=profile, step=step).inc(bytes_)
         if status != "success":
-            UBUNYE_ERRORS.labels(task=task, profile=profile, step=step).inc()  # type: ignore
+            UBUNYE_ERRORS.labels(task=task, profile=profile, step=step).inc()
     except Exception:
         # Never let metrics crash the job
         pass

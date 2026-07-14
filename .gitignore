@@ -123,3 +123,5 @@ site/
 # Papers - thesis PDFs are copyrighted, don't commit
 papers/*.pdf
 SECURITY-REMOVAL.md
+mlflow.db
+mlruns/

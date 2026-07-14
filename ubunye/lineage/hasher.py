@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+from dataclasses import dataclass
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -68,60 +70,98 @@ def hash_schema(df: Any) -> str:
     return _sha256(payload.encode())
 
 
-def hash_dataframe(df: Any, sample_fraction: float = 0.01, seed: int = 42) -> str:
-    """Return a deterministic content hash of a Spark DataFrame.
+# The hard ceiling on how many rows lineage may ever pull into the driver.
+#
+# A fraction alone is not a bound: 1% of a billion rows is ten million rows landing on
+# one JVM, and the old code had a fallback that collected the ENTIRE DataFrame when the
+# sample came back empty. A fingerprint is a receipt, not a copy. It never needs more
+# than a bounded handful of rows to be useful.
+MAX_SAMPLE_ROWS = int(os.environ.get("UBUNYE_LINEAGE_SAMPLE_ROWS", "1000"))
 
-    Samples ``sample_fraction`` of rows with a fixed ``seed``, converts each
-    row to a string, and sha256-hashes the concatenation. Falls back to
-    ``hash_schema(df)`` if the DataFrame is empty or sampling fails.
 
-    Parameters
-    ----------
-    df:
-        A PySpark DataFrame.
-    sample_fraction:
-        Fraction of rows to include in the sample (0 < fraction ≤ 1).
-    seed:
-        Random seed for reproducible sampling.
+@dataclass(frozen=True)
+class DataFrameFingerprint:
+    """Everything lineage wants to know about an output, computed in ONE place."""
 
-    Returns
-    -------
-    str
-        ``"sha256:<hex>"`` content hash.
+    schema_hash: str
+    data_hash: str
+    row_count: int
+
+
+def fingerprint_dataframe(
+    df: Any,
+    sample_fraction: float = 0.01,
+    seed: int = 42,
+    max_rows: int = MAX_SAMPLE_ROWS,
+) -> DataFrameFingerprint:
+    """Fingerprint a DataFrame with one materialisation and bounded driver memory.
+
+    The old path was three separate full executions of the output's entire plan:
+    ``hash_dataframe`` counted, then sampled and collected with no upper bound (and
+    collected the WHOLE table if the sample was empty), and the recorder then counted
+    the same uncached DataFrame a second time. Lineage cost two to three complete
+    recomputations of the pipeline it was describing, and could OOM the driver.
+
+    Now:
+
+    * the DataFrame is persisted for the duration, so the plan runs once and the
+      second action reads from cache;
+    * the count happens exactly once, and the row count and data hash share it;
+    * every ``collect`` is capped at ``max_rows``, whatever the table size — the
+      empty-sample fallback collects ``df.limit(max_rows)``, never ``df``.
     """
+    schema_hash = hash_schema(df)
+
+    persisted = False
     try:
-        count = df.count()
+        try:
+            df.persist()
+            persisted = True
+        except Exception:
+            pass  # not persistable (mock, pandas, already-persisted): still correct, just slower
+
+        count = int(df.count())
         if count == 0:
-            return hash_schema(df)
+            return DataFrameFingerprint(schema_hash, schema_hash, 0)
 
         fraction = min(max(sample_fraction, 0.0001), 1.0)
-        sample_rows = df.sample(fraction=fraction, seed=seed).collect()
-
-        if not sample_rows:
-            # Small DataFrame: sample returned nothing — collect all rows instead
-            sample_rows = df.collect()
-
-        if not sample_rows:
-            return hash_schema(df)
+        rows = df.sample(fraction=fraction, seed=seed).limit(max_rows).collect()
+        if not rows:
+            # A small DataFrame can sample to nothing. Take its head, BOUNDED — the old
+            # code collected the whole thing here, which on a big table with a tiny
+            # fraction was the exact OOM this function exists to avoid.
+            rows = df.limit(max_rows).collect()
 
         parts = [str(count)]
-        for row in sample_rows:
-            # Convert Row to a stable string (sorted dict representation)
+        for row in rows:
             if hasattr(row, "asDict"):
-                row_dict = row.asDict(recursive=True)
-                parts.append(json.dumps(row_dict, sort_keys=True, default=str))
+                parts.append(json.dumps(row.asDict(recursive=True), sort_keys=True, default=str))
             else:
                 parts.append(str(row))
 
         payload = "\n".join(parts)
-        return _sha256(payload.encode())
-
+        return DataFrameFingerprint(schema_hash, _sha256(payload.encode()), count)
     except Exception:
-        # Fallback to schema hash if anything goes wrong (e.g., lazy evaluation)
-        try:
-            return hash_schema(df)
-        except Exception:
-            return _sha256(b"unknown")
+        # Best effort, like everything in lineage: a fingerprint failure must not
+        # fail a pipeline that already succeeded.
+        return DataFrameFingerprint(schema_hash, schema_hash, -1)
+    finally:
+        if persisted:
+            try:
+                df.unpersist()
+            except Exception:
+                pass
+
+
+def hash_dataframe(df: Any, sample_fraction: float = 0.01, seed: int = 42) -> str:
+    """Content hash of a DataFrame. Kept for backward compatibility.
+
+    Delegates to :func:`fingerprint_dataframe`, which is what new code should call —
+    it returns the row count from the same single pass instead of leaving callers to
+    count again. This wrapper inherits its bounds: no collect can exceed
+    ``MAX_SAMPLE_ROWS``, and the whole-table fallback is gone.
+    """
+    return fingerprint_dataframe(df, sample_fraction=sample_fraction, seed=seed).data_hash
 
 
 def hash_file(path: str) -> str:

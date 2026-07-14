@@ -29,7 +29,7 @@ def _load_group(group: str) -> Dict[str, Any]:
     if group in _cache:
         return _cache[group]
 
-    eps = md.entry_points()
+    eps: Any = md.entry_points()
     if hasattr(eps, "select"):
         group_eps = eps.select(group=group)
     elif isinstance(eps, dict):

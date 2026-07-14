@@ -86,7 +86,7 @@ def deploy_job(
     try:
         if len(existing) == 1:
             job_id = existing[0].job_id
-            client.jobs.reset(job_id=job_id, new_settings=spec)
+            client.jobs.reset(job_id=job_id, new_settings=spec)  # type: ignore[arg-type]  # SDK coerces dicts
         else:
             response = client.jobs.create(**spec)
             job_id = response.job_id

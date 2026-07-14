@@ -49,4 +49,8 @@ class TestGenerateNotebook:
     def test_output_display_section(self):
         source = generate_notebook(workspace_task_path="/Workspace/test")
         assert "df.show(5)" in source
-        assert "df.count()" in source
+        # The scaffold used to print df.count() per output: a full scan of every
+        # output just to show a number, teaching new users the exact habit the
+        # lineage rework removed from the engine itself. Columns are free.
+        assert "df.columns" in source
+        assert "df.count()" not in source

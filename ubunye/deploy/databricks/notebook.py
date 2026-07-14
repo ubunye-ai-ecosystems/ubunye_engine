@@ -43,6 +43,6 @@ outputs = ubunye.run_task(
 # COMMAND ----------
 
 for name, df in outputs.items():
-    print(f"Output: {{name}} — {{df.count()}} rows")
+    print(f"Output: {{name}} — columns: {{df.columns}}")
     df.show(5)
 """

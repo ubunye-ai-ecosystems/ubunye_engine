@@ -67,7 +67,7 @@ def _detect_backend(
 
     # Probe for an active session without importing pyspark at module level
     try:
-        from pyspark.sql import SparkSession  # type: ignore
+        from pyspark.sql import SparkSession
 
         active = SparkSession.getActiveSession()
         if active is not None:

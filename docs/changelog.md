@@ -9,7 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] — unreleased
 
+### Fixed
+
+- **Lineage no longer recomputes your pipeline or risks the driver.** Fingerprinting an
+  output used to run the output's entire plan two to three times (a count inside the
+  hasher, an unbounded sample collect, then a second count in the recorder on the same
+  uncached DataFrame), and had a fallback that collected the **whole table** into the
+  driver. At real scale that is a crashed driver describing a job that had already
+  succeeded. Now: one `fingerprint_dataframe()` pass, persisted for the duration, one
+  count shared by the hash and the row count, and every collect capped at
+  `UBUNYE_LINEAGE_SAMPLE_ROWS` (default 1000) whatever the table size.
+
 ### Added
+
+- **The annotations are a public API now.** The package ships a `py.typed` marker, so
+  type checkers in consuming projects finally see the engine's types (PEP 561 says they
+  must ignore packages without it, so until now every annotation was invisible to
+  users). mypy runs in CI and is green across all 100 source files, and it earned its
+  keep immediately: it caught a Protocol that under-described its own usage, a
+  shadowed variable in the REST reader's pagination, unsound stubs in the S3 lineage
+  store, and thirteen stale `type: ignore` comments. `Reader.read` now returns
+  `DataFramePort` instead of `Any`, so the most important object in the framework is
+  typed in its own contract.
 
 - **`DataFramePort` — the data plane finally gets its port.** Specified in the founding
   design notes and never shipped. The model layer always had its port (`UbunyeModel`:
@@ -28,6 +49,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inheritance — a duck-typed reader, the exact thing docs/interfaces.md promises will
   work ("no inheritance needed"), crashed with `AttributeError`. Declaring is opt-in,
   not a toll.
+
+### Removed
+
+- **Telemetry that could only read zero.** The `ubunye_rows_total` and
+  `ubunye_bytes_total` Prometheus counters, and the `rows=` parameter on
+  `EventLogger.step_end`, were dead on arrival: nothing in the engine ever fed them.
+  A metric that always reads zero is worse than no metric, because somebody builds a
+  dashboard on it and trusts the zero. If row metrics return they will arrive fed by
+  the engine (the lineage fingerprint now computes row counts in one pass, so the
+  plumbing finally exists).
+
+- **`ubunye/compat/analytics_engine_shim.py`** — a placeholder docstring with a folder
+  around it, imported by nothing.
+
+- Stale build artifacts (`build/`, an 0.2.0 wheel in `dist/`), `mlflow.db` and a log
+  file were removed from tracking and ignored.
+
+### Changed
+
+- **The CLI stops teaching two systems.** `run` gained `--all` (validate had it for
+  years, so the two commands taught different habits for the same job). `validate`
+  accepts `-m/--mode` as an alias for `--profile`, and now injects the same template
+  variables as `run` — a config using `{{ mode }}` used to run perfectly and fail
+  validation with an undefined variable, which is exactly backwards for a command
+  whose job is to catch problems before the run. Closes #30. The `ubunye init` and
+  Databricks notebook scaffolds no longer print `df.count()` per output (a full scan
+  per output, teaching the habit the lineage rework just removed); they print the
+  column list, which is free.
+
+- The four control-plane Protocols (`AuthBackend`, `DeployAdapter`, `LineageBackend`,
+  `RegistryBackend`) are enforced by a conformance test. They were referenced only by
+  docstrings before: a contract nobody had signed. The test checks every shipped
+  implementation member by member, structurally, with no inheritance added.
+
+- `from ubunye import *` works now. `__all__` advertised five submodule names that the
+  module never imported, so the star import raised `NameError` on the package's own
+  public surface.
 
 ### Breaking
 

@@ -56,7 +56,7 @@ class SparkBackend(Backend):
         self._check_master_not_hijacked()
 
         # Lazy import to avoid hard dependency during pip install
-        from pyspark.sql import SparkSession  # type: ignore
+        from pyspark.sql import SparkSession
 
         builder = SparkSession.builder.appName(self._app_name)
         for k, v in self._conf.items():
@@ -108,7 +108,7 @@ class SparkBackend(Backend):
         install Spark, and a test that has to be skipped is a test that does not run.
         """
         try:
-            from pyspark import SparkConf  # type: ignore
+            from pyspark import SparkConf
 
             return SparkConf().get("spark.master", None)
         except Exception:  # noqa: BLE001 — no pyspark, or no defaults; nothing to clash with

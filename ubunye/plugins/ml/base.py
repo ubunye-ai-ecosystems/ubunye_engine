@@ -13,7 +13,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Protocol, runtime_checkable
+from typing import Any, Callable, Dict, Iterable, Optional, Protocol, runtime_checkable
 
 
 # --------- Schemas ---------
@@ -48,11 +48,20 @@ class PandasLike(Protocol):
 
 @runtime_checkable
 class SparkDataFrameLike(Protocol):
-    def select(self, *cols): ...
+    """The slice of a Spark DataFrame the batch mixin actually touches.
 
-    def withColumn(self, name: str, col): ...
+    mypy caught this Protocol under-describing its own usage: the mixin indexes
+    the frame (``sdf[c]``) and reads ``columns``, neither of which was declared.
+    A structural type that omits what the code does is a lie with extra steps.
+    """
 
-    def schema(self): ...
+    columns: Any
+
+    def select(self, *cols: Any) -> Any: ...
+
+    def withColumn(self, name: str, col: Any) -> Any: ...
+
+    def __getitem__(self, item: str) -> Any: ...
 
 
 # --------- BaseModel contract ---------
@@ -149,7 +158,15 @@ class BaseModel(HasSchema, ABC):
 
 # --------- Batch prediction on Spark/pandas ---------
 class BatchPredictMixin:
-    """Utility mixin for efficient batch inference on Spark or pandas."""
+    """Utility mixin for efficient batch inference on Spark or pandas.
+
+    A mixin has no base class, so mypy cannot know what the HOST class provides.
+    These declarations state the mixin's requirements: mix this into something
+    with a ``predict`` and (optionally) a ``schema``, or it has no business here.
+    """
+
+    schema: Any
+    predict: Callable[..., Any]
 
     def predict_on_spark(
         self,

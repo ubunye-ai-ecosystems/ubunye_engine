@@ -41,7 +41,7 @@ class Registry:
 
     @staticmethod
     def _load(group: str) -> Dict[str, Any]:
-        eps = md.entry_points()
+        eps: Any = md.entry_points()
         # Handle dict (Python <3.10) or SelectableGroups (Python >=3.10)
         group_eps = eps.get(group, []) if hasattr(eps, "get") else eps.select(group=group)
         return {ep.name: ep.load() for ep in group_eps}
@@ -71,7 +71,7 @@ _TELEMETRY_ENABLED = os.getenv("UBUNYE_TELEMETRY", "0") not in ("0", "", "false"
 
 def _discover_hooks() -> List[type[Hook]]:
     """Load Hook classes from the ``ubunye.hooks`` entry point group."""
-    eps = md.entry_points()
+    eps: Any = md.entry_points()
     group_eps = (
         eps.get("ubunye.hooks", []) if hasattr(eps, "get") else eps.select(group="ubunye.hooks")
     )

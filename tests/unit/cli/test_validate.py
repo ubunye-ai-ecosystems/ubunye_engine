@@ -291,3 +291,72 @@ class TestValidateCLI:
             ],
         )
         assert "failed" in result.output.lower() or "1" in result.output
+
+
+class TestValidateMatchesRun:
+    """validate exists to catch problems BEFORE a run. It must not invent its own.
+
+    It used to inject only {{ dt }}, so a config using {{ mode }} or {{ dtf }} ran
+    perfectly under `ubunye run` and failed under `ubunye validate` with an undefined
+    variable error. Backwards: the checker was stricter than reality, about nothing.
+
+    It also used a different word than run for the same idea (--profile vs -m), which
+    made the two commands feel like different systems.
+    """
+
+    def _write(self, tmp_path, body):
+        task = tmp_path / "uc" / "pkg" / "t1"
+        task.mkdir(parents=True)
+        (task / "config.yaml").write_text(body, encoding="utf-8")
+        return tmp_path
+
+    CONFIG_USING_MODE = (
+        'MODEL: "etl"\n'
+        'VERSION: "1.0.0"\n'
+        "CONFIG:\n"
+        "  inputs:\n"
+        '    src: {format: s3, path: "/in/{{ mode }}"}\n'
+        "  transform: {}\n"
+        "  outputs:\n"
+        '    dst: {format: s3, path: "/out", mode: append}\n'
+    )
+
+    def test_a_config_that_runs_also_validates(self, tmp_path):
+        d = self._write(tmp_path, self.CONFIG_USING_MODE)
+        result = runner.invoke(app, ["validate", "-d", str(d), "-u", "uc", "-p", "pkg", "--all"])
+        assert result.exit_code == 0, result.output
+
+    def test_dash_m_is_understood_like_run(self, tmp_path):
+        d = self._write(
+            tmp_path,
+            self.CONFIG_USING_MODE.replace(
+                "CONFIG:",
+                "ENGINE:\n  profiles:\n    PROD:\n      spark_conf: {}\nCONFIG:",
+            ),
+        )
+        result = runner.invoke(
+            app, ["validate", "-d", str(d), "-u", "uc", "-p", "pkg", "--all", "-m", "PROD"]
+        )
+        assert result.exit_code == 0, result.output
+
+    def test_conflicting_profile_and_mode_is_a_clear_error(self, tmp_path):
+        d = self._write(tmp_path, self.CONFIG_USING_MODE)
+        result = runner.invoke(
+            app,
+            [
+                "validate",
+                "-d",
+                str(d),
+                "-u",
+                "uc",
+                "-p",
+                "pkg",
+                "--all",
+                "--profile",
+                "a",
+                "-m",
+                "b",
+            ],
+        )
+        assert result.exit_code == 1
+        assert "disagree" in result.output
