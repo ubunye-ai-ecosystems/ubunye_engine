@@ -50,6 +50,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   work ("no inheritance needed"), crashed with `AttributeError`. Declaring is opt-in,
   not a toll.
 
+### Removed
+
+- **Telemetry that could only read zero.** The `ubunye_rows_total` and
+  `ubunye_bytes_total` Prometheus counters, and the `rows=` parameter on
+  `EventLogger.step_end`, were dead on arrival: nothing in the engine ever fed them.
+  A metric that always reads zero is worse than no metric, because somebody builds a
+  dashboard on it and trusts the zero. If row metrics return they will arrive fed by
+  the engine (the lineage fingerprint now computes row counts in one pass, so the
+  plumbing finally exists).
+
+- **`ubunye/compat/analytics_engine_shim.py`** — a placeholder docstring with a folder
+  around it, imported by nothing.
+
+- Stale build artifacts (`build/`, an 0.2.0 wheel in `dist/`), `mlflow.db` and a log
+  file were removed from tracking and ignored.
+
+### Changed
+
+- The four control-plane Protocols (`AuthBackend`, `DeployAdapter`, `LineageBackend`,
+  `RegistryBackend`) are enforced by a conformance test. They were referenced only by
+  docstrings before: a contract nobody had signed. The test checks every shipped
+  implementation member by member, structurally, with no inheritance added.
+
+- `from ubunye import *` works now. `__all__` advertised five submodule names that the
+  module never imported, so the star import raised `NameError` on the package's own
+  public surface.
+
 ### Breaking
 
 - **The core no longer knows about any connector. It asks.**
