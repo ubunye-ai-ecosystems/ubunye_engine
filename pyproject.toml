@@ -111,6 +111,15 @@ no_implicit_optional = true
 # annotated must be correct, and CI holds the line so it can only improve.
 check_untyped_defs = false
 
+[[tool.mypy.overrides]]
+# The databricks-sdk is an optional extra. With it installed, its stubs make one
+# `type: ignore[arg-type]` necessary; without it, the same ignore is "unused" and
+# warn_unused_ignores fails the build. An ignore whose validity depends on which
+# optional packages happen to be installed cannot satisfy both environments, so this
+# module opts out of the unused-ignore check only.
+module = "ubunye.deploy.databricks.*"
+warn_unused_ignores = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
