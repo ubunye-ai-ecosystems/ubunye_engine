@@ -45,6 +45,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **Breaking:** `FormatType` is deleted. `IOConfig.format` is a plain `str`.
 
+- **The engine no longer changes its behaviour based on where it is running.**
+
+  Two places sniffed the host and acted on the guess:
+
+  * `writers/unity.py::_is_databricks()` string-matched the Spark conf for `"databricks"`
+    and used the result to decide whether to run `OPTIMIZE` and `VACUUM`. It was wrong
+    twice: a connector should ask the **target** what it can do rather than detect its
+    host, and the guess was factually wrong — `OPTIMIZE`, `ZORDER` and `VACUUM` are
+    **Delta** features, and open-source Delta has had them for years. Anyone running Delta
+    off Databricks silently did not get the maintenance they had explicitly asked for in
+    their config, and nothing said so. The statements are now **attempted**, and a target
+    that cannot run them is **reported**, not predicted in advance and not swallowed.
+
+  * `_internal/auto_detect.py` picked the model registry backend from
+    `DATABRICKS_RUNTIME_VERSION` **with no way to override it**. The same pipeline,
+    unchanged, registered models to MLflow on Databricks and to a directory anywhere else
+    — and said nothing. `UBUNYE_REGISTRY_BACKEND` now wins, the host is only a fallback,
+    and it logs which it chose.
+
 - **Inputs are validated against the READER, outputs against the WRITER.**
 
   One shared rule used to validate both roles, so it could not tell them apart: `unity`
