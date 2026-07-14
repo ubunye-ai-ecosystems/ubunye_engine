@@ -68,6 +68,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The CLI stops teaching two systems.** `run` gained `--all` (validate had it for
+  years, so the two commands taught different habits for the same job). `validate`
+  accepts `-m/--mode` as an alias for `--profile`, and now injects the same template
+  variables as `run` — a config using `{{ mode }}` used to run perfectly and fail
+  validation with an undefined variable, which is exactly backwards for a command
+  whose job is to catch problems before the run. Closes #30. The `ubunye init` and
+  Databricks notebook scaffolds no longer print `df.count()` per output (a full scan
+  per output, teaching the habit the lineage rework just removed); they print the
+  column list, which is free.
+
 - The four control-plane Protocols (`AuthBackend`, `DeployAdapter`, `LineageBackend`,
   `RegistryBackend`) are enforced by a conformance test. They were referenced only by
   docstrings before: a contract nobody had signed. The test checks every shipped

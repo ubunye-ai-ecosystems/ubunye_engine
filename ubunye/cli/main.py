@@ -93,6 +93,13 @@ def validate(
     profile: Optional[str] = typer.Option(
         None, "--profile", help="Profile to validate against (e.g. dev, prod)."
     ),
+    mode: Optional[str] = typer.Option(
+        None,
+        "-m",
+        "--mode",
+        help="Alias for --profile, matching `run`. The two commands used different "
+        "words for the same idea, which made them feel like different systems.",
+    ),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
 ):
     """Validate config file(s) without executing the pipeline.
@@ -133,7 +140,21 @@ def validate(
         typer.secho("[ERROR] Specify -t/--task-list or use --all", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
-    variables = {"dt": data_timestamp}
+    # -m and --profile are one idea. Whichever was given wins; both is a conflict.
+    if mode and profile and mode != profile:
+        typer.secho(
+            f"[ERROR] --profile {profile} and -m {mode} disagree. Pass one.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    profile = profile or mode
+
+    # Inject the SAME template variables `run` injects. validate used to pass only
+    # dt, so a config using {{ mode }} or {{ dtf }} ran fine and failed validation —
+    # the one command whose whole job is to catch problems BEFORE the run invented
+    # one the run did not have.
+    variables = {"dt": data_timestamp, "dtf": data_timestamp, "mode": profile or "DEV"}
     failed = 0
 
     for task in tasks_to_check:
@@ -195,7 +216,13 @@ def run(
         ..., "-p", "--package", help="Selects a package from the specified use case."
     ),
     task_list: List[str] = typer.Option(
-        ..., "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."
+        None, "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."
+    ),
+    all_tasks: bool = typer.Option(
+        False,
+        "--all",
+        help="Run every task in the package. `validate` had this for years and `run` "
+        "did not, so the two commands taught different habits for the same job.",
     ),
     data_timestamp: Optional[str] = typer.Option(
         None, "-dt", "--data-timestamp", help="Provides a data timestamp in the specified format."
@@ -218,6 +245,33 @@ def run(
 ):
     """Run one or more tasks within a package sequentially."""
     variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
+
+    # Resolve which tasks to run, the same way `validate` resolves them. The two
+    # commands answered the same question differently for years: validate had
+    # --all, run made you repeat -t per task.
+    tasks_to_run: List[str] = list(task_list or [])
+    if all_tasks:
+        package_dir = usecase_dir / usecase / package
+        if not package_dir.exists():
+            typer.secho(
+                f"[ERROR] Package directory not found: {package_dir}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        tasks_to_run = sorted(
+            entry.name
+            for entry in package_dir.iterdir()
+            if entry.is_dir() and (entry / "config.yaml").exists()
+        )
+    if not tasks_to_run:
+        typer.secho(
+            "[ERROR] No tasks selected. Pass -t <task> (repeatable) or --all.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    task_list = tasks_to_run
 
     # Load and validate all configs before starting Spark — fails fast on bad configs
     configs = {}

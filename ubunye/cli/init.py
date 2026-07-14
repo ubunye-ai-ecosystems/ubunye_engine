@@ -72,7 +72,7 @@ def _build_dev_notebook(task: str, usecase: str, package: str) -> dict:
             "for name, icfg in cfg.CONFIG.inputs.items():\n"
             "    reader_cls = reg.readers[icfg.format]\n"
             '    sources[name] = reader_cls().read(icfg.model_dump(mode="json"), backend)\n'
-            '    print(f"{name}: {sources[name].count()} rows")'
+            '    print(f"{name}: columns={sources[name].columns}")  # cheap: no scan'
         ),
         _md_cell("## Inspect Sources"),
         _code_cell(
@@ -97,7 +97,7 @@ def _build_dev_notebook(task: str, usecase: str, package: str) -> dict:
         _md_cell("## Inspect Outputs"),
         _code_cell(
             "for name, df in outputs.items():\n"
-            '    print(f"--- {name}: {df.count()} rows ---")\n'
+            '    print(f"--- {name}: {df.columns} ---")\n'
             "    display(df.limit(20))"
         ),
         _md_cell(
