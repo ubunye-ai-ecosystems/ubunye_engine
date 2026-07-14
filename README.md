@@ -23,7 +23,18 @@ A **data pipeline** is a program that moves data from one place to another — a
 
 **Ubunye Engine writes that plumbing for you.** You describe the pipeline in a short YAML file and put your transformation in a normal Python class. Ubunye takes care of connections, the compute engine (Apache Spark), and the read/write loop.
 
-Same pipeline runs on your laptop today and on a production cluster tomorrow — no code changes.
+Same pipeline runs on your laptop today and on a production cluster tomorrow, with no code changes. That sentence is tested, not hoped: a build job runs one pipeline on six environments and fails if the outputs differ by a single byte.
+
+---
+
+## What the engine gives you today
+
+- **Proven portability.** The same task runs on a laptop, in Docker, on Kubernetes, against object storage, through the cloud submit path, and on Databricks. One output hash across all of them, checked on every change.
+- **Models saved anywhere.** The model registry writes to a local folder, a Databricks volume, S3 or GCS, chosen purely by the path. New storage kinds are one class and one entry point.
+- **A truly open plugin system.** Connectors, storage backends and registries are all added from the outside, with no engine edits and no inheritance required. A test proves it with a connector the engine has never seen.
+- **Types that ship.** The package carries its type information, and a type checker guards every merge.
+- **Errors that help.** Failures say what went wrong, show the context, and suggest the fix.
+- **Nothing here is decorative.** Eleven worked examples have been run for real. Claims that could not be executed were removed from these docs rather than left to mislead.
 
 ---
 
