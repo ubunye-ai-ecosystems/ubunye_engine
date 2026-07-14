@@ -1616,6 +1616,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#050-unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.5.0] — unreleased
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.5.0] — unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#040-2026-07-13" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1628,7 +1656,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#breaking" class="md-nav__link">
+  <a href="#breaking_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Breaking
@@ -1678,7 +1706,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#breaking_1" class="md-nav__link">
+  <a href="#breaking_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Breaking
@@ -2039,6 +2067,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#050-unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.5.0] — unreleased
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.5.0] — unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#040-2026-07-13" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2051,7 +2107,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#breaking" class="md-nav__link">
+  <a href="#breaking_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Breaking
@@ -2101,7 +2157,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#breaking_1" class="md-nav__link">
+  <a href="#breaking_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Breaking
@@ -2457,8 +2513,74 @@
 <p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>
 and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <hr />
-<h2 id="040-2026-07-13">[0.4.0] — 2026-07-13<a class="headerlink" href="#040-2026-07-13" title="Permanent link">&para;</a></h2>
+<h2 id="050-unreleased">[0.5.0] — unreleased<a class="headerlink" href="#050-unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="breaking">Breaking<a class="headerlink" href="#breaking" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>The core no longer knows about any connector. It asks.</strong></li>
+</ul>
+<p>The engine advertised "adding a connector = write the class, register the entry point".
+  That was not true. Three places in the core held knowledge of specific implementations:</p>
+<ul>
+<li><code>config/schema.py</code> carried an <code>if/elif</code> chain naming <code>hive</code>, <code>jdbc</code>, <code>s3</code>, <code>binary</code>,
+    <code>delta</code>, <code>unity</code> and <code>rest_api</code>, spelling out what each one required.</li>
+<li><code>core/write_modes.py</code> held <code>_MERGE_FORMATS = {"delta"}</code> and decided, on the
+    connector's behalf, which formats were allowed to <code>MERGE</code>.</li>
+<li><code>FormatType</code> was a closed enum, so a correctly-registered plugin was rejected
+    <strong>before the registry was ever consulted</strong>.</li>
+</ul>
+<p>Adding a connector meant editing the engine in three places. That is not open/closed,
+  and it is not what the entry-point system is for.</p>
+<p>The plugin contract now carries it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Connector</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="nd">@classmethod</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span> <span class="o">...</span>   <span class="c1"># what I need</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">Writer</span><span class="p">(</span><span class="n">Connector</span><span class="p">):</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">SUPPORTED_MODES</span><span class="p">:</span> <span class="nb">frozenset</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">&quot;append&quot;</span><span class="p">,</span> <span class="s2">&quot;overwrite&quot;</span><span class="p">})</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">SUPPORTS_MERGE</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>                      <span class="c1"># what I can do</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">MERGE_FILE_FORMATS</span><span class="p">:</span> <span class="nb">frozenset</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">&quot;delta&quot;</span><span class="p">})</span>
+</code></pre></div>
+<p>An Iceberg or Hudi connector can now declare that it supports <code>MERGE</code>, and be believed.
+  <code>tests/unit/config/test_third_party_connector.py</code> registers a connector the engine has
+  never heard of and asserts it works with <strong>zero engine edits</strong>.</p>
+<p><strong>Breaking:</strong> <code>FormatType</code> is deleted. <code>IOConfig.format</code> is a plain <code>str</code>.</p>
+<ul>
+<li><strong>The engine no longer changes its behaviour based on where it is running.</strong></li>
+</ul>
+<p>Two places sniffed the host and acted on the guess:</p>
+<ul>
+<li>
+<p><code>writers/unity.py::_is_databricks()</code> string-matched the Spark conf for <code>"databricks"</code>
+    and used the result to decide whether to run <code>OPTIMIZE</code> and <code>VACUUM</code>. It was wrong
+    twice: a connector should ask the <strong>target</strong> what it can do rather than detect its
+    host, and the guess was factually wrong — <code>OPTIMIZE</code>, <code>ZORDER</code> and <code>VACUUM</code> are
+    <strong>Delta</strong> features, and open-source Delta has had them for years. Anyone running Delta
+    off Databricks silently did not get the maintenance they had explicitly asked for in
+    their config, and nothing said so. The statements are now <strong>attempted</strong>, and a target
+    that cannot run them is <strong>reported</strong>, not predicted in advance and not swallowed.</p>
+</li>
+<li>
+<p><code>_internal/auto_detect.py</code> picked the model registry backend from
+    <code>DATABRICKS_RUNTIME_VERSION</code> <strong>with no way to override it</strong>. The same pipeline,
+    unchanged, registered models to MLflow on Databricks and to a directory anywhere else
+    — and said nothing. <code>UBUNYE_REGISTRY_BACKEND</code> now wins, the host is only a fallback,
+    and it logs which it chose.</p>
+</li>
+<li>
+<p><strong>Inputs are validated against the READER, outputs against the WRITER.</strong></p>
+</li>
+</ul>
+<p>One shared rule used to validate both roles, so it could not tell them apart: <code>unity</code>
+  as a <em>source</em> may be given <code>sql</code>, but as a <em>sink</em> it must have a <code>table</code> — writing to a
+  <code>SELECT</code> statement is meaningless. The shared rule had to accept <code>sql</code> everywhere, so
+  it silently allowed it. Each side is now checked against the plugin that will actually
+  handle it.</p>
+<p><strong>Breaking:</strong> <code>IOConfig(format="s3")</code> no longer raises on its own. It cannot: an
+  <code>IOConfig</code> does not know whether it is an input or an output. Validation happens at
+  <code>TaskConfig</code>, where the role exists.</p>
+<hr />
+<h2 id="040-2026-07-13">[0.4.0] — 2026-07-13<a class="headerlink" href="#040-2026-07-13" title="Permanent link">&para;</a></h2>
+<h3 id="breaking_1">Breaking<a class="headerlink" href="#breaking_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>ENGINE.spark_conf</code> is now applied to a session the engine did not create — and
   static keys raise instead of being ignored.</strong></li>
@@ -2498,7 +2620,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
   GCP Dataproc Serverless do not give you a shell: they hand a <strong>Python file</strong> to
   <code>spark-submit</code>. An engine reachable only through its CLI cannot run on either of them
   — and you find that out after wiring up IAM, a bucket and a billing account.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>spark-submit<span class="w"> </span>--py-files<span class="w"> </span>deps.zip<span class="w"> </span>-m<span class="w"> </span>ubunye<span class="w">       </span>--task-dir<span class="w"> </span>s3a://bucket/code/pipelines/sales/etl/daily<span class="w"> </span>--mode<span class="w"> </span>PROD
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>spark-submit<span class="w"> </span>--py-files<span class="w"> </span>deps.zip<span class="w"> </span>-m<span class="w"> </span>ubunye<span class="w">       </span>--task-dir<span class="w"> </span>s3a://bucket/code/pipelines/sales/etl/daily<span class="w"> </span>--mode<span class="w"> </span>PROD
 </code></pre></div>
 <p>It deliberately does not create a SparkSession: <code>spark-submit</code> already made one, with
   the platform's master and executors, and the engine attaches to it.</p>
@@ -2557,7 +2679,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 </ul>
 <hr />
 <h2 id="030-2026-07-12">[0.3.0] — 2026-07-12<a class="headerlink" href="#030-2026-07-12" title="Permanent link">&para;</a></h2>
-<h3 id="breaking_1">Breaking<a class="headerlink" href="#breaking_1" title="Permanent link">&para;</a></h3>
+<h3 id="breaking_2">Breaking<a class="headerlink" href="#breaking_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>The <code>s3</code> writer now defaults to <code>mode: append</code>, not <code>overwrite</code>.</strong> Every other
   writer already defaulted to <code>append</code>; the same config key meant "insert" on one
@@ -3303,7 +3425,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 13, 2026 19:27:27 UTC">July 13, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 14, 2026 09:55:18 UTC">July 14, 2026</span>
   </span>
 
     
