@@ -36,48 +36,57 @@ theme:
   favicon: assets/favicon.ico
 
 nav:
+  # Grouped by what the reader is trying to DO, in the order they will do it:
+  # learn it, write a pipeline, see it working, ship it, look things up.
   - Home: index.md
   - Getting Started:
       - Installation: getting_started/install.md
       - Quickstart: getting_started/quickstart.md
       - Project Structure: getting_started/structure.md
-  - Config Reference:
-      - Overview: config/overview.md
-      - Inputs & Outputs: config/io.md
-      - Engine & Profiles: config/engine.md
+  - Writing Pipelines:
+      - Config Overview: config/overview.md
+      - Inputs and Outputs: config/io.md
+      - Engine and Profiles: config/engine.md
       - Transform: config/transform.md
-      - Orchestration: config/orchestration.md
       - Jinja Templating: config/jinja.md
+      - Orchestration: config/orchestration.md
   - Connectors:
       - Overview: connectors/overview.md
       - Hive: connectors/hive.md
       - JDBC: connectors/jdbc.md
       - Unity Catalog: connectors/unity.md
-      - S3 / Delta: connectors/s3.md
+      - S3 and Delta: connectors/s3.md
       - REST API: connectors/rest_api.md
-      - Writing a Plugin: connectors/plugin_guide.md
-  - Examples: examples/index.md
-  - Patterns:
+      - Writing Your Own: connectors/plugin_guide.md
+  - Machine Learning:
+      - Model Contract: ml/model_contract.md
+      - Model Registry: ml/registry.md
+  - Examples:
+      - Start Here: examples/index.md
+      - On Databricks: examples/databricks.md
+      - On Your Laptop: examples/local.md
+      - In Docker and Kubernetes: examples/containers.md
+      - Object Storage and Clouds: examples/cloud.md
+  - Deployment:
+      - Overview: deployment.md
+      - Databricks: deployment/databricks.md
+      - Databricks Authentication: databricks-auth.md
+  - How-to Guides:
       - Notebook Prototyping: patterns/notebook.md
       - RAG Document Pipeline: patterns/rag.md
       - Feature Store: patterns/features.md
       - Drift Detection: patterns/drift.md
       - REST API Ingestion: patterns/rest_api.md
       - Observability Hooks: patterns/hooks.md
-  - ML:
-      - Model Contract: ml/model_contract.md
-      - Model Registry: ml/registry.md
-  - Interfaces: interfaces.md
-  - CLI Reference: cli.md
-  - API Reference: api.md
-  - Deployment:
-      - Overview: deployment.md
-      - Databricks: deployment/databricks.md
-      - Databricks Authentication: databricks-auth.md
-  - Developer Guide: dev_guide.md
-  - Contributing: contributing.md
-  - Error Reference: errors.md
-  - Changelog: changelog.md
+  - Reference:
+      - CLI: cli.md
+      - Python API: api.md
+      - Interfaces: interfaces.md
+      - Errors: errors.md
+      - Changelog: changelog.md
+  - Project:
+      - Developer Guide: dev_guide.md
+      - Contributing: contributing.md
 
 markdown_extensions:
   - admonition
