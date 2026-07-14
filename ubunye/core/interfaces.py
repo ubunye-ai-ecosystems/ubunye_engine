@@ -7,7 +7,10 @@ transforms, and user-defined tasks.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, FrozenSet, List
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List
+
+if TYPE_CHECKING:
+    from ubunye.core.ports import DataFramePort
 
 
 class Backend(ABC):
@@ -61,8 +64,14 @@ class Reader(Connector):
     """Base interface for input readers."""
 
     @abstractmethod
-    def read(self, cfg: dict, backend: Backend) -> Any:
-        """Read input into a DataFrame-like object."""
+    def read(self, cfg: Dict[str, Any], backend: Backend) -> "DataFramePort":
+        """Read input into a tabular object satisfying :class:`DataFramePort`.
+
+        The return type was ``Any`` for years — the single most important object
+        in the framework, untyped in its own contract. ``DataFramePort`` is
+        structural, so a Spark DataFrame already satisfies it and no plugin has
+        to change anything.
+        """
 
 
 class Writer(Connector):
@@ -89,7 +98,7 @@ class Writer(Connector):
     MERGE_FILE_FORMATS: FrozenSet[str] = frozenset()
 
     @abstractmethod
-    def write(self, df: Any, cfg: dict, backend: Backend) -> Any:
+    def write(self, df: "DataFramePort", cfg: Dict[str, Any], backend: Backend) -> Any:
         """Write a DataFrame-like object to a destination.
 
         Returns ``None`` for an ordinary write. A connector that starts something

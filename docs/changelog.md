@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The annotations are a public API now.** The package ships a `py.typed` marker, so
+  type checkers in consuming projects finally see the engine's types (PEP 561 says they
+  must ignore packages without it, so until now every annotation was invisible to
+  users). mypy runs in CI and is green across all 100 source files, and it earned its
+  keep immediately: it caught a Protocol that under-described its own usage, a
+  shadowed variable in the REST reader's pagination, unsound stubs in the S3 lineage
+  store, and thirteen stale `type: ignore` comments. `Reader.read` now returns
+  `DataFramePort` instead of `Any`, so the most important object in the framework is
+  typed in its own contract.
+
 - **`DataFramePort` — the data plane finally gets its port.** Specified in the founding
   design notes and never shipped. The model layer always had its port (`UbunyeModel`:
   the engine never imports sklearn or torch); the data layer never did, so every reader

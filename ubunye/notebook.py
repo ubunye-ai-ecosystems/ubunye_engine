@@ -44,8 +44,8 @@ logger = logging.getLogger(__name__)
 def _get_dbutils() -> Any:
     """Return ``dbutils`` if running on Databricks, else ``None``."""
     try:
-        from pyspark.dbutils import DBUtils  # type: ignore
-        from pyspark.sql import SparkSession  # type: ignore
+        from pyspark.dbutils import DBUtils
+        from pyspark.sql import SparkSession
 
         spark = SparkSession.getActiveSession()
         if spark:

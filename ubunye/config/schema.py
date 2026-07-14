@@ -115,7 +115,7 @@ def _connectors(group: str) -> Dict[str, Any]:
 
     found: Dict[str, Any] = {}
     try:
-        eps = md.entry_points()
+        eps: Any = md.entry_points()
         group_eps = eps.get(group, []) if hasattr(eps, "get") else eps.select(group=group)
         for ep in group_eps:
             try:

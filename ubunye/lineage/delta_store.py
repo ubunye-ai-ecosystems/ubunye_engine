@@ -48,7 +48,7 @@ def _record_to_dict(record: LineageRecord) -> Dict:
         "error": record.error,
     }
     if record.metadata:
-        d["metadata"] = dict(record.metadata)
+        d["metadata"] = dict(record.metadata)  # type: ignore[assignment]  # mixed-type record dict
     return d
 
 

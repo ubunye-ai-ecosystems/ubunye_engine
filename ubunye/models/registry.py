@@ -361,16 +361,18 @@ class ModelRegistry:
         """
         record = self._load_record(use_case, model_name)
 
+        mv: ModelVersion
         if version is not None:
             mv = self._get_version_or_raise(record, version)
         elif stage is not None:
-            mv = record.get_active_version(stage)
-            if mv is None:
+            active = record.get_active_version(stage)
+            if active is None:
                 raise VersionNotFoundError(
                     f"No version of '{model_name}' is currently in stage '{stage.value}'.",
                     context={"Model": model_name, "Stage": stage.value},
                     hint="Register and promote a model version to this stage first.",
                 )
+            mv = active
         else:
             raise VersionNotFoundError(
                 "Specify either 'version' or 'stage'.",
@@ -456,7 +458,7 @@ class ModelRegistry:
     def _save_record(self, record: ModelRecord) -> None:
         path = self._registry_path(record.use_case, record.model_name)
         path.parent.mkdir(parents=True, exist_ok=True)
-        data = {
+        data: Dict[str, Any] = {
             "model_name": record.model_name,
             "use_case": record.use_case,
             "versions": {k: asdict(v) for k, v in record.versions.items()},

@@ -403,20 +403,23 @@ class S3LineageStore(LineageStore):
     def __init__(self, base_path: str) -> None:
         self.base_path = base_path
 
-    def _not_impl(self) -> None:
-        raise NotImplementedError(
+    def _error(self) -> NotImplementedError:
+        return NotImplementedError(
             "S3LineageStore is not yet implemented. "
             "Use FileSystemLineageStore or implement S3 storage using boto3."
         )
+
+    def _not_impl(self) -> None:
+        raise self._error()
 
     def save(self, ctx: RunContext) -> None:
         self._not_impl()
 
     def load(self, task_path: str, run_id: str) -> RunContext:
-        self._not_impl()
+        raise self._error()
 
     def list_runs(self, task_path: str, n: int = 20) -> List[RunContext]:
-        self._not_impl()
+        raise self._error()
 
     def search(
         self,
@@ -424,4 +427,4 @@ class S3LineageStore(LineageStore):
         status: Optional[str] = None,
         since: Optional[str] = None,
     ) -> List[RunContext]:
-        self._not_impl()
+        raise self._error()

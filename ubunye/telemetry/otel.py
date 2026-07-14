@@ -88,7 +88,8 @@ def span(name: str, attrs: Optional[Dict[str, object]] = None):
         if attrs:
             for k, v in attrs.items():
                 try:
-                    current_span.set_attribute(k, v)  # attributes must be simple types
+                    value = v if isinstance(v, (str, bool, int, float)) else str(v)
+                    current_span.set_attribute(k, value)
                 except Exception:
                     pass
         token = trace.use_span(current_span, end_on_exit=True)
@@ -101,6 +102,6 @@ def span(name: str, attrs: Optional[Dict[str, object]] = None):
                 current_span.end()
         finally:
             try:
-                token.__exit__(None, None, None)  # type: ignore
+                token.__exit__(None, None, None)
             except Exception:
                 pass

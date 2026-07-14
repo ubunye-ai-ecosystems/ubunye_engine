@@ -45,7 +45,7 @@ class DatabricksBackend(Backend):
     def start(self) -> None:
         """Attach to the active SparkSession, and apply ``ENGINE.spark_conf`` to it."""
         if self._spark is None:
-            from pyspark.sql import SparkSession  # type: ignore
+            from pyspark.sql import SparkSession
 
             active = SparkSession.getActiveSession()
             if active is None:
@@ -138,8 +138,8 @@ class DatabricksBackend(Backend):
     @property
     def app_name(self) -> str:
         if self._spark is not None:
-            return self._spark.sparkContext.appName
-        return "databricks"
+            return str(self._spark.sparkContext.appName or "ambient")
+        return "ambient"
 
     @property
     def conf_effective(self) -> Dict[str, str]:
