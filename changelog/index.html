@@ -2616,6 +2616,19 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
 <li>
+<p><strong>The model registry writes to object storage now.</strong> <code>ModelRegistry</code> was built
+  directly on <code>pathlib</code>, so models could only be saved to a normal disk — the one
+  thing AWS and GCP serverless do not offer. Storage is a port now: the scheme of the
+  store path picks the backend. A plain path or <code>file://</code> stays local and behaves
+  exactly as before. <code>s3://</code>, <code>gs://</code> and friends go through fsspec
+  (<code>pip install 'ubunye-engine[objectstore]'</code> plus your cloud's filesystem, e.g.
+  <code>s3fs</code>). Any other scheme goes to whatever store someone registers under the new
+  <code>ubunye.artifact_stores</code> entry-point group — one class, one entry point, no engine
+  edits, no inheritance, like every other connector. Models still write real files
+  (a Keras save needs an actual disk), so remote stores stage locally and upload,
+  and <code>get_model</code> downloads before load. Closes #28.</p>
+</li>
+<li>
 <p><strong>The annotations are a public API now.</strong> The package ships a <code>py.typed</code> marker, so
   type checkers in consuming projects finally see the engine's types (PEP 561 says they
   must ignore packages without it, so until now every annotation was invisible to
@@ -3603,7 +3616,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 14, 2026 12:23:27 UTC">July 14, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 14, 2026 12:55:37 UTC">July 14, 2026</span>
   </span>
 
     
