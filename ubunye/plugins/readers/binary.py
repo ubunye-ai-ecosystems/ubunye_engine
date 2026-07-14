@@ -30,6 +30,10 @@ FORMAT = "binaryFile"
 class BinaryReader(Reader):
     """Read raw files into a DataFrame, one row per file."""
 
+    @classmethod
+    def validate_config(cls, cfg):
+        return [] if cfg.get("path") else ["format 'binary' requires 'path'"]
+
     def read(self, cfg: dict, backend) -> Any:
         path = cfg.get("path")
         if not path:

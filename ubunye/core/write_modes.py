@@ -37,8 +37,13 @@ ALL_MODES = NATIVE_SAVE_MODES | LAKEHOUSE_MODES
 # Spellings Spark itself tolerates, normalised to the canonical name.
 _ALIASES = {"error": "errorifexists", "errorifexist": "errorifexists"}
 
-# Formats that can do a MERGE / replaceWhere.
-_MERGE_FORMATS = frozenset({"delta"})
+# The DEFAULT table formats that can do a MERGE / replaceWhere.
+#
+# This is a fallback, not a verdict. It used to be the only authority in the engine, so
+# a connector that could genuinely upsert -- Iceberg, Hudi -- could not say so without
+# someone patching the core. Writers now pass their own `merge_formats=`, declared on
+# the class (Writer.MERGE_FILE_FORMATS), and the core simply believes them.
+_DEFAULT_MERGE_FORMATS = frozenset({"delta"})
 
 
 @dataclass(frozen=True)
@@ -91,6 +96,7 @@ def resolve(
     supported: Iterable[str],
     default: str,
     file_format: Optional[str] = None,
+    merge_formats: Optional[Iterable[str]] = None,
 ) -> ResolvedWriteMode:
     """Validate ``cfg['mode']`` against what this connector can actually do.
 
@@ -142,20 +148,30 @@ def resolve(
             hint=f"The '{connector}' connector supports: {', '.join(sorted(supported_set))}.",
         )
 
+    mergeable = frozenset(merge_formats) if merge_formats is not None else _DEFAULT_MERGE_FORMATS
+
     if mode == "merge":
-        return _resolve_merge(cfg, connector=connector, file_format=file_format)
+        return _resolve_merge(
+            cfg, connector=connector, file_format=file_format, mergeable=mergeable
+        )
 
     if mode == "overwrite_partitions":
-        return _resolve_overwrite_partitions(cfg, connector=connector, file_format=file_format)
+        return _resolve_overwrite_partitions(
+            cfg, connector=connector, file_format=file_format, mergeable=mergeable
+        )
 
     return ResolvedWriteMode(mode=mode, save_mode=mode)
 
 
 def _resolve_merge(
-    cfg: Dict[str, Any], *, connector: str, file_format: Optional[str]
+    cfg: Dict[str, Any],
+    *,
+    connector: str,
+    file_format: Optional[str],
+    mergeable: frozenset = _DEFAULT_MERGE_FORMATS,
 ) -> ResolvedWriteMode:
     fmt = (file_format or "").lower()
-    if fmt and fmt not in _MERGE_FORMATS:
+    if fmt and fmt not in mergeable:
         raise SinkWriteError(
             f"Write mode 'merge' requires a Delta target, got file_format '{fmt}'.",
             context={"Format": connector, "file_format": fmt},
@@ -175,13 +191,17 @@ def _resolve_merge(
 
 
 def _resolve_overwrite_partitions(
-    cfg: Dict[str, Any], *, connector: str, file_format: Optional[str]
+    cfg: Dict[str, Any],
+    *,
+    connector: str,
+    file_format: Optional[str],
+    mergeable: frozenset = _DEFAULT_MERGE_FORMATS,
 ) -> ResolvedWriteMode:
     fmt = (file_format or "").lower()
     replace_where = cfg.get("replace_where") or (cfg.get("options") or {}).get("replaceWhere")
 
     if replace_where:
-        if fmt and fmt not in _MERGE_FORMATS:
+        if fmt and fmt not in mergeable:
             raise SinkWriteError(
                 f"'replace_where' requires a Delta target, got file_format '{fmt}'.",
                 context={"Format": connector, "file_format": fmt},

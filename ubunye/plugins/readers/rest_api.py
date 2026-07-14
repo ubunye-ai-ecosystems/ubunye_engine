@@ -426,6 +426,10 @@ class RestApiReader(Reader):
     api_key, basic), rate limiting, and retry with exponential backoff.
     """
 
+    @classmethod
+    def validate_config(cls, cfg):
+        return [] if cfg.get("url") else ["format 'rest_api' requires 'url'"]
+
     def read(self, cfg: Dict[str, Any], backend) -> Any:
         """Fetch all pages from the API and return a Spark DataFrame.
 

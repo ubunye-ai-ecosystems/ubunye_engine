@@ -182,6 +182,13 @@ class RestApiWriter(Writer):
     failure counts per batch.
     """
 
+    SUPPORTS_MERGE = False
+    MERGE_FILE_FORMATS = frozenset()
+
+    @classmethod
+    def validate_config(cls, cfg):
+        return [] if cfg.get("url") else ["format 'rest_api' requires 'url'"]
+
     def write(self, df: Any, cfg: Dict[str, Any], _backend) -> None:
         """POST DataFrame rows to a REST endpoint in batches.
 

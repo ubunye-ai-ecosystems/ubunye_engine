@@ -4,10 +4,10 @@ import pytest
 from pydantic import ValidationError
 
 from ubunye.config.schema import (
-    FormatType,
     IOConfig,
     JobType,
     OrchestrationType,
+    TaskConfig,
     TransformConfig,
     UbunyeConfig,
     WriteMode,
@@ -35,6 +35,20 @@ def _make_config(**overrides) -> dict:
 # ---------------------------------------------------------------------------
 # UbunyeConfig — top-level
 # ---------------------------------------------------------------------------
+
+
+def _task(inputs=None, outputs=None):
+    """Validate through a TASK, because requirements are role-dependent.
+
+    An IOConfig alone cannot know what it needs: `unity` as a source may be given `sql`,
+    and as a sink must have a `table`. The engine asks the READER for inputs and the
+    WRITER for outputs, so the check only exists where the role does.
+    """
+    return TaskConfig(
+        inputs=inputs or {"src": {"format": "s3", "path": "/tmp/in"}},
+        transform={},
+        outputs=outputs or {"dst": {"format": "s3", "path": "/tmp/out"}},
+    )
 
 
 class TestUbunyeConfig:
@@ -189,7 +203,7 @@ class TestUbunyeConfig:
 class TestIOConfig:
     def test_hive_with_db_and_table(self):
         io = IOConfig(format="hive", db_name="fraud_db", tbl_name="claims")
-        assert io.format == FormatType.HIVE
+        assert io.format == "hive"
 
     def test_hive_with_sql(self):
         io = IOConfig(format="hive", sql="SELECT * FROM fraud_db.claims")
@@ -197,11 +211,11 @@ class TestIOConfig:
 
     def test_hive_without_db_or_sql_raises(self):
         with pytest.raises(ValidationError, match="hive"):
-            IOConfig(format="hive")
+            _task(inputs={"src": dict(format="hive")})
 
     def test_hive_db_without_tbl_raises(self):
         with pytest.raises(ValidationError, match="hive"):
-            IOConfig(format="hive", db_name="db")
+            _task(inputs={"src": dict(format="hive", db_name="db")})
 
     def test_jdbc_valid(self):
         io = IOConfig(
@@ -211,59 +225,59 @@ class TestIOConfig:
             user="{{ env.DB_USER }}",
             password="{{ env.DB_PASS }}",
         )
-        assert io.format == FormatType.JDBC
+        assert io.format == "jdbc"
 
     def test_jdbc_missing_url_raises(self):
         with pytest.raises(ValidationError, match="jdbc"):
-            IOConfig(format="jdbc", table="claims")
+            _task(inputs={"src": dict(format="jdbc", table="claims")})
 
     def test_jdbc_missing_table_raises(self):
         with pytest.raises(ValidationError, match="jdbc"):
-            IOConfig(format="jdbc", url="jdbc:postgresql://db:5432/ins")
+            _task(inputs={"src": dict(format="jdbc", url="jdbc:postgresql://db:5432/ins")})
 
     def test_s3_valid(self):
         io = IOConfig(format="s3", path="s3a://bucket/data/")
-        assert io.format == FormatType.S3
+        assert io.format == "s3"
 
     def test_s3_missing_path_raises(self):
         with pytest.raises(ValidationError, match="s3"):
-            IOConfig(format="s3")
+            _task(inputs={"src": dict(format="s3")})
 
     def test_binary_missing_path_raises(self):
         with pytest.raises(ValidationError, match="binary"):
-            IOConfig(format="binary")
+            _task(inputs={"src": dict(format="binary")})
 
     def test_delta_with_path(self):
         io = IOConfig(format="delta", path="s3a://bucket/delta_table")
-        assert io.format == FormatType.DELTA
+        assert io.format == "delta"
 
     def test_delta_with_table(self):
         io = IOConfig(format="delta", table="main.fraud.claims")
-        assert io.format == FormatType.DELTA
+        assert io.format == "delta"
 
     def test_delta_without_path_or_table_raises(self):
         with pytest.raises(ValidationError, match="delta"):
-            IOConfig(format="delta")
+            _task(inputs={"src": dict(format="delta")})
 
     def test_unity_with_table_parts(self):
         io = IOConfig(format="unity", db_name="raw_db", tbl_name="events")
-        assert io.format == FormatType.UNITY
+        assert io.format == "unity"
 
     def test_unity_with_full_table_name(self):
         io = IOConfig(format="unity", table="main.fraud.claims")
-        assert io.format == FormatType.UNITY
+        assert io.format == "unity"
 
     def test_unity_without_table_raises(self):
         with pytest.raises(ValidationError, match="unity"):
-            IOConfig(format="unity")
+            _task(inputs={"src": dict(format="unity")})
 
     def test_rest_api_valid(self):
         io = IOConfig(format="rest_api", url="https://api.example.com/v1/data")
-        assert io.format == FormatType.REST_API
+        assert io.format == "rest_api"
 
     def test_rest_api_missing_url_raises(self):
         with pytest.raises(ValidationError, match="rest_api"):
-            IOConfig(format="rest_api")
+            _task(inputs={"src": dict(format="rest_api")})
 
     def test_invalid_format_raises(self):
         with pytest.raises(ValidationError):

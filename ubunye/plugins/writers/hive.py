@@ -44,6 +44,15 @@ def _qualify(cfg: Dict[str, Any]) -> str:
 class HiveWriter(Writer):
     """Write a Spark DataFrame to a Hive table."""
 
+    SUPPORTS_MERGE = True
+    MERGE_FILE_FORMATS = frozenset({"delta"})
+
+    @classmethod
+    def validate_config(cls, cfg):
+        if cfg.get("db_name") and cfg.get("tbl_name"):
+            return []
+        return ["format 'hive' as an output requires 'db_name' + 'tbl_name'"]
+
     def write(self, df: Any, cfg: dict, backend) -> None:
         full_name = _qualify(cfg)
         fmt = (cfg.get("file_format") or "parquet").lower()
@@ -52,6 +61,7 @@ class HiveWriter(Writer):
             cfg,
             connector="hive",
             supported=SUPPORTED_MODES,
+            merge_formats=self.MERGE_FILE_FORMATS,
             default=DEFAULT_MODE,
             file_format=fmt,
         )

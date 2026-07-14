@@ -14,6 +14,13 @@ from ubunye.core.interfaces import Reader
 class HiveReader(Reader):
     """Read a Spark DataFrame from Hive using `db_name.tbl_name` or a custom SQL."""
 
+    @classmethod
+    def validate_config(cls, cfg):
+        has_table = cfg.get("db_name") and cfg.get("tbl_name")
+        if not has_table and not cfg.get("sql"):
+            return ["format 'hive' requires either ('db_name' + 'tbl_name') or 'sql'"]
+        return []
+
     def read(self, cfg: dict, backend) -> Any:
         spark = backend.spark
         sql = cfg.get("sql")

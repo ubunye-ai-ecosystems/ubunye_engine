@@ -66,6 +66,17 @@ def _is_databricks(spark) -> bool:
 class UnityTableWriter(Writer):
     """Write DataFrame to a Unity Catalog table (Delta by default)."""
 
+    SUPPORTS_MERGE = True
+    MERGE_FILE_FORMATS = frozenset({"delta"})
+
+    @classmethod
+    def validate_config(cls, cfg):
+        # A WRITER needs somewhere to write. Unlike the reader, `sql` is not an option --
+        # a difference the core could not express while one table validated both roles.
+        if cfg.get("table") or (cfg.get("catalog") and cfg.get("schema") and cfg.get("tbl_name")):
+            return []
+        return ["format 'unity' as an output requires 'table' or (catalog + schema + tbl_name)"]
+
     def write(self, df: Any, cfg: Dict[str, Any], backend) -> None:
         spark = backend.spark
         full_name = _qualify(cfg)
@@ -79,6 +90,7 @@ class UnityTableWriter(Writer):
             cfg,
             connector="unity",
             supported=SUPPORTED_MODES,
+            merge_formats=self.MERGE_FILE_FORMATS,
             default="append",
             file_format=fmt,
         )

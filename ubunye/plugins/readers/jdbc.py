@@ -42,6 +42,15 @@ class JdbcReader(Reader):
     REQUIRED = ("url",)
     TABLE_KEYS = ("table", "dbtable", "sql")
 
+    @classmethod
+    def validate_config(cls, cfg):
+        errors = []
+        if not cfg.get("url"):
+            errors.append("format 'jdbc' requires 'url'")
+        if not cfg.get("table") and not cfg.get("dbtable") and not cfg.get("sql"):
+            errors.append("format 'jdbc' requires 'table', 'dbtable' or 'sql'")
+        return errors
+
     def read(self, cfg: Dict[str, Any], backend) -> Any:
         """
         Build a `spark.read.format("jdbc")` with all given options.
