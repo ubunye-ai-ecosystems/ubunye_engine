@@ -49,6 +49,11 @@ class MockDF:
         # Return all rows for simplicity
         return MockDF(self._rows, self.schema._fields)
 
+    def limit(self, n):
+        # The engine now BOUNDS every collect with .limit(n). A fingerprint is a
+        # receipt, not a copy, so the mock speaks that dialect too.
+        return MockDF(self._rows[:n], self.schema._fields)
+
     def collect(self):
         return self._rows
 
@@ -162,6 +167,9 @@ class TestHashDataframe:
 
             def sample(self, **_kwargs):
                 return EmptySampleDF([])  # always empty, like tiny fraction on small df
+
+            def limit(self, n):
+                return EmptySampleDF(self._rows[:n])
 
             def collect(self):
                 return self._rows

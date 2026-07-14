@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] — unreleased
 
+### Fixed
+
+- **Lineage no longer recomputes your pipeline or risks the driver.** Fingerprinting an
+  output used to run the output's entire plan two to three times (a count inside the
+  hasher, an unbounded sample collect, then a second count in the recorder on the same
+  uncached DataFrame), and had a fallback that collected the **whole table** into the
+  driver. At real scale that is a crashed driver describing a job that had already
+  succeeded. Now: one `fingerprint_dataframe()` pass, persisted for the duration, one
+  count shared by the hash and the row count, and every collect capped at
+  `UBUNYE_LINEAGE_SAMPLE_ROWS` (default 1000) whatever the table size.
+
 ### Added
 
 - **`DataFramePort` — the data plane finally gets its port.** Specified in the founding

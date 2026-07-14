@@ -156,11 +156,17 @@ class LineageRecorder:
                 df = outputs[name]
                 if df is not None:
                     try:
-                        from ubunye.lineage.hasher import hash_dataframe, hash_schema
+                        from ubunye.lineage.hasher import fingerprint_dataframe
 
-                        step.schema_hash = hash_schema(df)
-                        step.data_hash = hash_dataframe(df, sample_fraction=self._sample_fraction)
-                        step.row_count = int(df.count())
+                        # ONE pass. This used to be three: hash_dataframe counted the
+                        # DataFrame, then sampled and collected it, and then this loop
+                        # counted the SAME uncached DataFrame again — so lineage
+                        # re-executed the whole pipeline two to three times per output,
+                        # purely to describe a run that had already finished.
+                        print_ = fingerprint_dataframe(df, sample_fraction=self._sample_fraction)
+                        step.schema_hash = print_.schema_hash
+                        step.data_hash = print_.data_hash
+                        step.row_count = print_.row_count if print_.row_count >= 0 else None
                     except Exception:
                         pass  # Hashing is best-effort
             step_outputs.append(step)
