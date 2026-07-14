@@ -76,11 +76,17 @@ class Writer(Connector):
     #: what ``_MERGE_FORMATS = {"delta"}`` in the core made impossible.
     SUPPORTS_MERGE: bool = False
 
-    #: The underlying table formats this connector can MERGE into. The core used to hold
-    #: this as ``_MERGE_FORMATS = {"delta"}`` and hand down a verdict; an Iceberg or Hudi
-    #: connector could not overrule it without a patch to the engine. It says so itself
-    #: now.
-    MERGE_FILE_FORMATS: FrozenSet[str] = frozenset({"delta"})
+    #: The underlying table formats this connector can MERGE into.
+    #:
+    #: Empty by default, to agree with ``SUPPORTS_MERGE = False``: a connector that has
+    #: not said it can upsert must not also be claiming which formats it upserts into.
+    #: The connector opts in — ``frozenset({"delta"})``, ``frozenset({"iceberg"})`` —
+    #: rather than inheriting an assumption it never made.
+    #:
+    #: The core used to hold this as ``_MERGE_FORMATS = {"delta"}`` and hand down a
+    #: verdict; an Iceberg or Hudi connector could not overrule it without a patch to the
+    #: engine. It says so itself now.
+    MERGE_FILE_FORMATS: FrozenSet[str] = frozenset()
 
     @abstractmethod
     def write(self, df: Any, cfg: dict, backend: Backend) -> Any:
