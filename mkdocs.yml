@@ -61,12 +61,16 @@ nav:
   - Machine Learning:
       - Model Contract: ml/model_contract.md
       - Model Registry: ml/registry.md
+  # Examples are grouped by what you are trying to DO. Inside every example a
+  # linked toggle (content.tabs.link) switches the run instructions between
+  # Databricks, Laptop, Docker and Kubernetes, and remembers the choice site-wide.
   - Examples:
       - Start Here: examples/index.md
-      - On Databricks: examples/databricks.md
-      - On Your Laptop: examples/local.md
-      - In Docker and Kubernetes: examples/containers.md
-      - Object Storage and Clouds: examples/cloud.md
+      - Ingestion: examples/ingestion.md
+      - Machine Learning: examples/ml.md
+      - Language Models: examples/llm.md
+      - Keeping Models Honest: examples/mlops.md
+      - Run Anywhere, Proven: examples/run_anywhere.md
   - Deployment:
       - Overview: deployment.md
       - Databricks: deployment/databricks.md
