@@ -71,8 +71,7 @@ ubunye-engine/
     │   ├── __init__.py
     │   ├── base.py
     │   ├── airflow_exporter.py
-    │   ├── dagster_exporter.py
-    │   └── prefect_exporter.py
+    │   └── databricks_exporter.py
     ├── telemetry/
     │   ├── __init__.py
     │   ├── otel.py
@@ -133,8 +132,6 @@ ubunye --help
   Generate orchestrator artifacts.
   ```bash
   ubunye export airflow   -d ./pipelines -u fraudetection -p ingestion -t claim_etl -o dag.py
-  ubunye export dagster   -d ./pipelines -u fraudetection -p ingestion --all-tasks -o job.py
-  ubunye export prefect   -d ./pipelines -u fraudetection --all-packages --all-tasks -o flow.py
   ubunye export databricks -d ./pipelines -u fraudetection -p ingestion -t claim_etl -o job.json
   ```
 
@@ -158,13 +155,6 @@ ubunye --help
     ML: sklearn, xgboost, h2o, mlflow
     ```
 
-- **`doctor`**
-  Run environment and connection checks.
-  ```bash
-  ubunye doctor
-  ```
-  - Checks: Spark availability, Python deps, JDBC connectivity, S3/HDFS/Iceberg access, plugin registration
-
 - **`version`**
   Show Ubunye version.
   ```bash
@@ -181,7 +171,6 @@ ubunye --help
 
 - **Scaffolding**: Quick start with `init`.
 - **Execution**: Flexible `run` with local/dev/prod support.
-- **Orchestration**: Export to Airflow, Dagster, Prefect, or Databricks.
+- **Orchestration**: Export to Airflow or Databricks.
 - **Config Management**: Validate and inspect with `config`.
-- **Diagnostics**: Ensure setup with `doctor`.
 - **Extensibility**: Discover plugins with `plugins`.

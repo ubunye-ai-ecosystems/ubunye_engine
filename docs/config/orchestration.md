@@ -10,7 +10,7 @@ it is used only by `ubunye export`.
 
 ```yaml
 ORCHESTRATION:
-  type: airflow           # required — airflow | databricks | prefect | dagster
+  type: airflow           # required. Implemented today: airflow, databricks
   schedule: "0 2 * * *"  # cron expression
   retries: 3
   owner: data-engineering
@@ -29,7 +29,7 @@ ORCHESTRATION:
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `type` | `airflow` \| `databricks` \| `prefect` \| `dagster` | required | Target orchestration platform |
+| `type` | `airflow` or `databricks` | required | Target platform. `prefect` and `dagster` are accepted by the schema but have no exporter yet (see issue #29) |
 | `schedule` | string | `null` | Cron expression for the DAG/workflow schedule |
 | `retries` | int | `2` | Number of automatic retries on failure |
 | `owner` | string | `null` | Team or person responsible (shown in Airflow UI) |

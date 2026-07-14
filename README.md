@@ -108,7 +108,9 @@ outputs = ubunye.run_task(task_dir="./pipelines/demo/starter/filter_adults")
 
 Ubunye detects Databricks' active Spark session and reuses it — same pipeline, no code change.
 
-Want to see a realistic end-to-end example — Kaggle Titanic CSV → survival-rate Parquet, with tests and CI? See [`examples/production/titanic_local/`](examples/production/titanic_local/).
+Want realistic end-to-end examples? They live in their own repository:
+[**ubunye-examples**](https://github.com/ubunye-ai-ecosystems/ubunye-examples).
+Every one of them has been run for real, and most run on several environments.
 
 ---
 
@@ -171,20 +173,39 @@ Check out the [Patterns](https://ubunye-ai-ecosystems.github.io/ubunye_engine) s
 
 ## Examples
 
-Six fully worked pipelines live in [`examples/production/`](examples/production/). Each one is self-contained — its own README, tests, and CI workflow — so you can copy a folder, tweak the config, and have something running in minutes.
+All worked examples live in [**ubunye-examples**](https://github.com/ubunye-ai-ecosystems/ubunye-examples).
+They install the engine from PyPI, so what you run there is what you get from `pip install`.
 
-| Example | What it shows | Where it runs |
-|---|---|---|
-| [`titanic_local/`](examples/production/titanic_local/) | Simplest end-to-end: Kaggle Titanic CSV → survival rate by passenger class, saved as Parquet. Start here. | Your laptop |
-| [`titanic_databricks/`](examples/production/titanic_databricks/) | Same business logic, same file — just a different config. Shows how little changes when you move to the cloud. | Databricks Community Edition |
-| [`titanic_multitask_local/`](examples/production/titanic_multitask_local/) | Two tasks chained: one cleans the data, the next summarises it. Shows `ubunye run -t task1 -t task2`. | Your laptop |
-| [`titanic_multitask_databricks/`](examples/production/titanic_multitask_databricks/) | Same chain, running on Databricks with Unity Catalog tables instead of local Parquet. | Databricks |
-| [`titanic_ml_databricks/`](examples/production/titanic_ml_databricks/) | The full ML lifecycle: train a classifier, log to MLflow, promote through the model registry, score new rows. | Databricks |
-| [`jhb_weather_databricks/`](examples/production/jhb_weather_databricks/) | REST API ingestion (Open-Meteo, no auth) → Unity Catalog Delta table, on a schedule. | Databricks |
+They are grouped by where they run. The same task folder is used in every environment.
+Only environment variables change.
 
-Not sure which one to open? Read [`examples/production/README.md`](examples/production/README.md) — it walks through picking a runtime and what the Community Edition / paid workspace differences look like.
+**Databricks** (free workspace is enough)
 
----
+| Example | What it shows |
+|---|---|
+| Tables and SQL pushdown | read a table, push a join down as SQL, write with `merge` |
+| REST API ingestion | the `rest_api` connector against a public weather API |
+| Unstructured files | binary file reading and text chunking |
+| The ML lifecycle | features, train, quality gate, registry, promote, score |
+| RAG | embeddings and a chat model, retrieval, grounded answers |
+| Fine-tune an open LLM | a large model labels data, DistilBERT learns from it |
+| Data quality | a contract with severities, bad rows quarantined |
+| Model monitoring | drift, decay, and a rollback that is a decision, not a reflex |
+
+**Local machine, Docker, and Kubernetes** (no cloud account needed)
+
+| Example | What it shows |
+|---|---|
+| Run anywhere | one task, identical output hash on local Spark, Docker, Kubernetes, object storage and Databricks |
+| JDBC | a partitioned parallel read from a real public PostgreSQL database |
+| RAG and fine-tuning on open models | the same pipelines with local open source models instead of hosted endpoints |
+| The three-framework race | the same model in scikit-learn, PyTorch and TensorFlow behind identical configs |
+
+**AWS and GCP**
+
+Submit scripts and CI jobs exist for EMR Serverless and Dataproc Serverless.
+They are written and documented but need a cloud account to run, and the CI
+jobs say plainly when they were skipped rather than run.
 
 ## Connectors
 
@@ -204,10 +225,24 @@ Want to add one? See the [plugin guide](https://ubunye-ai-ecosystems.github.io/u
 
 ## Run Anywhere
 
-The same pipeline runs on every Spark-compatible environment. You only change the `spark.master` setting — the rest is identical:
+The same task folder runs on every environment below. This is tested, not claimed:
+a CI job runs one task on each and fails the build if the output hashes differ.
 
-| Where you run it                       | What to set                                   |
-|---------------------------------------|-----------------------------------------------|
+| Environment | How you launch it |
+|---|---|
+| Your laptop | `ubunye run ...` with local Spark |
+| Docker | one container image, same entry point |
+| Kubernetes | the same image as a Job |
+| Databricks | `ubunye.run_task()` from a notebook or a bundle job |
+| AWS EMR Serverless, GCP Dataproc | `spark-submit` with `python -m ubunye` |
+
+One rule makes this work: the task never chooses its own cluster. Which Spark
+master to use belongs to whoever launches the job, so leave `spark.master` out
+of your config. On a laptop the runner sets `local[*]`. On a cloud the platform
+sets it, and the engine refuses a config that tries to override it, because a
+silent single-node run on paid compute is worse than an error.
+
+---------------------------------------|-----------------------------------------------|
 | **Your laptop**                       | `spark.master: "local[*]"`                    |
 | **Hadoop / YARN cluster**             | `spark.master: "yarn"`                        |
 | **Kubernetes**                        | `spark.master: "k8s://..."`                   |

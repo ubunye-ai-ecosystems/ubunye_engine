@@ -22,7 +22,7 @@ Define your pipeline in YAML. Write a Python class. Run it.
 | Config drift between environments | Jinja2 templating + per-profile Spark overrides |
 | ML lifecycle management | Library-independent `UbunyeModel` contract + built-in registry |
 | Observability | Pluggable lineage tracking, Prometheus, OpenTelemetry, MLflow |
-| Orchestration | One-command export to Airflow, Databricks, Prefect, Dagster |
+| Orchestration | One-command export to Airflow or Databricks job definitions |
 | Testing | Spark-free unit-test patterns; 288 tests in CI |
 
 ## Key Features
@@ -32,7 +32,7 @@ Define your pipeline in YAML. Write a Python class. Run it.
 - **Model registry** — version, promote, rollback, and gate ML models without coupling to any ML library.
 - **Lineage tracking** — automatic run provenance written to `.ubunye/lineage/`.
 - **Telemetry-ready** — Prometheus, OpenTelemetry, and JSON event logs via the `monitors` protocol.
-- **Orchestration export** — generate Airflow DAGs or Databricks job JSON from the same config.
+- **Orchestration export**: generate Airflow DAGs or Databricks job JSON from the same config.
 
 ## Two entry points
 
