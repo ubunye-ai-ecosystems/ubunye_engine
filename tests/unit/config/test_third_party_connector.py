@@ -117,3 +117,23 @@ def test_a_connector_that_cannot_merge_is_still_refused():
             file_format="jdbc",
             merge_formats=frozenset(),
         )
+
+
+def test_the_base_writer_claims_nothing_it_has_not_earned():
+    """`SUPPORTS_MERGE = False` and `MERGE_FILE_FORMATS = {"delta"}` contradicted each
+    other: a connector that had not said it could upsert was still asserting which
+    formats it upserted into. A default should not put words in a plugin's mouth.
+    """
+    assert Writer.SUPPORTS_MERGE is False
+    assert Writer.MERGE_FILE_FORMATS == frozenset()
+
+
+def test_every_shipped_writer_states_its_own_capability():
+    """The built-ins must not be relying on a default that says nothing."""
+    from ubunye.core.runtime import Registry
+
+    for name, cls in Registry.from_entrypoints().writers.items():
+        if cls.SUPPORTS_MERGE:
+            assert cls.MERGE_FILE_FORMATS, f"'{name}' says it merges but not into what"
+        else:
+            assert not cls.MERGE_FILE_FORMATS, f"'{name}' cannot merge but names formats"
