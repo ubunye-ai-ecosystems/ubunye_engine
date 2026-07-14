@@ -75,6 +75,10 @@ nav:
       - Overview: deployment.md
       - Databricks: deployment/databricks.md
       - Databricks Authentication: databricks-auth.md
+      - Kubernetes: deployment/kubernetes.md
+      - AWS: deployment/aws.md
+      - GCP: deployment/gcp.md
+      - Anywhere with spark-submit: deployment/anywhere.md
   - How-to Guides:
       - Notebook Prototyping: patterns/notebook.md
       - RAG Document Pipeline: patterns/rag.md
