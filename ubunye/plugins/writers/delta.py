@@ -57,6 +57,15 @@ def _target(cfg: Dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
 class DeltaWriter(Writer):
     """Write a Spark DataFrame to a Delta table, by path or by name."""
 
+    SUPPORTS_MERGE = True
+    MERGE_FILE_FORMATS = frozenset({"delta"})
+
+    @classmethod
+    def validate_config(cls, cfg):
+        if cfg.get("path") or cfg.get("table") or (cfg.get("db_name") and cfg.get("tbl_name")):
+            return []
+        return ["format 'delta' requires 'path', 'table', or ('db_name' + 'tbl_name')"]
+
     def write(self, df: Any, cfg: dict, backend) -> None:
         table, path = _target(cfg)
 
@@ -64,6 +73,7 @@ class DeltaWriter(Writer):
             cfg,
             connector="delta",
             supported=SUPPORTED_MODES,
+            merge_formats=self.MERGE_FILE_FORMATS,
             default=DEFAULT_MODE,
             file_format=FILE_FORMAT,
         )

@@ -19,19 +19,20 @@ def test_every_builtin_connector_is_accepted():
         assert name in _registered_formats()
 
 
-def test_a_registered_plugin_is_accepted_even_though_it_is_not_in_the_enum():
-    """This is the assertion that proves the documented extension story is now true.
+def test_the_engine_keeps_no_list_of_implementations():
+    """There is no enum any more. There is no hardcoded list. There is the registry.
 
-    The names below come from the entry points, not from the enum. If validation went
-    back to consulting a hard-coded list, this fails.
+    If someone reintroduces one, `_registered_formats()` will stop tracking what is
+    actually installed and this drifts.
     """
-    from ubunye.config.schema import FormatType
+    import ubunye.config.schema as schema_mod
 
-    registered = _registered_formats()
-    enum_names = {e.value for e in FormatType}
+    assert not hasattr(schema_mod, "FormatType"), "the hardcoded enum is back"
 
-    # Every entry-point name resolves, whether or not somebody remembered the enum.
-    assert registered >= enum_names
+    # The names come from the entry points, and from nowhere else.
+    assert _registered_formats() == frozenset(schema_mod._connectors("ubunye.readers")) | frozenset(
+        schema_mod._connectors("ubunye.writers")
+    )
 
 
 def test_an_unknown_format_still_fails_and_says_what_is_available():
@@ -45,10 +46,50 @@ def test_an_unknown_format_still_fails_and_says_what_is_available():
     assert "entry-point" in message  # tells you how to add your own
 
 
-def test_format_specific_requirements_still_apply():
-    """Opening the field up must not have quietly disabled the per-connector checks."""
+def test_the_connector_declares_its_own_requirements():
+    """The core holds no table of requirements. It asks the plugin.
+
+    Validated through a TASK, because the requirement depends on the ROLE: `unity` as a
+    source may be given `sql`; as a sink it must have a `table`. One shared rule in the
+    core could express neither, which is why it is gone.
+    """
+    from ubunye.config.schema import TaskConfig
+
     with pytest.raises(ValidationError, match="requires 'path'"):
-        IOConfig(format="s3")
+        TaskConfig(
+            inputs={"src": {"format": "s3"}},
+            transform={},
+            outputs={"dst": {"format": "s3", "path": "/tmp/out"}},
+        )
 
     with pytest.raises(ValidationError, match="requires 'url'"):
-        IOConfig(format="jdbc", table="t")
+        TaskConfig(
+            inputs={"src": {"format": "jdbc", "table": "t"}},
+            transform={},
+            outputs={"dst": {"format": "s3", "path": "/tmp/out"}},
+        )
+
+
+def test_a_reader_and_a_writer_of_the_same_name_can_require_different_things():
+    """The distinction the old core could not express.
+
+    `unity` as an INPUT may be a query. As an OUTPUT it must be a table -- writing to a
+    SELECT statement is meaningless. One shared if/elif chain had to accept `sql`
+    everywhere, so this was silently allowed.
+    """
+    from ubunye.config.schema import TaskConfig
+
+    # as a source: a query is fine
+    TaskConfig(
+        inputs={"src": {"format": "unity", "sql": "SELECT 1"}},
+        transform={},
+        outputs={"dst": {"format": "s3", "path": "/tmp/out"}},
+    )
+
+    # as a sink: it is not
+    with pytest.raises(ValidationError, match="output"):
+        TaskConfig(
+            inputs={"src": {"format": "s3", "path": "/tmp/in"}},
+            transform={},
+            outputs={"dst": {"format": "unity", "sql": "SELECT 1"}},
+        )

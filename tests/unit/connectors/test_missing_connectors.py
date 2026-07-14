@@ -13,7 +13,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from tests.conftest import MockBackend
-from ubunye.config.schema import FormatType
 from ubunye.core.errors import SinkWriteError, SourceReadError
 from ubunye.core.runtime import Registry
 from ubunye.plugins.readers.binary import BinaryReader
@@ -54,19 +53,36 @@ class TestEveryFormatResolves:
     """A format in the schema with no plugin behind it is a trap."""
 
     # binary is read-only: Spark's binaryFile source cannot write.
-    WRITE_ONLY_EXCLUSIONS = {FormatType.BINARY}
+    WRITE_ONLY_EXCLUSIONS = {"binary"}
 
-    def test_every_format_has_a_reader(self):
-        registry = Registry.from_entrypoints()
-        for fmt in FormatType:
-            assert fmt.value in registry.readers, f"no reader registered for '{fmt.value}'"
+    def test_every_registered_reader_implements_the_contract(self):
+        """The registry is the source of truth, so ask IT what exists.
 
-    def test_every_writable_format_has_a_writer(self):
+        The old version iterated `FormatType` and asserted each member had a reader --
+        checking that the engine's hardcoded list matched the engine's entry points.
+        Both were the engine's; it was marking its own homework. And it could not see a
+        third-party connector at all.
+        """
+        from ubunye.core.interfaces import Reader
+
         registry = Registry.from_entrypoints()
-        for fmt in FormatType:
-            if fmt in self.WRITE_ONLY_EXCLUSIONS:
-                continue
-            assert fmt.value in registry.writers, f"no writer registered for '{fmt.value}'"
+        assert registry.readers, "no readers registered at all"
+        for name, cls in registry.readers.items():
+            assert issubclass(cls, Reader), f"'{name}' is registered but is not a Reader"
+            assert callable(
+                getattr(cls, "validate_config", None)
+            ), f"'{name}' cannot declare its own requirements"
+
+    def test_every_registered_writer_implements_the_contract(self):
+        from ubunye.core.interfaces import Writer
+
+        registry = Registry.from_entrypoints()
+        assert registry.writers, "no writers registered at all"
+        for name, cls in registry.writers.items():
+            assert issubclass(cls, Writer), f"'{name}' is registered but is not a Writer"
+            # It must be able to say what it can do, rather than the core deciding.
+            assert isinstance(cls.SUPPORTED_MODES, frozenset)
+            assert isinstance(cls.SUPPORTS_MERGE, bool)
 
     def test_binary_has_no_writer(self):
         assert "binary" not in Registry.from_entrypoints().writers

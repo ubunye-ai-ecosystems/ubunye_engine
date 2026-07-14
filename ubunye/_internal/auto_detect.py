@@ -9,17 +9,43 @@ Detection follows the same pattern as
 
 from __future__ import annotations
 
+import logging
 import os
+
+log = logging.getLogger(__name__)
 
 
 def detect_registry_backend() -> str:
-    """Choose a registry backend based on environment.
+    """Choose a registry backend. An explicit choice always wins.
 
+    - ``UBUNYE_REGISTRY_BACKEND`` set → that, whatever it says
     - Databricks runtime with MLflow available → ``"mlflow"``
     - Otherwise → ``"filesystem"``
+
+    The env var is new, and it matters. This function used to sniff the host
+    (``DATABRICKS_RUNTIME_VERSION``) and pick a backend on your behalf **with no way to
+    say otherwise**. The same pipeline, unchanged, registered models to MLflow on
+    Databricks and to a directory anywhere else — and nothing told you which. Two runs of
+    the same code would disagree about where the model went, and you would find out when
+    something tried to load it.
+
+    Sniffing the host is still the *fallback*, because on Databricks MLflow really is
+    already there and really is the natural registry. But it is now a default you can
+    override, and it says out loud what it picked, rather than a decision made behind
+    your back.
     """
+    explicit = os.environ.get("UBUNYE_REGISTRY_BACKEND")
+    if explicit:
+        return explicit.strip().lower()
+
     if _on_databricks() and _has_package("mlflow"):
+        log.info(
+            "registry backend: 'mlflow' (auto-detected — DATABRICKS_RUNTIME_VERSION is "
+            "set and mlflow is installed). Set UBUNYE_REGISTRY_BACKEND to override."
+        )
         return "mlflow"
+
+    log.info("registry backend: 'filesystem' (default). Set UBUNYE_REGISTRY_BACKEND to override.")
     return "filesystem"
 
 

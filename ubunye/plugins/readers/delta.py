@@ -24,6 +24,12 @@ from ubunye.core.interfaces import Reader
 class DeltaReader(Reader):
     """Read a Spark DataFrame from a Delta table."""
 
+    @classmethod
+    def validate_config(cls, cfg):
+        if cfg.get("path") or cfg.get("table") or (cfg.get("db_name") and cfg.get("tbl_name")):
+            return []
+        return ["format 'delta' requires 'path', 'table', or ('db_name' + 'tbl_name')"]
+
     def read(self, cfg: dict, backend) -> Any:
         spark = backend.spark
 

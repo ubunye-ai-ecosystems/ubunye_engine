@@ -41,6 +41,18 @@ class JdbcWriter(Writer):
 
     REQUIRED = ("url", "table")
 
+    SUPPORTS_MERGE = False  # a JDBC target has no MERGE in Spark
+    MERGE_FILE_FORMATS = frozenset()
+
+    @classmethod
+    def validate_config(cls, cfg):
+        errors = []
+        if not cfg.get("url"):
+            errors.append("format 'jdbc' requires 'url'")
+        if not cfg.get("table") and not cfg.get("dbtable"):
+            errors.append("format 'jdbc' as an output requires 'table'")
+        return errors
+
     def write(self, df: Any, cfg: Dict[str, Any], backend) -> None:
         """
         Build a `df.write.format("jdbc")` with all given options and save.
@@ -78,6 +90,7 @@ class JdbcWriter(Writer):
             cfg,
             connector="jdbc",
             supported=SUPPORTED_MODES,
+            merge_formats=self.MERGE_FILE_FORMATS,
             default="append",
         )
 

@@ -5,9 +5,11 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.strategies import composite
 
-from ubunye.config.schema import FormatType, IOConfig, UbunyeConfig
+from ubunye.config.schema import IOConfig, UbunyeConfig, _registered_formats
 
-_KNOWN_FORMATS = {f.value for f in FormatType}
+# From the plugin REGISTRY, not from a hardcoded enum. The enum is gone: it was the
+# thing that made a correctly-registered third-party connector invalid.
+_KNOWN_FORMATS = set(_registered_formats())
 
 _MINIMAL_CONFIG = {
     "inputs": {"s": {"format": "hive", "db_name": "db", "tbl_name": "t"}},
@@ -16,14 +18,19 @@ _MINIMAL_CONFIG = {
 
 
 # ---------------------------------------------------------------------------
-# FormatType enum
+# formats, as declared by the plugin registry
 # ---------------------------------------------------------------------------
 
 
 @given(fmt=st.sampled_from(list(_KNOWN_FORMATS)))
 def test_known_formats_accepted(fmt):
-    """Every known format string should be accepted by FormatType."""
-    assert FormatType(fmt).value == fmt
+    """Every name the plugin registry can load is a valid `format`.
+
+    This used to assert `FormatType(fmt).value == fmt` -- i.e. that the enum contained
+    what the enum contained. It was a tautology. The question that matters is whether an
+    INSTALLED connector is accepted, and that is what it asks now.
+    """
+    IOConfig(format=fmt, path="/tmp/x", url="http://x", table="a.b.c", db_name="d", tbl_name="t")
 
 
 @given(fmt=st.text(min_size=1, max_size=20).filter(lambda s: s not in _KNOWN_FORMATS))
@@ -46,7 +53,7 @@ def test_unknown_formats_rejected(fmt):
 def test_valid_hive_always_parses(db, tbl):
     """Any hive config with db_name and tbl_name should be valid."""
     io = IOConfig(format="hive", db_name=db, tbl_name=tbl)
-    assert io.format == FormatType.HIVE
+    assert io.format == "hive"
     assert io.db_name == db
     assert io.tbl_name == tbl
 

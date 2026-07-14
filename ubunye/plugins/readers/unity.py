@@ -25,6 +25,14 @@ from ubunye.core.interfaces import Reader
 class UnityTableReader(Reader):
     """Read a DataFrame from a Unity Catalog table or SQL."""
 
+    @classmethod
+    def validate_config(cls, cfg):
+        # A READER may be given a query. The writer below cannot -- and that difference
+        # was impossible to express while the core validated both from one table.
+        if cfg.get("table") or cfg.get("sql") or (cfg.get("db_name") and cfg.get("tbl_name")):
+            return []
+        return ["format 'unity' requires 'table', ('db_name' + 'tbl_name'), or 'sql'"]
+
     def read(self, cfg: Dict[str, Any], backend) -> Any:
         spark = backend.spark
 

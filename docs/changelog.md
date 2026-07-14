@@ -7,6 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] — unreleased
+
+### Breaking
+
+- **The core no longer knows about any connector. It asks.**
+
+  The engine advertised "adding a connector = write the class, register the entry point".
+  That was not true. Three places in the core held knowledge of specific implementations:
+
+  * `config/schema.py` carried an `if/elif` chain naming `hive`, `jdbc`, `s3`, `binary`,
+    `delta`, `unity` and `rest_api`, spelling out what each one required.
+  * `core/write_modes.py` held `_MERGE_FORMATS = {"delta"}` and decided, on the
+    connector's behalf, which formats were allowed to `MERGE`.
+  * `FormatType` was a closed enum, so a correctly-registered plugin was rejected
+    **before the registry was ever consulted**.
+
+  Adding a connector meant editing the engine in three places. That is not open/closed,
+  and it is not what the entry-point system is for.
+
+  The plugin contract now carries it:
+
+  ```python
+  class Connector(ABC):
+      @classmethod
+      def validate_config(cls, cfg) -> list[str]: ...   # what I need
+
+  class Writer(Connector):
+      SUPPORTED_MODES: frozenset = frozenset({"append", "overwrite"})
+      SUPPORTS_MERGE: bool = False                      # what I can do
+      MERGE_FILE_FORMATS: frozenset = frozenset({"delta"})
+  ```
+
+  An Iceberg or Hudi connector can now declare that it supports `MERGE`, and be believed.
+  `tests/unit/config/test_third_party_connector.py` registers a connector the engine has
+  never heard of and asserts it works with **zero engine edits**.
+
+  **Breaking:** `FormatType` is deleted. `IOConfig.format` is a plain `str`.
+
+- **The engine no longer changes its behaviour based on where it is running.**
+
+  Two places sniffed the host and acted on the guess:
+
+  * `writers/unity.py::_is_databricks()` string-matched the Spark conf for `"databricks"`
+    and used the result to decide whether to run `OPTIMIZE` and `VACUUM`. It was wrong
+    twice: a connector should ask the **target** what it can do rather than detect its
+    host, and the guess was factually wrong — `OPTIMIZE`, `ZORDER` and `VACUUM` are
+    **Delta** features, and open-source Delta has had them for years. Anyone running Delta
+    off Databricks silently did not get the maintenance they had explicitly asked for in
+    their config, and nothing said so. The statements are now **attempted**, and a target
+    that cannot run them is **reported**, not predicted in advance and not swallowed.
+
+  * `_internal/auto_detect.py` picked the model registry backend from
+    `DATABRICKS_RUNTIME_VERSION` **with no way to override it**. The same pipeline,
+    unchanged, registered models to MLflow on Databricks and to a directory anywhere else
+    — and said nothing. `UBUNYE_REGISTRY_BACKEND` now wins, the host is only a fallback,
+    and it logs which it chose.
+
+- **Inputs are validated against the READER, outputs against the WRITER.**
+
+  One shared rule used to validate both roles, so it could not tell them apart: `unity`
+  as a *source* may be given `sql`, but as a *sink* it must have a `table` — writing to a
+  `SELECT` statement is meaningless. The shared rule had to accept `sql` everywhere, so
+  it silently allowed it. Each side is now checked against the plugin that will actually
+  handle it.
+
+  **Breaking:** `IOConfig(format="s3")` no longer raises on its own. It cannot: an
+  `IOConfig` does not know whether it is an input or an output. Validation happens at
+  `TaskConfig`, where the role exists.
+
+---
+
 ## [0.4.0] — 2026-07-13
 
 ### Breaking

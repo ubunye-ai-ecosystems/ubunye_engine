@@ -48,16 +48,14 @@ class WriteMode(str, Enum):
     OVERWRITE_PARTITIONS = "overwrite_partitions"
 
 
-class FormatType(str, Enum):
-    """Registered connector format names."""
-
-    HIVE = "hive"
-    JDBC = "jdbc"
-    UNITY = "unity"
-    S3 = "s3"
-    DELTA = "delta"
-    BINARY = "binary"
-    REST_API = "rest_api"
+# NOTE: `FormatType` used to live here — a closed enum of hive/jdbc/s3/delta/binary/
+# unity/rest_api. It is gone.
+#
+# It was the hardcoded list at the heart of the problem: a correctly-registered
+# third-party connector was rejected by config validation *before the plugin registry
+# was ever consulted*, so "adding a connector = write the class, register the entry
+# point" was simply not true. The engine now asks the registry what exists, and asks the
+# plugin what it needs. It keeps no list of implementations at all.
 
 
 class OrchestrationType(str, Enum):
@@ -100,33 +98,38 @@ class EngineConfig(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@lru_cache(maxsize=1)
-def _registered_formats() -> frozenset:
-    """Every connector name the plugin system can actually load.
+@lru_cache(maxsize=2)
+def _connectors(group: str) -> Dict[str, Any]:
+    """Map connector name -> plugin class, for one entry-point group.
 
-    Cached: entry-point discovery walks the installed distributions, and this is called
-    once per input and once per output. Uncached, a config with five IO blocks did five
-    full scans, and a property test caught it by blowing a 200ms deadline.
+    The engine holds NO list of implementations. It asks the registry which plugin the
+    config named, and then asks that plugin what it needs and what it can do.
 
-    The engine advertises that adding a connector is "write the class, register the
-    entry point". That was not true: ``format`` was a closed enum, so a perfectly
-    well-registered plugin was rejected by config validation **before the registry was
-    ever consulted**. The documented extension story did not work.
-
-    Now the enum is only the list of connectors that ship in the box, and anything the
-    entry points can load is equally valid.
+    Before this, ``format`` was a closed enum and this module carried an ``if/elif``
+    chain spelling out the requirements of hive, jdbc, s3, delta, unity and rest_api.
+    A third-party connector could not declare its own required fields, so
+    "adding a connector = write the class, register the entry point" was false: you had
+    to edit the engine too. Now you do not.
     """
     import importlib.metadata as md
 
-    names = {e.value for e in FormatType}
-    for group in ("ubunye.readers", "ubunye.writers"):
-        try:
-            eps = md.entry_points()
-            found = eps.get(group, []) if hasattr(eps, "get") else eps.select(group=group)
-            names.update(ep.name for ep in found)
-        except Exception:  # noqa: BLE001 — a broken third-party plugin must not break validation
-            pass
-    return frozenset(names)
+    found: Dict[str, Any] = {}
+    try:
+        eps = md.entry_points()
+        group_eps = eps.get(group, []) if hasattr(eps, "get") else eps.select(group=group)
+        for ep in group_eps:
+            try:
+                found[ep.name] = ep.load()
+            except Exception:  # noqa: BLE001 — one broken plugin must not break validation
+                found[ep.name] = None
+    except Exception:  # noqa: BLE001
+        pass
+    return found
+
+
+def _registered_formats() -> frozenset:
+    """Every connector name the plugin system can actually load."""
+    return frozenset(_connectors("ubunye.readers")) | frozenset(_connectors("ubunye.writers"))
 
 
 class IOConfig(BaseModel):
@@ -166,46 +169,17 @@ class IOConfig(BaseModel):
             )
         return self
 
-    @model_validator(mode="after")
-    def _check_format_requirements(self) -> "IOConfig":
-        """Enforce format-specific required fields."""
-        fmt = self.format
-        errors: List[str] = []
-
-        if fmt == "hive":
-            has_table = self.db_name and self.tbl_name
-            if not has_table and not self.sql:
-                errors.append("format 'hive' requires either ('db_name' + 'tbl_name') or 'sql'")
-
-        elif fmt == "jdbc":
-            if not self.url:
-                errors.append("format 'jdbc' requires 'url'")
-            if not self.table and not self.sql:
-                errors.append("format 'jdbc' requires 'table' or 'sql'")
-
-        elif fmt in ("s3", "binary"):
-            if not self.path:
-                errors.append(f"format '{fmt}' requires 'path'")
-
-        elif fmt == "delta":
-            if not self.path and not self.table:
-                errors.append("format 'delta' requires 'path' or 'table'")
-
-        elif fmt == "unity":
-            has_table_parts = self.db_name and self.tbl_name
-            if not has_table_parts and not self.table and not self.sql:
-                errors.append("format 'unity' requires 'table', ('db_name' + 'tbl_name'), or 'sql'")
-
-        elif fmt == "rest_api":
-            # url may come from the declared field or from model_extra (plugin-specific)
-            url = self.url or (self.model_extra or {}).get("url")
-            if not url:
-                errors.append("format 'rest_api' requires 'url'")
-
-        if errors:
-            raise ValueError("; ".join(errors))
-
-        return self
+    # NOTE: what each connector REQUIRES is no longer decided here.
+    #
+    # This class used to carry an if/elif chain naming hive, jdbc, s3, binary, delta,
+    # unity and rest_api, and spelling out the fields each one needed. That meant a
+    # third-party connector could not state its own requirements, and the engine had to
+    # be edited to add one.
+    #
+    # It also could not tell an INPUT from an OUTPUT — `unity` as a source may be given
+    # `sql`, but as a sink it must have a `table`, and one shared rule could express
+    # neither. TaskConfig now validates each side against the right plugin: readers for
+    # inputs, writers for outputs. See TaskConfig._check_connector_requirements.
 
 
 class TransformConfig(BaseModel):
@@ -273,18 +247,57 @@ class TaskConfig(BaseModel):
         return self
 
     @model_validator(mode="after")
+    def _check_connector_requirements(self) -> "TaskConfig":
+        """Ask each connector what it needs. Do not presume to know.
+
+        Inputs are validated against the READER registered under that name; outputs
+        against the WRITER. That distinction was impossible before: one shared rule
+        validated both roles, so `unity` had to accept `sql` everywhere — including as an
+        output, where it is meaningless.
+
+        The engine holds no table of requirements. If a plugin is installed and does not
+        declare any, it gets none: `Connector.validate_config` returns `[]` by default,
+        so a simple connector stays simple.
+        """
+        errors: List[str] = []
+
+        for role, group, blocks in (
+            ("inputs", "ubunye.readers", self.inputs),
+            ("outputs", "ubunye.writers", self.outputs),
+        ):
+            plugins = _connectors(group)
+            for name, io in blocks.items():
+                plugin = plugins.get(io.format)
+                if plugin is None:
+                    # Registered for the other role only — e.g. `binary` can be read but
+                    # not written. _check_writable_outputs says so more precisely.
+                    continue
+                cfg = io.model_dump(exclude_none=True)
+                cfg.update(io.model_extra or {})
+                for problem in plugin.validate_config(cfg) or []:
+                    errors.append(f"{role}.{name}: {problem}")
+
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
+
+    @model_validator(mode="after")
     def _check_writable_outputs(self) -> "TaskConfig":
         """Spark's ``binaryFile`` source can read but not write.
 
         Caught here rather than at write time, so the pipeline fails in
         ``ubunye validate`` instead of after the transform has already run.
         """
-        read_only = [name for name, out in self.outputs.items() if out.format == "binary"]
+        writers = _connectors("ubunye.writers")
+        read_only = sorted(name for name, out in self.outputs.items() if out.format not in writers)
         if read_only:
+            names = {n: self.outputs[n].format for n in read_only}
             raise ValueError(
-                f"format 'binary' is read-only and cannot be used as an output "
-                f"(CONFIG.outputs: {', '.join(sorted(read_only))}). "
-                f"Write files with format 's3' instead."
+                "these outputs name a connector with no registered WRITER: "
+                + ", ".join(f"{n} (format '{f}')" for n, f in names.items())
+                + ". Some connectors are read-only — Spark's binaryFile source, for one. "
+                "The engine does not keep a list of which; it simply asks whether a "
+                "writer exists."
             )
         return self
 

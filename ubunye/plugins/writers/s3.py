@@ -30,6 +30,13 @@ DEFAULT_MODE = "append"
 class S3Writer(Writer):
     """Write a Spark DataFrame to S3 (or any filesystem path Spark understands)."""
 
+    SUPPORTS_MERGE = True
+    MERGE_FILE_FORMATS = frozenset({"delta"})
+
+    @classmethod
+    def validate_config(cls, cfg):
+        return [] if cfg.get("path") else ["format 's3' requires 'path'"]
+
     def write(self, df: Any, cfg: dict, backend) -> None:
         path = cfg.get("path")
         if not path:
@@ -44,6 +51,7 @@ class S3Writer(Writer):
             cfg,
             connector="s3",
             supported=SUPPORTED_MODES,
+            merge_formats=self.MERGE_FILE_FORMATS,
             default=DEFAULT_MODE,
             file_format=fmt,
         )

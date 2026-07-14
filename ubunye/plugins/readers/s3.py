@@ -24,6 +24,10 @@ from ubunye.core.interfaces import Reader
 class S3Reader(Reader):
     """Read a Spark DataFrame from S3 (or any filesystem path Spark understands)."""
 
+    @classmethod
+    def validate_config(cls, cfg):
+        return [] if cfg.get("path") else ["format 's3' requires 'path'"]
+
     def read(self, cfg: dict, backend) -> Any:
         path = cfg.get("path")
         if not path:
