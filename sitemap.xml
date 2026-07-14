@@ -101,19 +101,23 @@
          <lastmod>2026-07-14</lastmod>
     </url>
     <url>
-         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/cloud/</loc>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/ingestion/</loc>
          <lastmod>2026-07-14</lastmod>
     </url>
     <url>
-         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/containers/</loc>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/llm/</loc>
          <lastmod>2026-07-14</lastmod>
     </url>
     <url>
-         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/databricks/</loc>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/ml/</loc>
          <lastmod>2026-07-14</lastmod>
     </url>
     <url>
-         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/local/</loc>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/mlops/</loc>
+         <lastmod>2026-07-14</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/run_anywhere/</loc>
          <lastmod>2026-07-14</lastmod>
     </url>
     <url>
