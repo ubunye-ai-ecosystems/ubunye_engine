@@ -1,0 +1,77 @@
+name: release-on-version-bump
+
+# Keeps the docs site version honest, automatically.
+#
+# The site's version badge reads the latest GitHub RELEASE, not the latest tag and
+# not pyproject.toml. We learned that the hard way: the site showed v0.1.0 for weeks
+# after 0.3.0 shipped, because nobody had clicked "create release".
+#
+# This workflow closes the gap. When a push to main changes the version in
+# pyproject.toml, it creates the tag and the GitHub Release with the matching
+# changelog section as the notes. The docs site then shows the right version on its
+# next build with no human step.
+#
+# Publishing to PyPI is NOT made automatic by this. The publish workflow triggers on
+# the tag but runs in the `pypip` environment, which requires a human approval. So a
+# version bump merged to main gives you: tag, release, correct site badge, and a
+# PyPI publish waiting for a click.
+
+on:
+  push:
+    branches: [main]
+    paths: ["pyproject.toml"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the version from pyproject.toml
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION="$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Does this release already exist?
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${{ steps.version.outputs.tag }} already released. Nothing to do."
+          else
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pull this version's notes out of the changelog
+        if: steps.exists.outputs.yes == 'false'
+        run: |
+          python - <<'PY'
+          import pathlib, re, tomllib
+          version = tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]
+          text = pathlib.Path("docs/changelog.md").read_text(encoding="utf-8")
+          pattern = rf"## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## \[|\Z)"
+          match = re.search(pattern, text, re.S)
+          notes = match.group(1).strip() if match else f"Release {version}. See docs/changelog.md."
+          pathlib.Path("release_notes.md").write_text(notes, encoding="utf-8")
+          print(f"notes for {version}: {len(notes)} chars")
+          PY
+
+      - name: Tag and release
+        if: steps.exists.outputs.yes == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --notes-file release_notes.md \
+            --target "$GITHUB_SHA"
+          echo "::notice::released ${{ steps.version.outputs.tag }} — the site badge updates on the next docs build"

@@ -139,7 +139,7 @@ green.
 
 1. Push a trivial change to the [examples repo](https://github.com/ubunye-ai-ecosystems/ubunye-examples)
    (e.g. edit its README) and merge it.
-2. Watch the `examples/titanic_databricks` workflow. The
+2. Watch the `deploy` workflow in the ubunye-examples repository. The
    `databricks bundle deploy` step logs a line like
    `Uploading bundle files to /Workspace/Users/<principal>/.bundle/...` —
    if `<principal>` is the service principal's Application ID, OAuth is

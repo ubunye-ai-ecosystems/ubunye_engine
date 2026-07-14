@@ -3,7 +3,14 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - 'v*' # Trigger only on version tags like v0.1.0
+      - 'v*' # a hand-pushed version tag still works
+  release:
+    types: [published]
+    # Releases are now created automatically when the version in pyproject.toml
+    # changes on main (see release_on_version_bump.yml). A tag created through the
+    # release API does not reliably fire a tag push event, so listen for the release
+    # itself as well. The pypip environment still requires a human approval, so
+    # nothing reaches PyPI without a click.
 
 jobs:
   build-n-publish:
