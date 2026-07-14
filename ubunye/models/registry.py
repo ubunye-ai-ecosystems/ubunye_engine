@@ -22,7 +22,6 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ubunye.core.errors import (
@@ -137,7 +136,15 @@ class ModelRegistry:
     """
 
     def __init__(self, store_path: str):
-        self.store_path = Path(store_path)
+        # The SCHEME of the path picks the storage backend: a plain directory or
+        # file:// stays local (exactly the old behaviour), s3://, gs:// and friends
+        # go through fsspec, and any scheme registered under the
+        # ubunye.artifact_stores entry-point group goes to that plugin. The
+        # registry itself no longer knows what a disk is.
+        from ubunye.models.artifact_store import resolve_store
+
+        self.store_path = str(store_path)
+        self._store = resolve_store(self.store_path)
 
     # ------------------------------------------------------------------
     # Public API
@@ -183,15 +190,24 @@ class ModelRegistry:
                 hint="Use a different version string or set auto_version=True.",
             )
 
-        # Persist model artifacts
+        # Persist model artifacts. Models write real files (joblib, a Keras zip),
+        # and those need a real local directory — a Keras save fails outright on
+        # storage that cannot seek. staging_dir() gives them one and publishes it
+        # to wherever the store actually lives when the block ends.
         version_dir = self._version_dir(use_case, model_name, version)
-        model_dir = version_dir / "model"
-        model_dir.mkdir(parents=True, exist_ok=True)
-        model.save(str(model_dir))
+        model_dir = self._store.join(version_dir, "model")
+        with self._store.staging_dir(model_dir) as local_dir:
+            model.save(str(local_dir))
 
         # Write metadata and metrics
-        _write_json(version_dir / "metadata.json", model.metadata())
-        _write_json(version_dir / "metrics.json", metrics)
+        self._store.write_text(
+            self._store.join(version_dir, "metadata.json"),
+            json.dumps(model.metadata(), indent=2, default=str),
+        )
+        self._store.write_text(
+            self._store.join(version_dir, "metrics.json"),
+            json.dumps(metrics, indent=2, default=str),
+        )
 
         model_version = ModelVersion(
             version=version,
@@ -379,8 +395,11 @@ class ModelRegistry:
                 hint="Pass version='x.y.z' or stage=ModelStage.PRODUCTION.",
             )
 
-        model_path = str(self._version_dir(use_case, model_name, mv.version) / "model")
-        return model_path, mv
+        remote = self._store.join(self._version_dir(use_case, model_name, mv.version), "model")
+        # The caller passes this to ModelClass.load(), which reads real files — so a
+        # remote store downloads to a local directory first. The local store returns
+        # the path untouched, exactly as before.
+        return self._store.materialize(remote), mv
 
     def list_versions(self, use_case: str, model_name: str) -> List[ModelVersion]:
         """List all registered versions for a model (newest first by registered_at).
@@ -427,27 +446,27 @@ class ModelRegistry:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _version_dir(self, use_case: str, model_name: str, version: str) -> Path:
-        return self.store_path / use_case / model_name / "versions" / version
+    def _version_dir(self, use_case: str, model_name: str, version: str) -> str:
+        return self._store.join(self.store_path, use_case, model_name, "versions", version)
 
-    def _registry_path(self, use_case: str, model_name: str) -> Path:
-        return self.store_path / use_case / model_name / "registry.json"
+    def _registry_path(self, use_case: str, model_name: str) -> str:
+        return self._store.join(self.store_path, use_case, model_name, "registry.json")
 
     def _load_or_create_record(self, use_case: str, model_name: str) -> ModelRecord:
         path = self._registry_path(use_case, model_name)
-        if path.exists():
+        if self._store.exists(path):
             return self._load_record(use_case, model_name)
         return ModelRecord(model_name=model_name, use_case=use_case)
 
     def _load_record(self, use_case: str, model_name: str) -> ModelRecord:
         path = self._registry_path(use_case, model_name)
-        if not path.exists():
+        if not self._store.exists(path):
             raise RegistryNotFoundError(
                 f"No registry found for '{use_case}/{model_name}'.",
                 context={"Model": f"{use_case}/{model_name}", "Expected": str(path)},
                 hint="Register a model version first with registry.register().",
             )
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(self._store.read_text(path))
         versions = {k: ModelVersion(**v) for k, v in data.get("versions", {}).items()}
         return ModelRecord(
             model_name=data["model_name"],
@@ -457,7 +476,6 @@ class ModelRegistry:
 
     def _save_record(self, record: ModelRecord) -> None:
         path = self._registry_path(record.use_case, record.model_name)
-        path.parent.mkdir(parents=True, exist_ok=True)
         data: Dict[str, Any] = {
             "model_name": record.model_name,
             "use_case": record.use_case,
@@ -467,7 +485,7 @@ class ModelRegistry:
         for v_dict in data["versions"].values():
             if isinstance(v_dict.get("stage"), ModelStage):
                 v_dict["stage"] = v_dict["stage"].value
-        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        self._store.write_text(path, json.dumps(data, indent=2))
 
     @staticmethod
     def _next_version(record: ModelRecord) -> str:
@@ -551,7 +569,9 @@ class FilesystemRegistryBackend:
             metrics=metrics,
             lineage_run_id=lineage_run_id,
         )
-        artifact_path = str(self._registry._version_dir(use_case, model_name, mv.version) / "model")
+        artifact_path = self._registry._store.join(
+            self._registry._version_dir(use_case, model_name, mv.version), "model"
+        )
         info = mv.to_info(name=model_name, artifact_path=artifact_path)
         if metadata:
             info.metadata.update(metadata)
@@ -585,7 +605,9 @@ class FilesystemRegistryBackend:
             mv.to_info(
                 name=model_name,
                 artifact_path=str(
-                    self._registry._version_dir(use_case, model_name, mv.version) / "model"
+                    self._registry._store.join(
+                        self._registry._version_dir(use_case, model_name, mv.version), "model"
+                    )
                 ),
             )
             for mv in versions
@@ -634,11 +656,8 @@ class FilesystemRegistryBackend:
         model_name: str,
         version: str,
     ) -> None:
-        import shutil
-
         version_dir = self._registry._version_dir(use_case, model_name, version)
-        if version_dir.exists():
-            shutil.rmtree(version_dir)
+        self._registry._store.delete(version_dir)
         record = self._registry._load_record(use_case, model_name)
         record.versions.pop(version, None)
         self._registry._save_record(record)
@@ -651,8 +670,3 @@ class FilesystemRegistryBackend:
 
 def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-def _write_json(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")

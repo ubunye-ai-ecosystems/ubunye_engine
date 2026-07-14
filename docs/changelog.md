@@ -22,6 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The model registry writes to object storage now.** `ModelRegistry` was built
+  directly on `pathlib`, so models could only be saved to a normal disk — the one
+  thing AWS and GCP serverless do not offer. Storage is a port now: the scheme of the
+  store path picks the backend. A plain path or `file://` stays local and behaves
+  exactly as before. `s3://`, `gs://` and friends go through fsspec
+  (`pip install 'ubunye-engine[objectstore]'` plus your cloud's filesystem, e.g.
+  `s3fs`). Any other scheme goes to whatever store someone registers under the new
+  `ubunye.artifact_stores` entry-point group — one class, one entry point, no engine
+  edits, no inheritance, like every other connector. Models still write real files
+  (a Keras save needs an actual disk), so remote stores stage locally and upload,
+  and `get_model` downloads before load. Closes #28.
+
 - **The annotations are a public API now.** The package ships a `py.typed` marker, so
   type checkers in consuming projects finally see the engine's types (PEP 561 says they
   must ignore packages without it, so until now every annotation was invisible to

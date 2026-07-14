@@ -35,6 +35,9 @@ ml-torch = ["scikit-learn", "torch", "mlflow"]
 # Nobody noticed because Databricks preinstalls requests -- the bug was invisible from
 # the one platform most people used, and appeared the moment anyone left it.
 rest = ["requests>=2.28"]
+# Model artifacts on object storage (s3://, gs://, ...). fsspec routes the scheme to
+# whichever filesystem package is installed: add s3fs for AWS, gcsfs for GCP.
+objectstore = ["fsspec>=2023.1.0"]
 dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8"]
 databricks = ["databricks-sdk>=0.20"]
 
@@ -79,6 +82,12 @@ prometheus = "ubunye.telemetry.hooks.prometheus:PrometheusHook"
 
 [project.entry-points."ubunye.deploy_adapters"]
 databricks = "ubunye.deploy.databricks:DatabricksDeployAdapter"
+
+[project.entry-points."ubunye.artifact_stores"]
+# Third parties add storage schemes here: `mycloud = "pkg.mod:MyStore"` makes
+# `store_path="mycloud://bucket/models"` work with zero engine edits. The class is
+# called with the scheme and must satisfy the structural ArtifactStore contract.
+file = "ubunye.models.artifact_store:LocalArtifactStore"
 
 [project.entry-points."ubunye.registry_backends"]
 filesystem = "ubunye.models.registry:FilesystemRegistryBackend"
