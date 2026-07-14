@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/notebook/">
+        <link rel="canonical" href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/containers/">
       
       
-        <link rel="prev" href="../../databricks-auth/">
+        <link rel="prev" href="../local/">
       
       
-        <link rel="next" href="../rag/">
+        <link rel="next" href="../cloud/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Notebook Prototyping - Ubunye Engine</title>
+        <title>In Docker and Kubernetes - Ubunye Engine</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#notebook-prototyping" class="md-skip">
+        <a href="#examples-in-docker-and-kubernetes" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Notebook Prototyping
+              In Docker and Kubernetes
             
           </span>
         </div>
@@ -1006,18 +1006,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -1038,7 +1040,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1056,7 +1058,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -1084,7 +1086,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/databricks/" class="md-nav__link">
+      <a href="../databricks/" class="md-nav__link">
         
   
   
@@ -1112,7 +1114,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/local/" class="md-nav__link">
+      <a href="../local/" class="md-nav__link">
         
   
   
@@ -1137,10 +1139,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../examples/containers/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    In Docker and Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1156,6 +1185,48 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kubernetes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kubernetes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1168,7 +1239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/cloud/" class="md-nav__link">
+      <a href="../cloud/" class="md-nav__link">
         
   
   
@@ -1338,20 +1409,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
@@ -1372,7 +1441,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1387,37 +1456,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Notebook Prototyping
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../patterns/notebook/" class="md-nav__link">
         
   
   
@@ -1433,120 +1475,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick start
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-by-step-execution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step-by-step execution
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#one-shot-execution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        One-shot execution
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#auto-env-var-resolution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Auto env-var resolution
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Auto env-var resolution">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#widget-naming-convention" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Widget naming convention
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#secrets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Secrets
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cleanup
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparison-with-run_task" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison with run_task
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1559,7 +1487,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../rag/" class="md-nav__link">
+      <a href="../../patterns/rag/" class="md-nav__link">
         
   
   
@@ -1587,7 +1515,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../features/" class="md-nav__link">
+      <a href="../../patterns/features/" class="md-nav__link">
         
   
   
@@ -1615,7 +1543,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../drift/" class="md-nav__link">
+      <a href="../../patterns/drift/" class="md-nav__link">
         
   
   
@@ -1643,7 +1571,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../rest_api/" class="md-nav__link">
+      <a href="../../patterns/rest_api/" class="md-nav__link">
         
   
   
@@ -1671,7 +1599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hooks/" class="md-nav__link">
+      <a href="../../patterns/hooks/" class="md-nav__link">
         
   
   
@@ -2030,10 +1958,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick start
+        Docker
       
     </span>
   </a>
@@ -2041,82 +1969,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-by-step-execution" class="md-nav__link">
+  <a href="#kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step-by-step execution
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#one-shot-execution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        One-shot execution
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#auto-env-var-resolution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Auto env-var resolution
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Auto env-var resolution">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#widget-naming-convention" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Widget naming convention
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#secrets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Secrets
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cleanup
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparison-with-run_task" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison with run_task
+        Kubernetes
       
     </span>
   </a>
@@ -2140,7 +1996,7 @@
 
 
   
-    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/patterns/notebook.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/examples/containers.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2148,136 +2004,27 @@
   
 
 
-<h1 id="notebook-prototyping">Notebook Prototyping<a class="headerlink" href="#notebook-prototyping" title="Permanent link">&para;</a></h1>
-<p>The notebook API lets data scientists prototype Ubunye tasks step by step
-in Databricks notebooks. Environment variables are auto-resolved from
-widgets and secrets — no manual <code>os.environ</code> setup.</p>
-<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ubunye</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">notebook</span><span class="p">(</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="s2">&quot;/Workspace/pipelines/claims/claim_etl&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;PROD&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">&quot;2026-01-01&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
+<h1 id="examples-in-docker-and-kubernetes">Examples in Docker and Kubernetes<a class="headerlink" href="#examples-in-docker-and-kubernetes" title="Permanent link">&para;</a></h1>
+<p>This page shows the same pipelines running inside containers. Nothing in any
+pipeline is container-aware. The image supplies Spark, Delta, the JDBC driver
+and the engine. The task folders are copied in unchanged.</p>
+<h2 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h2>
+<p>One command per example:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>platforms/docker/compose.yml<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>run-anywhere
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>platforms/docker/compose.yml<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>rest-api
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>platforms/docker/compose.yml<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>jdbc
 </code></pre></div>
-<p>That single call:</p>
-<ol>
-<li>Scans <code>config.yaml</code> for <code>{{ env.VAR }}</code> references</li>
-<li>Auto-resolves each from Databricks widgets (lowercase name convention)
-   or an explicit <code>secrets_scope</code></li>
-<li>Loads and validates the config</li>
-<li>Starts the backend (reuses the notebook's active SparkSession)</li>
-<li>Loads <code>transformations.py</code></li>
-</ol>
-<h2 id="step-by-step-execution">Step-by-step execution<a class="headerlink" href="#step-by-step-execution" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Cell 2 — read and inspect inputs</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">sources</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">sources</span><span class="p">[</span><span class="s2">&quot;raw_claims&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">display</span><span class="p">()</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">sources</span><span class="p">[</span><span class="s2">&quot;raw_claims&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">printSchema</span><span class="p">()</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># Cell 3 — transform and inspect outputs</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">sources</span><span class="p">)</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">outputs</span><span class="p">[</span><span class="s2">&quot;bronze_claims&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">truncate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># Cell 4 — write when satisfied</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">ctx</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span>
-</code></pre></div>
-<p>Each step can be re-run independently. <code>transform()</code> with no argument
-uses the result of the last <code>read()</code>.</p>
-<h2 id="one-shot-execution">One-shot execution<a class="headerlink" href="#one-shot-execution" title="Permanent link">&para;</a></h2>
-<p>When you don't need to inspect intermediate DataFrames:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>  <span class="c1"># read -&gt; transform -&gt; write</span>
-</code></pre></div>
-<h2 id="auto-env-var-resolution">Auto env-var resolution<a class="headerlink" href="#auto-env-var-resolution" title="Permanent link">&para;</a></h2>
-<p>The notebook context scans raw YAML for <code>{{ env.VAR }}</code> before Jinja
-resolution and resolves each variable from a waterfall of sources:</p>
-<table>
-<thead>
-<tr>
-<th>Priority</th>
-<th>Source</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>Explicit <code>env=</code> dict</td>
-<td><code>env={"CATALOG": "my_catalog"}</code></td>
-</tr>
-<tr>
-<td>2</td>
-<td>Already in <code>os.environ</code></td>
-<td>Set by Databricks job parameters</td>
-</tr>
-<tr>
-<td>3</td>
-<td>Databricks widget</td>
-<td>Widget named <code>catalog</code> maps to <code>CATALOG</code></td>
-</tr>
-<tr>
-<td>4</td>
-<td>Databricks secret</td>
-<td><code>secrets_scope="my-scope"</code>, key = <code>catalog</code></td>
-</tr>
-<tr>
-<td>5</td>
-<td>Jinja <code>\| default()</code></td>
-<td>Falls through to config default</td>
-</tr>
-</tbody>
-</table>
-<h3 id="widget-naming-convention">Widget naming convention<a class="headerlink" href="#widget-naming-convention" title="Permanent link">&para;</a></h3>
-<p>Widget names are the <strong>lowercase</strong> version of the env-var name.
-A config referencing <code>{{ env.TELM_CATALOG }}</code> auto-reads from a widget
-named <code>telm_catalog</code>.</p>
-<h3 id="secrets">Secrets<a class="headerlink" href="#secrets" title="Permanent link">&para;</a></h3>
-<p>Pass <code>secrets_scope</code> to auto-fetch secrets. By default, the secret key
-is the lowercase env-var name. Override with <code>secrets_map</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">notebook</span><span class="p">(</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">task_dir</span><span class="p">,</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">secrets_scope</span><span class="o">=</span><span class="s2">&quot;my-pipeline&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">secrets_map</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;API_KEY&quot;</span><span class="p">:</span> <span class="s2">&quot;my-custom-key&quot;</span><span class="p">},</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">)</span>
-</code></pre></div>
-<h2 id="cleanup">Cleanup<a class="headerlink" href="#cleanup" title="Permanent link">&para;</a></h2>
-<p>Call <code>ctx.close()</code> to restore original environment variables and remove
-the task directory from <code>sys.path</code>.</p>
-<h2 id="comparison-with-run_task">Comparison with <code>run_task</code><a class="headerlink" href="#comparison-with-run_task" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th></th>
-<th><code>ubunye.run_task()</code></th>
-<th><code>ubunye.notebook()</code></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Execution</td>
-<td>All-or-nothing</td>
-<td>Step-by-step</td>
-</tr>
-<tr>
-<td>Env vars</td>
-<td>Manual <code>os.environ</code> setup</td>
-<td>Auto-resolved</td>
-</tr>
-<tr>
-<td>Inspection</td>
-<td>Only final outputs</td>
-<td>Between every stage</td>
-</tr>
-<tr>
-<td>Use case</td>
-<td>Jobs, CI, automation</td>
-<td>Interactive prototyping</td>
-</tr>
-</tbody>
-</table>
-<p>Both share the same engine, config loader, and plugin system. Code that
-works in the notebook works identically via <code>run_task</code>.</p>
+<p>There is a second image for the machine learning examples. It carries the open
+source models with the weights already inside, so it works with no internet at
+run time. A container that downloads a gigabyte on every start secretly depends
+on the network, and a locked-down cluster does not have one.</p>
+<h2 id="kubernetes">Kubernetes<a class="headerlink" href="#kubernetes" title="Permanent link">&para;</a></h2>
+<p>The same images run as Jobs. Manifests live under <code>platforms/k8s/</code>. The build
+system runs this on every pull request using a small disposable cluster, so it
+cannot quietly rot.</p>
+<p>RAG and fine-tuning both run this way too: seed the data, build the document
+index, answer questions, train the student model, all inside one pod with no
+Databricks anywhere.</p>
 
 
 
@@ -2300,7 +2047,7 @@ works in the notebook works identically via <code>run_task</code>.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 22:11:48 UTC">July 12, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 14, 2026 13:12:39 UTC">July 14, 2026</span>
   </span>
 
     
@@ -2310,7 +2057,7 @@ works in the notebook works identically via <code>run_task</code>.</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="May 20, 2026 16:16:04 UTC">May 20, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 14, 2026 13:12:39 UTC">July 14, 2026</span>
   </span>
 
     
