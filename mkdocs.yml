@@ -60,6 +60,7 @@ nav:
       - Writing Your Own: connectors/plugin_guide.md
   - Machine Learning:
       - Model Contract: ml/model_contract.md
+      - Scoring ONNX Models: ml/onnx.md
       - Model Registry: ml/registry.md
   # Examples are grouped by what you are trying to DO. Inside every example a
   # linked toggle (content.tabs.link) switches the run instructions between
