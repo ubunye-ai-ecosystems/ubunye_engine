@@ -30,6 +30,10 @@ spark = ["pyspark>=3.3"]
 delta = ["delta-spark>=4.0"]
 ml = ["scikit-learn", "mlflow"]
 ml-torch = ["scikit-learn", "torch", "mlflow"]
+# ONNX scoring. Deliberately its own extra rather than folded into `ml`:
+# onnxruntime is about 300 MB and is only needed by pipelines that score a
+# frozen deep-learning graph, which most ETL installs never do.
+onnx = ["onnxruntime>=1.17"]
 # The rest_api connector needs `requests`. It used to live ONLY in the dev extra, so
 # `pip install ubunye-engine[spark]` shipped a reader that could not make a request.
 # Nobody noticed because Databricks preinstalls requests -- the bug was invisible from
@@ -70,6 +74,7 @@ model = "ubunye.plugins.transforms.model_transform:ModelTransform"
 [project.entry-points."ubunye.ml"]
 sklearn = "ubunye.plugins.ml.sklearn:SklearnModel"
 sparkml = "ubunye.plugins.ml.pysparkml:SparkMLModel"
+onnx = "ubunye.plugins.ml.onnx:OnnxModel"
 
 [project.entry-points."ubunye.monitors"]
 mlflow  = "ubunye.telemetry.mlflow:MLflowMonitor"
