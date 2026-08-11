@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from ubunye.adapters.spark import write_exec
 from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
@@ -78,7 +79,7 @@ class DeltaWriter(Writer):
             file_format=FILE_FORMAT,
         )
 
-        write_modes.apply(
+        write_exec.apply(
             df,
             backend.spark,
             resolved,

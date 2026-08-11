@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from ubunye.adapters.spark import write_exec
 from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
@@ -66,7 +67,7 @@ class HiveWriter(Writer):
             file_format=fmt,
         )
 
-        write_modes.apply(
+        write_exec.apply(
             df,
             backend.spark,
             resolved,

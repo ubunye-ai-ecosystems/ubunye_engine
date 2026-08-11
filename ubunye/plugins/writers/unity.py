@@ -35,6 +35,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List
 
+from ubunye.adapters.spark import write_exec
 from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
@@ -134,7 +135,7 @@ class UnityTableWriter(Writer):
         comment: str | None = options.pop("comment", None)  # we'll set via SQL after creation
         tblprops: Dict[str, str] = dict(options.pop("tblproperties", {}) or {})
 
-        write_modes.apply(
+        write_exec.apply(
             df,
             spark,
             resolved,
