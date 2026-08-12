@@ -242,6 +242,12 @@ def run(
     lineage_dir: str = typer.Option(
         ".ubunye/lineage", "--lineage-dir", help="Root directory for lineage records."
     ),
+    backend_kind: str = typer.Option(
+        "spark",
+        "--backend",
+        help="Execution backend: 'spark' (default) or 'pandas' (a laptop run with "
+        "no Spark and no JVM; path-based csv/parquet/json only).",
+    ),
 ):
     """Run one or more tasks within a package sequentially."""
     variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
@@ -299,7 +305,19 @@ def run(
     spark_conf["spark.submit.deployMode"] = deploy_mode
 
     run_id = str(uuid.uuid4())
-    backend = SparkBackend(app_name=f"ubunye:{package}", conf=spark_conf)
+    if backend_kind == "pandas":
+        from ubunye.backends.pandas_backend import PandasBackend
+
+        backend = PandasBackend(app_name=f"ubunye:{package}")
+    elif backend_kind == "spark":
+        backend = SparkBackend(app_name=f"ubunye:{package}", conf=spark_conf)
+    else:
+        typer.secho(
+            f"[ERROR] Unknown --backend '{backend_kind}'. Use 'spark' or 'pandas'.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
 
     # Build a lineage recorder if --lineage was requested
     lineage_recorder = None

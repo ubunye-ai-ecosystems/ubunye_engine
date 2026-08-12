@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from ubunye.adapters.spark import write_exec
 from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
@@ -57,9 +56,11 @@ class S3Writer(Writer):
             file_format=fmt,
         )
 
-        write_exec.apply(
+        # The data-plane write seam (#38): hand the resolved mode to the backend
+        # to execute. SparkBackend runs it through Spark (MERGE, dynamic overwrite,
+        # save); PandasBackend writes the file with pandas.
+        backend.execute_write(
             df,
-            backend.spark,
             resolved,
             connector="s3",
             file_format=fmt,

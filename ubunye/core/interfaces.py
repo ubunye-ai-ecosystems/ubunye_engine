@@ -7,10 +7,11 @@ transforms, and user-defined tasks.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Optional, Sequence
 
 if TYPE_CHECKING:
     from ubunye.core.ports import DataFramePort
+    from ubunye.core.write_modes import ResolvedWriteMode
 
 
 class Backend(ABC):
@@ -29,6 +30,50 @@ class Backend(ABC):
     def is_spark(self) -> bool:
         """Whether this backend is Spark-based."""
         ...
+
+    # ---------------------------------------------------------------- #
+    # Data-plane IO seam (issue #38).
+    #
+    # A generic path connector (``s3``) asks the backend to read and write,
+    # instead of naming Spark. This is what lets the same task run on Spark or
+    # on pandas: the connector owns the backend-agnostic *decision* (the file
+    # format, the resolved write mode); the backend owns the *mechanism*.
+    #
+    # Concrete-and-raising rather than @abstractmethod so existing/third-party
+    # Backend subclasses that predate the seam still instantiate. The three
+    # shipped backends override both.
+    # ---------------------------------------------------------------- #
+    def read_frame(
+        self,
+        file_format: str,
+        path: str,
+        *,
+        options: Optional[Dict[str, Any]] = None,
+        schema: Optional[str] = None,
+    ) -> "DataFramePort":
+        """Read ``path`` in ``file_format`` into a :class:`DataFramePort`."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement read_frame(); it cannot "
+            "serve a path-based reader like 's3'."
+        )
+
+    def execute_write(
+        self,
+        df: "DataFramePort",
+        resolved: "ResolvedWriteMode",
+        *,
+        connector: str,
+        file_format: str,
+        table: Optional[str] = None,
+        path: Optional[str] = None,
+        partition_by: Optional[Sequence[str]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Execute an already-resolved write mode against ``table`` or ``path``."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement execute_write(); it cannot "
+            "serve a path-based writer like 's3'."
+        )
 
 
 class Connector(ABC):

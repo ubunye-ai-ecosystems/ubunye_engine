@@ -28,6 +28,9 @@ spark = ["pyspark>=3.3"]
 # delta-spark 4.x — a 3.x delta against Spark 4 fails at runtime with
 # ClassNotFoundException: delta.DefaultSource, not at install time.
 delta = ["delta-spark>=4.0"]
+# The pandas backend — `ubunye run --backend pandas`, a laptop run with no Spark and
+# no JVM (issue #38). pyarrow gives it parquet; csv and json need only pandas.
+pandas = ["pandas>=1.5", "pyarrow>=10"]
 ml = ["scikit-learn", "mlflow"]
 ml-torch = ["scikit-learn", "torch", "mlflow"]
 # The rest_api connector needs `requests`. It used to live ONLY in the dev extra, so
