@@ -41,6 +41,15 @@ objectstore = ["fsspec>=2023.1.0"]
 dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8"]
 databricks = ["databricks-sdk>=0.20"]
 
+# Project URLs. These populate the sidebar links on the PyPI page, which
+# otherwise shows none, so anyone finding the package can reach the docs, the
+# source and the author's site. Updated on the next release.
+[project.urls]
+Homepage = "https://www.tmashininisekgoto.com"
+Documentation = "https://ubunye-ai-ecosystems.github.io/ubunye_engine/"
+Repository = "https://github.com/ubunye-ai-ecosystems/ubunye_engine"
+Issues = "https://github.com/ubunye-ai-ecosystems/ubunye_engine/issues"
+
 [project.scripts]
 ubunye = "ubunye.cli.main:app"
 
