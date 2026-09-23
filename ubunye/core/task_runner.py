@@ -109,6 +109,7 @@ def execute_user_task(
     manage_backend: bool = False,
     hooks: Optional[Iterable[Hook]] = None,
     extra_hooks: Optional[Iterable[Hook]] = None,
+    sample_rows: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Run a user-defined ``Task`` via the Engine.
 
@@ -135,6 +136,9 @@ def execute_user_task(
     extra_hooks
         Append these to the default hook set (e.g. a ``MonitorHook`` wrapping
         a lineage recorder).
+    sample_rows
+        Bound every input to this many rows (``ubunye run --sample N``). The
+        cheap check: same code, same connectors, a slice of the data.
 
     Returns
     -------
@@ -166,6 +170,7 @@ def execute_user_task(
             hooks=hooks,
             extra_hooks=extra_hooks,
             manage_backend=manage_backend,
+            sample_rows=sample_rows,
         )
 
         result = engine.run(cfg_dict)

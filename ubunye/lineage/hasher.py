@@ -17,9 +17,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Internal helper
@@ -79,6 +82,15 @@ def hash_schema(df: Any) -> str:
 MAX_SAMPLE_ROWS = int(os.environ.get("UBUNYE_LINEAGE_SAMPLE_ROWS", "1000"))
 
 
+#: What the data hash says when the rows could not be read at all.
+#:
+#: It used to say the SCHEMA hash in that case, which was not a degraded answer
+#: but a wrong one: every frame with the same columns got the same "data" hash,
+#: so `ubunye lineage compare` reported two unrelated runs as identical. A
+#: fingerprint that cannot see the data must say so.
+UNAVAILABLE = "unavailable"
+
+
 @dataclass(frozen=True)
 class DataFrameFingerprint:
     """Everything lineage wants to know about an output, computed in ONE place."""
@@ -86,6 +98,52 @@ class DataFrameFingerprint:
     schema_hash: str
     data_hash: str
     row_count: int
+
+    @property
+    def is_complete(self) -> bool:
+        """False when the rows could not be read, so the data hash means nothing."""
+        return self.data_hash != UNAVAILABLE and self.row_count >= 0
+
+
+def _row_payload(row: Any) -> str:
+    """One row as a stable string, whatever kind of row it is.
+
+    Spark hands back a ``Row`` (``asDict``), the pandas adapter hands back a plain
+    dict, and a third-party port may hand back anything at all.
+    """
+    if hasattr(row, "asDict"):
+        return json.dumps(row.asDict(recursive=True), sort_keys=True, default=str)
+    if isinstance(row, dict):
+        return json.dumps(row, sort_keys=True, default=str)
+    return str(row)
+
+
+def _bounded_rows(df: Any, max_rows: int) -> list:
+    """At most ``max_rows`` rows, never a whole-table collect."""
+    limiter = getattr(df, "limit", None)
+    if callable(limiter):
+        return list(limiter(max_rows).collect())
+    # A port that cannot limit still must not dump a table into the driver. Take the
+    # slice after collecting only if the frame is already materialised in memory.
+    return list(df.collect())[:max_rows]
+
+
+def _sampled_rows(df: Any, *, fraction: float, seed: int, max_rows: int) -> list:
+    """A bounded sample, in Spark's spelling, tolerant of frames that cannot sample.
+
+    Returns an empty list rather than raising, so the caller falls through to
+    :func:`_bounded_rows`. The pandas adapter implements both spellings, so this
+    path is the same on every backend now.
+    """
+    sampler = getattr(df, "sample", None)
+    if not callable(sampler):
+        return []
+    try:
+        return list(sampler(fraction=fraction, seed=seed).limit(max_rows).collect())
+    except Exception as exc:  # noqa: BLE001 — sampling is an optimisation, not the answer
+        logger.debug("Sampling unavailable (%s: %s); falling back to a bounded head.",
+                     type(exc).__name__, exc)
+        return []
 
 
 def fingerprint_dataframe(
@@ -110,6 +168,12 @@ def fingerprint_dataframe(
     * every ``collect`` is capped at ``max_rows``, whatever the table size — the
       empty-sample fallback collects ``df.limit(max_rows)``, never ``df``.
     """
+    from ubunye.adapters import as_port
+
+    # A transform may hand back the native frame it was holding. Put it behind its
+    # adapter before asking it anything, or a raw pandas frame answers count() with
+    # per-column non-null counts and the receipt records nonsense.
+    df = as_port(df)
     schema_hash = hash_schema(df)
 
     persisted = False
@@ -125,26 +189,34 @@ def fingerprint_dataframe(
             return DataFrameFingerprint(schema_hash, schema_hash, 0)
 
         fraction = min(max(sample_fraction, 0.0001), 1.0)
-        rows = df.sample(fraction=fraction, seed=seed).limit(max_rows).collect()
+        rows = _sampled_rows(df, fraction=fraction, seed=seed, max_rows=max_rows)
         if not rows:
             # A small DataFrame can sample to nothing. Take its head, BOUNDED — the old
             # code collected the whole thing here, which on a big table with a tiny
             # fraction was the exact OOM this function exists to avoid.
-            rows = df.limit(max_rows).collect()
+            rows = _bounded_rows(df, max_rows)
+
+        if not rows:
+            logger.warning(
+                "Lineage could not read rows from a %s; recording the data hash as "
+                "'%s' rather than inventing one.",
+                type(df).__name__,
+                UNAVAILABLE,
+            )
+            return DataFrameFingerprint(schema_hash, UNAVAILABLE, count)
 
         parts = [str(count)]
         for row in rows:
-            if hasattr(row, "asDict"):
-                parts.append(json.dumps(row.asDict(recursive=True), sort_keys=True, default=str))
-            else:
-                parts.append(str(row))
+            parts.append(_row_payload(row))
 
         payload = "\n".join(parts)
         return DataFrameFingerprint(schema_hash, _sha256(payload.encode()), count)
-    except Exception:
-        # Best effort, like everything in lineage: a fingerprint failure must not
-        # fail a pipeline that already succeeded.
-        return DataFrameFingerprint(schema_hash, schema_hash, -1)
+    except Exception as exc:  # noqa: BLE001
+        # Best effort, like everything in lineage: a fingerprint failure must not fail a
+        # pipeline that already succeeded. But "best effort" is not licence to make a
+        # hash up. Say the data hash is unavailable, and say why in the log.
+        logger.warning("Lineage fingerprint failed (%s: %s).", type(exc).__name__, exc)
+        return DataFrameFingerprint(schema_hash, UNAVAILABLE, -1)
     finally:
         if persisted:
             try:

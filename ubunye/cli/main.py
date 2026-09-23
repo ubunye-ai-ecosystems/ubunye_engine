@@ -15,9 +15,11 @@ Commands:
 
 from __future__ import annotations
 
+import json
+import time
 import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import typer
 
@@ -31,6 +33,7 @@ from ubunye.cli.models import models_app
 from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
 from ubunye.config import load_config
+from ubunye.core.planning import build_plan
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
@@ -47,6 +50,36 @@ app.add_typer(test_app)
 
 def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path:
     return usecase_dir / usecase / package / task
+
+
+def _template_vars(
+    data_timestamp: Optional[str],
+    data_timestamp_format: Optional[str],
+    mode: Optional[str],
+    var: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Build the Jinja context for a command.
+
+    ``--var key=value`` was documented in the README and in three docs pages and
+    was never implemented, so every example that used it failed. It works now, and
+    it is the same on every command that renders a config.
+    """
+    variables: Dict[str, Any] = {
+        "dt": data_timestamp,
+        "dtf": data_timestamp_format,
+        "mode": mode,
+    }
+    for item in var or []:
+        if "=" not in item:
+            raise typer.BadParameter(
+                f"--var expects key=value, got '{item}'. Example: --var region=gauteng"
+            )
+        key, value = item.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise typer.BadParameter(f"--var has an empty key in '{item}'.")
+        variables[key] = value
+    return variables
 
 
 @app.command()
@@ -101,6 +134,12 @@ def validate(
         "words for the same idea, which made them feel like different systems.",
     ),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
+    var: List[str] = typer.Option(
+        None, "--var", help="Extra template variable, key=value. Repeatable."
+    ),
+    as_json: bool = typer.Option(
+        False, "--json", help="Emit the result as JSON, for a script or an agent."
+    ),
 ):
     """Validate config file(s) without executing the pipeline.
 
@@ -154,29 +193,46 @@ def validate(
     # dt, so a config using {{ mode }} or {{ dtf }} ran fine and failed validation —
     # the one command whose whole job is to catch problems BEFORE the run invented
     # one the run did not have.
-    variables = {"dt": data_timestamp, "dtf": data_timestamp, "mode": profile or "DEV"}
+    variables = _template_vars(data_timestamp, data_timestamp, profile or "DEV", var)
     failed = 0
+    results = []
 
     for task in tasks_to_check:
         task_dir = _task_path(usecase_dir, usecase, package, task)
         try:
             load_config(str(task_dir), variables=variables, profile=profile)
-            typer.secho(f"  [OK]   {task}", fg=typer.colors.GREEN)
+            results.append({"task": task, "ok": True, "problems": []})
+            if not as_json:
+                typer.secho(f"  [OK]   {task}", fg=typer.colors.GREEN)
         except (ValueError, FileNotFoundError) as e:
-            typer.secho(f"  [FAIL] {task}", fg=typer.colors.RED)
-            # Indent error details for readability
-            for line in str(e).splitlines():
-                typer.echo(f"         {line}")
+            results.append({"task": task, "ok": False, "problems": str(e).splitlines()})
+            if not as_json:
+                typer.secho(f"  [FAIL] {task}", fg=typer.colors.RED)
+                # Indent error details for readability
+                for line in str(e).splitlines():
+                    typer.echo(f"         {line}")
             failed += 1
 
-    typer.echo()
-    if failed:
-        typer.secho(
-            f"{failed}/{len(tasks_to_check)} task(s) failed validation.", fg=typer.colors.RED
+    if as_json:
+        typer.echo(
+            json.dumps(
+                {"ok": not failed, "checked": len(tasks_to_check), "results": results},
+                indent=2,
+                default=str,
+            )
         )
-        raise typer.Exit(code=1)
     else:
-        typer.secho(f"All {len(tasks_to_check)} task(s) passed validation.", fg=typer.colors.GREEN)
+        typer.echo()
+        if failed:
+            typer.secho(
+                f"{failed}/{len(tasks_to_check)} task(s) failed validation.", fg=typer.colors.RED
+            )
+        else:
+            typer.secho(
+                f"All {len(tasks_to_check)} task(s) passed validation.", fg=typer.colors.GREEN
+            )
+    if failed:
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -188,22 +244,108 @@ def plan(
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
     mode: str = typer.Option("DEV", "-m", "--mode"),
+    var: List[str] = typer.Option(
+        None, "--var", help="Extra template variable, key=value. Repeatable."
+    ),
+    backend_kind: str = typer.Option(
+        "spark", "--backend", help="Backend the plan should assume: 'spark' or 'pandas'."
+    ),
+    as_json: bool = typer.Option(
+        False, "--json", help="Emit the plan as JSON, for a script or an agent."
+    ),
 ):
-    """Print the planned inputs → transform → outputs for task(s)."""
-    variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
-    for task in task_list:
-        config_path = _task_path(usecase_dir, usecase, package, task) / "config.yaml"
-        cfg = load_config(str(config_path), variables)
+    """Dry run a task: what it will read, what it will write, and what will stop it.
 
-        typer.echo(f"--- Task: {task} ---")
-        typer.echo("Inputs (Extract):")
-        for name, icfg in cfg.CONFIG.inputs.items():
-            typer.echo(f"  - {name}: {icfg.format}")
-        typer.echo(f"Transform (transformations.py): {cfg.CONFIG.transform.type}")
-        typer.echo("Outputs (Load):")
-        for name, ocfg in cfg.CONFIG.outputs.items():
-            typer.echo(f"  - {name}: {ocfg.format}")
-        typer.echo()
+    Nothing here starts a session, reads a table or costs money. It resolves the
+    config, checks the environment variables it needs, looks for the local inputs,
+    loads the transform class and asks every writer to resolve its write mode.
+    Exits non-zero when the run would fail.
+    """
+    variables = _template_vars(data_timestamp, data_timestamp_format, mode, var)
+    plans = []
+    failed = 0
+
+    for task in task_list:
+        task_dir = _task_path(usecase_dir, usecase, package, task)
+        config_path = task_dir / "config.yaml"
+        try:
+            cfg = load_config(str(config_path), variables)
+        except (ValueError, FileNotFoundError) as exc:
+            failed += 1
+            report = {
+                "task": f"{usecase}/{package}/{task}",
+                "ok": False,
+                "problems": [str(exc)],
+                "warnings": [],
+            }
+            plans.append(report)
+            if not as_json:
+                typer.secho(f"[FAIL] {task}", fg=typer.colors.RED)
+                for line in str(exc).splitlines():
+                    typer.echo(f"       {line}")
+            continue
+
+        raw_yaml = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+        report = build_plan(
+            cfg,
+            task_dir=task_dir,
+            task_name=f"{usecase}/{package}/{task}",
+            backend=backend_kind,
+            variables=variables,
+            raw_yaml=raw_yaml,
+        )
+        plans.append(report)
+        if not report["ok"]:
+            failed += 1
+        if not as_json:
+            _render_plan(report)
+
+    if as_json:
+        typer.echo(json.dumps(plans if len(plans) > 1 else plans[0], indent=2, default=str))
+
+    if failed:
+        raise typer.Exit(code=1)
+
+
+def _render_plan(report: dict) -> None:
+    """Print one plan for a person to read."""
+    typer.echo(f"--- Task: {report['task']} ---")
+    typer.echo(f"Backend: {report['backend']}   Config: {report['config_hash'][:19]}")
+
+    typer.echo("Reads:")
+    for item in report["inputs"]:
+        detail = f"  - {item['name']}: {item['format']} <- {item['location']}"
+        if item.get("checked"):
+            if item.get("exists"):
+                detail += f"  [{item['files']} file(s), {item['bytes']} bytes]"
+            else:
+                detail += "  [MISSING]"
+        typer.echo(detail)
+
+    tform = report["transform"]
+    label = tform.get("class") or tform.get("type") or "transformations.py"
+    typer.echo(f"Transform: {label}")
+
+    typer.echo("Writes:")
+    for item in report["outputs"]:
+        mode_txt = item.get("resolved_mode") or "?"
+        detail = f"  - {item['name']}: {item['format']} -> {item['location']}  mode={mode_txt}"
+        if item.get("merge_keys"):
+            detail += f"  keys={','.join(item['merge_keys'])}"
+        typer.echo(detail)
+
+    for warning in report["warnings"]:
+        typer.secho(f"  warn: {warning}", fg=typer.colors.YELLOW)
+    for problem in report["problems"]:
+        typer.secho(f"  STOP: {problem}", fg=typer.colors.RED)
+
+    if report["ok"]:
+        typer.secho("Plan is runnable.", fg=typer.colors.GREEN)
+    else:
+        typer.secho(
+            f"Plan would fail: {len(report['problems'])} problem(s).", fg=typer.colors.RED
+        )
+    typer.echo()
 
 
 @app.command()
@@ -248,9 +390,21 @@ def run(
         help="Execution backend: 'spark' (default) or 'pandas' (a laptop run with "
         "no Spark and no JVM; path-based csv/parquet/json only).",
     ),
+    var: List[str] = typer.Option(
+        None, "--var", help="Extra template variable, key=value. Repeatable."
+    ),
+    sample: Optional[int] = typer.Option(
+        None,
+        "--sample",
+        help="Bound every input to N rows. The cheap check: same code, same "
+        "connectors, a slice of the data. The receipt records that it was sampled.",
+    ),
+    as_json: bool = typer.Option(
+        False, "--json", help="Emit the result as JSON, for a script or an agent."
+    ),
 ):
     """Run one or more tasks within a package sequentially."""
-    variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
+    variables = _template_vars(data_timestamp, data_timestamp_format, mode, var)
 
     # Resolve which tasks to run, the same way `validate` resolves them. The two
     # commands answered the same question differently for years: validate had
@@ -336,22 +490,111 @@ def run(
         schema=first_cfg.resolved_schema(mode),
     )
     extra_hooks = [MonitorHook(lineage_recorder)] if lineage_recorder is not None else []
+    results: List[Dict[str, Any]] = []
     try:
         for task in task_list:
-            typer.echo(f"Starting task: {task} (Mode: {mode}, Deploy: {deploy_mode})")
+            if not as_json:
+                typer.echo(f"Starting task: {task} (Mode: {mode}, Deploy: {deploy_mode})")
             cfg = configs[task]
             task_dir = _task_path(usecase_dir, usecase, package, task)
             context = EngineContext(
                 run_id=run_id, profile=mode, task_name=f"{usecase}/{package}/{task}"
             )
+            started = time.perf_counter()
             try:
-                execute_user_task(backend, task_dir, cfg, context, extra_hooks=extra_hooks)
-                typer.secho(f"[OK] Run complete for {task}", fg=typer.colors.GREEN)
+                execute_user_task(
+                    backend,
+                    task_dir,
+                    cfg,
+                    context,
+                    extra_hooks=extra_hooks,
+                    sample_rows=sample,
+                )
             except Exception as e:
-                typer.secho(f"[ERROR] Run failed for {task}: {e}", fg=typer.colors.RED, err=True)
+                results.append(
+                    {
+                        "task": task,
+                        "ok": False,
+                        "run_id": run_id,
+                        "error": str(e),
+                        "duration_sec": round(time.perf_counter() - started, 3),
+                    }
+                )
+                if as_json:
+                    typer.echo(
+                        json.dumps({"ok": False, "results": results}, indent=2, default=str)
+                    )
+                else:
+                    typer.secho(
+                        f"[ERROR] Run failed for {task}: {e}", fg=typer.colors.RED, err=True
+                    )
                 raise
+            results.append(
+                {
+                    "task": task,
+                    "ok": True,
+                    "run_id": run_id,
+                    "backend": backend_kind,
+                    "sampled_rows": sample,
+                    "duration_sec": round(time.perf_counter() - started, 3),
+                    "receipt": (
+                        str(usecase_dir / lineage_dir / usecase / package / task / f"{run_id}.json")
+                        if lineage_recorder is not None
+                        else None
+                    ),
+                }
+            )
+            if not as_json:
+                typer.secho(f"[OK] Run complete for {task}", fg=typer.colors.GREEN)
+                if sample:
+                    typer.secho(
+                        f"     sampled run: every input bounded to {sample} rows",
+                        fg=typer.colors.YELLOW,
+                    )
     finally:
         backend.stop()
+
+    if as_json:
+        typer.echo(json.dumps({"ok": True, "results": results}, indent=2, default=str))
+
+
+@app.command()
+def receipt(
+    usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
+    usecase: str = typer.Option(..., "-u", "--usecase"),
+    package: str = typer.Option(..., "-p", "--package"),
+    task: str = typer.Option(..., "-t", "--task"),
+    run_id: Optional[str] = typer.Option(None, "--run-id", help="Default: the latest run."),
+    lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+):
+    """Print the receipt for a run: what it read, what it wrote, and the hashes.
+
+    This is the record `ubunye run --lineage` leaves behind. It is JSON on purpose:
+    a person can read it, a script can diff it, and an agent can check its own work
+    against it without parsing prose.
+    """
+    from ubunye.lineage.storage import FileSystemLineageStore
+
+    store = FileSystemLineageStore(str(usecase_dir / lineage_dir))
+    task_path = f"{usecase}/{package}/{task}"
+    try:
+        if run_id:
+            ctx = store.load(task_path, run_id)
+        else:
+            runs = store.list_runs(task_path, n=1)
+            if not runs:
+                typer.secho(
+                    f"No receipt for '{task_path}'. Run it with --lineage first.",
+                    fg=typer.colors.YELLOW,
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+            ctx = runs[0]
+    except FileNotFoundError as exc:
+        typer.secho(f"[ERROR] {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(json.dumps(ctx.to_dict(), indent=2, default=str))
 
 
 @app.command()

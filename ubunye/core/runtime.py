@@ -138,6 +138,7 @@ class Engine:
         hooks: Optional[Iterable[Hook]] = None,
         extra_hooks: Optional[Iterable[Hook]] = None,
         manage_backend: bool = True,
+        sample_rows: Optional[int] = None,
     ) -> None:
         """
         Parameters
@@ -151,6 +152,12 @@ class Engine:
             If True (default), the engine calls ``backend.start()`` and
             ``backend.stop()``. Set to False when the caller owns the backend
             lifecycle (e.g. Python API running multiple tasks on one session).
+        sample_rows : int, optional
+            Bound every input to this many rows before the transform sees them.
+            This is what makes a real run cheap enough to use as a check: the
+            same code path, the same connectors, the same writes, on a slice.
+            A sampled run is recorded as sampled, so its receipt can never be
+            mistaken for a full one.
         """
         self.backend = backend or SparkBackend(app_name="ubunye")
         self.registry = registry or Registry.from_entrypoints()
@@ -158,6 +165,7 @@ class Engine:
         self._hooks_override = list(hooks) if hooks is not None else None
         self._extra_hooks = list(extra_hooks) if extra_hooks else []
         self._manage_backend = manage_backend
+        self._sample_rows = sample_rows
 
     # ---------- public API ----------
 
@@ -278,8 +286,29 @@ class Engine:
                     f"Installed reader plugins: {', '.join(sorted(self.registry.readers))}",
                 )
             with chain.step(ctx, f"Reader:{rtype}", {"input": name}):
-                sources[name] = reader_cls().read(icfg, self.backend)
+                sources[name] = self._bound(reader_cls().read(icfg, self.backend), name)
         return sources
+
+    def _bound(self, frame: Any, input_name: str) -> Any:
+        """Apply ``sample_rows`` to a frame the reader just returned.
+
+        Duck-typed on purpose: Spark spells it ``limit`` and the pandas adapter
+        was taught the same spelling, so neither the engine nor the connectors
+        need to know which one they are holding. A frame that cannot bound
+        itself is left alone and says so, rather than silently running whole.
+        """
+        if not self._sample_rows:
+            return frame
+        limiter = getattr(frame, "limit", None)
+        if not callable(limiter):
+            logger.warning(
+                "--sample was asked for but input '%s' returned a %s that cannot limit(); "
+                "this input runs in full.",
+                input_name,
+                type(frame).__name__,
+            )
+            return frame
+        return limiter(int(self._sample_rows))
 
     def _apply_transforms(
         self,

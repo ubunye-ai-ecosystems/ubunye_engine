@@ -165,7 +165,9 @@ class LineageRecorder:
                         # purely to describe a run that had already finished.
                         print_ = fingerprint_dataframe(df, sample_fraction=self._sample_fraction)
                         step.schema_hash = print_.schema_hash
-                        step.data_hash = print_.data_hash
+                        # An unreadable frame records NO data hash. It used to record
+                        # the schema hash, which reads like a real answer and is not.
+                        step.data_hash = print_.data_hash if print_.is_complete else None
                         step.row_count = print_.row_count if print_.row_count >= 0 else None
                     except Exception:
                         pass  # Hashing is best-effort
