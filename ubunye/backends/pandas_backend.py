@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Sequence
 
 from ubunye.adapters import pandas_io
+from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
 from ubunye.core.capabilities import PATH_IO, Capabilities
 from ubunye.core.interfaces import Backend
 from ubunye.core.write_modes import NATIVE_SAVE_MODES
@@ -70,6 +71,16 @@ class PandasBackend(Backend):
     @property
     def app_name(self) -> str:
         return self._app_name
+
+    def to_native(self, frame: Any) -> Any:
+        """A transform gets the plain ``pandas.DataFrame`` (ADR 004)."""
+        return frame.native if isinstance(frame, PandasDataFrameAdapter) else frame
+
+    def to_port(self, frame: Any) -> Any:
+        """The engine gets the port, where ``count()`` means rows (ADR 004)."""
+        import pandas as pd
+
+        return PandasDataFrameAdapter(frame) if isinstance(frame, pd.DataFrame) else frame
 
     @property
     def timezone(self) -> str:

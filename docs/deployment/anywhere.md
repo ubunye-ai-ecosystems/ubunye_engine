@@ -58,7 +58,14 @@ copies Spark's defaults instead of pandas' own:
 
 The frame your task gets is an ordinary pandas DataFrame whose columns are backed
 by Arrow, so a whole number column with gaps stays whole numbers and a decimal
-stays a decimal, just as in Spark.
+stays a decimal, just as in Spark. Write plain pandas and return plain pandas:
+
+```python
+class Enrich(Task):
+    def transform(self, sources):
+        orders = sources["orders"]
+        return {"report": orders.assign(total=orders["price"] * orders["qty"])}
+```
 
 Timestamps written as text are read in `spark.sql.session.timeZone` from your
 `ENGINE.spark_conf`, the same setting Spark uses. If it is not set, the pandas

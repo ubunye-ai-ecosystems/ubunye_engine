@@ -8,6 +8,7 @@ purpose: the code and its tests are the detail.
 | [001](adr-001-backends-are-plugins.md) | Backends are plugins, found by name | 0.6.0 |
 | [002](adr-002-backend-capabilities.md) | Backends say what they can do; tasks are checked before they run | 0.6.0 |
 | [003](adr-003-backend-resolution.md) | One order for choosing a backend; the task never names it | 0.6.0 |
+| [004](adr-004-native-frames.md) | Your transform gets native frames; the engine gets the port | 0.6.0 |
 
 ## The rule behind all of them
 

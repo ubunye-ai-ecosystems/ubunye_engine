@@ -100,6 +100,7 @@ nav:
           - ADR 001 Backends Are Plugins: architecture/adr-001-backends-are-plugins.md
           - ADR 002 Backend Capabilities: architecture/adr-002-backend-capabilities.md
           - ADR 003 Choosing a Backend: architecture/adr-003-backend-resolution.md
+          - ADR 004 Native Frames: architecture/adr-004-native-frames.md
       - Contributing: contributing.md
 
 markdown_extensions:

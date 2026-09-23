@@ -28,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A pandas transform gets a plain pandas DataFrame (ADR 004).** It used to get
+  an adapter and had to write `sources["x"].native` to reach the DataFrame. The
+  `Backend` port gains `to_native` and `to_port`, and the engine converts at the
+  edges: transforms get and may return native frames; writers, hooks and
+  lineage get the port, where `count()` means rows (a raw pandas `count()`
+  counts non-nulls per column). `run_task`, `run_pipeline` and the notebook's
+  `read()` and `transform()` return native frames, so on pandas use
+  `len(frame)` for rows. Both methods default to doing nothing, so Spark tasks
+  and older backends are unchanged.
 - **Backends are plugins, and say what they can do (ADR 001, 002).** Spark,
   Databricks and pandas now register in a new `ubunye.backends` entry point
   group, exactly as a third party engine would, so adding an engine is a package
