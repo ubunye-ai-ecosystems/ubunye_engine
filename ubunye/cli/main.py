@@ -21,6 +21,7 @@ from typing import List, Optional
 
 import typer
 
+from ubunye.adapters.spark.catalog import set_catalog_and_schema
 from ubunye.backends.spark_backend import SparkBackend
 from ubunye.cli.deploy import deploy_app
 from ubunye.cli.export import export_app
@@ -30,7 +31,6 @@ from ubunye.cli.models import models_app
 from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
 from ubunye.config import load_config
-from ubunye.core.catalog import set_catalog_and_schema
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
