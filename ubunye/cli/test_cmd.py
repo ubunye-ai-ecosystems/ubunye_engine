@@ -21,6 +21,7 @@ from typing import List, Optional
 import typer
 
 from ubunye.cli.backend_choice import resolve_or_exit
+from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.core.runtime import EngineContext
 from ubunye.core.task_runner import execute_user_task
@@ -55,6 +56,7 @@ def run_test(
         help="Execution backend by name, as for `ubunye run` (e.g. pandas: tests "
         "with no Java). Default: the platform's session if there is one, else spark.",
     ),
+    var: Optional[List[str]] = var_option(),
 ):
     """Run one or more tasks with a test profile and report PASS/FAIL per task.
 
@@ -67,7 +69,8 @@ def run_test(
 
     ubunye test run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl --profile dev
     """
-    variables = {"dt": data_timestamp}
+    # The same variables `run` renders with; the profile is the mode here.
+    variables = cli_variables(dt=data_timestamp, dtf=None, mode=profile, var=var)
     failed = 0
     passed = 0
 

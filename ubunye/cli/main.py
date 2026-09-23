@@ -32,6 +32,7 @@ from ubunye.cli.lineage import lineage_app
 from ubunye.cli.models import models_app
 from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
+from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
@@ -95,9 +96,10 @@ def config(
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
     mode: str = typer.Option("DEV", "-m", "--mode"),
+    var: Optional[List[str]] = var_option(),
 ):
     """Show and validate config files."""
-    variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
+    variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
     for task in task_list:
         config_path = _task_path(usecase_dir, usecase, package, task) / "config.yaml"
         try:
@@ -129,6 +131,8 @@ def validate(
         "words for the same idea, which made them feel like different systems.",
     ),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
+    data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
+    var: Optional[List[str]] = var_option(),
     backend_kind: Optional[str] = typer.Option(
         None,
         "--backend",
@@ -189,7 +193,9 @@ def validate(
     # dt, so a config using {{ mode }} or {{ dtf }} ran fine and failed validation —
     # the one command whose whole job is to catch problems BEFORE the run invented
     # one the run did not have.
-    variables = {"dt": data_timestamp, "dtf": data_timestamp, "mode": profile or "DEV"}
+    variables = cli_variables(
+        dt=data_timestamp, dtf=data_timestamp_format, mode=profile or "DEV", var=var
+    )
     failed = 0
 
     caps = None
@@ -247,9 +253,10 @@ def plan(
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
     mode: str = typer.Option("DEV", "-m", "--mode"),
+    var: Optional[List[str]] = var_option(),
 ):
     """Print the planned inputs, transform and outputs for task(s)."""
-    variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
+    variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
     for task in task_list:
         config_path = _task_path(usecase_dir, usecase, package, task) / "config.yaml"
         cfg = load_config(str(config_path), variables)
@@ -308,9 +315,10 @@ def run(
         "run with no Spark and no JVM), or any installed plugin. See `ubunye backends`. "
         "Default: the platform's session if there is one, else spark.",
     ),
+    var: Optional[List[str]] = var_option(),
 ):
     """Run one or more tasks within a package sequentially."""
-    variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
+    variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
 
     # Resolve which tasks to run, the same way `validate` resolves them. The two
     # commands answered the same question differently for years: validate had

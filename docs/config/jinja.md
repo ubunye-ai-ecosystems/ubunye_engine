@@ -53,6 +53,22 @@ CONFIG:
       tbl_name: "events_{{ dt | replace('-', '_') }}"
 ```
 
+`--var` works on every command that renders a config: `run`, `validate`, `plan`,
+`config` and `test run`. From Python, pass the same thing as `variables=`:
+
+```python
+ubunye.run_task("pipelines/fraud/etl/claims", variables={"env_name": "prod"}, dt="2024-06-01")
+```
+
+A few rules, so a typo is caught instead of rendering the wrong thing:
+
+- A name must be a valid template name: letters, digits and underscores, not
+  starting with a digit (`env_name`, not `env-name`).
+- `env` is reserved for the environment (`{{ env.NAME }}`), and `mode` is set with
+  `-m`.
+- `--var dt=...` works like `-dt`; giving both with different values is refused.
+- The variables a run used are kept in its run record (`--lineage`).
+
 ---
 
 ## Default filter

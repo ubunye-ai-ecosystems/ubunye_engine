@@ -65,6 +65,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`--var key=value`, documented for years, now works.** It was in the README
+  and three docs pages and was never implemented, so every example that used it
+  failed. It now works on every command that renders a config (`run`,
+  `validate`, `plan`, `config`, `test run`), and the Python API takes the same
+  thing as `variables=` on `run_task`, `run_pipeline` and `notebook`. Names must
+  be valid template names, `env` is reserved and `mode` has its own flag;
+  `--var dt=...` works like `-dt`, and the same name with two values is refused
+  instead of one silently winning. The variables a run used are kept in its run
+  record. On the way, `validate` stopped setting `dtf` to the timestamp's value
+  (it now has `-dtf`), and `test run` now renders with `mode` (its profile), as
+  `run` does.
 - **The run record's data hash now means "these exact rows" (ADR 006).** It
   read a 1 percent sample, changed with row order on Spark, and on pandas
   quietly recorded the schema hash as the data hash. The new `rows-v1` hash

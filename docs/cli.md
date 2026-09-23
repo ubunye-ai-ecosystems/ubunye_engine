@@ -44,6 +44,7 @@ Most commands share a set of path and variable flags:
 | `--data-timestamp` | `-dt` | Data timestamp, injected as `{{ dt }}` in Jinja |
 | `--data-timestamp-format` | `-dtf` | Timestamp format, injected as `{{ dtf }}` |
 | `--mode` | `-m` | Engine profile / run mode (default: `DEV`) |
+| `--var` | | Extra template variable, `key=value`, repeatable (`run`, `validate`, `plan`, `config`, `test run`). See [Jinja](config/jinja.md#cli-injected-variables) |
 
 ---
 
