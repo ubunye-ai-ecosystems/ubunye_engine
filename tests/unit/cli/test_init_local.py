@@ -10,6 +10,7 @@ runs on pandas (no Java) and on Spark alike.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,8 @@ from ubunye.cli.main import app  # noqa: E402
 runner = CliRunner()
 WHERE = ["-d", "pipelines", "-u", "demo", "-p", "starter", "-t", "filter_adults"]
 TASK = Path("pipelines/demo/starter/filter_adults")
+# CI terminals get colour, and a colour code can split "--usecase" in two.
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 @pytest.fixture
@@ -55,7 +58,8 @@ class TestTheReadmeForm:
     def test_missing_options_are_named(self, project):
         result = runner.invoke(app, ["init", "-d", "pipelines"])
         assert result.exit_code == 2
-        assert "--usecase" in result.output and "--task-list" in result.output
+        text = _ANSI_RE.sub("", result.output)
+        assert "--usecase" in text and "--task-list" in text
 
 
 class TestWhatItMakesRuns:
