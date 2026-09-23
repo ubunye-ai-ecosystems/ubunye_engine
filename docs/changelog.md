@@ -73,6 +73,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attribute 'spark'`, and rest_api only after fetching every page. They now stop
   first, before any network call, with a message naming the connector and the
   way out (`--backend spark`, or csv/parquet/json paths with `format: s3`).
+- **Proof that the two backends agree, run against real Spark.** The old parity
+  test compared one passthrough task as strings. The new suite runs Spark 4.2
+  beside the pandas backend and compares Arrow types and Python values, never
+  strings: eight reader cases (CSV with and without header, inferSchema,
+  explicit schema, separators and null values; JSON Lines, multiLine and
+  schema), a folder Spark wrote, each engine reading what the other wrote for
+  parquet, CSV and JSON, CSV and JSON files byte for byte, and one task end to
+  end on both backends. It runs in a timezone other than UTC so a timezone slip
+  cannot hide. It found two gaps, now fixed: explicit `TIMESTAMP` schemas could
+  not read text without an offset, and JSON was not written the way Spark
+  writes it.
 
 ---
 
