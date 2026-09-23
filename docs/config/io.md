@@ -150,7 +150,10 @@ receives `auth`, `pagination`, and `headers` without schema changes.
 
 The first four are Spark's native `SaveMode` values. `merge` and
 `overwrite_partitions` are Ubunye's lakehouse modes — Spark has no save mode for
-either, so the engine implements them in `ubunye.core.write_modes`.
+either. The engine splits the work along the hexagon: the backend-agnostic
+*resolution* (validating a mode against what a connector supports) lives in
+`ubunye.core.write_modes`, while the Spark *execution* (`MERGE INTO`, dynamic
+partition overwrite) lives in the Spark adapter, `ubunye.adapters.spark.write_exec`.
 
 | Mode | Behaviour |
 |---|---|

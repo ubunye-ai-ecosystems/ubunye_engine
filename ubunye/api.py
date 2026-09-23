@@ -31,8 +31,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
+from ubunye.adapters.spark.catalog import set_catalog_and_schema
 from ubunye.config import load_config
-from ubunye.core.catalog import set_catalog_and_schema
 from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend
 from ubunye.core.runtime import EngineContext

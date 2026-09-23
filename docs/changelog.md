@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **Spark moved out of the engine core, so the hexagon is real rather than
+  aspirational.** The founding rule is "the core never depends on the outside
+  world," but `core/write_modes.py` and `core/catalog.py` called Spark directly
+  (`df.write`, `spark.sql("MERGE INTO ...")`, `USE CATALOG`), so the one place the
+  pattern was meant to hold was the one place it leaked. The Spark *mechanism* now
+  lives in a new Spark adapter (`ubunye.adapters.spark.write_exec` and
+  `ubunye.adapters.spark.catalog`); the backend-agnostic *decision* (validating a
+  write mode against what a connector supports) stays in `ubunye.core.write_modes`.
+  Behaviour is unchanged and every existing test passes. The old names
+  (`write_modes.apply`, `merge_into`, `target_exists`, `dynamic_partition_overwrite`,
+  and `core.catalog.set_catalog_and_schema`) still resolve through a deprecation shim,
+  so third-party connectors keep working; they will be removed in a future major. This
+  is the groundwork for a non-Spark backend (issue #38): the core can be
+  backend-agnostic now because it no longer imports one backend's API.
+
+---
+
 ## [0.5.0] — 2026-07-14
 
 ### Fixed

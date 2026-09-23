@@ -1,10 +1,10 @@
-"""Unit tests for ubunye.core.catalog — mock-based, no real SparkSession."""
+"""Unit tests for ubunye.adapters.spark.catalog — mock-based, no real SparkSession."""
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from ubunye.core.catalog import set_catalog_and_schema
+from ubunye.adapters.spark.catalog import set_catalog_and_schema
 
 
 class TestSetCatalogAndSchema:

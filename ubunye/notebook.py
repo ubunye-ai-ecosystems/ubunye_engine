@@ -25,11 +25,11 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Set
 
+from ubunye.adapters.spark.catalog import set_catalog_and_schema
 from ubunye.api import _detect_backend
 from ubunye.config import load_config
 from ubunye.config.resolver import extract_env_references
 from ubunye.config.schema import UbunyeConfig
-from ubunye.core.catalog import set_catalog_and_schema
 from ubunye.core.hooks import Hook
 from ubunye.core.runtime import Engine, EngineContext, Registry
 from ubunye.core.task_runner import (
