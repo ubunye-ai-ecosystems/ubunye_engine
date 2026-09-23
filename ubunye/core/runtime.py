@@ -210,8 +210,10 @@ class Engine:
             try:
                 sources = self._read_inputs(ctx, chain, inputs_cfg)
                 outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
-                self._write_outputs(ctx, chain, outputs_cfg, outputs_map)
-                state["outputs"] = outputs_map
+                ports = self._to_ports(outputs_map)
+                self._write_outputs(ctx, chain, outputs_cfg, ports)
+                # Hooks (lineage, monitors) get the port; the caller gets native frames.
+                state["outputs"] = ports
                 return outputs_map
             finally:
                 if self._manage_backend:
@@ -220,20 +222,21 @@ class Engine:
     def read_inputs(self, cfg: dict) -> Dict[str, Any]:
         """Read all inputs defined in ``CONFIG.inputs``.
 
-        Returns a dict mapping input name to DataFrame — suitable for
-        interactive inspection before calling :meth:`apply_transforms`.
+        Returns a dict mapping input name to the backend's own frame type (a
+        ``pandas.DataFrame`` on pandas) — suitable for interactive inspection
+        before calling :meth:`apply_transforms`.
         """
         inputs_cfg = cfg.get("CONFIG", {}).get("inputs", {}) or {}
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         self._validate_io_configs(inputs_cfg, outputs_cfg)
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        return self._read_inputs(ctx, chain, inputs_cfg)
+        return self._to_natives(self._read_inputs(ctx, chain, inputs_cfg))
 
     def apply_transforms(self, sources: Dict[str, Any], cfg: dict) -> Dict[str, Any]:
         """Apply configured transforms to *sources*.
 
-        Returns a dict mapping output name to DataFrame.
+        Returns a dict mapping output name to the backend's own frame type.
         """
         transform_cfg = cfg.get("CONFIG", {}).get("transform") or {}
         transforms = self._normalize_transforms(transform_cfg)
@@ -247,7 +250,21 @@ class Engine:
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        self._write_outputs(ctx, chain, outputs_cfg, outputs)
+        self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
+
+    # ---------- the frame boundary (ADR 004) ----------
+
+    def _to_natives(self, frames: Dict[str, Any]) -> Dict[str, Any]:
+        """Frames as a transform sees them: the backend's own type."""
+        if not isinstance(self.backend, Backend):
+            return dict(frames)  # a test double or pre-0.6 object: pass through
+        return {name: self.backend.to_native(frame) for name, frame in frames.items()}
+
+    def _to_ports(self, frames: Dict[str, Any]) -> Dict[str, Any]:
+        """Frames as the engine sees them: behind the DataFramePort."""
+        if not isinstance(self.backend, Backend):
+            return dict(frames)
+        return {name: self.backend.to_port(frame) for name, frame in frames.items()}
 
     # ---------- shared helpers ----------
 
@@ -296,7 +313,9 @@ class Engine:
         sources: Dict[str, Any],
         transforms: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        outputs_map: Dict[str, Any] = dict(sources)
+        # Transforms see native frames (ADR 004); between transforms too, so one
+        # that hands back a port still gives the next a native frame.
+        outputs_map: Dict[str, Any] = self._to_natives(sources)
         for tcfg in transforms:
             ttype = tcfg.get("type")
             if ttype is None:
@@ -310,6 +329,7 @@ class Engine:
                     context={"Transform": ttype, "Actual type": type(outputs_map).__name__},
                     hint="The apply() method must return a dict mapping output names to DataFrames.",
                 )
+            outputs_map = self._to_natives(outputs_map)
         return outputs_map
 
     def _write_outputs(

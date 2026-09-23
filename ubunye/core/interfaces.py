@@ -53,6 +53,23 @@ class Backend(ABC):
         """
         return SPARK in self.capabilities.features
 
+    def to_native(self, frame: Any) -> Any:
+        """The frame as a transform should see it: the engine's own type (ADR 004).
+
+        A pandas transform gets a ``pandas.DataFrame``, not a wrapper. The
+        default is the identity: a Spark DataFrame is already both.
+        """
+        return frame
+
+    def to_port(self, frame: Any) -> Any:
+        """The frame as the engine should see it: a :class:`DataFramePort` (ADR 004).
+
+        Writers, hooks and lineage ask frames about themselves (``count()`` means
+        rows). A raw pandas frame answers ``count()`` per column, so the pandas
+        backend wraps it here. The default is the identity.
+        """
+        return frame
+
     @classmethod
     def create(cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None) -> Any:
         """Build this backend for a run: how the registry constructs it by name.

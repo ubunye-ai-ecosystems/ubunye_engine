@@ -147,12 +147,12 @@ class TestApi:
     def test_run_task_by_name(self, tmp_path):
         task = _task(tmp_path)
         outputs = ubunye.run_task(str(task), backend="pandas")
-        assert outputs["out"].count() == 2
+        assert len(outputs["out"]) == 2  # a native pandas frame (ADR 004)
 
     def test_run_pipeline_by_name(self, tmp_path):
         _task(tmp_path)
         results = ubunye.run_pipeline(str(tmp_path), "uc", "pkg", ["copy"], backend="pandas")
-        assert results["copy"]["out"].count() == 2
+        assert len(results["copy"]["out"]) == 2
 
     def test_notebook_step_by_step_by_name(self, tmp_path):
         task = _task(tmp_path)
