@@ -180,13 +180,35 @@ def _instants(table: Any, timezone: str) -> Any:
     return table
 
 
-def _apply_schema(table: Any, schema: Any) -> Any:
+def _cast(col: Any, target: Any, timezone: str) -> Any:
+    """Cast one column to a schema type the way Spark parses text into it."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    if pa.types.is_string(col.type) or pa.types.is_large_string(col.type):
+        if pa.types.is_boolean(target):
+            return pc.utf8_lower(col).cast(target)  # Spark: case blind
+        if pa.types.is_timestamp(target) and target.tz is not None:
+            # Text without an offset is wall clock time in the session zone;
+            # text with one is already an instant. A column may hold both.
+            has_offset = pc.fill_null(
+                pc.match_substring_regex(col, pattern=r"(Z|[+-]\d\d:?\d\d)$"), False
+            )
+            null = pa.scalar(None, col.type)
+            aware = pc.if_else(has_offset, col, null).cast(pa.timestamp("us", tz="UTC"))
+            naive = pc.if_else(has_offset, null, col).cast(pa.timestamp("us"))
+            local = pc.assume_timezone(naive, timezone=timezone).cast(pa.timestamp("us", tz="UTC"))
+            return pc.coalesce(aware, local).cast(target)
+    return col.cast(target)
+
+
+def _apply_schema(table: Any, schema: Any, timezone: str = "UTC") -> Any:
     """Select and cast to an explicit schema; a missing column is all null."""
     import pyarrow as pa
 
     columns = [
         (
-            table.column(f.name).cast(f.type)
+            _cast(table.column(f.name), f.type, timezone)
             if f.name in table.column_names
             else pa.nulls(table.num_rows, f.type)
         )
@@ -248,7 +270,7 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
 
     table = pa.concat_tables(tables, promote_options="permissive")
     if schema is not None:
-        return _instants(_apply_schema(table, schema), timezone)
+        return _instants(_apply_schema(table, schema, timezone), timezone)
     table = _to_spark_types(table)
     if infer:
         table = _narrow_ints(table)
@@ -281,7 +303,7 @@ def _read_json(files: List[str], opts: Dict[str, Any], schema: Any, timezone: st
     names = sorted({k for r in rows for k in r})
     table = pa.table({n: pa.array([r.get(n) for r in rows]) for n in names})
     if schema is not None:
-        return _instants(_apply_schema(table, schema), timezone)
+        return _instants(_apply_schema(table, schema, timezone), timezone)
     return _to_spark_types(table)
 
 

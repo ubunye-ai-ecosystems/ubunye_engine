@@ -121,6 +121,23 @@ class TestCsvDefaults:
         assert _arrow_types(frame) == {"id": pa.int32(), "name": pa.string()}
         assert frame.collect() == [{"id": 1, "name": "a"}]
 
+    def test_schema_timestamps_without_an_offset_are_session_time(self, tmp_path):
+        frame = _read(
+            tmp_path,
+            "csv",
+            "2024-01-02 03:04:05\n2024-01-02T03:04:05+00:00\n",
+            schema="ts TIMESTAMP",
+            backend_kw={"timezone": "Africa/Johannesburg"},
+        )
+        assert frame.native["ts"].tolist() == [
+            pd.Timestamp("2024-01-02 01:04:05", tz="UTC"),
+            pd.Timestamp("2024-01-02 03:04:05", tz="UTC"),
+        ]
+
+    def test_schema_booleans_are_case_blind(self, tmp_path):
+        frame = _read(tmp_path, "csv", "True\nFALSE\n", schema="b BOOLEAN")
+        assert frame.native["b"].tolist() == [True, False]
+
 
 class TestJsonDefaults:
     LINES = (
@@ -134,7 +151,16 @@ class TestJsonDefaults:
 
     def test_columns_are_sorted_by_name_like_spark(self, tmp_path):
         frame = _read(tmp_path, "json", self.LINES)
-        assert list(frame.native.columns) == ["a", "arr", "b", "f", "n", "obj", "ts", "z"]
+        assert list(frame.native.columns) == [
+            "a",
+            "arr",
+            "b",
+            "f",
+            "n",
+            "obj",
+            "ts",
+            "z",
+        ]
 
     def test_types_match_spark(self, tmp_path):
         types = _arrow_types(_read(tmp_path, "json", self.LINES))
