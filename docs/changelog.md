@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`onnx` ML plugin: batch deep-learning inference.** The `ubunye.ml` group held
+  `sklearn` and `sparkml`, so a pipeline could score a gradient-boosted tree but not a
+  trained neural network. Scoring a CNN or transformer over object storage is ordinary
+  industrial work and there was no way to express it. `type: onnx` loads a frozen ONNX
+  graph and scores it, with `pip install ubunye-engine[onnx]`.
+
+  Inference only, and `fit()` raises rather than pretending: an ONNX graph is the output
+  of training done elsewhere, and a wrapper that silently accepted `fit()` and did nothing
+  would be worse than one that refuses. Train in PyTorch, TensorFlow or sklearn, export
+  once, score at scale here. The training framework never has to be installed on an
+  executor.
+
+  ONNX rather than a torch plugin for weight and portability: `onnxruntime` is about
+  300 MB against PyTorch's 2.5 GB, which matters when every executor installs it, and one
+  graph runs identically on a laptop, an executor and a Databricks node without matching a
+  CUDA build to the driver. That is the promise the engine already makes about pipelines,
+  applied to models.
+
+  Tabular input behaves like the sklearn plugin, including schema-driven column selection.
+  Higher-rank input is forwarded unchanged, which is what makes image models work: a batch
+  of `(N, 2, 256, 256)` tiles scores to a `(N, 256, 256)` segmentation mask. The plugin
+  never reshapes tensors, because only the caller knows whether a 4096-element row is a
+  64x64 image or 4096 features.
+
+  `predict(proba=True)` softmaxes only when the graph emits more than one column; a
+  single-column output is already a probability, and normalising it would turn every
+  prediction into 1.0. Sessions are created single-threaded, since an executor already
+  runs tasks in parallel and a per-session thread pool oversubscribes the core.
+
+  Note that `binary` remains read-only: a pipeline can read rasters and must write
+  statistics rather than images. Docs: `docs/ml/onnx.md`.
+
+### Fixed
+
+- **`OnnxModel` reports the real problem on an unfitted predict.** `BaseModel` answers with
+  "call fit() before predict()", which for an inference-only plugin is wrong twice over:
+  fitting is impossible, and following the advice raises `NotImplementedError`. It now says
+  a graph has not been loaded, and how to load one.
+
+---
+
 ## [0.5.0] — 2026-07-14
 
 ### Fixed
