@@ -159,7 +159,7 @@ def compare(
         if va == vb:
             typer.echo(f"  {label}: {va}  (unchanged)")
         else:
-            typer.secho(f"  {label}: {va} → {vb}  CHANGED", fg=typer.colors.YELLOW)
+            typer.secho(f"  {label}: {va} -> {vb}  CHANGED", fg=typer.colors.YELLOW)
 
     _cmp("status", a.status, b.status)
     _cmp("duration_sec", a.duration_sec, b.duration_sec)
@@ -200,7 +200,7 @@ def _cmp_data(sa: object, sb: object) -> None:
     elif ha == hb:
         typer.echo(f"    data_hash: {ha}  (unchanged)")
     else:
-        typer.secho(f"    data_hash: {ha} → {hb}  CHANGED", fg=typer.colors.YELLOW)
+        typer.secho(f"    data_hash: {ha} -> {hb}  CHANGED", fg=typer.colors.YELLOW)
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +274,7 @@ def trace(
     run_id: Optional[str] = typer.Option(None, "--run-id", help="Specific run (default: latest)."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
 ):
-    """Print the input → transform → output data flow graph for a run."""
+    """Print the input, transform and output data flow graph for a run."""
     store = _store(str(usecase_dir / lineage_dir))
     tp = _task_path(usecase, package, task)
 

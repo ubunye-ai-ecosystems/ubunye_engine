@@ -89,7 +89,7 @@ Issues = "https://github.com/ubunye-ai-ecosystems/ubunye_engine/issues"
 "Project page" = "https://www.tmashininisekgoto.com/work/ubunye-engine"
 
 [project.scripts]
-ubunye = "ubunye.cli.main:app"
+ubunye = "ubunye.cli.main:main"
 
 # Execution backends (ADR 001). The shipped ones register exactly as a third
 # party engine would; `ubunye run --backend <name>` picks one by this name.

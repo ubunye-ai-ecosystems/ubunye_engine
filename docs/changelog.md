@@ -35,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`ubunye --help` no longer crashes on Windows.** A legacy Windows console
+  prints in cp1252, which has no arrow, and a help text and a few messages
+  used one, so `ubunye --help` died with `UnicodeEncodeError` on a fresh
+  install. The CLI's text is now plain ASCII where it prints, a test keeps every
+  help text printable on cp1252, and the `ubunye` command sets its output to
+  replace any character the console cannot show (a file path with an accent,
+  say) instead of crashing. The CI Package job runs `--help` on windows-latest.
 - **A backend whose packages are missing says so, with the install.** After
   `pip install ubunye-engine` alone, `ubunye backends` listed spark and pandas
   as ready, and choosing one failed deep inside on the first frame. Each
