@@ -31,8 +31,12 @@ from ubunye.core.interfaces import Task
 class Enrich(Task):
     def transform(self, sources):
         frame = sources["src"]
-        kind = type(frame)
-        (Path(__file__).parent / "seen.txt").write_text(f"{kind.__module__}.{kind.__name__}")
+        # Exactly pandas.DataFrame, compared as a type: its __module__ reads
+        # "pandas.core.frame" on pandas 2 and "pandas" on pandas 3.
+        import pandas
+
+        kind = "pandas.DataFrame" if type(frame) is pandas.DataFrame else repr(type(frame))
+        (Path(__file__).parent / "seen.txt").write_text(kind)
         out = frame.assign(city_upper=frame["city"].str.upper())  # plain pandas
         return {"out": RETURN(out)}
 """
