@@ -6,7 +6,7 @@ import importlib.metadata as md
 import logging
 import os
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
 
 from ubunye.core.capabilities import Capabilities, check_task
@@ -30,6 +30,10 @@ class EngineContext:
     run_id: str
     profile: Optional[str] = None
     task_name: Optional[str] = None  # e.g., "fraud_detection/claims/claim_etl"
+    #: The backend running the task ("spark", "pandas", ...); filled in by the engine.
+    backend: Optional[str] = None
+    #: The template variables the run was given (dt, dtf, mode, ...).
+    variables: Dict[str, Any] = field(default_factory=dict)
 
 
 class Registry:
@@ -271,7 +275,14 @@ class Engine:
     def _resolve_context(self, cfg: dict) -> EngineContext:
         task_name = self.context.task_name or cfg.get("TASK_NAME") or "unknown_task"
         profile = self.context.profile or cfg.get("ENGINE", {}).get("active_profile") or "default"
-        return EngineContext(run_id=self.context.run_id, profile=profile, task_name=task_name)
+        backend = self.context.backend or getattr(self.backend, "name", "") or None
+        return EngineContext(
+            run_id=self.context.run_id,
+            profile=profile,
+            task_name=task_name,
+            backend=backend if isinstance(backend, str) else None,
+            variables=dict(self.context.variables),
+        )
 
     def _build_hook_chain(self, cfg: dict) -> HookChain:
         if self._hooks_override is not None:

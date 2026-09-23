@@ -15,7 +15,6 @@ monitor chain. It can be:
              params:
                store: filesystem
                base_dir: .ubunye/lineage
-               sample_fraction: 0.01
 
 3. **Enabled as entry-point** — registered under ``ubunye.monitors`` so users
    can reference it by name without importing.
@@ -46,6 +45,15 @@ def _hash_config(config: dict) -> str:
     return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
+def _engine_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("ubunye-engine")
+    except Exception:
+        return "unknown"
+
+
 def _make_store(store: str, base_dir: str) -> LineageStore:
     if store == "s3":
         return S3LineageStore(base_dir)
@@ -62,7 +70,8 @@ class LineageRecorder:
     base_dir:
         Root directory for the ``FileSystemLineageStore``.
     sample_fraction:
-        Fraction of rows sampled when hashing DataFrames (0 < value ≤ 1).
+        Ignored since 0.6.0 and kept so existing configs still load: every row is
+        hashed now (the ``rows-v1`` content hash), so there is nothing to sample.
     """
 
     def __init__(
@@ -113,6 +122,13 @@ class LineageRecorder:
             version=version,
             config_hash=_hash_config(top_cfg),
             started_at=_utcnow(),
+            engine_version=_engine_version(),
+            backend=getattr(context, "backend", None) or "",
+            variables={
+                k: v
+                for k, v in dict(getattr(context, "variables", {}) or {}).items()
+                if v is not None
+            },
         )
         self._runs[run_id] = ctx
         try:
@@ -152,23 +168,18 @@ class LineageRecorder:
         step_outputs: list[StepRecord] = []
         for name, io_cfg in outputs_cfg.items():
             step = StepRecord.from_io_cfg(name, "output", io_cfg)
-            if outputs and name in outputs:
-                df = outputs[name]
-                if df is not None:
-                    try:
-                        from ubunye.lineage.hasher import fingerprint_dataframe
+            if outputs and name in outputs and outputs[name] is not None:
+                from ubunye.lineage.content_hash import fingerprint
 
-                        # ONE pass. This used to be three: hash_dataframe counted the
-                        # DataFrame, then sampled and collected it, and then this loop
-                        # counted the SAME uncached DataFrame again — so lineage
-                        # re-executed the whole pipeline two to three times per output,
-                        # purely to describe a run that had already finished.
-                        print_ = fingerprint_dataframe(df, sample_fraction=self._sample_fraction)
-                        step.schema_hash = print_.schema_hash
-                        step.data_hash = print_.data_hash
-                        step.row_count = print_.row_count if print_.row_count >= 0 else None
-                    except Exception:
-                        pass  # Hashing is best-effort
+                # Every row, one pass, the same method on every engine (ADR 006). A
+                # failure is recorded as a failure: no data_hash and the reason,
+                # never the schema hash standing in for the data.
+                print_ = fingerprint(outputs[name])
+                step.schema_hash = print_.schema_hash
+                step.data_hash = print_.data_hash
+                step.row_count = print_.row_count
+                step.hash_method = print_.method
+                step.hash_error = print_.error
             step_outputs.append(step)
         ctx.outputs = step_outputs
 

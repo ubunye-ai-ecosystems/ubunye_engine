@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Set
 
 from ubunye.adapters.spark.catalog import set_catalog_and_schema
-from ubunye.api import BackendChoice, _detect_backend
+from ubunye.api import BackendChoice, _detect_backend, _task_identity
 from ubunye.config import load_config
 from ubunye.config.resolver import extract_env_references
 from ubunye.config.schema import UbunyeConfig
@@ -194,8 +194,11 @@ class NotebookContext:
 
         # --- Phase E: build engine ---
         run_id = str(uuid.uuid4())
+        self._usecase_dir, task_identity = _task_identity(self._task_path)
         lineage_hooks = self._build_lineage_hooks(lineage, lineage_dir)
-        self._context = EngineContext(run_id=run_id, profile=mode, task_name=self._task_path.name)
+        self._context = EngineContext(
+            run_id=run_id, profile=mode, task_name=task_identity, variables=variables
+        )
         self._engine = Engine(
             backend=self._backend,
             registry=reg,
@@ -310,7 +313,7 @@ class NotebookContext:
 
         recorder = LineageRecorder(
             store="filesystem",
-            base_dir=str(self._task_path.parent / lineage_dir),
+            base_dir=str(self._usecase_dir / lineage_dir),
         )
         return [MonitorHook(recorder)]
 

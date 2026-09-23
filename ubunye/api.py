@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from ubunye.adapters.spark.catalog import set_catalog_and_schema
 from ubunye.config import load_config
@@ -47,6 +47,21 @@ def _make_app_name(
     """Build a descriptive Spark app name: ``ubunye:<usecase>.<package>.<task>``."""
     parts = [p for p in (usecase, package, task) if p]
     return f"ubunye:{'.'.join(parts)}" if parts else "ubunye"
+
+
+def _task_identity(task_path: Path) -> Tuple[Path, str]:
+    """``(usecase_dir, "usecase/package/task")`` for a task folder.
+
+    The one identity every entry point records lineage under, so a run started
+    from Python is found by ``ubunye lineage list -d <usecase_dir> -u -p -t``
+    exactly like a CLI run. Before 0.6.0 ``run_task`` and ``notebook`` keyed
+    lineage by the folder name alone, under the package folder, so their records
+    were invisible to the CLI.
+    """
+    parts = task_path.parts
+    if len(parts) >= 4:
+        return task_path.parents[2], "/".join(parts[-3:])
+    return task_path.parent, task_path.name
 
 
 #: A backend as the API accepts it: an instance, a registered name, or ``None``.
@@ -145,6 +160,7 @@ def run_task(
         Mapping of output name → DataFrame.
     """
     task_path = Path(task_dir).resolve()
+    usecase_dir, task_identity = _task_identity(task_path)
     variables = {"dt": dt, "dtf": dtf, "mode": mode}
 
     cfg = load_config(str(task_path), variables=variables, profile=profile)
@@ -168,11 +184,13 @@ def run_task(
 
         lineage_recorder = LineageRecorder(
             store="filesystem",
-            base_dir=str(task_path.parent / lineage_dir),
+            base_dir=str(usecase_dir / lineage_dir),
         )
 
     run_id = str(uuid.uuid4())
-    context = EngineContext(run_id=run_id, profile=mode, task_name=task_path.name)
+    context = EngineContext(
+        run_id=run_id, profile=mode, task_name=task_identity, variables=variables
+    )
 
     backend.start()
     set_catalog_and_schema(
@@ -271,6 +289,7 @@ def run_pipeline(
                 run_id=run_id,
                 profile=mode,
                 task_name=f"{usecase}/{package}/{task}",
+                variables=variables,
             )
             results[task] = execute_user_task(
                 chosen,

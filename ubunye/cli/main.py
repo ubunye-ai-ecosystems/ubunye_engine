@@ -366,7 +366,10 @@ def run(
             cfg = configs[task]
             task_dir = _task_path(usecase_dir, usecase, package, task)
             context = EngineContext(
-                run_id=run_id, profile=mode, task_name=f"{usecase}/{package}/{task}"
+                run_id=run_id,
+                profile=mode,
+                task_name=f"{usecase}/{package}/{task}",
+                variables=variables,
             )
             try:
                 execute_user_task(backend, task_dir, cfg, context, extra_hooks=extra_hooks)

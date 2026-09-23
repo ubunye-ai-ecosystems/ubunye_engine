@@ -12,7 +12,7 @@ What this unlocks (from blog.md, verbatim intent):
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class PandasDataFrameAdapter:
@@ -24,8 +24,11 @@ class PandasDataFrameAdapter:
     nothing is copied until ``collect()`` is called.
     """
 
-    def __init__(self, df: Any) -> None:
+    def __init__(self, df: Any, timezone: Optional[str] = None) -> None:
         self._df = df
+        #: The zone naive timestamps in this frame are read in when it is written
+        #: or hashed (the backend's), so the receipt matches the files.
+        self.timezone = timezone
 
     @property
     def native(self) -> Any:

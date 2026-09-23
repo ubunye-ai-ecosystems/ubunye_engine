@@ -80,7 +80,9 @@ class PandasBackend(Backend):
         """The engine gets the port, where ``count()`` means rows (ADR 004)."""
         import pandas as pd
 
-        return PandasDataFrameAdapter(frame) if isinstance(frame, pd.DataFrame) else frame
+        if isinstance(frame, pd.DataFrame):
+            return PandasDataFrameAdapter(frame, timezone=self._timezone)
+        return frame
 
     @property
     def timezone(self) -> str:

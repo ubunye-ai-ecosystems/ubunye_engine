@@ -28,6 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The run record's data hash now means "these exact rows" (ADR 006).** It
+  read a 1 percent sample, changed with row order on Spark, and on pandas
+  quietly recorded the schema hash as the data hash. The new `rows-v1` hash
+  reads every row in the same pass as the count, ignores row and column order,
+  changes when any cell changes, tells null from NaN, does not depend on the
+  timezone, and is the same on Spark and pandas for the same data (Spark
+  computes it in one aggregation on the cluster). When rows cannot be read the
+  record says why instead of inventing a hash. Records also carry the Ubunye
+  version, the backend, the run variables and each output's `hash_method`, and
+  runs from `run_task` and `run_pipeline` are stored under the same folder and
+  name as CLI runs, so `ubunye lineage list` finds them. `lineage compare` calls
+  two missing hashes "unknown" (it said "unchanged") and a pre-0.6 hash "not
+  comparable". `sample_fraction` is ignored and kept so old configs load.
 - **A pandas transform gets a plain pandas DataFrame (ADR 004).** It used to get
   an adapter and had to write `sources["x"].native` to reach the DataFrame. The
   `Backend` port gains `to_native` and `to_port`, and the engine converts at the

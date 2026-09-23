@@ -68,8 +68,14 @@ class StepRecord:
     format: str  # "hive", "s3", "jdbc", ...
     location: str  # human-readable pointer to the data (db.tbl, path, url)
     row_count: Optional[int] = None
-    schema_hash: Optional[str] = None  # "sha256:<hex>" of JSON-serialised schema
-    data_hash: Optional[str] = None  # "sha256:<hex>" of sampled rows
+    schema_hash: Optional[str] = None  # "sha256:<hex>" of the canonical schema
+    data_hash: Optional[str] = None  # "sha256:<hex>" of every row (see hash_method)
+    #: How data_hash was computed ("rows-v1": every row, order independent, the
+    #: same on every engine). Records from before 0.6.0 have none: their hash was
+    #: a sample and is not comparable.
+    hash_method: Optional[str] = None
+    #: Why there is no data_hash, when the rows could not be read.
+    hash_error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -84,6 +90,8 @@ class StepRecord:
             row_count=d.get("row_count"),
             schema_hash=d.get("schema_hash"),
             data_hash=d.get("data_hash"),
+            hash_method=d.get("hash_method"),
+            hash_error=d.get("hash_error"),
         )
 
     @staticmethod
@@ -124,6 +132,12 @@ class RunContext:
     inputs: List[StepRecord] = field(default_factory=list)
     outputs: List[StepRecord] = field(default_factory=list)
     error: Optional[str] = None
+    #: The Ubunye version that made this record.
+    engine_version: str = ""
+    #: The backend that ran the task ("spark", "pandas", ...).
+    backend: str = ""
+    #: The template variables the run was given (dt, dtf, mode, ...).
+    variables: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -151,4 +165,7 @@ class RunContext:
             inputs=inputs,
             outputs=outputs,
             error=d.get("error"),
+            engine_version=d.get("engine_version", ""),
+            backend=d.get("backend", ""),
+            variables=dict(d.get("variables") or {}),
         )
