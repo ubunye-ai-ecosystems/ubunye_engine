@@ -30,6 +30,7 @@ from ubunye.cli.export import export_app
 from ubunye.cli.init import init_app
 from ubunye.cli.lineage import lineage_app
 from ubunye.cli.models import models_app
+from ubunye.cli.output import emit, fail, json_option
 from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
 from ubunye.cli.variables import cli_variables, var_option
@@ -139,6 +140,7 @@ def validate(
         help="Also check the task can run on this backend (its connectors, file "
         "formats, write modes and paths), without starting it.",
     ),
+    as_json: bool = json_option(),
 ):
     """Validate config file(s) without executing the pipeline.
 
@@ -206,8 +208,10 @@ def validate(
         backend_cls = class_or_exit(backend_kind)
         caps = backend_cls.CAPABILITIES
 
+    results: List[Dict[str, Any]] = []
     for task in tasks_to_check:
         task_dir = _task_path(usecase_dir, usecase, package, task)
+        problems: List[str] = []
         try:
             cfg = load_config(str(task_dir), variables=variables, profile=profile)
             if caps is not None and registry is not None:
@@ -220,21 +224,28 @@ def validate(
                     backend_name=str(backend_kind).lower(),
                     io_check=backend_cls.check_io,
                 )
-                if problems:
-                    typer.secho(
-                        f"  [FAIL] {task} (on the {backend_kind} backend)", fg=typer.colors.RED
-                    )
-                    for problem in problems:
-                        typer.echo(f"         - {problem}")
-                    failed += 1
-                    continue
-            typer.secho(f"  [OK]   {task}", fg=typer.colors.GREEN)
         except (ValueError, FileNotFoundError) as e:
-            typer.secho(f"  [FAIL] {task}", fg=typer.colors.RED)
-            # Indent error details for readability
-            for line in str(e).splitlines():
-                typer.echo(f"         {line}")
-            failed += 1
+            problems = [str(e)]
+        results.append({"task": task, "ok": not problems, "problems": problems})
+        failed += bool(problems)
+
+    if as_json:
+        emit({"ok": not failed, "tasks": results})
+        if failed:
+            raise typer.Exit(code=1)
+        return
+
+    for result in results:
+        if result["ok"]:
+            typer.secho(f"  [OK]   {result['task']}", fg=typer.colors.GREEN)
+            continue
+        on = f" (on the {backend_kind} backend)" if backend_kind else ""
+        typer.secho(f"  [FAIL] {result['task']}{on}", fg=typer.colors.RED)
+        for problem in result["problems"]:
+            lines = str(problem).splitlines() or [""]
+            typer.echo(f"         - {lines[0]}")
+            for line in lines[1:]:
+                typer.echo(f"           {line}")
 
     typer.echo()
     if failed:
@@ -261,6 +272,7 @@ def plan(
         "--backend",
         help="Also check each input and output against what this backend can do.",
     ),
+    as_json: bool = json_option(),
 ):
     """Dry run: what each task will read and write, and what will stop it.
 
@@ -280,6 +292,8 @@ def plan(
         try:
             cfg = load_config(str(task_dir), variables)
         except (ValueError, FileNotFoundError) as exc:
+            if as_json:
+                fail(str(exc), as_json=True, task=name)
             typer.secho(f"[ERROR] {name}", fg=typer.colors.RED, err=True)
             for line in str(exc).splitlines():
                 typer.echo(f"  {line}", err=True)
@@ -288,6 +302,12 @@ def plan(
         tasks.append((name, cfg, task_dir))
 
     plans = build_plans(tasks, backend=backend_kind, variables=variables, raw_yaml=raw_yaml)
+    if as_json:
+        ok = not any(p["problems"] for p in plans)
+        emit({"ok": ok, "tasks": plans})
+        if not ok:
+            raise typer.Exit(code=1)
+        return
     for report in plans:
         _print_plan(report)
     failing = [p for p in plans if p["problems"]]

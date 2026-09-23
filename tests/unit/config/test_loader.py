@@ -278,3 +278,28 @@ class TestUndefinedTemplateVariables:
         task_dir = _write_config(tmp_path, cfg)
         result = load_config(task_dir)
         assert result.CONFIG.outputs["s"].path == "s3://bucket/1970-01-01/"
+
+
+class TestBrokenYaml:
+    """A typo in config.yaml is a config error with the line, not a traceback."""
+
+    def test_a_syntax_error_names_the_file_and_line(self, tmp_path):
+        from ubunye.core.errors import ConfigError
+
+        (tmp_path / "config.yaml").write_text("MODEL: etl\nVERSION: [\n", encoding="utf-8")
+        with pytest.raises(ConfigError) as caught:
+            load_config(str(tmp_path))
+        message = str(caught.value)
+        assert "is not valid YAML at line 3" in message and "config.yaml" in message
+
+    def test_it_is_still_a_value_error_for_existing_callers(self, tmp_path):
+        (tmp_path / "config.yaml").write_text("a: [\n", encoding="utf-8")
+        with pytest.raises(ValueError):
+            load_config(str(tmp_path))
+
+    def test_a_list_at_the_top_is_refused_clearly(self, tmp_path):
+        from ubunye.core.errors import ConfigError
+
+        (tmp_path / "config.yaml").write_text("- a\n- b\n", encoding="utf-8")
+        with pytest.raises(ConfigError, match="must be a YAML mapping"):
+            load_config(str(tmp_path))

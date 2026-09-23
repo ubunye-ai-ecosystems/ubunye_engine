@@ -45,6 +45,7 @@ Most commands share a set of path and variable flags:
 | `--data-timestamp-format` | `-dtf` | Timestamp format, injected as `{{ dtf }}` |
 | `--mode` | `-m` | Engine profile / run mode (default: `DEV`) |
 | `--var` | | Extra template variable, `key=value`, repeatable (`run`, `validate`, `plan`, `config`, `test run`). See [Jinja](config/jinja.md#cli-injected-variables) |
+| `--json` | | Print one JSON document to stdout, errors included, for scripts and agents (`plan`, `validate`, `backends`, `lineage *`, `models list/info/compare`). The exit code still says whether it worked |
 
 ---
 
@@ -255,6 +256,33 @@ ubunye backends --json
 
 A backend that is registered but cannot load (a missing dependency) is listed
 with the reason. See [Execution backends](backends.md).
+
+---
+
+## Machine output: `--json`
+
+For a script, a CI step or an AI agent, `--json` makes a command print exactly
+one JSON document on stdout and nothing else. Errors are JSON too
+(`{"ok": false, "error": "..."}`), and the exit code is unchanged, so a caller
+can check either.
+
+```bash
+ubunye plan -d pipelines -u sales -p etl -t daily --json | jq '.ok'
+ubunye validate -d pipelines -u sales -p etl --all --backend pandas --json
+ubunye lineage compare -d pipelines -u sales -p etl -t daily --run-id1 A --run-id2 B --json
+```
+
+| Command | JSON shape |
+|---|---|
+| `plan` | `{"ok": bool, "tasks": [plan, ...]}`: each plan has `inputs`, `transform`, `outputs`, `problems`, `warnings`, `config_hash` |
+| `validate` | `{"ok": bool, "tasks": [{"task", "ok", "problems"}]}` |
+| `backends` | `[{"name", "default", "loaded", "capabilities"}]` |
+| `lineage list`, `lineage search` | `[run record, ...]` (an empty list when there are none) |
+| `lineage show` | one run record |
+| `lineage compare` | per field `{"a", "b", "changed"}`; per output `data_hash.state` is `unchanged`, `changed`, `unknown` or `not comparable` |
+| `lineage trace` | `{"task", "run_id", "status", "inputs", "transform", "outputs"}` |
+| `models list`, `models info` | model version(s), with `stage` as text |
+| `models compare` | `{metric: {"a", "b", "delta"}}` |
 
 ---
 

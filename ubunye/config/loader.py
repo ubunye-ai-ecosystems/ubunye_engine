@@ -23,7 +23,12 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from ubunye.core.errors import ConfigFieldError, ConfigProfileError, ConfigTemplateError
+from ubunye.core.errors import (
+    ConfigError,
+    ConfigFieldError,
+    ConfigProfileError,
+    ConfigTemplateError,
+)
 
 from .resolver import resolve_config
 from .schema import UbunyeConfig
@@ -67,7 +72,24 @@ def load_config(
     """
     config_path = _resolve_config_path(path)
     raw_yaml = config_path.read_text(encoding="utf-8")
-    raw: Dict[str, Any] = yaml.safe_load(raw_yaml) or {}
+    try:
+        raw: Dict[str, Any] = yaml.safe_load(raw_yaml) or {}
+    except yaml.YAMLError as exc:
+        # A typo in the YAML used to escape as a raw yaml.ParserError, so every
+        # command crashed with a traceback instead of saying where the typo is.
+        mark = getattr(exc, "problem_mark", None)
+        where = f" at line {mark.line + 1}, column {mark.column + 1}" if mark else ""
+        raise ConfigError(
+            f"{config_path} is not valid YAML{where}.",
+            context={"File": str(config_path), "YAML says": str(exc).splitlines()[0]},
+            hint="Check the indentation and the brackets and quotes around that line.",
+        ) from exc
+    if not isinstance(raw, dict):
+        raise ConfigError(
+            f"{config_path} must be a YAML mapping (MODEL:, VERSION:, CONFIG: ...), "
+            f"not a {type(raw).__name__}.",
+            context={"File": str(config_path)},
+        )
 
     try:
         resolved = resolve_config(raw, cli_vars=variables or {})
