@@ -51,28 +51,46 @@ Most commands share a set of path and variable flags:
 
 ## `ubunye init`
 
-Scaffold a new use-case / pipeline / task directory.
+Scaffold a task folder that runs straight away.
 
 ```bash
-ubunye init \
-    -d pipelines \
-    -u fraud_detection \
-    -p ingestion \
-    -t claim_etl
+ubunye init -d pipelines -u demo -p starter -t filter_adults
 ```
 
 Creates:
 
 ```
-pipelines/fraud_detection/ingestion/claim_etl/
-    config.yaml
-    transformations.py
+pipelines/demo/starter/filter_adults/
+    config.yaml            reads data/people.csv, writes output/adults as Parquet
+    transformations.py     keeps people aged 18 and over
+    data/people.csv        a small sample to start from
     notebooks/
-        claim_etl_dev.ipynb    ← interactive dev notebook (Databricks-ready)
+        filter_adults_dev.ipynb
 ```
+
+and prints what to run next. The transform, `people[people["age"] >= 18]`, means
+the same thing in pandas and in Spark, so the task runs with no Java
+(`--backend pandas`) and on Spark unchanged. Its paths use `{{ task_dir }}` (the
+task's own folder), so it runs from any folder.
+
+`--template databricks` writes the older scaffold instead: read a Unity Catalog
+table, write to an `s3a://` bucket. `ubunye init pipeline ...` is the same
+command with a subcommand name.
 
 | Flag | Short | Required | Default | Description |
 |---|---|---|---|---|
+| `--usecase-dir` | `-d` | yes | — | Root directory |
+| `--usecase` | `-u` | yes | — | Use-case name |
+| `--package` | `-p` | yes | — | Package name |
+| `--task-list` | `-t` | yes | — | Task(s) to scaffold (repeatable) |
+| `--template` | | no | `local` | `local` or `databricks` |
+| `--overwrite` | | no | `no-overwrite` | Overwrite existing files |
+
+!!! note "Changed in 0.6.0"
+    `ubunye init -d ...` now works as written (it needed `ubunye init pipeline`),
+    and the default scaffold is the local one above.
+
+---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | — | Root directory |
 | `--usecase` | `-u` | yes | — | Use-case name |
 | `--package` | `-p` | yes | — | Package name |

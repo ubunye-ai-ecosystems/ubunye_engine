@@ -85,6 +85,7 @@ class TestParsing:
             ("my-var=x", "not a valid template name"),
             ("1st=x", "not a valid template name"),
             ("env=x", "reserved"),
+            ("task_dir=x", "reserved"),
             ("mode=PROD", "-m"),
         ],
     )
