@@ -229,8 +229,8 @@ ubunye run \
 | `--backend` | | no | platform, else `spark` | Execution backend by name, e.g. `pandas` for a run with no Java. See [Execution backends](backends.md) |
 
 !!! note
-    The `run` command does not have `--all` or `--profile` flags.
-    Use `-m/--mode` for environment switching and list tasks explicitly with `-t`.
+    `run` picks the profile with `-m/--mode` (it has no `--profile`), and `--all`
+    runs every task in the package. The mode must match a profile name exactly.
 
 ---
 

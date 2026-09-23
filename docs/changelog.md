@@ -46,6 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The quickstart works, and a test keeps it working.** It used flags that do not
+  exist (`run --profile`), a `lineage list` with no task, and a Hive to Delta
+  config no laptop could run. It is rewritten around the `ubunye init` scaffold,
+  and its commands, in the README and on the Quickstart page, are run by the
+  test suite exactly as written. `CONTRIBUTING.md`, which the README linked to,
+  now exists (the docs page shows the same file), and stale claims are gone:
+  "Spark native", "288 tests", and `run --profile` in the engine docs.
 - **The first command in the README works, and what it makes runs.** The README
   and quickstart said `ubunye init -d ... -t ...`, but the command was
   `ubunye init pipeline ...`, so the first thing a new person typed failed. Both

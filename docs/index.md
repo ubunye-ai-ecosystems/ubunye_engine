@@ -1,7 +1,8 @@
 # Ubunye Engine
 
-Ubunye Engine is a **config-first, Spark-native framework** for building ETL and ML pipelines
-that run everywhere — locally, on-prem, or in the cloud (Databricks, EMR, Glue).
+Ubunye Engine is a **config-first framework** for data and ML pipelines. A task is a
+folder: run it on a laptop with no Java (pandas), or on Spark anywhere (locally, on a
+cluster, on Databricks), and every run leaves a record you can check.
 
 Define your pipeline in YAML. Write a Python class. Run it.
 
@@ -23,7 +24,7 @@ Define your pipeline in YAML. Write a Python class. Run it.
 | ML lifecycle management | Library-independent `UbunyeModel` contract + built-in registry |
 | Observability | Pluggable lineage tracking, Prometheus, OpenTelemetry, MLflow |
 | Orchestration | One-command export to Airflow or Databricks job definitions |
-| Testing | Spark-free unit-test patterns; 288 tests in CI |
+| Testing | A unit tier with no Java, a Spark tier, and a parity tier that checks Spark and pandas agree |
 
 ## Key Features
 
