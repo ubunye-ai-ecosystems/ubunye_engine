@@ -26,6 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is the groundwork for a non-Spark backend (issue #38): the core can be
   backend-agnostic now because it no longer imports one backend's API.
 
+### Fixed
+
+- **A notebook with `lineage=True` now leaves a run record.** Lineage is
+  recorded around a whole task, and the notebook runs read, transform and write
+  as separate steps, so `ubunye.notebook(..., lineage=True)` recorded nothing
+  at all. A notebook write now counts as a run: `nb.write(...)` and `nb.run()`
+  each leave one record, in the same place and with the same hash as
+  `run_task`.
+
 ### Added
 
 - **The run record's data hash now means "these exact rows" (ADR 006).** It

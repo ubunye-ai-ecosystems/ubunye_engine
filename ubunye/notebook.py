@@ -234,10 +234,11 @@ class NotebookContext:
         return outputs
 
     def write(self, outputs: Optional[Dict[str, Any]] = None) -> None:
-        """Write outputs to configured sinks.
+        """Write outputs to configured sinks, and record the run.
 
         If *outputs* is ``None``, uses the result of the last :meth:`transform`
-        call.
+        call. With ``lineage=True`` every write leaves a run record, exactly as
+        ``ubunye.run_task`` does (before 0.6.0 a notebook recorded nothing).
         """
         if outputs is None:
             outputs = self._last_outputs
@@ -245,7 +246,7 @@ class NotebookContext:
                 raise ValueError(
                     "No outputs to write. Call transform() first or pass outputs explicitly."
                 )
-        self._engine.write_outputs(outputs, self._cfg_dict)
+        self._engine.write_outputs(outputs, self._cfg_dict, as_run=True)
 
     def run(self) -> Dict[str, Any]:
         """Read, transform, and write in one call (same as ``ubunye.run_task``)."""

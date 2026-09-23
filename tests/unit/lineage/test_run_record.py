@@ -139,6 +139,27 @@ class TestOnePlace:
         assert {r.task_path for r in records} == {"uc/pkg/copy"}
         assert len({r.outputs[0].data_hash for r in records}) == 1
 
+    def test_a_notebook_run_is_recorded_in_the_same_place(self, tmp_path):
+        task = _task(tmp_path)
+        ubunye.run_task(str(task), backend="pandas", lineage=True)
+        nb = ubunye.notebook(str(task), backend="pandas", lineage=True)
+        try:
+            nb.run()
+        finally:
+            nb.close()
+        api_run, notebook_run = sorted(_records(tmp_path), key=lambda r: r.started_at)
+        assert notebook_run.status == "success" and notebook_run.backend == "pandas"
+        assert notebook_run.outputs[0].data_hash == api_run.outputs[0].data_hash
+
+    def test_a_step_by_step_notebook_write_is_recorded_once(self, tmp_path):
+        nb = ubunye.notebook(str(_task(tmp_path)), backend="pandas", lineage=True)
+        try:
+            nb.write(nb.transform(nb.read()))
+        finally:
+            nb.close()
+        (record,) = _records(tmp_path)
+        assert record.outputs[0].hash_method == "rows-v1"
+
     def test_the_cli_lists_a_run_made_from_python(self, tmp_path):
         ubunye.run_task(str(_task(tmp_path)), backend="pandas", lineage=True)
         result = runner.invoke(

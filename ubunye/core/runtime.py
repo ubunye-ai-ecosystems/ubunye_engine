@@ -249,12 +249,25 @@ class Engine:
         chain = self._build_hook_chain(cfg)
         return self._apply_transforms(ctx, chain, sources, transforms)
 
-    def write_outputs(self, outputs: Dict[str, Any], cfg: dict) -> None:
-        """Write *outputs* to the sinks defined in ``CONFIG.outputs``."""
+    def write_outputs(self, outputs: Dict[str, Any], cfg: dict, *, as_run: bool = False) -> None:
+        """Write *outputs* to the sinks defined in ``CONFIG.outputs``.
+
+        With ``as_run=True`` the write is wrapped as a whole task for the hooks,
+        so lineage and monitors record it exactly as they record ``run()``. This
+        is how a notebook that reads, transforms and writes step by step still
+        leaves a run record.
+        """
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
+        ports = self._to_ports(outputs)
+        if not as_run:
+            self._write_outputs(ctx, chain, outputs_cfg, ports)
+            return
+        state: Dict[str, Any] = {"outputs": None}
+        with chain.task(ctx, cfg, state):
+            self._write_outputs(ctx, chain, outputs_cfg, ports)
+            state["outputs"] = ports
 
     # ---------- the frame boundary (ADR 004) ----------
 
