@@ -207,6 +207,32 @@ class TestJsonText:
         lines = [json.loads(line) for line in _text(tmp_path / "out").splitlines()]
         assert lines == [{"a": "x", "b": 1}, {"b": 2}]
 
+    def test_byte_for_byte_what_spark_writes(self, tmp_path):
+        # The expected lines are Spark 4.2's own output for the same rows.
+        line_separator = chr(0x2028)  # a line separator character inside a value
+        table = pa.table(
+            {
+                "s": ['say "hi"', "", f"tab\there é ü {line_separator}", "x", "ctl" + chr(1)],
+                "d": [float("nan"), -0.0, 1 / 3, float("-inf"), 1e-5],
+                "arr": pa.array(
+                    [[1.5, None], [], None, [float("inf")], [1e21]], pa.list_(pa.float64())
+                ),
+                "m": pa.array(
+                    [{"k": None, "j": 1}, None, {"k": 2.0, "j": None}, None, None],
+                    pa.struct([("k", pa.float64()), ("j", pa.int32())]),
+                ),
+            }
+        )
+        _write(tmp_path / "out", table.to_pandas(types_mapper=pd.ArrowDtype), fmt="json")
+        # Split on newlines only: splitlines() also breaks at the line separator.
+        assert _text(tmp_path / "out").split("\n")[:-1] == [
+            '{"s":"say \\"hi\\"","d":"NaN","arr":[1.5,null],"m":{"j":1}}',
+            '{"s":"","d":-0.0,"arr":[]}',
+            '{"s":"tab\\there é ü ' + line_separator + '","d":0.3333333333333333,"m":{"k":2.0}}',
+            '{"s":"x","d":"-Infinity","arr":["Infinity"]}',
+            '{"s":"ctl\\u0001","d":1.0E-5,"arr":[1.0E21]}',
+        ]
+
     def test_dates_and_timestamps_are_text(self, tmp_path):
         frame = pd.DataFrame(
             {

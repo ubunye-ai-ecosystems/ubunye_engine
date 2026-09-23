@@ -490,27 +490,64 @@ def _texts_for_timestamps(table: Any, timezone: str) -> Any:
     return table
 
 
-def _without_nulls(value: Any) -> Any:
-    """Spark's JSON writer leaves null fields out (``ignoreNullFields``)."""
-    if isinstance(value, dict):
-        return {k: _without_nulls(v) for k, v in value.items() if v is not None}
-    if isinstance(value, list):
-        return [_without_nulls(v) for v in value]
-    return value
+def _json_value(value: Any) -> str:
+    """One value as Spark's JSON writer (Jackson) writes it.
 
-
-def _json_default(value: Any) -> Any:
+    Compact, no spaces; doubles the Java way (``1.0E10``), with NaN and the
+    infinities as strings; null fields of an object left out (Spark's
+    ``ignoreNullFields``) but nulls inside an array kept; text as UTF-8.
+    """
     import base64
     import datetime as dt
     import decimal
+    import math
 
-    if isinstance(value, (dt.date, dt.time)):
-        return value.isoformat()
+    if value is None:
+        return "null"
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return json.dumps(_java_double(value))
+        return str(_java_double(value))
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, dict):
+        members = (
+            f"{json.dumps(str(k), ensure_ascii=False)}:{_json_value(v)}"
+            for k, v in value.items()
+            if v is not None
+        )
+        return "{" + ",".join(members) + "}"
+    if isinstance(value, (list, tuple)):
+        return "[" + ",".join(_json_value(v) for v in value) + "]"
     if isinstance(value, decimal.Decimal):
-        return float(value) if value != value.to_integral_value() else int(value)
+        return str(value)
+    if isinstance(value, (dt.date, dt.time)):
+        return json.dumps(value.isoformat())
     if isinstance(value, bytes):
-        return base64.b64encode(value).decode("ascii")  # as Spark writes binary
+        return json.dumps(base64.b64encode(value).decode("ascii"))  # as Spark writes binary
     raise TypeError(f"cannot write {type(value).__name__} to JSON")
+
+
+def _shortest_floats(table: Any) -> Any:
+    """float32 columns as the float64 of their shortest text (Java's Float.toString)."""
+    import pyarrow as pa
+
+    for i, field in enumerate(table.schema):
+        if pa.types.is_float32(field.type) or pa.types.is_float16(field.type):
+            import numpy as np
+
+            values = [
+                None if v is None else float(str(np.float32(v)))
+                for v in table.column(i).to_pylist()
+            ]
+            table = table.set_column(i, pa.field(field.name, pa.float64()), pa.array(values))
+    return table
 
 
 def _write_part(table: Any, fmt: str, folder: str, opts: Dict[str, Any], timezone: str) -> str:
@@ -546,11 +583,9 @@ def _write_part(table: Any, fmt: str, folder: str, opts: Dict[str, Any], timezon
 
     name = f"{stem}.json"
     with open(os.path.join(folder, name), "w", encoding="utf-8", newline="\n") as handle:
-        for batch in table.to_batches():
+        for batch in _shortest_floats(table).to_batches():
             for row in batch.to_pylist():
-                handle.write(
-                    json.dumps(_without_nulls(row), default=_json_default, ensure_ascii=False)
-                )
+                handle.write(_json_value(row))
                 handle.write("\n")
     return name
 
