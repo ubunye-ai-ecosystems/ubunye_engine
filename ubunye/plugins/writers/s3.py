@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 from ubunye.core import write_modes
+from ubunye.core.capabilities import PATH_IO
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
@@ -29,6 +30,9 @@ DEFAULT_MODE = "append"
 
 class S3Writer(Writer):
     """Write a Spark DataFrame to S3 (or any filesystem path Spark understands)."""
+
+    # Reads and writes paths through the backend's path IO (ADR 002).
+    REQUIRES = frozenset({PATH_IO})
 
     SUPPORTS_MERGE = True
     MERGE_FILE_FORMATS = frozenset({"delta"})

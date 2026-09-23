@@ -9,8 +9,9 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
-from ubunye.backends.spark_backend import SparkBackend  # default backend
+from ubunye.core.capabilities import Capabilities, check_task
 from ubunye.core.errors import (
+    BackendCapabilityError,
     ReaderNotFoundError,
     TransformNotFoundError,
     TransformOutputError,
@@ -152,7 +153,13 @@ class Engine:
             ``backend.stop()``. Set to False when the caller owns the backend
             lifecycle (e.g. Python API running multiple tasks on one session).
         """
-        self.backend = backend or SparkBackend(app_name="ubunye")
+        if backend is None:
+            # Resolved like any run: the platform's session if there is one, else
+            # the default backend. The core names no engine (ADR 001 and 003).
+            from ubunye.core import backends
+
+            backend = backends.resolve(None, app_name="ubunye")
+        self.backend = backend
         self.registry = registry or Registry.from_entrypoints()
         self.context = context or EngineContext(run_id=str(uuid.uuid4()))
         self._hooks_override = list(hooks) if hooks is not None else None
@@ -186,6 +193,7 @@ class Engine:
         transforms = self._normalize_transforms(transform_cfg)
         self._warn_deprecated_noop(transforms)
         self._validate_transforms_exist(transforms)
+        self._check_backend_can_run(cfg)
 
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
@@ -339,6 +347,22 @@ class Engine:
                 writer_cls().write(outputs_map[name], ocfg, self.backend)
 
     # ---------- internal helpers ----------
+
+    def _check_backend_can_run(self, cfg: dict) -> None:
+        """Refuse, before anything starts, a task the backend has said it cannot run."""
+        caps = getattr(self.backend, "capabilities", None)
+        if not isinstance(caps, Capabilities):
+            return  # a backend (or test double) that declares nothing is not pre-checked
+        name = getattr(self.backend, "name", "") or type(self.backend).__name__
+        problems = check_task(caps, cfg, self.registry, backend_name=name)
+        if problems:
+            raise BackendCapabilityError(
+                f"This task cannot run on the {name} backend:\n"
+                + "\n".join(f"  - {p}" for p in problems),
+                context={"Backend": name},
+                hint="Run it on a backend that can (--backend spark), or change the "
+                "inputs and outputs listed above.",
+            )
 
     def _validate_io_configs(self, inputs: Dict[str, Any], outputs: Dict[str, Any]) -> None:
         missing_in = [k for k, v in inputs.items() if not v.get("format")]

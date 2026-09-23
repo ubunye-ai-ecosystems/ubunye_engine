@@ -28,6 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Backends are plugins, and say what they can do (ADR 001, 002).** Spark,
+  Databricks and pandas now register in a new `ubunye.backends` entry point
+  group, exactly as a third party engine would, so adding an engine is a package
+  with one entry point and no edit to Ubunye. Each backend declares its
+  capabilities (features such as a SparkSession or path IO, file formats, write
+  modes, distributed, needs Java) and each connector declares what it requires.
+  Before anything starts, the engine checks every input and output against the
+  backend and lists every problem at once, so a task that cannot run stops in
+  the first second instead of halfway through. The core no longer imports
+  `SparkBackend` (a test now reads every import in `ubunye/core` and fails on
+  any engine). `Backend.is_spark` still works, read from the capabilities, and
+  is deprecated. Backends and connectors written before 0.6.0 declare nothing
+  and behave exactly as before.
 - **A pandas backend, so `ubunye run --backend pandas` runs a task on a laptop
   with no Spark and no JVM (issue #38).** `Backend` was a port with a single kind
   of adapter (Spark), and a port with one adapter has never really been tested as

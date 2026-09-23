@@ -18,12 +18,16 @@ from __future__ import annotations
 from typing import Any
 
 from ubunye.adapters.spark.session import spark_of
+from ubunye.core.capabilities import SPARK
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 
 class DeltaReader(Reader):
     """Read a Spark DataFrame from a Delta table."""
+
+    # Needs a live SparkSession; checked before a run (ADR 002).
+    REQUIRES = frozenset({SPARK})
 
     @classmethod
     def validate_config(cls, cfg):

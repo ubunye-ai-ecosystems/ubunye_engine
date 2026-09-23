@@ -1,6 +1,8 @@
 from ubunye.core.errors import (
     AuthInvalidError,
     AuthNotFoundError,
+    BackendCapabilityError,
+    BackendNotFoundError,
     BundleDeployError,
     ConfigError,
     ConfigFieldError,
@@ -34,6 +36,8 @@ from ubunye.core.errors import (
 __all__ = [
     "AuthInvalidError",
     "AuthNotFoundError",
+    "BackendCapabilityError",
+    "BackendNotFoundError",
     "BundleDeployError",
     "ConfigError",
     "ConfigFieldError",

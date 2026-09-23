@@ -63,6 +63,13 @@ Issues = "https://github.com/ubunye-ai-ecosystems/ubunye_engine/issues"
 [project.scripts]
 ubunye = "ubunye.cli.main:app"
 
+# Execution backends (ADR 001). The shipped ones register exactly as a third
+# party engine would; `ubunye run --backend <name>` picks one by this name.
+[project.entry-points."ubunye.backends"]
+spark = "ubunye.backends.spark_backend:SparkBackend"
+databricks = "ubunye.backends.databricks_backend:DatabricksBackend"
+pandas = "ubunye.backends.pandas_backend:PandasBackend"
+
 [project.entry-points."ubunye.readers"]
 hive = "ubunye.plugins.readers.hive:HiveReader"
 jdbc = "ubunye.plugins.readers.jdbc:JdbcReader"
