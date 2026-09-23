@@ -100,6 +100,28 @@ class TestRegistry:
         # ...and it does not break the others.
         assert registry.load_class("pandas").__name__ == "PandasBackend"
 
+    def test_missing_packages_are_named_with_the_install(self, monkeypatch):
+        monkeypatch.setattr(registry, "_installed", lambda name: name != "pyarrow")
+        assert registry.load_class("pandas").name == "pandas"  # looking needs nothing
+        with pytest.raises(BackendNotFoundError) as caught:
+            registry.create("pandas")  # using does
+        message = str(caught.value)
+        assert "needs pyarrow" in message and "ubunye-engine[pandas]" in message
+
+    def test_spark_without_pyspark_says_so_before_starting(self, monkeypatch):
+        monkeypatch.setattr(registry, "_installed", lambda name: name != "pyspark")
+        monkeypatch.setattr(registry, "_platform_backend", lambda **kw: None)
+        with pytest.raises(BackendNotFoundError, match=r"ubunye-engine\[spark\]"):
+            registry.resolve(None)
+
+    def test_the_listing_shows_a_backend_that_cannot_run_here(self, monkeypatch):
+        from ubunye.cli.backend_choice import describe_all
+
+        monkeypatch.setattr(registry, "_installed", lambda name: name != "pandas")
+        rows = {r["name"]: r for r in describe_all()}
+        assert rows["pandas"]["loaded"] is False and "pandas" in rows["pandas"]["error"]
+        assert rows["spark"]["loaded"] is True
+
     def test_a_non_backend_entry_point_is_refused(self, monkeypatch):
         real = registry._entry_points
         monkeypatch.setattr(registry, "_entry_points", lambda: [*real(), _EntryPoint("odd", dict)])
@@ -120,6 +142,7 @@ class TestResolutionOrder:
 
     def test_then_spark(self, monkeypatch):
         monkeypatch.setattr(registry, "_platform_backend", lambda **kw: None)
+        monkeypatch.setattr(registry, "_installed", lambda name: True)  # with or without pyspark
         backend = registry.resolve(None, app_name="ubunye:p", conf={"k": "v"})
         assert type(backend).__name__ == "SparkBackend"
         assert backend.app_name == "ubunye:p"

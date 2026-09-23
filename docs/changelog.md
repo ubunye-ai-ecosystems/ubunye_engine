@@ -35,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A backend whose packages are missing says so, with the install.** After
+  `pip install ubunye-engine` alone, `ubunye backends` listed spark and pandas
+  as ready, and choosing one failed deep inside on the first frame. Each
+  backend now declares the packages it needs; choosing it names what is missing
+  and the extra that installs it (`pip install 'ubunye-engine[pandas]'`), and
+  `ubunye backends` marks it "not usable here". Listing and inspecting a
+  backend still work anywhere, and `Engine()` with no backend resolves one only
+  when it first needs it.
 - **The pandas backend works on Windows.** pyarrow before 24 cannot find a
   timezone database on Windows (checked: 19 to 23 fail, even with the `tzdata`
   package), so every timestamp read or written failed there. The `pandas`

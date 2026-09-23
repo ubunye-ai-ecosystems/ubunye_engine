@@ -157,18 +157,29 @@ class Engine:
             ``backend.stop()``. Set to False when the caller owns the backend
             lifecycle (e.g. Python API running multiple tasks on one session).
         """
-        if backend is None:
-            # Resolved like any run: the platform's session if there is one, else
-            # the default backend. The core names no engine (ADR 001 and 003).
-            from ubunye.core import backends
-
-            backend = backends.resolve(None, app_name="ubunye")
-        self.backend = backend
+        # With no backend given, one is resolved like any run (the platform's
+        # session, else the default) when it is first needed, so an Engine can be
+        # built, and a config checked, where no engine is installed. The core
+        # names no engine (ADR 001 and 003).
+        self._backend: Optional[Backend] = backend
         self.registry = registry or Registry.from_entrypoints()
         self.context = context or EngineContext(run_id=str(uuid.uuid4()))
         self._hooks_override = list(hooks) if hooks is not None else None
         self._extra_hooks = list(extra_hooks) if extra_hooks else []
         self._manage_backend = manage_backend
+
+    @property
+    def backend(self) -> Any:
+        """The backend running this engine's tasks, resolved on first use."""
+        if self._backend is None:
+            from ubunye.core import backends
+
+            self._backend = backends.resolve(None, app_name="ubunye")
+        return self._backend
+
+    @backend.setter
+    def backend(self, value: Any) -> None:
+        self._backend = value
 
     # ---------- public API ----------
 

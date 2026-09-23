@@ -50,6 +50,7 @@ class PandasBackend(Backend):
     #: Local csv / json / parquet paths and the native save modes. No SparkSession,
     #: no partitioned folders, no cloud paths, no lakehouse modes: a task that
     #: needs any of those is refused before it starts.
+    REQUIRES_PACKAGES = ("pandas", "pyarrow")
     CAPABILITIES = Capabilities(
         features=frozenset({PATH_IO}),
         file_formats=pandas_io.SUPPORTED_FORMATS,

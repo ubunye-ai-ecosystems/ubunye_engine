@@ -179,5 +179,6 @@ class TestApi:
 
     def test_the_default_is_still_a_new_spark_session(self, monkeypatch):
         monkeypatch.setattr(registry, "_platform_backend", lambda **kw: None)
+        monkeypatch.setattr(registry, "_installed", lambda name: True)  # with or without pyspark
         backend = _detect_backend(spark_conf={"a": "b"}, app_name="ubunye:x")
         assert type(backend).__name__ == "SparkBackend" and backend.app_name == "ubunye:x"
