@@ -128,7 +128,7 @@ def promote(
     try:
         mv = registry.promote(use_case, model, version, target_stage, promoted_by=promoted_by)
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}",
+            f"[OK] {use_case}/{model} v{mv.version} -> {mv.stage.value}",
             fg=typer.colors.GREEN,
         )
     except (FileNotFoundError, ValueError) as e:
@@ -164,7 +164,7 @@ def demote(
     try:
         mv = registry.demote(use_case, model, version, target_stage)
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}",
+            f"[OK] {use_case}/{model} v{mv.version} -> {mv.stage.value}",
             fg=typer.colors.GREEN,
         )
     except (FileNotFoundError, ValueError) as e:

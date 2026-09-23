@@ -44,6 +44,13 @@ def _entry_points() -> List[Any]:
     return list(eps.get(GROUP, []) if hasattr(eps, "get") else eps.select(group=GROUP))
 
 
+def _installed(package: str) -> bool:
+    """Whether a top level package can be imported, without importing it."""
+    import importlib.util
+
+    return importlib.util.find_spec(package) is not None
+
+
 def available() -> List[str]:
     """Registered backend names, sorted. Loads nothing."""
     return sorted({ep.name.lower() for ep in _entry_points()})
@@ -88,9 +95,33 @@ def load_class(name: str) -> Type[Backend]:
     )
 
 
+def missing_packages(cls: Type[Backend]) -> List[str]:
+    """The packages a backend needs that are not installed here."""
+    return [p for p in cls.REQUIRES_PACKAGES if not _installed(p)]
+
+
 def create(name: str, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None) -> Any:
-    """Build the backend registered as ``name``."""
-    return load_class(name).create(app_name=app_name, conf=dict(conf or {}))
+    """Build the backend registered as ``name``, if what it needs is installed.
+
+    Looking a backend up (:func:`load_class`) needs nothing installed, so it can
+    be listed and inspected anywhere. Using one does: a missing package is named
+    here, with the install that fixes it, not on the first frame.
+    """
+    cls = load_class(name)
+    missing = missing_packages(cls)
+    if missing:
+        wanted = name.strip().lower()
+        extra = _EXTRAS.get(wanted)
+        raise BackendNotFoundError(
+            f"The '{wanted}' backend needs {', '.join(missing)}, which is not installed.",
+            context={"Backend": wanted, "Missing": missing},
+            hint=(
+                f"pip install 'ubunye-engine[{extra}]'"
+                if extra
+                else f"pip install {' '.join(missing)}"
+            ),
+        )
+    return cls.create(app_name=app_name, conf=dict(conf or {}))
 
 
 def _platform_backend(*, app_name: str, conf: Dict[str, Any]) -> Optional[Any]:

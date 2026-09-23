@@ -40,6 +40,7 @@ class DatabricksBackend(Backend):
     """
 
     name = "databricks"
+    REQUIRES_PACKAGES = ("pyspark",)
     CAPABILITIES = SPARK_CAPABILITIES
 
     def __init__(

@@ -44,11 +44,23 @@ def describe_all() -> List[Dict[str, Any]]:
             "default": name == backends.DEFAULT_BACKEND,
         }
         try:
-            row["loaded"] = True
-            row["capabilities"] = backends.load_class(name).CAPABILITIES.describe()
+            cls = backends.load_class(name)
         except BackendNotFoundError as exc:
             row["loaded"] = False
             row["error"] = str(exc).splitlines()[0]
+            rows.append(row)
+            continue
+        missing = backends.missing_packages(cls)
+        row["loaded"] = not missing
+        row["capabilities"] = cls.CAPABILITIES.describe()
+        if missing:
+            extra = backends._EXTRAS.get(name)
+            fix = (
+                f"pip install 'ubunye-engine[{extra}]'"
+                if extra
+                else "pip install " + " ".join(missing)
+            )
+            row["error"] = f"needs {', '.join(missing)} ({fix})"
         rows.append(row)
     return rows
 
@@ -65,8 +77,9 @@ def backends_command(
         mark = " (default)" if row["default"] else ""
         typer.secho(f"{row['name']}{mark}", bold=True)
         if not row["loaded"]:
-            typer.secho(f"  not loadable: {row['error']}", fg=typer.colors.YELLOW)
-            continue
+            typer.secho(f"  not usable here: {row['error']}", fg=typer.colors.YELLOW)
+            if "capabilities" not in row:
+                continue
         caps = row["capabilities"]
         formats = caps["file_formats"]
         modes = caps["write_modes"]

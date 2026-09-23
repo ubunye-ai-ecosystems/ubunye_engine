@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The package says what it is.** `LICENSE` is the full MIT text (it was the
+  single word "MIT"), declared the modern way (`license = "MIT"` with
+  `license-files`, which needs setuptools 77). PyPI now shows classifiers for
+  the Python versions CI tests, a description that matches what the engine does
+  now that it is not Spark only, and pandas and lineage among the keywords.
+  Thabang Mashinini-Sekgoto stays the author and Ubunye AI Ecosystems the
+  maintainer and copyright holder.
 - **Spark moved out of the engine core, so the hexagon is real rather than
   aspirational.** The founding rule is "the core never depends on the outside
   world," but `core/write_modes.py` and `core/catalog.py` called Spark directly
@@ -28,6 +35,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`ubunye --help` no longer crashes on Windows.** A legacy Windows console
+  prints in cp1252, which has no arrow, and a help text and a few messages
+  used one, so `ubunye --help` died with `UnicodeEncodeError` on a fresh
+  install. The CLI's text is now plain ASCII where it prints, a test keeps every
+  help text printable on cp1252, and the `ubunye` command sets its output to
+  replace any character the console cannot show (a file path with an accent,
+  say) instead of crashing. The CI Package job runs `--help` on windows-latest.
+- **A backend whose packages are missing says so, with the install.** After
+  `pip install ubunye-engine` alone, `ubunye backends` listed spark and pandas
+  as ready, and choosing one failed deep inside on the first frame. Each
+  backend now declares the packages it needs; choosing it names what is missing
+  and the extra that installs it (`pip install 'ubunye-engine[pandas]'`), and
+  `ubunye backends` marks it "not usable here". Listing and inspecting a
+  backend still work anywhere, and `Engine()` with no backend resolves one only
+  when it first needs it.
 - **The pandas backend works on Windows.** pyarrow before 24 cannot find a
   timezone database on Windows (checked: 19 to 23 fail, even with the `tzdata`
   package), so every timestamp read or written failed there. The `pandas`

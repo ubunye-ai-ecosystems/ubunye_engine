@@ -7,7 +7,7 @@ transforms, and user-defined tasks.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, FrozenSet, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, FrozenSet, List, Optional, Sequence, Tuple
 
 from ubunye.core.capabilities import SPARK, Capabilities
 
@@ -26,6 +26,11 @@ class Backend(ABC):
 
     #: The name the backend is registered under (``--backend <name>``).
     name: ClassVar[str] = ""
+
+    #: The packages the backend cannot run without ("pyspark", "pandas"...).
+    #: Checked when it is chosen by name, so a missing one is named with the
+    #: install that fixes it, instead of failing on the first frame.
+    REQUIRES_PACKAGES: ClassVar[Tuple[str, ...]] = ()
 
     #: What this backend can do. Undeclared by default, so a backend written
     #: before capabilities existed is never pre-checked and behaves as before.

@@ -57,6 +57,7 @@ class SparkBackend(Backend):
     """
 
     name = "spark"
+    REQUIRES_PACKAGES = ("pyspark",)
     CAPABILITIES = SPARK_CAPABILITIES
 
     def __init__(self, app_name: str = "ubunye", conf: Optional[Dict[str, str]] = None) -> None:

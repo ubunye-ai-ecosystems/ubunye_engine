@@ -15,6 +15,7 @@ Commands:
 
 from __future__ import annotations
 
+import sys
 import uuid
 from pathlib import Path
 from typing import List, Optional
@@ -44,6 +45,29 @@ app.add_typer(lineage_app)
 app.add_typer(models_app)
 app.add_typer(sync_app)
 app.add_typer(test_app)
+
+
+def _safe_console_streams() -> None:
+    """Replace, rather than crash on, characters the console cannot print.
+
+    A legacy Windows console encodes output as cp1252. Any character it lacks
+    (an arrow in help, an accent in a file path) raised UnicodeEncodeError and
+    killed the command. Output now shows ``?`` for such a character instead.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        encoding = (getattr(stream, "encoding", "") or "").lower().replace("-", "")
+        reconfigure = getattr(stream, "reconfigure", None)
+        if encoding != "utf8" and callable(reconfigure):
+            try:
+                reconfigure(errors="replace")
+            except (ValueError, OSError):
+                pass  # a stream that cannot be reconfigured is left as it is
+
+
+def main() -> None:
+    """The ``ubunye`` console script: make the console safe, then run the CLI."""
+    _safe_console_streams()
+    app()
 
 
 def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path:
@@ -224,7 +248,7 @@ def plan(
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
     mode: str = typer.Option("DEV", "-m", "--mode"),
 ):
-    """Print the planned inputs → transform → outputs for task(s)."""
+    """Print the planned inputs, transform and outputs for task(s)."""
     variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
     for task in task_list:
         config_path = _task_path(usecase_dir, usecase, package, task) / "config.yaml"
