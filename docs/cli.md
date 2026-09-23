@@ -419,6 +419,12 @@ ubunye models promote \
 
 Target stages: `staging`, `production`.
 
+The version must pass the model's promotion gates first: the `promotion_gates`
+its training run registered it with (for example `min_auc: 0.85`). If one fails,
+nothing is promoted and the failing gate is named. `--force` promotes anyway,
+prints which gates were skipped, and marks the version (`promotion_forced`) so
+the skip stays on the record.
+
 ### `models demote`
 
 ```bash
