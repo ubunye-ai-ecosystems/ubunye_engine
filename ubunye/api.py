@@ -29,10 +29,11 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
 from ubunye.adapters.spark.catalog import set_catalog_and_schema
 from ubunye.config import load_config
+from ubunye.config.variables import build_variables
 from ubunye.core import backends
 from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend
@@ -118,6 +119,7 @@ def run_task(
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
     backend: BackendChoice = None,
+    variables: Optional[Mapping[str, Any]] = None,
     lineage: bool = False,
     lineage_dir: str = ".ubunye/lineage",
     profile: Optional[str] = None,
@@ -144,6 +146,10 @@ def run_task(
         Spark and no Java, ``"spark"``, or any installed plugin) or an instance.
         If *None*: the ``spark`` session if given, else the platform's active
         session, else a new Spark session.
+    variables : dict, optional
+        Extra template variables for the config (``{"region": "gauteng"}``
+        makes ``{{ region }}`` available), as ``--var`` does on the command
+        line. May set ``dt`` or ``dtf``; the same name with two values is refused.
     lineage : bool
         Record lineage for this run.
     lineage_dir : str
@@ -161,7 +167,7 @@ def run_task(
     """
     task_path = Path(task_dir).resolve()
     usecase_dir, task_identity = _task_identity(task_path)
-    variables = {"dt": dt, "dtf": dtf, "mode": mode}
+    variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
 
     cfg = load_config(str(task_path), variables=variables, profile=profile)
     spark_conf = cfg.merged_spark_conf(mode)
@@ -222,6 +228,7 @@ def run_pipeline(
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
     backend: BackendChoice = None,
+    variables: Optional[Mapping[str, Any]] = None,
     lineage: bool = False,
     lineage_dir: str = ".ubunye/lineage",
     profile: Optional[str] = None,
@@ -239,7 +246,7 @@ def run_pipeline(
         Package/pipeline name.
     tasks : List[str]
         Task names to run in order.
-    mode, dt, dtf, spark, backend, lineage, lineage_dir, profile, hooks
+    mode, dt, dtf, spark, backend, variables, lineage, lineage_dir, profile, hooks
         Same as :func:`run_task`. One backend runs every task.
 
     Returns
@@ -248,7 +255,7 @@ def run_pipeline(
         Mapping of task name → outputs map.
     """
     base = Path(usecase_dir).resolve()
-    variables = {"dt": dt, "dtf": dtf, "mode": mode}
+    variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
     run_id = str(uuid.uuid4())
 
     # Validate all configs before starting backend

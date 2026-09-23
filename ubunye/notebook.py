@@ -23,13 +23,14 @@ import os
 import sys
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Set
+from typing import Any, Dict, Iterable, Mapping, Optional, Set
 
 from ubunye.adapters.spark.catalog import set_catalog_and_schema
 from ubunye.api import BackendChoice, _detect_backend, _task_identity
 from ubunye.config import load_config
 from ubunye.config.resolver import extract_env_references
 from ubunye.config.schema import UbunyeConfig
+from ubunye.config.variables import build_variables
 from ubunye.core.hooks import Hook
 from ubunye.core.runtime import Engine, EngineContext, Registry
 from ubunye.core.task_runner import (
@@ -118,6 +119,7 @@ class NotebookContext:
         dtf: Optional[str] = None,
         spark: Optional[Any] = None,
         backend: BackendChoice = None,
+        variables: Optional[Mapping[str, Any]] = None,
         env: Optional[Dict[str, str]] = None,
         secrets_scope: Optional[str] = None,
         secrets_map: Optional[Dict[str, str]] = None,
@@ -143,7 +145,7 @@ class NotebookContext:
                 self._inject_env(self._resolved_env)
 
         # --- Phase B: load config ---
-        variables = {"dt": dt, "dtf": dtf, "mode": mode}
+        variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
         self._cfg = load_config(str(self._task_path), variables=variables, profile=profile)
 
         # --- Phase C: start backend ---
@@ -327,6 +329,7 @@ def notebook(
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
     backend: BackendChoice = None,
+    variables: Optional[Mapping[str, Any]] = None,
     env: Optional[Dict[str, str]] = None,
     secrets_scope: Optional[str] = None,
     secrets_map: Optional[Dict[str, str]] = None,
@@ -352,6 +355,7 @@ def notebook(
         dtf=dtf,
         spark=spark,
         backend=backend,
+        variables=variables,
         env=env,
         secrets_scope=secrets_scope,
         secrets_map=secrets_map,
