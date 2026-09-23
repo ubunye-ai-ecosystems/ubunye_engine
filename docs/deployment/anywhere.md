@@ -36,7 +36,9 @@ lakehouse formats (delta) and managed tables need Spark, and the engine says so
 rather than failing obscurely. The one caveat is your own logic: a
 `transformations.py` that calls the Spark DataFrame API needs Spark, so a task
 is pandas-runnable when its transform is backend-agnostic (or pandas-native).
-Install the extra with `pip install 'ubunye-engine[pandas]'`.
+Install the extra with `pip install 'ubunye-engine[pandas]'`. Check a task can run
+on it first with `ubunye validate ... --backend pandas`, and see every backend
+with `ubunye backends` ([Execution backends](../backends.md)).
 
 ### It reads data the way Spark does
 

@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Set
 
 from ubunye.adapters.spark.catalog import set_catalog_and_schema
-from ubunye.api import _detect_backend
+from ubunye.api import BackendChoice, _detect_backend
 from ubunye.config import load_config
 from ubunye.config.resolver import extract_env_references
 from ubunye.config.schema import UbunyeConfig
@@ -117,6 +117,7 @@ class NotebookContext:
         dt: Optional[str] = None,
         dtf: Optional[str] = None,
         spark: Optional[Any] = None,
+        backend: BackendChoice = None,
         env: Optional[Dict[str, str]] = None,
         secrets_scope: Optional[str] = None,
         secrets_map: Optional[Dict[str, str]] = None,
@@ -154,7 +155,9 @@ class NotebookContext:
         app_parts = [p for p in (usecase_name, package_name, task_name) if p]
         app_name = f"ubunye:{'.'.join(app_parts)}" if app_parts else "ubunye"
 
-        self._backend = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name)
+        self._backend = _detect_backend(
+            spark=spark, spark_conf=spark_conf, app_name=app_name, backend=backend
+        )
         self._backend.start()
         set_catalog_and_schema(
             self._backend,
@@ -319,6 +322,7 @@ def notebook(
     dt: Optional[str] = None,
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
+    backend: BackendChoice = None,
     env: Optional[Dict[str, str]] = None,
     secrets_scope: Optional[str] = None,
     secrets_map: Optional[Dict[str, str]] = None,
@@ -333,6 +337,9 @@ def notebook(
     All ``{{ env.VAR }}`` references in the task's ``config.yaml`` are
     auto-resolved from Databricks widgets and secrets — no manual
     ``os.environ`` setup needed.
+
+    ``backend`` picks the engine as in :func:`ubunye.run_task`: a registered
+    name (``"pandas"``) or an instance; by default the notebook's session.
     """
     return NotebookContext(
         task_dir,
@@ -340,6 +347,7 @@ def notebook(
         dt=dt,
         dtf=dtf,
         spark=spark,
+        backend=backend,
         env=env,
         secrets_scope=secrets_scope,
         secrets_map=secrets_map,

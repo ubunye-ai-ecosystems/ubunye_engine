@@ -22,7 +22,8 @@ from typing import List, Optional
 import typer
 
 from ubunye.adapters.spark.catalog import set_catalog_and_schema
-from ubunye.backends.spark_backend import SparkBackend
+from ubunye.cli.backend_choice import backends_command
+from ubunye.cli.backend_choice import resolve_or_exit as _resolve_backend_or_exit
 from ubunye.cli.deploy import deploy_app
 from ubunye.cli.export import export_app
 from ubunye.cli.init import init_app
@@ -31,7 +32,6 @@ from ubunye.cli.models import models_app
 from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
 from ubunye.config import load_config
-from ubunye.core.interfaces import Backend
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
@@ -48,6 +48,9 @@ app.add_typer(test_app)
 
 def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path:
     return usecase_dir / usecase / package / task
+
+
+app.command("backends")(backends_command)
 
 
 @app.command()
@@ -102,11 +105,18 @@ def validate(
         "words for the same idea, which made them feel like different systems.",
     ),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
+    backend_kind: Optional[str] = typer.Option(
+        None,
+        "--backend",
+        help="Also check the task can run on this backend (its connectors, file "
+        "formats, write modes and paths), without starting it.",
+    ),
 ):
     """Validate config file(s) without executing the pipeline.
 
     Runs Pydantic schema validation and Jinja template resolution so errors
-    are caught before Spark starts. Exits non-zero if any task fails.
+    are caught before Spark starts. With --backend, also checks that every input
+    and output is something that backend can do. Exits non-zero if any task fails.
 
     Examples
     --------
@@ -158,10 +168,34 @@ def validate(
     variables = {"dt": data_timestamp, "dtf": data_timestamp, "mode": profile or "DEV"}
     failed = 0
 
+    caps = None
+    registry = Registry.from_entrypoints() if backend_kind else None
+    if backend_kind:
+        from ubunye.cli.backend_choice import capabilities_or_exit
+
+        caps = capabilities_or_exit(backend_kind)
+
     for task in tasks_to_check:
         task_dir = _task_path(usecase_dir, usecase, package, task)
         try:
-            load_config(str(task_dir), variables=variables, profile=profile)
+            cfg = load_config(str(task_dir), variables=variables, profile=profile)
+            if caps is not None and registry is not None:
+                from ubunye.core.capabilities import check_task
+
+                problems = check_task(
+                    caps,
+                    cfg.model_dump(mode="json"),
+                    registry,
+                    backend_name=str(backend_kind).lower(),
+                )
+                if problems:
+                    typer.secho(
+                        f"  [FAIL] {task} (on the {backend_kind} backend)", fg=typer.colors.RED
+                    )
+                    for problem in problems:
+                        typer.echo(f"         - {problem}")
+                    failed += 1
+                    continue
             typer.secho(f"  [OK]   {task}", fg=typer.colors.GREEN)
         except (ValueError, FileNotFoundError) as e:
             typer.secho(f"  [FAIL] {task}", fg=typer.colors.RED)
@@ -243,11 +277,12 @@ def run(
     lineage_dir: str = typer.Option(
         ".ubunye/lineage", "--lineage-dir", help="Root directory for lineage records."
     ),
-    backend_kind: str = typer.Option(
-        "spark",
+    backend_kind: Optional[str] = typer.Option(
+        None,
         "--backend",
-        help="Execution backend: 'spark' (default) or 'pandas' (a laptop run with "
-        "no Spark and no JVM; path-based csv/parquet/json only).",
+        help="Execution backend by name: 'spark', 'databricks', 'pandas' (a laptop "
+        "run with no Spark and no JVM), or any installed plugin. See `ubunye backends`. "
+        "Default: the platform's session if there is one, else spark.",
     ),
 ):
     """Run one or more tasks within a package sequentially."""
@@ -306,20 +341,7 @@ def run(
     spark_conf["spark.submit.deployMode"] = deploy_mode
 
     run_id = str(uuid.uuid4())
-    backend: Backend
-    if backend_kind == "pandas":
-        from ubunye.backends.pandas_backend import PandasBackend
-
-        backend = PandasBackend(app_name=f"ubunye:{package}", conf=spark_conf)
-    elif backend_kind == "spark":
-        backend = SparkBackend(app_name=f"ubunye:{package}", conf=spark_conf)
-    else:
-        typer.secho(
-            f"[ERROR] Unknown --backend '{backend_kind}'. Use 'spark' or 'pandas'.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
+    backend = _resolve_backend_or_exit(backend_kind, app_name=f"ubunye:{package}", conf=spark_conf)
 
     # Build a lineage recorder if --lineage was requested
     lineage_recorder = None
