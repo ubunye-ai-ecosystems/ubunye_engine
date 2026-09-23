@@ -67,6 +67,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nanoseconds). A named index (what `groupby` leaves) is kept as columns.
   `partition_by`, unknown write options, nested values in CSV and non pandas
   frames are refused by name.
+- **Connectors that need Spark say so on the pandas backend.** hive, jdbc,
+  delta, unity, binary and rest_api build on a SparkSession. On the pandas
+  backend they used to fail with `AttributeError: 'PandasBackend' object has no
+  attribute 'spark'`, and rest_api only after fetching every page. They now stop
+  first, before any network call, with a message naming the connector and the
+  way out (`--backend spark`, or csv/parquet/json paths with `format: s3`).
 
 ---
 

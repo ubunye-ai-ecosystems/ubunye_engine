@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from ubunye.adapters.spark import write_exec
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
@@ -55,6 +56,7 @@ class HiveWriter(Writer):
         return ["format 'hive' as an output requires 'db_name' + 'tbl_name'"]
 
     def write(self, df: Any, cfg: dict, backend) -> None:
+        spark = spark_of(backend, "hive", error=SinkWriteError)
         full_name = _qualify(cfg)
         fmt = (cfg.get("file_format") or "parquet").lower()
 
@@ -69,7 +71,7 @@ class HiveWriter(Writer):
 
         write_exec.apply(
             df,
-            backend.spark,
+            spark,
             resolved,
             connector="hive",
             file_format=fmt,

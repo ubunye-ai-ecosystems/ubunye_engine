@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
@@ -22,7 +23,7 @@ class HiveReader(Reader):
         return []
 
     def read(self, cfg: dict, backend) -> Any:
-        spark = backend.spark
+        spark = spark_of(backend, "hive", error=SourceReadError)
         sql = cfg.get("sql")
         if sql:
             return spark.sql(sql)

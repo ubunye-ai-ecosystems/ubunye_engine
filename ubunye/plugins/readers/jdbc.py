@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
@@ -62,7 +63,7 @@ class JdbcReader(Reader):
         backend : SparkBackend
             Ubunye Spark backend (must expose .spark).
         """
-        spark = backend.spark
+        spark = spark_of(backend, "jdbc", error=SourceReadError)
 
         # ---- validate minimal settings ----
         for key in self.REQUIRED:
