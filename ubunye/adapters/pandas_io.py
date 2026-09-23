@@ -210,7 +210,8 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
     parse = pcsv.ParseOptions(
         delimiter=str(opts.get("sep") or opts.get("delimiter") or ","),
         quote_char=str(opts.get("quote", '"')) or False,
-        escape_char=str(opts["escape"]) if opts.get("escape") else False,
+        # Spark's default escape character is a backslash.
+        escape_char=str(opts.get("escape", "\\")) or False,
         newlines_in_values=_truthy(opts.get("multiline", "false")),
     )
 
@@ -371,12 +372,304 @@ def read_frame(
     return PandasDataFrameAdapter(to_pandas(table))
 
 
-def _read_existing(pd: Any, fmt: str, local: str) -> Any:
-    if fmt == "csv":
-        return pd.read_csv(local)
+# --------------------------------------------------------------------------- #
+# Writes: Spark's folder layout and Spark's text formats
+# --------------------------------------------------------------------------- #
+
+# The writer options each format honours, lower-cased. Anything else is refused.
+WRITE_OPTIONS: Dict[str, frozenset] = {
+    "csv": frozenset({"header", "sep", "delimiter"}),
+    "json": frozenset(),
+    "parquet": frozenset({"compression"}),
+}
+_PARQUET_CODECS = {
+    "none": None,
+    "uncompressed": None,
+    "snappy": "snappy",
+    "gzip": "gzip",
+    "lz4": "lz4",
+    "zstd": "zstd",
+    "brotli": "brotli",
+}
+
+
+def _refuse(message: str, **context: Any) -> SinkWriteError:
+    return SinkWriteError(message, context={"Backend": "pandas", **context})
+
+
+def to_arrow(df: Any, timezone: str) -> Any:
+    """What a task returned, as an Arrow table with the types Spark writes.
+
+    Takes the ``DataFramePort`` adapter, a pandas frame or an Arrow table. A
+    named index (what ``groupby`` leaves) is kept as columns; an unnamed one
+    (what a filter leaves) is dropped, since Spark has no row index.
+    """
+    import pandas as pd
+    import pyarrow as pa
+
+    frame = df.native if isinstance(df, PandasDataFrameAdapter) else df
+    if isinstance(frame, pd.DataFrame):
+        if frame.columns.duplicated().any():
+            dupes = sorted({str(c) for c in frame.columns[frame.columns.duplicated()]})
+            raise _refuse(f"The frame has duplicate column names {dupes}.")
+        if any(name is not None for name in frame.index.names):
+            frame = frame.reset_index()
+        table = pa.Table.from_pandas(frame, preserve_index=False)
+    elif isinstance(frame, pa.Table):
+        table = frame
+    else:
+        raise _refuse(
+            f"The pandas backend writes pandas DataFrames, not {type(frame).__name__}.",
+        )
+
+    fields, columns = [], []
+    for field, col in zip(table.schema, table.columns):
+        t = field.type
+        if pa.types.is_dictionary(t):  # a pandas category
+            col, t = col.cast(t.value_type), t.value_type
+        if pa.types.is_null(t) or pa.types.is_large_string(t):
+            col, t = col.cast(pa.string()), pa.string()
+        if pa.types.is_timestamp(t):
+            if t.tz is None:
+                import pyarrow.compute as pc
+
+                col = pc.assume_timezone(col, timezone=timezone)
+            # Spark holds microseconds and cannot read nanosecond parquet.
+            col = col.cast(pa.timestamp("us", tz="UTC"), safe=False)
+            t = col.type
+        fields.append(field.with_type(t))
+        columns.append(col)
+    return pa.table(columns, schema=pa.schema(fields))
+
+
+def _spark_timestamp_text(col: Any, timezone: str) -> Any:
+    """Spark's default text for a timestamp: ``yyyy-MM-dd'T'HH:mm:ss.SSSXXX``.
+
+    Milliseconds, in the session zone, with a ``+02:00`` style offset or ``Z``.
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    local = col.cast(pa.timestamp("ms", tz=timezone), safe=False)
+    body = pc.strftime(local, format="%Y-%m-%dT%H:%M:%S")
+    offset = pc.strftime(local, format="%z")
+    offset = pc.replace_substring_regex(offset, pattern=r"^([+-]\d\d)(\d\d)$", replacement=r"\1:\2")
+    offset = pc.replace_substring(offset, pattern="+00:00", replacement="Z")
+    return pc.binary_join_element_wise(body, offset, "")
+
+
+def _texts_for_timestamps(table: Any, timezone: str) -> Any:
+    import pyarrow as pa
+
+    for i, field in enumerate(table.schema):
+        if pa.types.is_timestamp(field.type):
+            text = _spark_timestamp_text(table.column(i), timezone)
+            table = table.set_column(i, pa.field(field.name, pa.string()), text)
+    return table
+
+
+def _without_nulls(value: Any) -> Any:
+    """Spark's JSON writer leaves null fields out (``ignoreNullFields``)."""
+    if isinstance(value, dict):
+        return {k: _without_nulls(v) for k, v in value.items() if v is not None}
+    if isinstance(value, list):
+        return [_without_nulls(v) for v in value]
+    return value
+
+
+def _json_default(value: Any) -> Any:
+    import base64
+    import datetime as dt
+    import decimal
+
+    if isinstance(value, (dt.date, dt.time)):
+        return value.isoformat()
+    if isinstance(value, decimal.Decimal):
+        return float(value) if value != value.to_integral_value() else int(value)
+    if isinstance(value, bytes):
+        return base64.b64encode(value).decode("ascii")  # as Spark writes binary
+    raise TypeError(f"cannot write {type(value).__name__} to JSON")
+
+
+def _write_part(table: Any, fmt: str, folder: str, opts: Dict[str, Any], timezone: str) -> str:
+    """Write one ``part-00000-<uuid>-c000.<ext>`` file into ``folder``."""
+    import uuid
+
+    stem = f"part-00000-{uuid.uuid4()}-c000"
     if fmt == "parquet":
-        return pd.read_parquet(local)
-    return pd.read_json(local)
+        import pyarrow.parquet as pq
+
+        codec_name = str(opts.get("compression", "snappy")).lower()
+        if codec_name not in _PARQUET_CODECS:
+            raise _refuse(
+                f"The pandas backend cannot write parquet compression '{codec_name}'.",
+                Supported=sorted(_PARQUET_CODECS),
+            )
+        codec = _PARQUET_CODECS[codec_name]
+        name = f"{stem}.{codec}.parquet" if codec else f"{stem}.parquet"
+        pq.write_table(table, os.path.join(folder, name), compression=codec or "none")
+        return name
+
+    table = _texts_for_timestamps(table, timezone)
+    if fmt == "csv":
+        name = f"{stem}.csv"
+        text = _csv_text(
+            table,
+            sep=str(opts.get("sep") or opts.get("delimiter") or ","),
+            header=_truthy(opts.get("header", "false")),
+        )
+        with open(os.path.join(folder, name), "w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+        return name
+
+    name = f"{stem}.json"
+    with open(os.path.join(folder, name), "w", encoding="utf-8", newline="\n") as handle:
+        for batch in table.to_batches():
+            for row in batch.to_pylist():
+                handle.write(
+                    json.dumps(_without_nulls(row), default=_json_default, ensure_ascii=False)
+                )
+                handle.write("\n")
+    return name
+
+
+def _java_double(x: Any) -> Optional[str]:
+    """A float as Java's ``Double.toString`` writes it, which is what Spark writes."""
+    import decimal
+    import math
+
+    if x is None:
+        return None
+    if math.isnan(x):
+        return "NaN"
+    if math.isinf(x):
+        return "Infinity" if x > 0 else "-Infinity"
+    if x == 0:
+        return "-0.0" if math.copysign(1.0, x) < 0 else "0.0"
+    text = repr(x)
+    if 1e-3 <= abs(x) < 1e7:
+        return text if "." in text else text + ".0"
+    sign, digits, exponent = decimal.Decimal(text).as_tuple()
+    ds = "".join(map(str, digits)).rstrip("0") or "0"
+    power = len(digits) + int(exponent) - 1
+    return f"{'-' if sign else ''}{ds[0]}.{ds[1:] or '0'}E{power}"
+
+
+def _csv_column(col: Any, field: Any, sep: str) -> Any:
+    """One column as Spark's CSV text: null is empty, quotes only when needed."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    t = field.type
+    if pa.types.is_floating(t):
+        if pa.types.is_float64(t):
+            values = [_java_double(v) for v in col.to_pylist()]
+        else:  # float32 and float16: Java's Float.toString is numpy's shortest form
+            import numpy as np
+
+            values = [
+                None if v is None else _java_double(float(str(np.float32(v))))
+                for v in col.to_pylist()
+            ]
+        return pa.array(values, pa.string()).fill_null("")
+    text = pc.cast(col, pa.string())
+    if pa.types.is_string(t) or pa.types.is_large_string(t):
+        # Spark trims text on write (ignoreLeading/TrailingWhiteSpace default true).
+        text = pc.utf8_trim_whitespace(text)
+        special = "[" + "".join("\\" + c for c in sep) + '"\\r\\n]|^$'
+        needs = pc.fill_null(pc.match_substring_regex(text, pattern=special), False)
+        # Spark's default escape character is a backslash, not a doubled quote.
+        quoted = pc.binary_join_element_wise(
+            '"', pc.replace_substring(text, pattern='"', replacement='\\"'), '"', ""
+        )
+        text = pc.if_else(needs, quoted, text)
+    return text.fill_null("")
+
+
+def _csv_text(table: Any, *, sep: str, header: bool) -> str:
+    """A whole table as Spark would write it to one CSV part file.
+
+    Lines end in ``\n``, as Spark writes them on Linux and Databricks (on
+    Windows Spark writes ``\r\n``; both readers accept either).
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    for field in table.schema:
+        if pa.types.is_nested(field.type) or pa.types.is_binary(field.type):
+            raise _refuse(
+                f"csv cannot hold the nested or binary column '{field.name}'.",
+                column=field.name,
+            )
+    lines = []
+    if header:
+        names = pa.array(table.column_names, pa.string())
+        lines.append(sep.join(_csv_column(names, pa.field("h", pa.string()), sep).to_pylist()))
+    if table.num_rows:
+        cols = [_csv_column(table.column(i), f, sep) for i, f in enumerate(table.schema)]
+        rows = cols[0] if len(cols) == 1 else pc.binary_join_element_wise(*cols, sep)
+        # A line that renders empty (a one column row that is null) is skipped,
+        # as Spark's writer skips it.
+        lines.extend(line for line in rows.to_pylist() if line)
+    return "".join(line + "\n" for line in lines)
+
+
+def _touch(path: str) -> None:
+    with open(path, "w", encoding="utf-8"):
+        pass
+
+
+def _commit(local: str, save_mode: str, write: Any) -> None:
+    """Put a freshly written part file in place, the way ``save_mode`` asks.
+
+    The part is written into a hidden staging folder beside the target first,
+    so a failed write never touches data already there: ``overwrite`` swaps the
+    staged folder in only once it is complete, ``append`` moves the one new part
+    file into the existing folder.
+    """
+    import shutil
+    import uuid
+
+    local = os.path.normpath(os.path.abspath(local))
+    exists = os.path.exists(local)
+    if exists and save_mode == "ignore":
+        return
+    if exists and save_mode == "errorifexists":
+        raise _refuse(f"Target already exists: {local}", path=local)
+    if exists and save_mode == "append" and not os.path.isdir(local):
+        raise _refuse(
+            f"Cannot append to {local}: it is a single file, not a folder of part files.",
+            path=local,
+        )
+
+    parent, base = os.path.split(local)
+    os.makedirs(parent, exist_ok=True)
+    staging = os.path.join(parent, f".{base}.ubunye-{uuid.uuid4().hex[:12]}")
+    os.makedirs(staging)
+    try:
+        part = write(staging)
+        if exists and save_mode == "append":
+            os.replace(os.path.join(staging, part), os.path.join(local, part))
+            _touch(os.path.join(local, "_SUCCESS"))
+            return
+        _touch(os.path.join(staging, "_SUCCESS"))
+        if not exists:
+            os.replace(staging, local)
+            return
+        old = staging + ".old"
+        os.replace(local, old)
+        try:
+            os.replace(staging, local)
+        except BaseException:
+            os.replace(old, local)
+            raise
+        if os.path.isdir(old):
+            shutil.rmtree(old, ignore_errors=True)
+        else:
+            os.remove(old)
+    finally:
+        if os.path.exists(staging):
+            shutil.rmtree(staging, ignore_errors=True)
 
 
 def execute_write(
@@ -389,28 +682,37 @@ def execute_write(
     path: Optional[str] = None,
     partition_by: Optional[Sequence[str]] = None,
     options: Optional[Dict[str, Any]] = None,
+    timezone: str = "UTC",
 ) -> None:
-    """Write a pandas frame to ``path``, honouring the native save modes."""
-    import pandas as pd
+    """Write a frame to ``path`` as Spark would: a folder of part files.
 
+    ``overwrite`` replaces the folder, ``append`` adds a part file,
+    ``errorifexists`` and ``ignore`` do what they say. Lakehouse modes,
+    partitioned writes, managed tables and unknown options are refused.
+    """
     if table and not path:
-        raise SinkWriteError(
+        raise _refuse(
             "The pandas backend writes to paths, not managed tables.",
-            context={"Backend": "pandas", "connector": connector, "table": table},
-            hint="Use a path output, or the Spark backend for catalog tables.",
+            connector=connector,
+            table=table,
         )
     if not path:
-        raise SinkWriteError(
-            "Nothing to write to — no path.",
-            context={"Backend": "pandas", "connector": connector},
-            hint="Set a path on this output.",
-        )
+        raise _refuse("Nothing to write to: no path.", connector=connector)
+    # resolve() maps merge and overwrite_partitions to save_mode "overwrite" for
+    # a first run, so honouring only save_mode would turn a merge into a full
+    # overwrite. They are lakehouse modes; refuse them.
     if resolved.is_merge or resolved.is_overwrite_partitions:
         raise SinkWriteError(
             f"The pandas backend does not support write mode '{resolved.mode}'.",
             context={"Backend": "pandas", "connector": connector, "mode": resolved.mode},
-            hint="merge and overwrite_partitions are lakehouse modes — use the Spark "
+            hint="merge and overwrite_partitions are lakehouse modes. Use the Spark "
             "backend, or a native mode (append / overwrite).",
+        )
+    if partition_by:
+        raise SinkWriteError(
+            "The pandas backend does not write partitioned folders (partition_by).",
+            context={"Backend": "pandas", "partition_by": list(partition_by)},
+            hint="Remove partition_by, or use the Spark backend.",
         )
 
     fmt = (file_format or "parquet").lower()
@@ -424,30 +726,27 @@ def execute_write(
             },
             hint="Write csv/parquet/json, or use the Spark backend.",
         )
-
-    frame = df.native if isinstance(df, PandasDataFrameAdapter) else df
-    local = _local_path(path, error=SinkWriteError)
-    save_mode = resolved.save_mode
-    exists = os.path.exists(local)
-
-    if exists and save_mode == "ignore":
-        return
-    if exists and save_mode == "errorifexists":
+    unknown = sorted(str(k) for k in (options or {}) if str(k).lower() not in WRITE_OPTIONS[fmt])
+    if unknown:
         raise SinkWriteError(
-            f"Target already exists: {local}",
-            context={"Backend": "pandas", "path": local},
-            hint="Use mode: overwrite or append.",
+            f"The pandas backend does not support the {fmt} write option(s) {unknown}.",
+            context={"Backend": "pandas", "Supported": sorted(WRITE_OPTIONS[fmt]) or "none"},
+            hint="Remove the option, or run this task on the Spark backend.",
         )
-    if save_mode == "append" and exists:
-        frame = pd.concat([_read_existing(pd, fmt, local), frame], ignore_index=True)
+    opts = {str(k).lower(): v for k, v in (options or {}).items()}
 
-    parent = os.path.dirname(local)
-    if parent:
-        os.makedirs(parent, exist_ok=True)
-
-    if fmt == "csv":
-        frame.to_csv(local, index=False)
-    elif fmt == "parquet":
-        frame.to_parquet(local, index=False)
-    else:  # json
-        frame.to_json(local, orient="records")
+    local = _local_path(path, error=SinkWriteError)
+    arrow = to_arrow(df, timezone)
+    try:
+        _commit(
+            local,
+            resolved.save_mode,
+            lambda folder: _write_part(arrow, fmt, folder, opts, timezone),
+        )
+    except SinkWriteError:
+        raise
+    except Exception as exc:  # pyarrow and filesystem errors, with the path named
+        raise SinkWriteError(
+            f"The pandas backend could not write {fmt} to {path}: {exc}",
+            context={"Backend": "pandas", "path": local, "file_format": fmt},
+        ) from exc

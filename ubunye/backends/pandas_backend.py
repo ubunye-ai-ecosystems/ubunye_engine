@@ -97,4 +97,5 @@ class PandasBackend(Backend):
             path=path,
             partition_by=partition_by,
             options=options,
+            timezone=self._timezone,
         )

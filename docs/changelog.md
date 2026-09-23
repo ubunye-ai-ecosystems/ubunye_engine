@@ -54,6 +54,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whole number column with nulls stays whole numbers. Options it cannot honour,
   nested schema types and remote paths are refused by name instead of ignored.
   Needs pandas 2.2 and pyarrow 14 or newer.
+- **The pandas backend writes data exactly as Spark does, so each can read the
+  other's output.** It used to write one file where Spark writes a folder, so
+  Spark could not read pandas output as a table, and `append` re-read and
+  rewrote the whole file every run. It now writes Spark's layout (a folder of
+  `part-*` files and `_SUCCESS`); `append` adds a part file; `overwrite` is
+  staged and swapped in only when complete, so a failed write keeps the old
+  data. The text formats match Spark byte for byte on the cases tested: CSV
+  without a header by default, minimal quoting with a backslash escape, text
+  trimmed, Java style numbers, Spark's timestamp text; JSON Lines without null
+  fields. Parquet timestamps are written as UTC microseconds (Spark cannot read
+  nanoseconds). A named index (what `groupby` leaves) is kept as columns.
+  `partition_by`, unknown write options, nested values in CSV and non pandas
+  frames are refused by name.
 
 ---
 

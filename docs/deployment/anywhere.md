@@ -63,6 +63,24 @@ Timestamps written as text are read in `spark.sql.session.timeZone` from your
 backend uses UTC on every machine, while Spark would use the machine's own zone.
 Set it once and the two backends agree.
 
+### It writes data the way Spark does
+
+A path the pandas backend writes looks exactly like one Spark writes: a folder
+holding `part-00000-....snappy.parquet` (or `.csv`, `.json`) and a `_SUCCESS`
+file. So Spark can read what pandas wrote, and pandas can read what Spark wrote.
+
+- `overwrite` replaces the folder. The new data is written to a hidden folder
+  first and swapped in only when it is complete, so a failed run never leaves
+  you with half a table.
+- `append` adds one new part file and leaves the old ones alone.
+- CSV is written the Spark way: no header unless `header: "true"`, text quoted
+  only when it has to be, numbers such as `2.0` and `1.0E10`, timestamps such as
+  `2024-01-02T03:04:05.000+02:00`.
+- JSON is one object per line, and null fields are left out.
+- Parquet timestamps are stored in microseconds, which is what Spark reads.
+
+`partition_by` is not supported yet on this backend and is refused, not ignored.
+
 Anything the pandas backend cannot do the Spark way is refused by name, not
 ignored: an unknown reader option (`dateFormat`, for example), a nested schema
 type, or a cloud path such as `s3a://`. The error says which option or path and
