@@ -38,6 +38,36 @@ rather than failing obscurely. The one caveat is your own logic: a
 is pandas-runnable when its transform is backend-agnostic (or pandas-native).
 Install the extra with `pip install 'ubunye-engine[pandas]'`.
 
+### It reads data the way Spark does
+
+The same folder must give the same data on both backends, so the pandas backend
+copies Spark's defaults instead of pandas' own:
+
+| What you read | What you get (same as Spark) |
+|---|---|
+| CSV, no options | No header: the first line is data, columns are `_c0`, `_c1`, ... |
+| CSV with `header: "true"` | Columns named from the first line, every value as text |
+| CSV with `inferSchema: "true"` | `int` if every value fits, else `bigint`; `double`, `boolean`, `date`, `timestamp`; an empty column is text |
+| An empty CSV field | null, not an empty string |
+| JSON | One object per line (`multiLine: "true"` for one big array); columns sorted by name; whole numbers are `bigint`; dates stay text |
+| A folder | Every data file in it, skipping `_SUCCESS` and other `_` or `.` files, so it reads what Spark wrote |
+| A glob such as `data/*.csv` | Every matching file |
+| `schema: "id INT, name STRING"` | Exactly those columns and types |
+
+The frame your task gets is an ordinary pandas DataFrame whose columns are backed
+by Arrow, so a whole number column with gaps stays whole numbers and a decimal
+stays a decimal, just as in Spark.
+
+Timestamps written as text are read in `spark.sql.session.timeZone` from your
+`ENGINE.spark_conf`, the same setting Spark uses. If it is not set, the pandas
+backend uses UTC on every machine, while Spark would use the machine's own zone.
+Set it once and the two backends agree.
+
+Anything the pandas backend cannot do the Spark way is refused by name, not
+ignored: an unknown reader option (`dateFormat`, for example), a nested schema
+type, or a cloud path such as `s3a://`. The error says which option or path and
+what to do instead.
+
 ## Scheduling
 
 Any scheduler that can run a command can own the timetable. For Airflow, the

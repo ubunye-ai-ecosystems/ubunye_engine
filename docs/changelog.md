@@ -41,6 +41,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   run on either backend. The proof is an integration test that runs one passthrough
   task through the engine on Spark and on pandas and asserts the output is
   identical. Install the extra with `pip install 'ubunye-engine[pandas]'`.
+- **The pandas backend reads data exactly as Spark does.** The first version
+  used pandas' own defaults, so the same CSV gave different columns and types on
+  the two backends: pandas assumed a header Spark does not, guessed types Spark
+  leaves as text, read JSON as one array where Spark reads one object per line,
+  and could not read a folder Spark had written. Reads now follow Spark: no
+  header by default (`_c0`, `_c1`), text unless `inferSchema`, Spark's inferred
+  types (`int` when every value fits, else `bigint`; an all empty column is
+  text), JSON Lines with columns sorted by name, folders of part files, globs,
+  explicit `schema:` strings, and timestamps read in
+  `spark.sql.session.timeZone` (UTC when unset). Columns are Arrow backed, so a
+  whole number column with nulls stays whole numbers. Options it cannot honour,
+  nested schema types and remote paths are refused by name instead of ignored.
+  Needs pandas 2.2 and pyarrow 14 or newer.
 
 ---
 

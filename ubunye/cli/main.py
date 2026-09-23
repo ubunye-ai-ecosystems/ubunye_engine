@@ -310,7 +310,7 @@ def run(
     if backend_kind == "pandas":
         from ubunye.backends.pandas_backend import PandasBackend
 
-        backend = PandasBackend(app_name=f"ubunye:{package}")
+        backend = PandasBackend(app_name=f"ubunye:{package}", conf=spark_conf)
     elif backend_kind == "spark":
         backend = SparkBackend(app_name=f"ubunye:{package}", conf=spark_conf)
     else:

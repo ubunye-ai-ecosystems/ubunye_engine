@@ -25,8 +25,18 @@ from ubunye.core.interfaces import Backend
 class PandasBackend(Backend):
     """Execute a Ubunye task with pandas, no Spark and no JVM."""
 
-    def __init__(self, app_name: str = "ubunye") -> None:
+    def __init__(
+        self,
+        app_name: str = "ubunye",
+        *,
+        timezone: Optional[str] = None,
+        conf: Optional[Dict[str, Any]] = None,
+    ) -> None:
         self._app_name = app_name
+        # Timestamp text is read as an instant in this zone, as Spark reads it in
+        # spark.sql.session.timeZone. The same task conf sets both, so the two
+        # backends agree; with neither set this is UTC, on every machine.
+        self._timezone = timezone or (conf or {}).get("spark.sql.session.timeZone") or "UTC"
 
     def start(self) -> None:
         """No session to create."""
@@ -49,6 +59,11 @@ class PandasBackend(Backend):
     def app_name(self) -> str:
         return self._app_name
 
+    @property
+    def timezone(self) -> str:
+        """The zone timestamp text is read in (``UTC`` unless set)."""
+        return self._timezone
+
     def read_frame(
         self,
         file_format: str,
@@ -57,7 +72,9 @@ class PandasBackend(Backend):
         options: Optional[Dict[str, Any]] = None,
         schema: Optional[str] = None,
     ) -> Any:
-        return pandas_io.read_frame(file_format, path, options=options, schema=schema)
+        return pandas_io.read_frame(
+            file_format, path, options=options, schema=schema, timezone=self._timezone
+        )
 
     def execute_write(
         self,
