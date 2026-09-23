@@ -34,7 +34,13 @@ delta = ["delta-spark>=4.0"]
 # no JVM (issue #38). pyarrow does the file IO and backs the columns, so types
 # match Spark's (a nullable int stays an int). pandas 2.2 is the first with the
 # Arrow-backed reads it relies on.
-pandas = ["pandas>=2.2", "pyarrow>=14"]
+# pyarrow before 24 cannot find a timezone database on Windows, so every
+# timestamp would fail there; Windows asks for 24 (Python 3.10 and newer).
+pandas = [
+  "pandas>=2.2",
+  "pyarrow>=14; platform_system != 'Windows'",
+  "pyarrow>=24; platform_system == 'Windows'",
+]
 ml = ["scikit-learn", "mlflow"]
 ml-torch = ["scikit-learn", "torch", "mlflow"]
 # The rest_api connector needs `requests`. It used to live ONLY in the dev extra, so
@@ -47,7 +53,7 @@ rest = ["requests>=2.28"]
 objectstore = ["fsspec>=2023.1.0"]
 # pandas and pyarrow are here so the pandas backend is tested on every CI run, not
 # skipped; without pyarrow the parquet tests failed instead of skipping.
-dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14"]
+dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14; platform_system != 'Windows'", "pyarrow>=24; platform_system == 'Windows'"]
 databricks = ["databricks-sdk>=0.20"]
 
 # Project URLs. These populate the sidebar links on the PyPI page, which

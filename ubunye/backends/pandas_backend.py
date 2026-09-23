@@ -1,9 +1,10 @@
 """Pandas backend — run a task on a laptop with nothing but Python.
 
 The second real adapter behind the ``Backend`` port. A port with one adapter
-has never been tested as a port; this is the proof (issue #38). ``start`` and
-``stop`` are no-ops (there is no session and no JVM to manage), ``is_spark`` is
-False, and there is deliberately **no** ``spark`` property — code that reaches
+has never been tested as a port; this is the proof (issue #38). There is no
+session and no JVM to manage (``start`` only checks pyarrow can handle
+timezones), ``is_spark`` is False, and there is deliberately **no** ``spark``
+property — code that reaches
 for one on this backend is asking for the thing the pandas backend exists to do
 without.
 
@@ -21,8 +22,25 @@ from typing import Any, Dict, Optional, Sequence
 from ubunye.adapters import pandas_io
 from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
 from ubunye.core.capabilities import PATH_IO, Capabilities
+from ubunye.core.errors import BackendNotFoundError
 from ubunye.core.interfaces import Backend
 from ubunye.core.write_modes import NATIVE_SAVE_MODES
+
+#: The first pyarrow that finds a timezone database on Windows without setup
+#: (checked: 19 to 23 fail, even with the tzdata package installed; 24 works).
+MIN_PYARROW_ON_WINDOWS = 24
+
+
+def _platform() -> str:
+    import platform
+
+    return platform.system()
+
+
+def _pyarrow_major() -> int:
+    import pyarrow
+
+    return int(pyarrow.__version__.split(".")[0])
 
 
 class PandasBackend(Backend):
@@ -52,7 +70,21 @@ class PandasBackend(Backend):
         self._timezone = timezone or (conf or {}).get("spark.sql.session.timeZone") or "UTC"
 
     def start(self) -> None:
-        """No session to create."""
+        """No session to create; check pyarrow can handle timezones here.
+
+        pyarrow before 24 cannot find a timezone database on Windows, so every
+        timestamp read or written fails deep inside it. Say so now, with the fix.
+        The ``pandas`` extra already asks for 24 on Windows; this catches an
+        environment that was assembled by hand.
+        """
+        if _platform() == "Windows" and _pyarrow_major() < MIN_PYARROW_ON_WINDOWS:
+            raise BackendNotFoundError(
+                f"The pandas backend needs pyarrow {MIN_PYARROW_ON_WINDOWS} or newer on "
+                f"Windows; pyarrow {_pyarrow_major()} cannot find a timezone database there.",
+                context={"Backend": "pandas", "pyarrow": _pyarrow_major()},
+                hint=f"pip install 'pyarrow>={MIN_PYARROW_ON_WINDOWS}' (or reinstall "
+                "'ubunye-engine[pandas]').",
+            )
 
     def stop(self) -> None:
         """No session to stop."""

@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The pandas backend works on Windows.** pyarrow before 24 cannot find a
+  timezone database on Windows (checked: 19 to 23 fail, even with the `tzdata`
+  package), so every timestamp read or written failed there. The `pandas`
+  extra now asks for pyarrow 24 or newer on Windows, and the backend checks at
+  start and says how to fix an older one instead of failing on the first
+  timestamp.
 - **A notebook with `lineage=True` now leaves a run record.** Lineage is
   recorded around a whole task, and the notebook runs read, transform and write
   as separate steps, so `ubunye.notebook(..., lineage=True)` recorded nothing
