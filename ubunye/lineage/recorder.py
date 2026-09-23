@@ -25,8 +25,6 @@ with final status, duration, and per-step hashes at ``task_end``.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -40,9 +38,10 @@ def _utcnow() -> str:
 
 
 def _hash_config(config: dict) -> str:
-    """Return a sha256 of the JSON-serialised config dict."""
-    payload = json.dumps(config, sort_keys=True, default=str).encode()
-    return "sha256:" + hashlib.sha256(payload).hexdigest()
+    """The config hash, computed as ``ubunye plan`` computes it."""
+    from ubunye.config.hashing import config_hash
+
+    return config_hash(config)
 
 
 def _engine_version() -> str:
@@ -120,7 +119,9 @@ class LineageRecorder:
             profile=profile,
             model=model,
             version=version,
-            config_hash=_hash_config(top_cfg),
+            # The hash of the config as loaded, set by the entry point before the
+            # engine rewrites it; hashing what arrives here would not match the plan.
+            config_hash=getattr(context, "config_hash", None) or _hash_config(top_cfg),
             started_at=_utcnow(),
             engine_version=_engine_version(),
             backend=getattr(context, "backend", None) or "",

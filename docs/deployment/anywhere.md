@@ -56,6 +56,7 @@ copies Spark's defaults instead of pandas' own:
 | A folder | Every data file in it, skipping `_SUCCESS` and other `_` or `.` files, so it reads what Spark wrote |
 | A glob such as `data/*.csv` | Every matching file |
 | `schema: "id INT, name STRING"` | Exactly those columns and types |
+| `mode: "FAILFAST"`, `"DROPMALFORMED"`, `"PERMISSIVE"` | What Spark does with a bad row: stop, skip it, or (the default) cut a row with too many fields and pad one with too few |
 
 The frame your task gets is an ordinary pandas DataFrame whose columns are backed
 by Arrow, so a whole number column with gaps stays whole numbers and a decimal
@@ -90,6 +91,10 @@ file. So Spark can read what pandas wrote, and pandas can read what Spark wrote.
 - Parquet timestamps are stored in microseconds, which is what Spark reads.
 
 `partition_by` is not supported yet on this backend and is refused, not ignored.
+
+`ubunye plan --backend pandas` and `ubunye validate --backend pandas` check these
+options before a run, so an option the pandas backend cannot honour is found
+then, not when the file is opened.
 
 Anything the pandas backend cannot do the Spark way is refused by name, not
 ignored: an unknown reader option (`dateFormat`, for example), a nested schema

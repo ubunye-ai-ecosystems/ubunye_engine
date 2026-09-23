@@ -141,6 +141,21 @@ JSON_LINES = (
     '{"f":2,"a":"z"}\n'
 )
 JSON_ARRAY = '[{"b": 1, "a": "x"}, {"a": "y", "c": [1.5, 2.5]}]'
+BAD_ROWS = "a,b\n1,2\n3,4,5\n6\n7,8\n"  # one row too long, one too short
+BAD_JSON = '{"a":1}\nnot json\n{"a":2}\n'
+
+
+def test_failfast_stops_on_both_engines(spark, pandas_backend, tmp_path):
+    from ubunye.core.errors import SourceReadError
+
+    src = tmp_path / "bad.csv"
+    src.write_text(BAD_ROWS, encoding="utf-8")
+    options = {"header": "true", "mode": "FAILFAST"}
+    with pytest.raises(Exception):
+        spark.read.options(**options).csv(str(src)).collect()
+    with pytest.raises(SourceReadError):
+        pandas_backend.read_frame("csv", str(src), options=options)
+
 
 READ_CASES = [
     ("csv", CSV, {}, None),
@@ -162,6 +177,11 @@ READ_CASES = [
     ("json", JSON_LINES, {}, None),
     ("json", JSON_ARRAY, {"multiLine": "true"}, None),
     ("json", JSON_LINES, {}, "a STRING, z BIGINT, f DOUBLE, missing STRING"),
+    # Rows with too many and too few fields, in each parse mode Spark offers.
+    ("csv", BAD_ROWS, {"header": "true"}, None),
+    ("csv", BAD_ROWS, {"header": "true", "mode": "PERMISSIVE", "inferSchema": "true"}, None),
+    ("csv", BAD_ROWS, {"header": "true", "mode": "DROPMALFORMED"}, None),
+    ("json", BAD_JSON, {"mode": "DROPMALFORMED"}, None),
 ]
 
 
@@ -177,6 +197,10 @@ READ_CASES = [
         "json-lines",
         "json-multiline",
         "json-schema",
+        "csv-permissive-default",
+        "csv-permissive-infer",
+        "csv-dropmalformed",
+        "json-dropmalformed",
     ],
 )
 def test_reads_match_spark(spark, pandas_backend, tmp_path, fmt, text, options, schema):

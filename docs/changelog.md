@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`ubunye plan` is a real dry run, and exits 1 when it finds a problem.** It
+  printed the config's names back and always exited 0. Built on the September
+  work, it now checks each local input exists or is written by an earlier task
+  in the same plan (the September version failed every multi task pipeline on
+  that), loads the transform class, resolves every write mode (so `merge`
+  without `merge_keys` is caught before a cluster runs the transform), asks the
+  `--backend` what it can do instead of keeping a list of names, and warns about
+  environment variables the config uses that are not set. It starts no engine
+  and moves no data. Its config hash is now the one the run record keeps: the
+  record used to hash the config after the engine had rewritten its transform,
+  so the two never matched. A config error in `plan` shows the whole message.
 - **The package says what it is.** `LICENSE` is the full MIT text (it was the
   single word "MIT"), declared the modern way (`license = "MIT"` with
   `license-files`, which needs setuptools 77). PyPI now shows classifiers for
@@ -65,6 +76,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The pandas backend understands Spark's `mode` option, and backends check
+  their IO details before a run.** Every Titanic example reads its CSV with
+  `mode: "FAILFAST"`, which the pandas backend refused, so none of them could
+  run there. `mode` now works for CSV and JSON exactly as Spark 4.2 does it
+  (checked against Spark): FAILFAST stops at a bad row, DROPMALFORMED skips it,
+  and PERMISSIVE, Spark's default, cuts a row with too many fields and pads one
+  with too few with null. A backend can also check an input's or output's
+  details (options, schema) before anything runs (`Backend.check_io`); the
+  pandas backend uses it, so `plan`, `validate --backend` and the run's own
+  preflight report an option it cannot honour instead of failing on open.
 - **`--var key=value`, documented for years, now works.** It was in the README
   and three docs pages and was never implemented, so every example that used it
   failed. It now works on every command that renders a config (`run`,

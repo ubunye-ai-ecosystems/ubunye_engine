@@ -28,6 +28,7 @@ from typing import Any, Dict, Iterable, Mapping, Optional, Set
 from ubunye.adapters.spark.catalog import set_catalog_and_schema
 from ubunye.api import BackendChoice, _detect_backend, _task_identity
 from ubunye.config import load_config
+from ubunye.config.hashing import config_hash
 from ubunye.config.resolver import extract_env_references
 from ubunye.config.schema import UbunyeConfig
 from ubunye.config.variables import build_variables
@@ -169,6 +170,7 @@ class NotebookContext:
 
         # --- Phase D: load Task class and register as transform ---
         self._cfg_dict = self._cfg.model_dump(mode="json")
+        loaded_config_hash = config_hash(self._cfg_dict)  # before the transform swap
         self._task_dir_str = str(self._task_path)
         self._added_to_path = self._task_dir_str not in sys.path
         if self._added_to_path:
@@ -199,7 +201,11 @@ class NotebookContext:
         self._usecase_dir, task_identity = _task_identity(self._task_path)
         lineage_hooks = self._build_lineage_hooks(lineage, lineage_dir)
         self._context = EngineContext(
-            run_id=run_id, profile=mode, task_name=task_identity, variables=variables
+            run_id=run_id,
+            profile=mode,
+            task_name=task_identity,
+            variables=variables,
+            config_hash=loaded_config_hash,
         )
         self._engine = Engine(
             backend=self._backend,

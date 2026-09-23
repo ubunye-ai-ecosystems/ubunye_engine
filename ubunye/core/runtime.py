@@ -34,6 +34,9 @@ class EngineContext:
     backend: Optional[str] = None
     #: The template variables the run was given (dt, dtf, mode, ...).
     variables: Dict[str, Any] = field(default_factory=dict)
+    #: The hash of the resolved config as loaded (ubunye.config.hashing), the
+    #: same one ``ubunye plan`` shows; set before the engine rewrites the config.
+    config_hash: Optional[str] = None
 
 
 class Registry:
@@ -306,6 +309,7 @@ class Engine:
             task_name=task_name,
             backend=backend if isinstance(backend, str) else None,
             variables=dict(self.context.variables),
+            config_hash=self.context.config_hash,
         )
 
     def _build_hook_chain(self, cfg: dict) -> HookChain:
@@ -409,7 +413,8 @@ class Engine:
         if not isinstance(caps, Capabilities):
             return  # a backend (or test double) that declares nothing is not pre-checked
         name = getattr(self.backend, "name", "") or type(self.backend).__name__
-        problems = check_task(caps, cfg, self.registry, backend_name=name)
+        io_check = self.backend.check_io if isinstance(self.backend, Backend) else None
+        problems = check_task(caps, cfg, self.registry, backend_name=name, io_check=io_check)
         if problems:
             raise BackendCapabilityError(
                 f"This task cannot run on the {name} backend:\n"

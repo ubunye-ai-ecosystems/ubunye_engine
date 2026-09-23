@@ -26,7 +26,7 @@ Feature names a backend can declare (connectors refer to the same names):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, FrozenSet, List, Mapping, Optional
 
 if TYPE_CHECKING:
     from ubunye.core.runtime import Registry
@@ -83,6 +83,9 @@ def is_remote(path: str) -> bool:
     return ("://" in path and not path.startswith("file://")) or path.startswith("dbfs:")
 
 
+IoCheck = Callable[[str, Dict[str, Any]], List[str]]
+
+
 def _connector_problems(
     caps: Capabilities,
     where: str,
@@ -91,6 +94,7 @@ def _connector_problems(
     backend_name: str,
     *,
     is_output: bool,
+    io_check: Optional[IoCheck] = None,
 ) -> List[str]:
     fmt = cfg.get("format")
     if connector is None:
@@ -130,6 +134,9 @@ def _connector_problems(
                     f"{where} uses partition_by; the {backend_name} backend does not "
                     "write partitioned folders."
                 )
+        if io_check is not None:
+            direction = "output" if is_output else "input"
+            problems += [f"{where}: {p}" for p in io_check(direction, cfg)]
     return problems
 
 
@@ -139,8 +146,13 @@ def check_task(
     registry: "Registry",
     *,
     backend_name: str,
+    io_check: Optional[IoCheck] = None,
 ) -> List[str]:
-    """Every reason this task cannot run on a backend with ``caps``; empty if it can."""
+    """Every reason this task cannot run on a backend with ``caps``; empty if it can.
+
+    ``io_check`` is the backend's ``check_io``, asked about each path input and
+    output's details (options, schema) after the capabilities pass.
+    """
     if not caps.declared:
         return []
     config = cfg.get("CONFIG", {}) or {}
@@ -148,11 +160,11 @@ def check_task(
     for name, icfg in sorted((config.get("inputs") or {}).items()):
         reader: Optional[type] = registry.readers.get(icfg.get("format"))
         problems += _connector_problems(
-            caps, f"input '{name}'", icfg, reader, backend_name, is_output=False
+            caps, f"input '{name}'", icfg, reader, backend_name, is_output=False, io_check=io_check
         )
     for name, ocfg in sorted((config.get("outputs") or {}).items()):
         writer: Optional[type] = registry.writers.get(ocfg.get("format"))
         problems += _connector_problems(
-            caps, f"output '{name}'", ocfg, writer, backend_name, is_output=True
+            caps, f"output '{name}'", ocfg, writer, backend_name, is_output=True, io_check=io_check
         )
     return problems

@@ -17,7 +17,7 @@ than a stray ``AttributeError``.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from ubunye.adapters import pandas_io
 from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
@@ -89,6 +89,20 @@ class PandasBackend(Backend):
 
     def stop(self) -> None:
         """No session to stop."""
+
+    @classmethod
+    def check_io(cls, direction: str, cfg: Dict[str, Any]) -> List[str]:
+        """Options and schemas this backend cannot honour, found before a run.
+
+        A file format it does not handle is left to the capability check, which
+        already reports it.
+        """
+        fmt = str(cfg.get("file_format") or "parquet").lower()
+        if fmt not in pandas_io.SUPPORTED_FORMATS:
+            return []
+        if direction == "input":
+            return pandas_io.read_problems(fmt, cfg.get("options") or {}, cfg.get("schema"))
+        return pandas_io.write_problems(fmt, cfg.get("options") or {})
 
     def __enter__(self) -> "PandasBackend":
         self.start()
