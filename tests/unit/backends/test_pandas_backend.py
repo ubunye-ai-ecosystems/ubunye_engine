@@ -161,3 +161,34 @@ class TestUnsupported:
                 file_format="parquet",
                 table="main.f.c",
             )
+
+
+class TestWindowsTimezones:
+    """pyarrow before 24 cannot find a timezone database on Windows.
+
+    Every timestamp read or written then fails deep inside pyarrow. The backend
+    says so when it starts, with the fix, instead.
+    """
+
+    def test_old_pyarrow_on_windows_is_refused_at_start(self, monkeypatch):
+        from ubunye.backends import pandas_backend
+        from ubunye.core.errors import BackendNotFoundError
+
+        monkeypatch.setattr(pandas_backend, "_platform", lambda: "Windows")
+        monkeypatch.setattr(pandas_backend, "_pyarrow_major", lambda: 22)
+        with pytest.raises(BackendNotFoundError, match="pyarrow 24"):
+            PandasBackend().start()
+
+    def test_new_pyarrow_on_windows_starts(self, monkeypatch):
+        from ubunye.backends import pandas_backend
+
+        monkeypatch.setattr(pandas_backend, "_platform", lambda: "Windows")
+        monkeypatch.setattr(pandas_backend, "_pyarrow_major", lambda: 24)
+        PandasBackend().start()
+
+    def test_old_pyarrow_elsewhere_starts(self, monkeypatch):
+        from ubunye.backends import pandas_backend
+
+        monkeypatch.setattr(pandas_backend, "_platform", lambda: "Linux")
+        monkeypatch.setattr(pandas_backend, "_pyarrow_major", lambda: 14)
+        PandasBackend().start()

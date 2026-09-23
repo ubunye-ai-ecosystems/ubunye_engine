@@ -26,8 +26,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is the groundwork for a non-Spark backend (issue #38): the core can be
   backend-agnostic now because it no longer imports one backend's API.
 
+### Fixed
+
+- **The pandas backend works on Windows.** pyarrow before 24 cannot find a
+  timezone database on Windows (checked: 19 to 23 fail, even with the `tzdata`
+  package), so every timestamp read or written failed there. The `pandas`
+  extra now asks for pyarrow 24 or newer on Windows, and the backend checks at
+  start and says how to fix an older one instead of failing on the first
+  timestamp.
+- **A notebook with `lineage=True` now leaves a run record.** Lineage is
+  recorded around a whole task, and the notebook runs read, transform and write
+  as separate steps, so `ubunye.notebook(..., lineage=True)` recorded nothing
+  at all. A notebook write now counts as a run: `nb.write(...)` and `nb.run()`
+  each leave one record, in the same place and with the same hash as
+  `run_task`.
+
 ### Added
 
+- **The run record's data hash now means "these exact rows" (ADR 006).** It
+  read a 1 percent sample, changed with row order on Spark, and on pandas
+  quietly recorded the schema hash as the data hash. The new `rows-v1` hash
+  reads every row in the same pass as the count, ignores row and column order,
+  changes when any cell changes, tells null from NaN, does not depend on the
+  timezone, and is the same on Spark and pandas for the same data (Spark
+  computes it in one aggregation on the cluster). When rows cannot be read the
+  record says why instead of inventing a hash. Records also carry the Ubunye
+  version, the backend, the run variables and each output's `hash_method`, and
+  runs from `run_task` and `run_pipeline` are stored under the same folder and
+  name as CLI runs, so `ubunye lineage list` finds them. `lineage compare` calls
+  two missing hashes "unknown" (it said "unchanged") and a pre-0.6 hash "not
+  comparable". `sample_fraction` is ignored and kept so old configs load.
 - **A pandas transform gets a plain pandas DataFrame (ADR 004).** It used to get
   an adapter and had to write `sources["x"].native` to reach the DataFrame. The
   `Backend` port gains `to_native` and `to_port`, and the engine converts at the

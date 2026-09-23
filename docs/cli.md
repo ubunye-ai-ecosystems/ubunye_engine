@@ -291,6 +291,11 @@ ubunye lineage compare \
     --run-id1 <id1> --run-id2 <id2>
 ```
 
+A data hash is compared only when both runs have one made the same way.
+Two missing hashes show as "unknown", and a record from before 0.6.0 (which
+hashed a sample) shows as "not comparable" with a newer one. See
+[the run record](architecture/adr-006-run-record.md).
+
 ### `lineage search`
 
 Search all recorded runs across tasks with optional filters.

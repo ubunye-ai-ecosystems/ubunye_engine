@@ -6,7 +6,7 @@ import importlib.metadata as md
 import logging
 import os
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
 
 from ubunye.core.capabilities import Capabilities, check_task
@@ -30,6 +30,10 @@ class EngineContext:
     run_id: str
     profile: Optional[str] = None
     task_name: Optional[str] = None  # e.g., "fraud_detection/claims/claim_etl"
+    #: The backend running the task ("spark", "pandas", ...); filled in by the engine.
+    backend: Optional[str] = None
+    #: The template variables the run was given (dt, dtf, mode, ...).
+    variables: Dict[str, Any] = field(default_factory=dict)
 
 
 class Registry:
@@ -245,12 +249,25 @@ class Engine:
         chain = self._build_hook_chain(cfg)
         return self._apply_transforms(ctx, chain, sources, transforms)
 
-    def write_outputs(self, outputs: Dict[str, Any], cfg: dict) -> None:
-        """Write *outputs* to the sinks defined in ``CONFIG.outputs``."""
+    def write_outputs(self, outputs: Dict[str, Any], cfg: dict, *, as_run: bool = False) -> None:
+        """Write *outputs* to the sinks defined in ``CONFIG.outputs``.
+
+        With ``as_run=True`` the write is wrapped as a whole task for the hooks,
+        so lineage and monitors record it exactly as they record ``run()``. This
+        is how a notebook that reads, transforms and writes step by step still
+        leaves a run record.
+        """
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
+        ports = self._to_ports(outputs)
+        if not as_run:
+            self._write_outputs(ctx, chain, outputs_cfg, ports)
+            return
+        state: Dict[str, Any] = {"outputs": None}
+        with chain.task(ctx, cfg, state):
+            self._write_outputs(ctx, chain, outputs_cfg, ports)
+            state["outputs"] = ports
 
     # ---------- the frame boundary (ADR 004) ----------
 
@@ -271,7 +288,14 @@ class Engine:
     def _resolve_context(self, cfg: dict) -> EngineContext:
         task_name = self.context.task_name or cfg.get("TASK_NAME") or "unknown_task"
         profile = self.context.profile or cfg.get("ENGINE", {}).get("active_profile") or "default"
-        return EngineContext(run_id=self.context.run_id, profile=profile, task_name=task_name)
+        backend = self.context.backend or getattr(self.backend, "name", "") or None
+        return EngineContext(
+            run_id=self.context.run_id,
+            profile=profile,
+            task_name=task_name,
+            backend=backend if isinstance(backend, str) else None,
+            variables=dict(self.context.variables),
+        )
 
     def _build_hook_chain(self, cfg: dict) -> HookChain:
         if self._hooks_override is not None:

@@ -175,7 +175,32 @@ def compare(
         typer.echo(f"  Output '{name}':")
         _cmp("    row_count", sa.row_count if sa else None, sb.row_count if sb else None)
         _cmp("    schema_hash", sa.schema_hash if sa else None, sb.schema_hash if sb else None)
-        _cmp("    data_hash", sa.data_hash if sa else None, sb.data_hash if sb else None)
+        _cmp_data(sa, sb)
+
+
+def _cmp_data(sa: object, sb: object) -> None:
+    """Compare data hashes only when they mean the same thing.
+
+    Two missing hashes are unknown, not unchanged. A hash made by another method
+    (records from before 0.6.0 hashed a sample) cannot be compared with a
+    ``rows-v1`` hash, so saying "CHANGED" would be as wrong as saying "unchanged".
+    """
+    ha, hb = getattr(sa, "data_hash", None), getattr(sb, "data_hash", None)
+    ma, mb = getattr(sa, "hash_method", None), getattr(sb, "hash_method", None)
+    if ha is None or hb is None:
+        reasons = [getattr(s, "hash_error", None) for s in (sa, sb)]
+        why = "; ".join(r for r in reasons if r) or "not recorded"
+        typer.secho(f"    data_hash: unknown ({why})", fg=typer.colors.YELLOW)
+    elif ma != mb:
+        typer.secho(
+            f"    data_hash: not comparable (made by {ma or 'the pre-0.6 sample'} "
+            f"and {mb or 'the pre-0.6 sample'})",
+            fg=typer.colors.YELLOW,
+        )
+    elif ha == hb:
+        typer.echo(f"    data_hash: {ha}  (unchanged)")
+    else:
+        typer.secho(f"    data_hash: {ha} → {hb}  CHANGED", fg=typer.colors.YELLOW)
 
 
 # ---------------------------------------------------------------------------
@@ -283,6 +308,8 @@ def trace(
             typer.echo(f"      schema   : {step.schema_hash}")
         if step.data_hash:
             typer.echo(f"      data     : {step.data_hash}")
+        elif getattr(step, "hash_error", None):
+            typer.echo(f"      data     : unavailable ({step.hash_error})")
 
     # TRANSFORM
     typer.echo()
@@ -301,4 +328,6 @@ def trace(
             typer.echo(f"      schema   : {step.schema_hash}")
         if step.data_hash:
             typer.echo(f"      data     : {step.data_hash}")
+        elif getattr(step, "hash_error", None):
+            typer.echo(f"      data     : unavailable ({step.hash_error})")
     typer.echo()

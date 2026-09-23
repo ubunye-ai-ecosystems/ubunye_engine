@@ -122,7 +122,10 @@ def run_test(
             cfg = configs[task]
             task_dir = _task_path(usecase_dir, usecase, package, task)
             context = EngineContext(
-                run_id=run_id, profile=profile, task_name=f"{usecase}/{package}/{task}"
+                run_id=run_id,
+                profile=profile,
+                task_name=f"{usecase}/{package}/{task}",
+                variables=variables,
             )
             task_start = time.perf_counter()
             try:

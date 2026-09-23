@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Set
 
 from ubunye.adapters.spark.catalog import set_catalog_and_schema
-from ubunye.api import BackendChoice, _detect_backend
+from ubunye.api import BackendChoice, _detect_backend, _task_identity
 from ubunye.config import load_config
 from ubunye.config.resolver import extract_env_references
 from ubunye.config.schema import UbunyeConfig
@@ -194,8 +194,11 @@ class NotebookContext:
 
         # --- Phase E: build engine ---
         run_id = str(uuid.uuid4())
+        self._usecase_dir, task_identity = _task_identity(self._task_path)
         lineage_hooks = self._build_lineage_hooks(lineage, lineage_dir)
-        self._context = EngineContext(run_id=run_id, profile=mode, task_name=self._task_path.name)
+        self._context = EngineContext(
+            run_id=run_id, profile=mode, task_name=task_identity, variables=variables
+        )
         self._engine = Engine(
             backend=self._backend,
             registry=reg,
@@ -231,10 +234,11 @@ class NotebookContext:
         return outputs
 
     def write(self, outputs: Optional[Dict[str, Any]] = None) -> None:
-        """Write outputs to configured sinks.
+        """Write outputs to configured sinks, and record the run.
 
         If *outputs* is ``None``, uses the result of the last :meth:`transform`
-        call.
+        call. With ``lineage=True`` every write leaves a run record, exactly as
+        ``ubunye.run_task`` does (before 0.6.0 a notebook recorded nothing).
         """
         if outputs is None:
             outputs = self._last_outputs
@@ -242,7 +246,7 @@ class NotebookContext:
                 raise ValueError(
                     "No outputs to write. Call transform() first or pass outputs explicitly."
                 )
-        self._engine.write_outputs(outputs, self._cfg_dict)
+        self._engine.write_outputs(outputs, self._cfg_dict, as_run=True)
 
     def run(self) -> Dict[str, Any]:
         """Read, transform, and write in one call (same as ``ubunye.run_task``)."""
@@ -310,7 +314,7 @@ class NotebookContext:
 
         recorder = LineageRecorder(
             store="filesystem",
-            base_dir=str(self._task_path.parent / lineage_dir),
+            base_dir=str(self._usecase_dir / lineage_dir),
         )
         return [MonitorHook(recorder)]
 
