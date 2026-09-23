@@ -31,8 +31,10 @@ spark = ["pyspark>=3.3"]
 # ClassNotFoundException: delta.DefaultSource, not at install time.
 delta = ["delta-spark>=4.0"]
 # The pandas backend — `ubunye run --backend pandas`, a laptop run with no Spark and
-# no JVM (issue #38). pyarrow gives it parquet; csv and json need only pandas.
-pandas = ["pandas>=1.5", "pyarrow>=10"]
+# no JVM (issue #38). pyarrow does the file IO and backs the columns, so types
+# match Spark's (a nullable int stays an int). pandas 2.2 is the first with the
+# Arrow-backed reads it relies on.
+pandas = ["pandas>=2.2", "pyarrow>=14"]
 ml = ["scikit-learn", "mlflow"]
 ml-torch = ["scikit-learn", "torch", "mlflow"]
 # The rest_api connector needs `requests`. It used to live ONLY in the dev extra, so
@@ -43,7 +45,9 @@ rest = ["requests>=2.28"]
 # Model artifacts on object storage (s3://, gs://, ...). fsspec routes the scheme to
 # whichever filesystem package is installed: add s3fs for AWS, gcsfs for GCP.
 objectstore = ["fsspec>=2023.1.0"]
-dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8"]
+# pandas and pyarrow are here so the pandas backend is tested on every CI run, not
+# skipped; without pyarrow the parquet tests failed instead of skipping.
+dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14"]
 databricks = ["databricks-sdk>=0.20"]
 
 # Project URLs. These populate the sidebar links on the PyPI page, which

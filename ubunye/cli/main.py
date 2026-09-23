@@ -31,6 +31,7 @@ from ubunye.cli.models import models_app
 from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
 from ubunye.config import load_config
+from ubunye.core.interfaces import Backend
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
@@ -305,6 +306,7 @@ def run(
     spark_conf["spark.submit.deployMode"] = deploy_mode
 
     run_id = str(uuid.uuid4())
+    backend: Backend
     if backend_kind == "pandas":
         from ubunye.backends.pandas_backend import PandasBackend
 
