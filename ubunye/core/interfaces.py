@@ -7,7 +7,9 @@ transforms, and user-defined tasks.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, FrozenSet, List, Optional, Sequence
+
+from ubunye.core.capabilities import SPARK, Capabilities
 
 if TYPE_CHECKING:
     from ubunye.core.ports import DataFramePort
@@ -15,7 +17,19 @@ if TYPE_CHECKING:
 
 
 class Backend(ABC):
-    """Abstract execution backend (e.g., Spark or Pandas)."""
+    """Abstract execution backend (e.g., Spark or Pandas).
+
+    A backend is a plugin: it registers in the ``ubunye.backends`` entry point
+    group under :attr:`name` and says what it can do in :attr:`CAPABILITIES`,
+    so the engine can check a task before running it (ADR 001 and 002).
+    """
+
+    #: The name the backend is registered under (``--backend <name>``).
+    name: ClassVar[str] = ""
+
+    #: What this backend can do. Undeclared by default, so a backend written
+    #: before capabilities existed is never pre-checked and behaves as before.
+    CAPABILITIES: ClassVar[Capabilities] = Capabilities.unknown()
 
     @abstractmethod
     def start(self) -> None:
@@ -26,10 +40,38 @@ class Backend(ABC):
         """Stop the backend session and release resources."""
 
     @property
-    @abstractmethod
+    def capabilities(self) -> Capabilities:
+        """What this backend can do (the class's :attr:`CAPABILITIES` by default)."""
+        return self.CAPABILITIES
+
+    @property
     def is_spark(self) -> bool:
-        """Whether this backend is Spark-based."""
-        ...
+        """Whether this backend provides a SparkSession.
+
+        Deprecated: ask ``"spark" in backend.capabilities.features`` instead.
+        Kept so existing code and backends keep working.
+        """
+        return SPARK in self.capabilities.features
+
+    @classmethod
+    def create(cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None) -> Any:
+        """Build this backend for a run: how the registry constructs it by name.
+
+        The default passes ``app_name`` and ``conf`` to the constructor; a
+        backend with a different constructor overrides this.
+        """
+        return cls(app_name=app_name, conf=dict(conf or {}))  # type: ignore[call-arg]
+
+    @classmethod
+    def from_platform(
+        cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None
+    ) -> Optional[Any]:
+        """A backend attached to a session the platform already started, or ``None``.
+
+        The Databricks backend returns one when a notebook's SparkSession is
+        active. Most backends never attach to anything and keep this default.
+        """
+        return None
 
     # ---------------------------------------------------------------- #
     # Data-plane IO seam (issue #38).
@@ -93,6 +135,12 @@ class Connector(ABC):
     capabilities, and the core validates by asking whichever plugin the config named. It
     holds no list of implementations, so adding one requires no edit to it.
     """
+
+    #: What this connector needs from a backend, as capability feature names
+    #: (``"spark"`` for a SparkSession, ``"path_io"`` for path reads and writes).
+    #: Checked before a run against the backend's capabilities. Empty means the
+    #: connector has not said, and nothing is pre-checked.
+    REQUIRES: ClassVar[FrozenSet[str]] = frozenset()
 
     @classmethod
     def validate_config(cls, cfg: Dict[str, Any]) -> List[str]:

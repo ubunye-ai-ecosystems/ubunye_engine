@@ -20,7 +20,7 @@ from typing import List, Optional
 
 import typer
 
-from ubunye.backends.spark_backend import SparkBackend
+from ubunye.cli.backend_choice import resolve_or_exit
 from ubunye.config import load_config
 from ubunye.core.runtime import EngineContext
 from ubunye.core.task_runner import execute_user_task
@@ -49,6 +49,12 @@ def run_test(
         True, "--lineage/--no-lineage", help="Record lineage for each test run."
     ),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    backend_kind: Optional[str] = typer.Option(
+        None,
+        "--backend",
+        help="Execution backend by name, as for `ubunye run` (e.g. pandas: tests "
+        "with no Java). Default: the platform's session if there is one, else spark.",
+    ),
 ):
     """Run one or more tasks with a test profile and report PASS/FAIL per task.
 
@@ -97,7 +103,7 @@ def run_test(
     # --- Phase 2: Run valid tasks ---
     first_cfg = configs[task_list[0]]
     spark_conf = first_cfg.merged_spark_conf(profile)
-    backend = SparkBackend(app_name=f"ubunye-test:{package}", conf=spark_conf)
+    backend = resolve_or_exit(backend_kind, app_name=f"ubunye-test:{package}", conf=spark_conf)
 
     lineage_recorder = None
     if lineage:

@@ -89,11 +89,17 @@ nav:
   - Reference:
       - CLI: cli.md
       - Python API: api.md
+      - Execution Backends: backends.md
       - Interfaces: interfaces.md
       - Errors: errors.md
       - Changelog: changelog.md
   - Project:
       - Developer Guide: dev_guide.md
+      - Architecture Decisions:
+          - Overview: architecture/index.md
+          - ADR 001 Backends Are Plugins: architecture/adr-001-backends-are-plugins.md
+          - ADR 002 Backend Capabilities: architecture/adr-002-backend-capabilities.md
+          - ADR 003 Choosing a Backend: architecture/adr-003-backend-resolution.md
       - Contributing: contributing.md
 
 markdown_extensions:

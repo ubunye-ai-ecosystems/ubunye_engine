@@ -19,6 +19,9 @@ outputs = ubunye.run_task(
     dt="202510",
 )
 
+# The same task with no Spark and no Java
+outputs = ubunye.run_task("pipelines/sales/etl/daily", backend="pandas")
+
 # Run multiple tasks sequentially
 results = ubunye.run_pipeline(
     usecase_dir="pipelines",
@@ -158,6 +161,22 @@ discovery, and auto-detection.
 
 ## Backends
 
+Backends are plugins, chosen by name. See [Execution backends](backends.md) for
+how to choose one and write your own.
+
+::: ubunye.core.backends
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 3
+      members: [resolve, create, load_class, available, DEFAULT_BACKEND]
+
+::: ubunye.core.capabilities.Capabilities
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 3
+
 ### SparkBackend
 
 Creates and manages a new SparkSession. Use for local development, CI, and non-Databricks environments.
@@ -173,6 +192,17 @@ Creates and manages a new SparkSession. Use for local development, CI, and non-D
 Reuses an active SparkSession instead of creating one. Use on Databricks where a session already exists.
 
 ::: ubunye.backends.databricks_backend.DatabricksBackend
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 4
+
+### PandasBackend
+
+Runs a task with pandas and pyarrow: no Spark and no Java. Reads and writes local
+csv, json and parquet exactly as Spark does.
+
+::: ubunye.backends.pandas_backend.PandasBackend
     options:
       show_root_heading: true
       show_source: false

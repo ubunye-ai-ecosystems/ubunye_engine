@@ -8,12 +8,16 @@ from __future__ import annotations
 from typing import Any
 
 from ubunye.adapters.spark.session import spark_of
+from ubunye.core.capabilities import SPARK
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 
 class HiveReader(Reader):
     """Read a Spark DataFrame from Hive using `db_name.tbl_name` or a custom SQL."""
+
+    # Needs a live SparkSession; checked before a run (ADR 002).
+    REQUIRES = frozenset({SPARK})
 
     @classmethod
     def validate_config(cls, cfg):

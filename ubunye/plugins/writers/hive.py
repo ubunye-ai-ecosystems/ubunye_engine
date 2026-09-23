@@ -22,6 +22,7 @@ from typing import Any, Dict
 from ubunye.adapters.spark import write_exec
 from ubunye.adapters.spark.session import spark_of
 from ubunye.core import write_modes
+from ubunye.core.capabilities import SPARK
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
@@ -45,6 +46,9 @@ def _qualify(cfg: Dict[str, Any]) -> str:
 
 class HiveWriter(Writer):
     """Write a Spark DataFrame to a Hive table."""
+
+    # Needs a live SparkSession; checked before a run (ADR 002).
+    REQUIRES = frozenset({SPARK})
 
     SUPPORTS_MERGE = True
     MERGE_FILE_FORMATS = frozenset({"delta"})

@@ -12,8 +12,25 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence
 
 from ubunye.adapters.spark import frame_io
+from ubunye.core.capabilities import (
+    CATALOG,
+    PARTITIONED_WRITES,
+    PATH_IO,
+    REMOTE_PATHS,
+    SPARK,
+    Capabilities,
+)
 from ubunye.core.errors import SparkSessionError
 from ubunye.core.interfaces import Backend
+
+#: What any Spark backend can do. File formats and write modes are "any": Spark
+#: knows its own sources, and each connector declares the modes it supports.
+SPARK_CAPABILITIES = Capabilities(
+    features=frozenset({SPARK, PATH_IO, PARTITIONED_WRITES, REMOTE_PATHS, CATALOG}),
+    distributed=True,
+    lazy=True,
+    needs_jvm=True,
+)
 
 if TYPE_CHECKING:
     from ubunye.core.ports import DataFramePort
@@ -38,6 +55,9 @@ class SparkBackend(Backend):
     - pyspark is imported lazily inside `start()` to keep installation lightweight.
     - `spark` property is only valid after `start()` (or inside the context manager).
     """
+
+    name = "spark"
+    CAPABILITIES = SPARK_CAPABILITIES
 
     def __init__(self, app_name: str = "ubunye", conf: Optional[Dict[str, str]] = None) -> None:
         self._spark: Optional["SparkSession"] = None

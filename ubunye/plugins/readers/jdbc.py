@@ -33,12 +33,16 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from ubunye.adapters.spark.session import spark_of
+from ubunye.core.capabilities import SPARK
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 
 class JdbcReader(Reader):
     """Read a Spark DataFrame from any JDBC source using Spark's built-in JDBC connector."""
+
+    # Needs a live SparkSession; checked before a run (ADR 002).
+    REQUIRES = frozenset({SPARK})
 
     REQUIRED = ("url",)
     TABLE_KEYS = ("table", "dbtable", "sql")

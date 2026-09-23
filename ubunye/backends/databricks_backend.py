@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence
 
 from ubunye.adapters.spark import frame_io
+from ubunye.backends.spark_backend import SPARK_CAPABILITIES
 from ubunye.core.errors import SparkSessionError
 from ubunye.core.interfaces import Backend
 
@@ -38,6 +39,9 @@ class DatabricksBackend(Backend):
         session is retrieved via ``SparkSession.getActiveSession()``.
     """
 
+    name = "databricks"
+    CAPABILITIES = SPARK_CAPABILITIES
+
     def __init__(
         self,
         spark: Optional["SparkSession"] = None,
@@ -45,6 +49,29 @@ class DatabricksBackend(Backend):
     ) -> None:
         self._spark: Optional["SparkSession"] = spark
         self._conf: Dict[str, str] = dict(conf or {})
+
+    @classmethod
+    def create(cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None) -> Any:
+        """Attach to the active session when started (there is no app name to set)."""
+        return cls(conf=dict(conf or {}))
+
+    @classmethod
+    def from_platform(
+        cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None
+    ) -> Optional[Any]:
+        """Claim the run when a SparkSession is already active (a Databricks notebook).
+
+        Attaching, rather than creating, means the run uses the cluster the
+        platform set up, and never stops a session it did not start.
+        """
+        try:
+            from pyspark.sql import SparkSession
+        except ImportError:
+            return None
+        active = SparkSession.getActiveSession()
+        if active is None:
+            return None
+        return cls(spark=active, conf=dict(conf or {}))
 
     def start(self) -> None:
         """Attach to the active SparkSession, and apply ``ENGINE.spark_conf`` to it."""

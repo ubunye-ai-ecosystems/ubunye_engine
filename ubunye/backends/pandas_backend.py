@@ -19,11 +19,23 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Sequence
 
 from ubunye.adapters import pandas_io
+from ubunye.core.capabilities import PATH_IO, Capabilities
 from ubunye.core.interfaces import Backend
+from ubunye.core.write_modes import NATIVE_SAVE_MODES
 
 
 class PandasBackend(Backend):
     """Execute a Ubunye task with pandas, no Spark and no JVM."""
+
+    name = "pandas"
+    #: Local csv / json / parquet paths and the native save modes. No SparkSession,
+    #: no partitioned folders, no cloud paths, no lakehouse modes: a task that
+    #: needs any of those is refused before it starts.
+    CAPABILITIES = Capabilities(
+        features=frozenset({PATH_IO}),
+        file_formats=pandas_io.SUPPORTED_FORMATS,
+        write_modes=NATIVE_SAVE_MODES,
+    )
 
     def __init__(
         self,

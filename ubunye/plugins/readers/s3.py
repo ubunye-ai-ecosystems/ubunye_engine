@@ -17,12 +17,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from ubunye.core.capabilities import PATH_IO
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 
 class S3Reader(Reader):
     """Read a Spark DataFrame from S3 (or any filesystem path Spark understands)."""
+
+    # Reads and writes paths through the backend's path IO (ADR 002).
+    REQUIRES = frozenset({PATH_IO})
 
     @classmethod
     def validate_config(cls, cfg):

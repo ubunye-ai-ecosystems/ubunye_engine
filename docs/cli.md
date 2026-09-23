@@ -13,6 +13,7 @@ All commands accept `--help` for full option details.
 | `validate` | Validate a config file without running |
 | `plan` | Print the execution plan |
 | `run` | Execute one or more tasks |
+| `backends` | List the execution backends and what each can do |
 | `plugins` | List all discovered plugins |
 | `config` | Show the expanded (Jinja-rendered + validated) config |
 | `version` | Print the engine version |
@@ -112,6 +113,13 @@ ubunye validate -d pipelines -u fraud_detection -p ingestion -t claim_etl --prof
 | `--all` | | no | false | Validate all tasks in the package |
 | `--profile` | | no | — | Profile to validate against (e.g. dev, prod) |
 | `--data-timestamp` | `-dt` | no | — | Data timestamp |
+| `--backend` | | no | — | Also check every input and output against what this backend can do, without starting it |
+
+Check a task can run on a backend before running it:
+
+```bash
+ubunye validate -d pipelines -u fraud_detection -p ingestion -t claim_etl --backend pandas
+```
 
 ---
 
@@ -156,6 +164,7 @@ ubunye run \
 | `--deploy-mode` | | no | `client` | Spark deploy mode (cluster/client) |
 | `--lineage` | | no | false | Record lineage for this run |
 | `--lineage-dir` | | no | `.ubunye/lineage` | Root directory for lineage records |
+| `--backend` | | no | platform, else `spark` | Execution backend by name, e.g. `pandas` for a run with no Java. See [Execution backends](backends.md) |
 
 !!! note
     The `run` command does not have `--all` or `--profile` flags.
@@ -186,6 +195,23 @@ ubunye test run \
 | `--data-timestamp` | `-dt` | no | — | Data timestamp |
 | `--lineage / --no-lineage` | | no | `lineage` | Record lineage (ON by default) |
 | `--lineage-dir` | | no | `.ubunye/lineage` | Lineage directory |
+| `--backend` | | no | platform, else `spark` | Execution backend by name, e.g. `pandas` to test with no Java |
+
+---
+
+## `ubunye backends`
+
+List the execution backends that are installed and what each can do: its
+features, file formats, write modes, and whether it is distributed or needs
+Java. The default is marked.
+
+```bash
+ubunye backends
+ubunye backends --json
+```
+
+A backend that is registered but cannot load (a missing dependency) is listed
+with the reason. See [Execution backends](backends.md).
 
 ---
 

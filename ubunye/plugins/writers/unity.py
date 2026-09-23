@@ -38,6 +38,7 @@ from typing import Any, Dict, List
 from ubunye.adapters.spark import write_exec
 from ubunye.adapters.spark.session import spark_of
 from ubunye.core import write_modes
+from ubunye.core.capabilities import SPARK
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
@@ -101,6 +102,9 @@ def _attempt(spark: Any, statement: str, what: str, table: str) -> None:
 
 class UnityTableWriter(Writer):
     """Write DataFrame to a Unity Catalog table (Delta by default)."""
+
+    # Needs a live SparkSession; checked before a run (ADR 002).
+    REQUIRES = frozenset({SPARK})
 
     SUPPORTS_MERGE = True
     MERGE_FILE_FORMATS = frozenset({"delta"})

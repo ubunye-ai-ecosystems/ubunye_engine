@@ -128,6 +128,14 @@ class TransformOutputError(UbunyeError, TypeError):
 # ---------------------------------------------------------------------------
 
 
+class BackendNotFoundError(PluginNotFoundError):
+    """Raised when no backend is registered under a name, or it failed to load."""
+
+
+class BackendCapabilityError(UbunyeError, ValueError):
+    """Raised before a run when the task needs something the backend cannot do."""
+
+
 class SparkSessionError(UbunyeError, RuntimeError):
     """Raised when a SparkSession is not available."""
 
