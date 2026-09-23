@@ -36,6 +36,7 @@ import logging
 from typing import Any, Dict, List
 
 from ubunye.adapters.spark import write_exec
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
@@ -113,7 +114,7 @@ class UnityTableWriter(Writer):
         return ["format 'unity' as an output requires 'table' or (catalog + schema + tbl_name)"]
 
     def write(self, df: Any, cfg: Dict[str, Any], backend) -> None:
-        spark = backend.spark
+        spark = spark_of(backend, "unity", error=SinkWriteError)
         full_name = _qualify(cfg)
 
         # The top-level cfg["format"] is the Ubunye plugin dispatch key

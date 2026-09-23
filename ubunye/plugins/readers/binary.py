@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
@@ -35,6 +36,7 @@ class BinaryReader(Reader):
         return [] if cfg.get("path") else ["format 'binary' requires 'path'"]
 
     def read(self, cfg: dict, backend) -> Any:
+        spark = spark_of(backend, "binary", error=SourceReadError)
         path = cfg.get("path")
         if not path:
             raise SourceReadError(
@@ -49,7 +51,7 @@ class BinaryReader(Reader):
         if cfg.get("recursive") is not None:
             options["recursiveFileLookup"] = str(bool(cfg["recursive"])).lower()
 
-        reader = backend.spark.read.format(FORMAT)
+        reader = spark.read.format(FORMAT)
         for key, value in options.items():
             reader = reader.option(key, str(value))
 

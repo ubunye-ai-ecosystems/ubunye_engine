@@ -49,6 +49,7 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
     import requests
 
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
@@ -445,6 +446,8 @@ class RestApiReader(Reader):
         -------
         pyspark.sql.DataFrame
         """
+        # Refuse before any HTTP call if there is no Spark to build the frame.
+        spark_of(backend, "rest_api", error=SourceReadError)
         if not cfg.get("url"):
             raise SourceReadError(
                 "RestApiReader requires 'url' in config.",

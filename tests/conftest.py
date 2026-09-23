@@ -38,6 +38,41 @@ class MockBackend:
     def stop(self) -> None:
         pass
 
+    # The data-plane IO seam (#38). Delegates to the same Spark mechanism the
+    # real Spark backends use, driven by the MagicMock ``spark`` — so a connector
+    # routed through ``backend.read_frame`` / ``backend.execute_write`` still hits
+    # ``spark.read`` / ``spark.sql`` / ``df.write`` exactly as the assertions expect.
+    def read_frame(self, file_format, path, *, options=None, schema=None):
+        from ubunye.adapters.spark import frame_io
+
+        return frame_io.read_frame(self.spark, file_format, path, options=options, schema=schema)
+
+    def execute_write(
+        self,
+        df,
+        resolved,
+        *,
+        connector,
+        file_format,
+        table=None,
+        path=None,
+        partition_by=None,
+        options=None,
+    ):
+        from ubunye.adapters.spark import frame_io
+
+        frame_io.execute_write(
+            self.spark,
+            df,
+            resolved,
+            connector=connector,
+            file_format=file_format,
+            table=table,
+            path=path,
+            partition_by=partition_by,
+            options=options,
+        )
+
 
 # ---------------------------------------------------------------------------
 # Config helpers

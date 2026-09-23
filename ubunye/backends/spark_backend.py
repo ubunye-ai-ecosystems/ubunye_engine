@@ -9,10 +9,15 @@ Spark backend implementation for Ubunye.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence
 
+from ubunye.adapters.spark import frame_io
 from ubunye.core.errors import SparkSessionError
 from ubunye.core.interfaces import Backend
+
+if TYPE_CHECKING:
+    from ubunye.core.ports import DataFramePort
+    from ubunye.core.write_modes import ResolvedWriteMode
 
 if TYPE_CHECKING:  # only for type checkers; no runtime dependency on pyspark
     from pyspark.sql import SparkSession
@@ -162,6 +167,43 @@ class SparkBackend(Backend):
     def is_spark(self) -> bool:
         """Whether this backend is Spark-based (always True here)."""
         return True
+
+    # -------------------------
+    # Data-plane IO seam (#38)
+    # -------------------------
+    def read_frame(
+        self,
+        file_format: str,
+        path: str,
+        *,
+        options: Optional[Dict[str, Any]] = None,
+        schema: Optional[str] = None,
+    ) -> "DataFramePort":
+        return frame_io.read_frame(self.spark, file_format, path, options=options, schema=schema)
+
+    def execute_write(
+        self,
+        df: "DataFramePort",
+        resolved: "ResolvedWriteMode",
+        *,
+        connector: str,
+        file_format: str,
+        table: Optional[str] = None,
+        path: Optional[str] = None,
+        partition_by: Optional[Sequence[str]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        frame_io.execute_write(
+            self.spark,
+            df,
+            resolved,
+            connector=connector,
+            file_format=file_format,
+            table=table,
+            path=path,
+            partition_by=partition_by,
+            options=options,
+        )
 
     @property
     def app_name(self) -> str:

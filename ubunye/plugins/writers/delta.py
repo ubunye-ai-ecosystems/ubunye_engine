@@ -27,6 +27,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from ubunye.adapters.spark import write_exec
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core import write_modes
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
@@ -68,6 +69,7 @@ class DeltaWriter(Writer):
         return ["format 'delta' requires 'path', 'table', or ('db_name' + 'tbl_name')"]
 
     def write(self, df: Any, cfg: dict, backend) -> None:
+        spark = spark_of(backend, "delta", error=SinkWriteError)
         table, path = _target(cfg)
 
         resolved = write_modes.resolve(
@@ -81,7 +83,7 @@ class DeltaWriter(Writer):
 
         write_exec.apply(
             df,
-            backend.spark,
+            spark,
             resolved,
             connector="delta",
             file_format=FILE_FORMAT,

@@ -49,6 +49,19 @@ class _Backend:
     def stop(self) -> None:  # pragma: no cover - the fixture owns the session
         pass
 
+    # The data-plane IO seam (#38): delegate to the shared Spark mechanism, so a
+    # connector routed through backend.read_frame / backend.execute_write reaches
+    # this real SparkSession exactly as it used to reach ``backend.spark``.
+    def read_frame(self, file_format, path, *, options=None, schema=None):
+        from ubunye.adapters.spark import frame_io
+
+        return frame_io.read_frame(self.spark, file_format, path, options=options, schema=schema)
+
+    def execute_write(self, df, resolved, **kwargs):
+        from ubunye.adapters.spark import frame_io
+
+        frame_io.execute_write(self.spark, df, resolved, **kwargs)
+
 
 @pytest.fixture(scope="module")
 def spark():

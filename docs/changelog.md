@@ -26,6 +26,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is the groundwork for a non-Spark backend (issue #38): the core can be
   backend-agnostic now because it no longer imports one backend's API.
 
+### Added
+
+- **A pandas backend, so `ubunye run --backend pandas` runs a task on a laptop
+  with no Spark and no JVM (issue #38).** `Backend` was a port with a single kind
+  of adapter (Spark), and a port with one adapter has never really been tested as
+  a port. It has a second one now. `PandasBackend` reads and writes the generic
+  path formats (csv, parquet, json) with pandas; lakehouse formats and managed
+  tables stay Spark's job, and their connectors say so, so an unsupported pairing
+  fails with a clear message instead of a stray `AttributeError`. This works
+  because the data plane gained a small read/write seam on `Backend`
+  (`read_frame` / `execute_write`): a path connector like `s3` asks the backend to
+  do the IO instead of naming Spark, so the same task and the same `config.yaml`
+  run on either backend. The proof is an integration test that runs one passthrough
+  task through the engine on Spark and on pandas and asserts the output is
+  identical. Install the extra with `pip install 'ubunye-engine[pandas]'`.
+- **The pandas backend reads data exactly as Spark does.** The first version
+  used pandas' own defaults, so the same CSV gave different columns and types on
+  the two backends: pandas assumed a header Spark does not, guessed types Spark
+  leaves as text, read JSON as one array where Spark reads one object per line,
+  and could not read a folder Spark had written. Reads now follow Spark: no
+  header by default (`_c0`, `_c1`), text unless `inferSchema`, Spark's inferred
+  types (`int` when every value fits, else `bigint`; an all empty column is
+  text), JSON Lines with columns sorted by name, folders of part files, globs,
+  explicit `schema:` strings, and timestamps read in
+  `spark.sql.session.timeZone` (UTC when unset). Columns are Arrow backed, so a
+  whole number column with nulls stays whole numbers. Options it cannot honour,
+  nested schema types and remote paths are refused by name instead of ignored.
+  Needs pandas 2.2 and pyarrow 14 or newer.
+- **The pandas backend writes data exactly as Spark does, so each can read the
+  other's output.** It used to write one file where Spark writes a folder, so
+  Spark could not read pandas output as a table, and `append` re-read and
+  rewrote the whole file every run. It now writes Spark's layout (a folder of
+  `part-*` files and `_SUCCESS`); `append` adds a part file; `overwrite` is
+  staged and swapped in only when complete, so a failed write keeps the old
+  data. The text formats match Spark byte for byte on the cases tested: CSV
+  without a header by default, minimal quoting with a backslash escape, text
+  trimmed, Java style numbers, Spark's timestamp text; JSON Lines without null
+  fields. Parquet timestamps are written as UTC microseconds (Spark cannot read
+  nanoseconds). A named index (what `groupby` leaves) is kept as columns.
+  `partition_by`, unknown write options, nested values in CSV and non pandas
+  frames are refused by name.
+- **Connectors that need Spark say so on the pandas backend.** hive, jdbc,
+  delta, unity, binary and rest_api build on a SparkSession. On the pandas
+  backend they used to fail with `AttributeError: 'PandasBackend' object has no
+  attribute 'spark'`, and rest_api only after fetching every page. They now stop
+  first, before any network call, with a message naming the connector and the
+  way out (`--backend spark`, or csv/parquet/json paths with `format: s3`).
+- **Proof that the two backends agree, run against real Spark.** The old parity
+  test compared one passthrough task as strings. The new suite runs Spark 4.2
+  beside the pandas backend and compares Arrow types and Python values, never
+  strings: eight reader cases (CSV with and without header, inferSchema,
+  explicit schema, separators and null values; JSON Lines, multiLine and
+  schema), a folder Spark wrote, each engine reading what the other wrote for
+  parquet, CSV and JSON, CSV and JSON files byte for byte, and one task end to
+  end on both backends. It runs in a timezone other than UTC so a timezone slip
+  cannot hide. It found two gaps, now fixed: explicit `TIMESTAMP` schemas could
+  not read text without an offset, and JSON was not written the way Spark
+  writes it.
+
 ---
 
 ## [0.5.0] — 2026-07-14
