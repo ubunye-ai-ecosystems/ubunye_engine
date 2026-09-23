@@ -26,6 +26,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is the groundwork for a non-Spark backend (issue #38): the core can be
   backend-agnostic now because it no longer imports one backend's API.
 
+### Added
+
+- **A pandas backend, so `ubunye run --backend pandas` runs a task on a laptop
+  with no Spark and no JVM (issue #38).** `Backend` was a port with a single kind
+  of adapter (Spark), and a port with one adapter has never really been tested as
+  a port. It has a second one now. `PandasBackend` reads and writes the generic
+  path formats (csv, parquet, json) with pandas; lakehouse formats and managed
+  tables stay Spark's job, and their connectors say so, so an unsupported pairing
+  fails with a clear message instead of a stray `AttributeError`. This works
+  because the data plane gained a small read/write seam on `Backend`
+  (`read_frame` / `execute_write`): a path connector like `s3` asks the backend to
+  do the IO instead of naming Spark, so the same task and the same `config.yaml`
+  run on either backend. The proof is an integration test that runs one passthrough
+  task through the engine on Spark and on pandas and asserts the output is
+  identical. Install the extra with `pip install 'ubunye-engine[pandas]'`.
+
 ---
 
 ## [0.5.0] — 2026-07-14

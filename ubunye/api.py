@@ -99,6 +99,7 @@ def run_task(
     dt: Optional[str] = None,
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
+    backend: Optional[Backend] = None,
     lineage: bool = False,
     lineage_dir: str = ".ubunye/lineage",
     profile: Optional[str] = None,
@@ -120,6 +121,9 @@ def run_task(
     spark : SparkSession, optional
         Explicit SparkSession to reuse. If *None*, auto-detects an active
         session (Databricks) or creates a new one.
+    backend : Backend, optional
+        An explicit backend to run on (e.g. ``PandasBackend()`` for a no-Spark
+        run). If *None*, a Spark backend is chosen via ``spark`` / auto-detect.
     lineage : bool
         Record lineage for this run.
     lineage_dir : str
@@ -149,7 +153,8 @@ def run_task(
     usecase_name = parts[-3] if len(parts) >= 3 else None
     app_name = _make_app_name(usecase_name, package_name, task_name)
 
-    backend = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name)
+    if backend is None:
+        backend = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name)
 
     lineage_recorder = None
     if lineage:

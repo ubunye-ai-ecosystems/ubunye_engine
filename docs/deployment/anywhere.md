@@ -22,6 +22,22 @@ one, with the platform's master, executors and settings, and the engine
 attaches to it. Creating a second would quietly ignore the cluster and run
 everything on one machine.
 
+## No Spark at all: the pandas backend
+
+For small data and local development, a task can run with no Spark and no JVM:
+
+```bash
+ubunye run -d ./pipelines -u sales -p etl -t daily --backend pandas
+```
+
+The same `config.yaml` drives it. Reads and writes go through the generic `s3`
+path connector for the formats pandas understands (csv, parquet, json);
+lakehouse formats (delta) and managed tables need Spark, and the engine says so
+rather than failing obscurely. The one caveat is your own logic: a
+`transformations.py` that calls the Spark DataFrame API needs Spark, so a task
+is pandas-runnable when its transform is backend-agnostic (or pandas-native).
+Install the extra with `pip install 'ubunye-engine[pandas]'`.
+
 ## Scheduling
 
 Any scheduler that can run a command can own the timetable. For Airflow, the
