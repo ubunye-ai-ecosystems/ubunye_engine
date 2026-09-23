@@ -8,7 +8,9 @@ version = "0.5.0"
 description = "Config-first, Spark-native ETL/ML engine with a modular plugin system"
 readme = "README.md"
 requires-python = ">=3.9"
-authors = [{name="Ubunye Team"}]
+authors = [{name="Thabang Mashinini-Sekgoto", email="thabangline@gmail.com"}]
+maintainers = [{name="Ubunye AI Ecosystems"}]
+keywords = ["spark", "pyspark", "databricks", "etl", "mlops", "data-pipelines", "machine-learning", "config-driven", "reproducibility", "kubernetes"]
 dependencies = [
   "pyyaml>=6",
   "jinja2>=3",
@@ -49,6 +51,7 @@ Homepage = "https://www.tmashininisekgoto.com"
 Documentation = "https://ubunye-ai-ecosystems.github.io/ubunye_engine/"
 Repository = "https://github.com/ubunye-ai-ecosystems/ubunye_engine"
 Issues = "https://github.com/ubunye-ai-ecosystems/ubunye_engine/issues"
+"Project page" = "https://www.tmashininisekgoto.com/work/ubunye-engine"
 
 [project.scripts]
 ubunye = "ubunye.cli.main:app"
