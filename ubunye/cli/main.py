@@ -18,7 +18,7 @@ from __future__ import annotations
 import sys
 import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import typer
 
@@ -254,22 +254,83 @@ def plan(
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
     mode: str = typer.Option("DEV", "-m", "--mode"),
     var: Optional[List[str]] = var_option(),
+    backend_kind: Optional[str] = typer.Option(
+        None,
+        "--backend",
+        help="Also check each input and output against what this backend can do.",
+    ),
 ):
-    """Print the planned inputs, transform and outputs for task(s)."""
-    variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
-    for task in task_list:
-        config_path = _task_path(usecase_dir, usecase, package, task) / "config.yaml"
-        cfg = load_config(str(config_path), variables)
+    """Dry run: what each task will read and write, and what will stop it.
 
-        typer.echo(f"--- Task: {task} ---")
-        typer.echo("Inputs (Extract):")
-        for name, icfg in cfg.CONFIG.inputs.items():
-            typer.echo(f"  - {name}: {icfg.format}")
-        typer.echo(f"Transform (transformations.py): {cfg.CONFIG.transform.type}")
-        typer.echo("Outputs (Load):")
-        for name, ocfg in cfg.CONFIG.outputs.items():
-            typer.echo(f"  - {name}: {ocfg.format}")
-        typer.echo()
+    Checks local inputs exist (or are written by an earlier task in the list),
+    resolves the transform class, resolves every write mode, and, with
+    --backend, asks the backend if it can do what the task needs. Starts no
+    engine and moves no data. Exits 1 if it finds a problem.
+    """
+    from ubunye.core.planning import build_plans
+
+    variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
+    tasks = []
+    raw_yaml = {}
+    for task in task_list:
+        task_dir = _task_path(usecase_dir, usecase, package, task)
+        name = f"{usecase}/{package}/{task}"
+        try:
+            cfg = load_config(str(task_dir), variables)
+        except (ValueError, FileNotFoundError) as exc:
+            typer.secho(f"[ERROR] {name}", fg=typer.colors.RED, err=True)
+            for line in str(exc).splitlines():
+                typer.echo(f"  {line}", err=True)
+            raise typer.Exit(code=1)
+        raw_yaml[name] = (task_dir / "config.yaml").read_text(encoding="utf-8")
+        tasks.append((name, cfg, task_dir))
+
+    plans = build_plans(tasks, backend=backend_kind, variables=variables, raw_yaml=raw_yaml)
+    for report in plans:
+        _print_plan(report)
+    failing = [p for p in plans if p["problems"]]
+    if failing:
+        count = sum(len(p["problems"]) for p in failing)
+        typer.secho(
+            f"Plan would fail: {count} problem(s) in {len(failing)} task(s).", fg=typer.colors.RED
+        )
+        raise typer.Exit(code=1)
+    typer.secho(f"Plan OK: {len(plans)} task(s) can run.", fg=typer.colors.GREEN)
+
+
+def _size(entry: Dict[str, Any]) -> str:
+    if entry.get("produced_by"):
+        return f"written by task '{entry['produced_by']}' earlier in this plan"
+    if not entry.get("checked"):
+        return "not checked (not a local path)"
+    if not entry.get("exists"):
+        return "missing"
+    return f"found: {entry['files']} file(s), {entry['bytes']:,} bytes"
+
+
+def _print_plan(report: Dict[str, Any]) -> None:
+    backend = f"   (backend: {report['backend']})" if report["backend"] else ""
+    typer.secho(f"Task {report['task']}{backend}", bold=True)
+    typer.echo("  Inputs")
+    for entry in report["inputs"]:
+        fmt = " ".join(x for x in (entry["format"], entry.get("file_format") or "") if x)
+        typer.echo(f"    {entry['name']:<12} {fmt:<14} {entry['location']}")
+        typer.echo(f"    {'':<12} {_size(entry)}")
+    t = report["transform"]
+    what = t["class"] or t["type"] or "-"
+    source = f"  ({Path(t['source']).name})" if t["source"] else ""
+    typer.echo(f"  Transform  {what}{source}")
+    typer.echo("  Outputs")
+    for entry in report["outputs"]:
+        fmt = " ".join(x for x in (entry["format"], entry.get("file_format") or "") if x)
+        mode = entry["resolved_mode"] or entry["requested_mode"] or "-"
+        typer.echo(f"    {entry['name']:<12} {fmt:<14} {entry['location']}")
+        typer.echo(f"    {'':<12} mode {mode}")
+    for warning in report["warnings"]:
+        typer.secho(f"  warning: {warning}", fg=typer.colors.YELLOW)
+    for problem in report["problems"]:
+        typer.secho(f"  problem: {problem}", fg=typer.colors.RED)
+    typer.echo()
 
 
 @app.command()

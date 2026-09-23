@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`ubunye plan` is a real dry run, and exits 1 when it finds a problem.** It
+  printed the config's names back and always exited 0. Built on the September
+  work, it now checks each local input exists or is written by an earlier task
+  in the same plan (the September version failed every multi task pipeline on
+  that), loads the transform class, resolves every write mode (so `merge`
+  without `merge_keys` is caught before a cluster runs the transform), asks the
+  `--backend` what it can do instead of keeping a list of names, and warns about
+  environment variables the config uses that are not set. It starts no engine
+  and moves no data. Its config hash is now the one the run record keeps: the
+  record used to hash the config after the engine had rewritten its transform,
+  so the two never matched. A config error in `plan` shows the whole message.
 - **The package says what it is.** `LICENSE` is the full MIT text (it was the
   single word "MIT"), declared the modern way (`license = "MIT"` with
   `license-files`, which needs setuptools 77). PyPI now shows classifiers for

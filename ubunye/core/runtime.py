@@ -34,6 +34,9 @@ class EngineContext:
     backend: Optional[str] = None
     #: The template variables the run was given (dt, dtf, mode, ...).
     variables: Dict[str, Any] = field(default_factory=dict)
+    #: The hash of the resolved config as loaded (ubunye.config.hashing), the
+    #: same one ``ubunye plan`` shows; set before the engine rewrites the config.
+    config_hash: Optional[str] = None
 
 
 class Registry:
@@ -306,6 +309,7 @@ class Engine:
             task_name=task_name,
             backend=backend if isinstance(backend, str) else None,
             variables=dict(self.context.variables),
+            config_hash=self.context.config_hash,
         )
 
     def _build_hook_chain(self, cfg: dict) -> HookChain:

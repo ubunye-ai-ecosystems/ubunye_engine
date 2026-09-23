@@ -126,15 +126,57 @@ ubunye validate -d pipelines -u fraud_detection -p ingestion -t claim_etl --back
 
 ## `ubunye plan`
 
-Print the execution plan — inputs, transform, outputs — without running.
+A dry run: what each task will read and write, and what will stop it. It starts
+no engine and moves no data, and exits `1` if it finds a problem.
 
 ```bash
-ubunye plan \
-    -d pipelines \
-    -u fraud_detection \
-    -p ingestion \
-    -t claim_etl
+ubunye plan -d pipelines -u titanic -p pipeline -t clean_data -t aggregate --backend pandas
 ```
+
+```text
+Task titanic/pipeline/clean_data   (backend: pandas)
+  Inputs
+    titanic      s3 csv         file:///.../data/titanic.csv
+                 found: 1 file(s), 60,302 bytes
+  Transform  CleanData  (transformations.py)
+  Outputs
+    cleaned      s3 parquet     file:///.../output/cleaned/dt=latest
+                 mode overwrite
+
+Task titanic/pipeline/aggregate   (backend: pandas)
+  Inputs
+    cleaned      s3 parquet     file:///.../output/cleaned/dt=latest
+                 written by task 'clean_data' earlier in this plan
+  ...
+Plan OK: 2 task(s) can run.
+```
+
+It checks:
+
+- each local input exists, or is written by an earlier task in the same plan
+  (list the tasks in the order they run);
+- the transform class loads from `transformations.py`;
+- every write mode resolves (`merge` without `merge_keys` is caught here, not
+  on a cluster after the transform ran);
+- with `--backend`, that the backend can do what each input and output needs;
+- which environment variables the config uses but are not set (a warning).
+
+| Flag | Short | Required | Default | Description |
+|---|---|---|---|---|
+| `--usecase-dir` | `-d` | yes | — | Root directory |
+| `--usecase` | `-u` | yes | — | Use-case name |
+| `--package` | `-p` | yes | — | Package name |
+| `--task-list` | `-t` | yes | — | Task(s) to plan, in run order (repeatable) |
+| `--data-timestamp` | `-dt` | no | — | Data timestamp |
+| `--data-timestamp-format` | `-dtf` | no | — | Timestamp format |
+| `--mode` | `-m` | no | `DEV` | Run mode |
+| `--var` | | no | — | Extra template variable, `key=value` (repeatable) |
+| `--backend` | | no | — | Also check against what this backend can do |
+
+!!! note "Changed in 0.6.0"
+    `plan` used to print the config's names back and always exit `0`. It now
+    checks the task and exits `1` when something would stop the run, so it can
+    guard a CI job or an agent before a real run.
 
 ---
 

@@ -23,12 +23,12 @@ CONFIG:
   inputs:
     src:
       format: s3
-      path: "file:///tmp/in"
+      path: "{src}"
   transform: {}
   outputs:
     dst:
       format: s3
-      path: "file:///tmp/out"
+      path: "{dst}"
       mode: append
 """
 
@@ -36,7 +36,12 @@ CONFIG:
 def test_plan_prints_the_formats_without_exploding(tmp_path: Path):
     task = tmp_path / "uc" / "pkg" / "task"
     task.mkdir(parents=True)
-    (task / "config.yaml").write_text(CONFIG, encoding="utf-8")
+    (tmp_path / "in").mkdir()
+    (tmp_path / "in" / "part-0.parquet").write_bytes(b"x")  # the plan checks inputs exist
+    config = CONFIG.replace("{src}", (tmp_path / "in").as_uri()).replace(
+        "{dst}", (tmp_path / "out").as_uri()
+    )
+    (task / "config.yaml").write_text(config, encoding="utf-8")
     (task / "transformations.py").write_text(
         "from ubunye.core.interfaces import Task\n"
         "class T(Task):\n"
