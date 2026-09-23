@@ -201,9 +201,10 @@ def validate(
     caps = None
     registry = Registry.from_entrypoints() if backend_kind else None
     if backend_kind:
-        from ubunye.cli.backend_choice import capabilities_or_exit
+        from ubunye.cli.backend_choice import class_or_exit
 
-        caps = capabilities_or_exit(backend_kind)
+        backend_cls = class_or_exit(backend_kind)
+        caps = backend_cls.CAPABILITIES
 
     for task in tasks_to_check:
         task_dir = _task_path(usecase_dir, usecase, package, task)
@@ -217,6 +218,7 @@ def validate(
                     cfg.model_dump(mode="json"),
                     registry,
                     backend_name=str(backend_kind).lower(),
+                    io_check=backend_cls.check_io,
                 )
                 if problems:
                     typer.secho(

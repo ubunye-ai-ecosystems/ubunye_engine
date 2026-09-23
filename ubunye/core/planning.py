@@ -135,8 +135,14 @@ def build_plan(
         from ubunye.core import backends
 
         try:
-            caps = backends.load_class(backend).CAPABILITIES
-            problems += check_task(caps, cfg_dict, registry, backend_name=backend.lower())
+            cls = backends.load_class(backend)
+            problems += check_task(
+                cls.CAPABILITIES,
+                cfg_dict,
+                registry,
+                backend_name=backend.lower(),
+                io_check=cls.check_io,
+            )
         except UbunyeError as exc:
             problems.append(f"backend: {str(exc).splitlines()[0]}")
 

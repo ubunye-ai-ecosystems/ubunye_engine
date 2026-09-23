@@ -76,6 +76,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The pandas backend understands Spark's `mode` option, and backends check
+  their IO details before a run.** Every Titanic example reads its CSV with
+  `mode: "FAILFAST"`, which the pandas backend refused, so none of them could
+  run there. `mode` now works for CSV and JSON exactly as Spark 4.2 does it
+  (checked against Spark): FAILFAST stops at a bad row, DROPMALFORMED skips it,
+  and PERMISSIVE, Spark's default, cuts a row with too many fields and pads one
+  with too few with null. A backend can also check an input's or output's
+  details (options, schema) before anything runs (`Backend.check_io`); the
+  pandas backend uses it, so `plan`, `validate --backend` and the run's own
+  preflight report an option it cannot honour instead of failing on open.
 - **`--var key=value`, documented for years, now works.** It was in the README
   and three docs pages and was never implemented, so every example that used it
   failed. It now works on every command that renders a config (`run`,

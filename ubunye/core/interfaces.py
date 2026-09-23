@@ -85,6 +85,18 @@ class Backend(ABC):
         return cls(app_name=app_name, conf=dict(conf or {}))  # type: ignore[call-arg]
 
     @classmethod
+    def check_io(cls, direction: str, cfg: Dict[str, Any]) -> List[str]:
+        """Problems with one path input or output's details, before a run.
+
+        ``direction`` is ``"input"`` or ``"output"``; ``cfg`` is that input's or
+        output's config. The capability check (ADR 002) covers what a backend can
+        do in general; this catches the details it cannot honour (an option, a
+        schema) that would otherwise fail only when the file is opened. The
+        default finds nothing.
+        """
+        return []
+
+    @classmethod
     def from_platform(
         cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None
     ) -> Optional[Any]:

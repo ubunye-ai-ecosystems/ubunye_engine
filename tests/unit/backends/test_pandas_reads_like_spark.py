@@ -246,3 +246,59 @@ class TestRefusals:
     def test_unsupported_format(self, tmp_path):
         with pytest.raises(SourceReadError, match="cannot read file_format 'delta'"):
             PandasBackend().read_frame("delta", str(tmp_path))
+
+
+class TestParseMode:
+    """Spark's `mode` option for csv and json: what to do with a malformed record."""
+
+    BAD_CSV = "a,b\n1,2\n3,4,5\n6,7\n"  # the second data row has one field too many
+
+    def test_failfast_stops_at_a_malformed_row(self, tmp_path):
+        with pytest.raises(SourceReadError):
+            _read(tmp_path, "csv", self.BAD_CSV, options={"header": "true", "mode": "FAILFAST"})
+
+    def test_dropmalformed_skips_it_like_spark(self, tmp_path):
+        frame = _read(
+            tmp_path, "csv", self.BAD_CSV, options={"header": "true", "mode": "DROPMALFORMED"}
+        )
+        assert frame.native["a"].tolist() == ["1", "6"]
+
+    def test_permissive_evens_rows_like_spark(self, tmp_path):
+        # Spark 4.2 on this file: the long row is cut, the short one padded with null.
+        frame = _read(tmp_path, "csv", self.BAD_CSV + "7\n", options={"header": "true"})
+        rows = [
+            tuple(None if pd.isna(v) else v for v in r)
+            for r in frame.native.itertuples(index=False)
+        ]
+        assert rows == [("1", "2"), ("3", "4"), ("6", "7"), ("7", None)]
+
+    def test_permissive_with_infer_schema(self, tmp_path):
+        frame = _read(
+            tmp_path, "csv", "a,b\n1,2\n3\n", options={"header": "true", "inferSchema": "true"}
+        )
+        assert _arrow_types(frame) == {"a": pa.int32(), "b": pa.int32()}
+        assert frame.native["b"].isna().tolist() == [False, True]
+
+    def test_permissive_pads_with_the_null_marker(self, tmp_path):
+        frame = _read(
+            tmp_path, "csv", "a;b\n1\n", options={"header": "true", "sep": ";", "nullValue": "NA"}
+        )
+        assert frame.native["b"].isna().tolist() == [True]
+
+    def test_permissive_is_accepted_and_reads_clean_data(self, tmp_path):
+        frame = _read(tmp_path, "csv", "a\n1\n", options={"header": "true", "mode": "permissive"})
+        assert frame.count() == 1
+
+    def test_json_dropmalformed(self, tmp_path):
+        frame = _read(
+            tmp_path, "json", '{"a":1}\nnot json\n{"a":2}\n', options={"mode": "DROPMALFORMED"}
+        )
+        assert frame.native["a"].tolist() == [1, 2]
+
+    def test_json_failfast(self, tmp_path):
+        with pytest.raises(SourceReadError):
+            _read(tmp_path, "json", '{"a":1}\nnot json\n', options={"mode": "FAILFAST"})
+
+    def test_an_unknown_mode_is_refused(self, tmp_path):
+        with pytest.raises(SourceReadError, match="SOMETIMES"):
+            _read(tmp_path, "csv", "a\n1\n", options={"mode": "SOMETIMES"})

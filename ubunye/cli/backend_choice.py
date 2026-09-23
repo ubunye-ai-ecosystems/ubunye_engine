@@ -25,13 +25,18 @@ def resolve_or_exit(name: Optional[str], *, app_name: str, conf: Dict[str, Any])
         raise typer.Exit(code=1)
 
 
-def capabilities_or_exit(name: str) -> Any:
-    """A backend's declared capabilities, without starting it."""
+def class_or_exit(name: str) -> Any:
+    """A backend's class (its capabilities and checks), without starting it."""
     try:
-        return backends.load_class(name).CAPABILITIES
+        return backends.load_class(name)
     except BackendNotFoundError as exc:
         typer.secho(f"[ERROR] {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+def capabilities_or_exit(name: str) -> Any:
+    """A backend's declared capabilities, without starting it."""
+    return class_or_exit(name).CAPABILITIES
 
 
 def describe_all() -> List[Dict[str, Any]]:

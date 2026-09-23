@@ -54,9 +54,10 @@ READ_OPTIONS: Dict[str, frozenset] = {
             "escape",
             "encoding",
             "multiline",
+            "mode",
         }
     ),
-    "json": frozenset({"multiline", "encoding"}),
+    "json": frozenset({"multiline", "encoding", "mode"}),
     "parquet": frozenset(),
 }
 
@@ -109,19 +110,58 @@ def _data_files(local: str) -> List[str]:
     ]
 
 
-def _check_options(fmt: str, options: Dict[str, Any], allowed: frozenset) -> None:
-    """Refuse any option not in ``allowed``, named as the user spelled it."""
-    unknown = sorted(str(k) for k in options if str(k).lower() not in allowed)
+#: Spark's `mode` for csv and json: what to do with a malformed record.
+#: FAILFAST stops, DROPMALFORMED skips it, PERMISSIVE (Spark's default) keeps a
+#: CSV row with the wrong number of fields by cutting or padding it with null,
+#: as Spark does. Other malformed records stop the read rather than being guessed.
+PARSE_MODES = frozenset({"PERMISSIVE", "FAILFAST", "DROPMALFORMED"})
+
+
+def _unknown_options(options: Dict[str, Any], allowed: frozenset) -> List[str]:
+    """Options not in ``allowed``, named as the user spelled them."""
+    return sorted(str(k) for k in options if str(k).lower() not in allowed)
+
+
+def read_problems(
+    file_format: str, options: Optional[Dict[str, Any]] = None, schema: Optional[str] = None
+) -> List[str]:
+    """Everything about a read this backend cannot honour, before opening a file."""
+    fmt = (file_format or "parquet").lower()
+    if fmt not in SUPPORTED_FORMATS:
+        return [f"The pandas backend cannot read file_format '{fmt}'."]
+    problems = []
+    options = options or {}
+    unknown = _unknown_options(options, READ_OPTIONS[fmt])
     if unknown:
-        raise SourceReadError(
-            f"The pandas backend does not support the {fmt} option(s) {unknown}.",
-            context={
-                "Backend": "pandas",
-                "file_format": fmt,
-                "Supported": sorted(allowed) or "none",
-            },
-            hint="Remove the option, or run this task on the Spark backend.",
+        problems.append(
+            f"The pandas backend does not support the {fmt} option(s) {unknown} "
+            f"(it supports {sorted(READ_OPTIONS[fmt]) or 'none'})."
         )
+    for key, value in options.items():
+        if str(key).lower() == "mode" and str(value).upper() not in PARSE_MODES:
+            problems.append(
+                f"The {fmt} option mode '{value}' is not one of {', '.join(sorted(PARSE_MODES))}."
+            )
+    if schema:
+        try:
+            ddl.parse(schema)
+        except ValueError as exc:
+            problems.append(f"The pandas backend cannot use this schema: {exc}.")
+    return problems
+
+
+def write_problems(file_format: str, options: Optional[Dict[str, Any]] = None) -> List[str]:
+    """Everything about a write this backend cannot honour, before writing."""
+    fmt = (file_format or "parquet").lower()
+    if fmt not in SUPPORTED_FORMATS:
+        return [f"The pandas backend cannot write file_format '{fmt}'."]
+    unknown = _unknown_options(options or {}, WRITE_OPTIONS[fmt])
+    if unknown:
+        return [
+            f"The pandas backend does not support the {fmt} write option(s) {unknown} "
+            f"(it supports {sorted(WRITE_OPTIONS[fmt]) or 'none'})."
+        ]
+    return []
 
 
 # --------------------------------------------------------------------------- #
@@ -235,6 +275,9 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
         # Spark's default escape character is a backslash.
         escape_char=str(opts.get("escape", "\\")) or False,
         newlines_in_values=_truthy(opts.get("multiline", "false")),
+        # DROPMALFORMED skips a row with the wrong number of fields, as Spark does;
+        # FAILFAST and PERMISSIVE stop at it.
+        invalid_row_handler=_skip if _drop_malformed(opts) else None,
     )
 
     tables = []
@@ -244,14 +287,9 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
             # header line (if any) is skipped.
             names = list(schema.names)
         else:
-            probe = pcsv.open_csv(
-                f,
-                read_options=pcsv.ReadOptions(
-                    encoding=encoding, autogenerate_column_names=not header
-                ),
-                parse_options=parse,
-            )
-            names = list(probe.schema.names)
+            # The first record alone names the columns (Spark does the same); it is
+            # read on its own so a malformed row further down cannot stop it.
+            names = _first_record(f, encoding, parse)
             if not header:
                 names = [f"_c{n}" for n in range(len(names))]
         convert = pcsv.ConvertOptions(
@@ -264,9 +302,30 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
             false_values=_FALSE,
         )
         read = pcsv.ReadOptions(encoding=encoding, column_names=names, skip_rows=1 if header else 0)
-        tables.append(
-            pcsv.read_csv(f, read_options=read, parse_options=parse, convert_options=convert)
-        )
+        try:
+            tables.append(
+                pcsv.read_csv(f, read_options=read, parse_options=parse, convert_options=convert)
+            )
+        except pa.ArrowInvalid as exc:
+            # PERMISSIVE (Spark's default) keeps a row with the wrong number of
+            # fields: extra fields are dropped and missing ones are null. pyarrow
+            # stops instead, so the file is read again with those rows evened out,
+            # exactly as Spark evens them, and parsed the normal way.
+            if not _permissive(opts) or "columns" not in str(exc):
+                raise
+            evened = _even_rows(
+                f,
+                encoding,
+                parse,
+                len(names),
+                skip_header=header,
+                pad=str(opts.get("nullvalue", "")),
+            )
+            tables.append(
+                pcsv.read_csv(
+                    evened, read_options=read, parse_options=parse, convert_options=convert
+                )
+            )
 
     table = pa.concat_tables(tables, promote_options="permissive")
     if schema is not None:
@@ -275,6 +334,70 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
     if infer:
         table = _narrow_ints(table)
     return _instants(table, timezone)
+
+
+def _csv_dialect(parse: Any) -> Dict[str, Any]:
+    """pyarrow's parse options as keyword arguments for Python's csv module."""
+    return {
+        "delimiter": parse.delimiter,
+        "quotechar": parse.quote_char or '"',
+        "escapechar": parse.escape_char or None,
+        "doublequote": True,
+    }
+
+
+def _text_encoding(encoding: str) -> str:
+    return "utf-8" if encoding.lower().replace("-", "") == "utf8" else encoding
+
+
+def _first_record(path: str, encoding: str, parse: Any) -> List[str]:
+    """The first non blank record of a CSV file, as its fields."""
+    import csv
+
+    with open(path, encoding=_text_encoding(encoding), newline="") as handle:
+        for row in csv.reader(handle, **_csv_dialect(parse)):
+            if row:
+                return row
+    return []
+
+
+def _permissive(opts: Dict[str, Any]) -> bool:
+    return str(opts.get("mode", "PERMISSIVE")).upper() == "PERMISSIVE"
+
+
+def _even_rows(
+    path: str, encoding: str, parse: Any, width: int, *, skip_header: bool, pad: str = ""
+) -> Any:
+    """The CSV at ``path`` with every row cut or padded to ``width`` fields.
+
+    What Spark's PERMISSIVE mode does with a row that has too many or too few
+    fields. Returned as bytes to parse again, so types are inferred exactly as
+    for a clean file.
+    """
+    import csv
+    import io
+
+    text_encoding = _text_encoding(encoding)
+    dialect = _csv_dialect(parse)
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator=chr(10), **dialect)
+    with open(path, encoding=text_encoding, newline="") as handle:
+        reader = csv.reader(handle, **dialect)
+        for number, row in enumerate(reader):
+            if not row:
+                continue  # blank line: Spark skips it
+            if not (skip_header and number == 0):
+                row = (row + [pad] * width)[:width]  # pad with the null marker: read as null
+            writer.writerow(row)
+    return io.BytesIO(out.getvalue().encode(text_encoding))
+
+
+def _drop_malformed(opts: Dict[str, Any]) -> bool:
+    return str(opts.get("mode", "PERMISSIVE")).upper() == "DROPMALFORMED"
+
+
+def _skip(row: Any) -> str:
+    return "skip"
 
 
 def _sorted_keys(value: Any) -> Any:
@@ -296,7 +419,16 @@ def _read_json(files: List[str], opts: Dict[str, Any], schema: Any, timezone: st
                 doc = json.load(handle)
                 rows.extend(doc if isinstance(doc, list) else [doc])
             else:
-                rows.extend(json.loads(line) for line in handle if line.strip())
+                drop = _drop_malformed(opts)
+                for line in handle:
+                    if not line.strip():
+                        continue
+                    try:
+                        rows.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        if not drop:
+                            raise
+                        # DROPMALFORMED: skip the record, as Spark does
     # Parsed with the json module, not pyarrow's reader: pyarrow turns ISO text
     # into timestamps and keeps key order, and Spark does neither.
     rows = [_sorted_keys(r) for r in rows]
@@ -343,31 +475,15 @@ def read_frame(
 ) -> PandasDataFrameAdapter:
     """Read a path into an Arrow-backed pandas frame, wrapped as a ``DataFramePort``."""
     fmt = (file_format or "parquet").lower()
-    if fmt not in SUPPORTED_FORMATS:
+    problems = read_problems(fmt, options, schema)
+    if problems:
         raise SourceReadError(
-            f"The pandas backend cannot read file_format '{fmt}'.",
-            context={
-                "Backend": "pandas",
-                "file_format": fmt,
-                "Supported": sorted(SUPPORTED_FORMATS),
-            },
-            hint="Read csv/parquet/json with pandas, or use the Spark backend for "
-            "delta/orc/avro.",
+            problems[0],
+            context={"Backend": "pandas", "file_format": fmt, "Also": problems[1:] or "none"},
+            hint="Change the input's options or schema, or run this task on the Spark backend.",
         )
-    _check_options(fmt, options or {}, READ_OPTIONS[fmt])
     opts = {str(k).lower(): v for k, v in (options or {}).items()}
-
-    arrow_schema = None
-    if schema:
-        try:
-            arrow_schema = ddl.parse(schema)
-        except ValueError as exc:
-            raise SourceReadError(
-                f"The pandas backend cannot use this schema: {exc}.",
-                context={"Backend": "pandas", "schema": schema},
-                hint="Use flat scalar types (INT, BIGINT, DOUBLE, STRING, DATE, "
-                "TIMESTAMP, DECIMAL(p,s) ...), or the Spark backend.",
-            ) from None
+    arrow_schema = ddl.parse(schema) if schema else None
 
     local = _local_path(path, error=SourceReadError)
     files = _data_files(local)
@@ -783,10 +899,10 @@ def execute_write(
             },
             hint="Write csv/parquet/json, or use the Spark backend.",
         )
-    unknown = sorted(str(k) for k in (options or {}) if str(k).lower() not in WRITE_OPTIONS[fmt])
-    if unknown:
+    problems = write_problems(fmt, options)
+    if problems:
         raise SinkWriteError(
-            f"The pandas backend does not support the {fmt} write option(s) {unknown}.",
+            problems[0],
             context={"Backend": "pandas", "Supported": sorted(WRITE_OPTIONS[fmt]) or "none"},
             hint="Remove the option, or run this task on the Spark backend.",
         )

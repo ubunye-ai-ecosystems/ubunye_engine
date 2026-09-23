@@ -413,7 +413,8 @@ class Engine:
         if not isinstance(caps, Capabilities):
             return  # a backend (or test double) that declares nothing is not pre-checked
         name = getattr(self.backend, "name", "") or type(self.backend).__name__
-        problems = check_task(caps, cfg, self.registry, backend_name=name)
+        io_check = self.backend.check_io if isinstance(self.backend, Backend) else None
+        problems = check_task(caps, cfg, self.registry, backend_name=name, io_check=io_check)
         if problems:
             raise BackendCapabilityError(
                 f"This task cannot run on the {name} backend:\n"
