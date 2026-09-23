@@ -1,16 +1,38 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+# 77 is the first setuptools that reads an SPDX `license` expression (PEP 639).
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ubunye-engine"
 version = "0.5.0"
-description = "Config-first, Spark-native ETL/ML engine with a modular plugin system"
+description = "Config-first, backend-neutral data and ML pipelines that you can check on a laptop and prove anywhere"
 readme = "README.md"
 requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{name="Thabang Mashinini-Sekgoto", email="thabangline@gmail.com"}]
 maintainers = [{name="Ubunye AI Ecosystems"}]
-keywords = ["spark", "pyspark", "databricks", "etl", "mlops", "data-pipelines", "machine-learning", "config-driven", "reproducibility", "kubernetes"]
+keywords = [
+  "spark", "pyspark", "pandas", "databricks", "etl", "mlops", "data-pipelines",
+  "machine-learning", "config-driven", "reproducibility", "lineage", "kubernetes",
+]
+# Only the Python versions CI tests are listed. No licence classifier: the SPDX
+# expression above is the licence, and setuptools refuses both.
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Database",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
+  "Typing :: Typed",
+]
 dependencies = [
   "pyyaml>=6",
   "jinja2>=3",

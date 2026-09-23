@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The package says what it is.** `LICENSE` is the full MIT text (it was the
+  single word "MIT"), declared the modern way (`license = "MIT"` with
+  `license-files`, which needs setuptools 77). PyPI now shows classifiers for
+  the Python versions CI tests, a description that matches what the engine does
+  now that it is not Spark only, and pandas and lineage among the keywords.
+  Thabang Mashinini-Sekgoto stays the author and Ubunye AI Ecosystems the
+  maintainer and copyright holder.
 - **Spark moved out of the engine core, so the hexagon is real rather than
   aspirational.** The founding rule is "the core never depends on the outside
   world," but `core/write_modes.py` and `core/catalog.py` called Spark directly
