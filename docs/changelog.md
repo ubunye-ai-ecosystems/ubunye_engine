@@ -46,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A typo in `config.yaml` says where it is.** A YAML syntax error escaped as a
+  raw `yaml.ParserError`, so `run`, `validate` and `plan` crashed with a
+  traceback. It is now a config error naming the file, the line and the column,
+  and a file whose top level is not a mapping is refused clearly too.
 - **`ubunye --help` no longer crashes on Windows.** A legacy Windows console
   prints in cp1252, which has no arrow, and a help text and a few messages
   used one, so `ubunye --help` died with `UnicodeEncodeError` on a fresh
