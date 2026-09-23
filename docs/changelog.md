@@ -80,6 +80,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`--json` for scripts and agents.** `plan`, `validate`, `backends`, every
+  `lineage` command and `models list/info/compare` print exactly one JSON
+  document on stdout with `--json`, errors included (`{"ok": false, "error":
+  ...}`), and keep their exit codes. `lineage compare --json` reports each data
+  hash as `unchanged`, `changed`, `unknown` or `not comparable`, the same
+  verdict the text form prints.
 - **The pandas backend understands Spark's `mode` option, and backends check
   their IO details before a run.** Every Titanic example reads its CSV with
   `mode: "FAILFAST"`, which the pandas backend refused, so none of them could
