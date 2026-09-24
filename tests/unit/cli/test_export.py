@@ -49,9 +49,11 @@ def test_export_airflow_uses_orchestration_block(tmp_path):
 
     assert result.exit_code == 0, result.stdout
     dag_src = out.read_text(encoding="utf-8")
-    assert '"owner": "fraud-team"' in dag_src
+    assert "\"owner\": 'fraud-team'" in dag_src
     assert '"retries": 5' in dag_src
-    assert 'schedule_interval="0 2 * * *"' in dag_src
+    # schedule=, not schedule_interval=: Airflow 3 removed schedule_interval.
+    assert "schedule='0 2 * * *'" in dag_src
+    assert "schedule_interval" not in dag_src
     # NOT "--profile prod": there is no --profile on `ubunye run`, and there never was.
     # The old assertion enshrined the bug -- it checked that the exporter emitted a
     # command the CLI would reject with "no such option". A test can only catch a broken
@@ -69,7 +71,7 @@ def test_export_airflow_without_orchestration_block_uses_defaults(tmp_path):
 
     assert result.exit_code == 0, result.stdout
     dag_src = out.read_text(encoding="utf-8")
-    assert '"owner": "ubunye"' in dag_src  # exporter default
+    assert "\"owner\": 'ubunye'" in dag_src  # exporter default
     # NOT "--profile prod": there is no --profile on `ubunye run`, and there never was.
     # The old assertion enshrined the bug -- it checked that the exporter emitted a
     # command the CLI would reject with "no such option". A test can only catch a broken
@@ -115,3 +117,19 @@ def test_export_rejects_invalid_config(tmp_path):
 
     result = runner.invoke(app, ["export", "airflow", "-c", str(bad), "-o", str(out)])
     assert result.exit_code != 0
+
+
+def test_the_dag_runs_on_airflow_2_and_3_and_keeps_the_environment(tmp_path):
+    cfg = _write_config(tmp_path)
+    out = tmp_path / "dag.py"
+    args = ["export", "airflow", "-c", str(cfg), "-o", str(out), "--usecase-dir", "/opt/pipelines",
+            "--backend", "pandas", "--lineage"]  # fmt: skip
+    assert runner.invoke(app, args).exit_code == 0
+    dag_src = out.read_text(encoding="utf-8")
+    compile(dag_src, "dag.py", "exec")
+    assert "from airflow.providers.standard.operators.bash import BashOperator" in dag_src
+    assert "from airflow.operators.bash import BashOperator" in dag_src
+    # env= alone replaces the environment, and then `ubunye` is not on PATH.
+    assert "append_env=True" in dag_src
+    assert "ubunye run -d /opt/pipelines " in dag_src
+    assert "--backend pandas --lineage -dt {{ ds }}" in dag_src
