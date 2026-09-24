@@ -274,6 +274,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A model provider's error reads as its message when it comes in a list.**
+  Gemini's OpenAI-compatible endpoint answers errors as `[{"error": {...}}]`; the
+  port printed the whole list. Found on the first live call to Gemini.
+
 - **`ubunye deploy container-apps` runs a second time.** The job is created on the
   first deploy and updated after that, and `az containerapp job update` refuses
   `--env-vars` (it takes `--replace-env-vars`), so every deploy after the first
