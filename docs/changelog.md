@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **Run record v2: the receipt says why two runs differ.** Each record now
+  carries a hash of the task's code, the environment (Python, platform and the
+  versions of the packages that can change a result, plus one hash of them),
+  every input's row hash and count (like the outputs), per-step timings, and
+  every expectation's result; timings and expectation results are kept when a
+  run fails. `ubunye lineage compare` reports code, environment and inputs as
+  changed or unchanged and names the packages whose versions moved; `trace`
+  prints them. Input hashing costs one more scan per input and can be turned off
+  (`LineageRecorder(hash_inputs=False)`). Monitors get the new evidence only if
+  their `task_end` accepts it, so existing monitors are unaffected; v1 records
+  still load. See the addendum to ADR 006.
 - **Secrets by reference: `secret://<provider>/<reference>`.** A config names a
   secret (`password: "secret://aws-sm/prod/db#password"`) and the engine fetches
   it only into the copy of the config a connector receives, at the moment it

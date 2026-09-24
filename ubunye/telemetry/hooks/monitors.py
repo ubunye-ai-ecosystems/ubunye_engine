@@ -10,12 +10,29 @@ Both read outputs from the shared ``state`` dict on task exit.
 
 from __future__ import annotations
 
+import inspect
 import time
 from contextlib import contextmanager
 from typing import Any, Dict, Iterator
 
 from ubunye.core.hooks import Hook
 from ubunye.telemetry.monitors import load_monitors, safe_call
+
+#: What the engine knows beyond the outputs; given only to a monitor whose
+#: ``task_end`` accepts it, so older monitors keep working unchanged.
+EVIDENCE = ("inputs", "expectations", "timings")
+
+
+def _evidence(monitor: Any, state: Dict[str, Any]) -> Dict[str, Any]:
+    method = getattr(monitor, "task_end", None)
+    if method is None:
+        return {}
+    try:
+        params = inspect.signature(method).parameters
+    except (TypeError, ValueError):
+        return {}
+    takes_any = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+    return {k: state.get(k) for k in EVIDENCE if takes_any or k in params}
 
 
 def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
@@ -33,6 +50,7 @@ def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
             outputs=None,
             status="error",
             duration_sec=time.perf_counter() - t0,
+            **_evidence(monitor, state),
         )
         raise
     else:
@@ -44,6 +62,7 @@ def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
             outputs=state.get("outputs"),
             status="success",
             duration_sec=time.perf_counter() - t0,
+            **_evidence(monitor, state),
         )
 
 

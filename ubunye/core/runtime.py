@@ -5,9 +5,11 @@ from __future__ import annotations
 import importlib.metadata as md
 import logging
 import os
+import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 from ubunye.core.capabilities import Capabilities, check_task
 from ubunye.core.errors import (
@@ -38,6 +40,8 @@ class EngineContext:
     #: The hash of the resolved config as loaded (ubunye.config.hashing), the
     #: same one ``ubunye plan`` shows; set before the engine rewrites the config.
     config_hash: Optional[str] = None
+    #: The task folder, so the run record can hash the task's code.
+    task_dir: Optional[str] = None
 
 
 class Registry:
@@ -176,6 +180,8 @@ class Engine:
         self._extra_hooks = list(extra_hooks) if extra_hooks else []
         # One per engine, so each secret is fetched once per run.
         self._secrets = SecretResolver()
+        # Per-step timings of the current run, for the run record.
+        self._timings: List[Dict[str, Any]] = []
         self._manage_backend = manage_backend
 
     @property
@@ -229,11 +235,14 @@ class Engine:
                 pass
             return None
 
+        self._timings = []
+        state["timings"] = self._timings
         with chain.task(ctx, cfg, state):
             if self._manage_backend:
                 self.backend.start()
             try:
                 sources = self._read_inputs(ctx, chain, inputs_cfg)
+                state["inputs"] = self._to_ports(sources)
                 outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
                 outputs_map = self._check_expectations(cfg, outputs_map, state)
                 ports = self._to_ports(outputs_map)
@@ -310,9 +319,28 @@ class Engine:
         from ubunye.core import expectations
 
         specs = {name: ExpectationSet.model_validate(spec) for name, spec in raw.items()}
-        checked, results = expectations.apply(self._to_natives(outputs), specs)
+        from ubunye.core.errors import ExpectationError
+
+        try:
+            checked, results = expectations.apply(self._to_natives(outputs), specs)
+        except ExpectationError as exc:
+            state["expectations"] = list(exc.results)
+            raise
         state["expectations"] = [r.as_dict() for r in results]
         return checked
+
+    @contextmanager
+    def _step(
+        self, chain: HookChain, ctx: EngineContext, label: str, meta: Optional[Dict[str, Any]]
+    ) -> Iterator[None]:
+        """A hook step that is also timed, for the run record."""
+        t0 = time.perf_counter()
+        with chain.step(ctx, label, meta):
+            yield
+        entry: Dict[str, Any] = {"step": label}
+        entry.update(meta or {})
+        entry["seconds"] = round(time.perf_counter() - t0, 6)
+        self._timings.append(entry)
 
     # ---------- the frame boundary (ADR 004) ----------
 
@@ -343,6 +371,7 @@ class Engine:
             backend=backend if isinstance(backend, str) else None,
             variables=dict(self.context.variables),
             config_hash=self.context.config_hash,
+            task_dir=self.context.task_dir,
         )
 
     def _build_hook_chain(self, cfg: dict) -> HookChain:
@@ -374,7 +403,7 @@ class Engine:
                     hint=f"Check the 'format' field in CONFIG.inputs.{name}. "
                     f"Installed reader plugins: {', '.join(sorted(self.registry.readers))}",
                 )
-            with chain.step(ctx, f"Reader:{rtype}", {"input": name}):
+            with self._step(chain, ctx, f"Reader:{rtype}", {"input": name}):
                 # Secrets are swapped in only here, in the connector's copy.
                 sources[name] = reader_cls().read(self._secrets.resolve(icfg), self.backend)
         return sources
@@ -394,7 +423,7 @@ class Engine:
             if ttype is None:
                 continue
             tcls = self.registry.transforms[ttype]
-            with chain.step(ctx, f"Transform:{ttype}", None):
+            with self._step(chain, ctx, f"Transform:{ttype}", None):
                 outputs_map = tcls().apply(outputs_map, tcfg, self.backend)
             if not isinstance(outputs_map, dict):
                 raise TransformOutputError(
@@ -436,7 +465,7 @@ class Engine:
                     },
                     hint="Ensure your transform returns a dict with keys matching CONFIG.outputs.",
                 )
-            with chain.step(ctx, f"Writer:{wtype}", {"output": name}):
+            with self._step(chain, ctx, f"Writer:{wtype}", {"output": name}):
                 writer_cls().write(outputs_map[name], self._secrets.resolve(ocfg), self.backend)
 
     # ---------- internal helpers ----------

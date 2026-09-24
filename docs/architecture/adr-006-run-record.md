@@ -77,3 +77,29 @@ the same identity, so `ubunye lineage list` finds every run.
   them "not comparable" with new records rather than "changed", and calls two
   missing hashes "unknown" rather than "unchanged".
 - The `sample_fraction` setting is ignored and kept only so old configs load.
+
+## Addendum (0.7.0): run record v2, the receipt says why
+
+A v1 record could show that two runs wrote different data, not why: the
+transform, an input or the machine could each have moved. Version 2
+(`record_version: 2`) adds what answers that:
+
+| Field | What it is |
+|---|---|
+| `code_hash` | `sha256:` of every `.py` file in the task folder (paths and contents, line endings normalised, caches and hidden folders skipped) |
+| `environment`, `environment_hash` | Python version and implementation, platform, machine, and the versions of the packages that can change a result (engine, pyspark, delta-spark, pandas, pyarrow, numpy, narwhals, scikit-learn, torch, mlflow) |
+| `inputs[*].data_hash`, `row_count`, `schema_hash` | every input hashed exactly like the outputs (`rows-v1`) |
+| `timings` | one entry per read, transform and write, with seconds; kept when the run fails |
+| `expectations` | every `CONFIG.expectations` rule checked, passed or not; kept when the run fails |
+
+`ubunye lineage compare` reports each of these as changed or unchanged, and
+names the packages whose versions moved. `ubunye lineage trace` prints them.
+
+Hashing inputs costs one more scan of each input. It is on by default; a
+recorder built with `LineageRecorder(hash_inputs=False)` skips it for inputs too
+large to read twice, and those inputs then show `-` for their row count.
+
+Monitors receive the new evidence (`inputs`, `expectations`, `timings`) only if
+their `task_end` accepts those arguments (or `**kwargs`), so monitors written
+for 0.6 keep working unchanged. A v1 record loads as `record_version: 1` with
+the new fields empty.

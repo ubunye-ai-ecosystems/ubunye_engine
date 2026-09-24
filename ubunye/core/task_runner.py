@@ -144,6 +144,8 @@ def execute_user_task(
         Mapping of output name → DataFrame.
     """
     cfg_dict = cfg.model_dump(mode="json")
+    if context.task_dir is None:
+        context = dataclasses.replace(context, task_dir=str(task_dir))
     if context.config_hash is None:
         # Hash the config as loaded, before the transform is swapped for the task
         # wrapper below, so the run record and `ubunye plan` agree.
