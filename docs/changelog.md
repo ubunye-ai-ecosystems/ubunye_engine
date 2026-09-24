@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ubunye.llm`: one port for language model calls, seen by the engine.** A task
+  calls `llm.port("anthropic" | "openai_compatible" | "databricks_serving",
+  model=...)` and then `complete()` or `complete_many()` (answers in prompt order,
+  a few calls at a time). The three backends use the standard library only;
+  `openai_compatible` covers OpenAI, Azure OpenAI, vLLM, Ollama and LiteLLM. Keys
+  come from the provider's usual variable or `api_key=`, which can be a `secret://`
+  reference; a missing key fails before any call. Rate limits and server errors are
+  retried, honouring `retry-after`; other refusals fail at once with the provider's
+  reason and never the key. Every call made during a run is in the run record's new
+  `llm_calls` (backend, model, tokens, seconds, attempts, status and a `sha256:` key
+  of the request; never the prompt or the answer), and `ubunye lineage trace` sums
+  them per model. More backends are plugins in the `ubunye.llm_backends` group.
 - **`ubunye doctor`: what will fail, and why, before a run.** One command
   checks the Python version, every backend (usable, or what it needs and the
   install command), whether a run without `--backend` would work, that Java

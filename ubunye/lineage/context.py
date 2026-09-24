@@ -154,6 +154,9 @@ class RunContext:
     timings: List[Dict[str, Any]] = field(default_factory=list)
     #: Every expectation checked, passed or not (ubunye.core.expectations).
     expectations: List[Dict[str, Any]] = field(default_factory=list)
+    #: Every language model call the task made (ubunye.llm): backend, model,
+    #: tokens, seconds, status and the request's hash; never the prompt or answer.
+    llm_calls: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -190,4 +193,5 @@ class RunContext:
             environment_hash=d.get("environment_hash"),
             timings=list(d.get("timings") or []),
             expectations=list(d.get("expectations") or []),
+            llm_calls=list(d.get("llm_calls") or []),
         )

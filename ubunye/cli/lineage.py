@@ -468,4 +468,19 @@ def _print_evidence(ctx: RunContext) -> None:
                 f"    {mark:<10} {e['output']}.{e['rule']:<28} {e['failed']}/{e['total']}",
                 fg=colour,
             )
+    if ctx.llm_calls:
+        typer.echo()
+        typer.secho("  MODEL CALLS", fg=typer.colors.CYAN)
+        groups: Dict[tuple, List[Dict[str, Any]]] = {}
+        for c in ctx.llm_calls:
+            groups.setdefault((c.get("backend"), c.get("model")), []).append(c)
+        for (backend, model), calls in groups.items():
+            failed = sum(1 for c in calls if c.get("status") != "ok")
+            tokens_in = sum(int(c.get("input_tokens") or 0) for c in calls)
+            tokens_out = sum(int(c.get("output_tokens") or 0) for c in calls)
+            typer.secho(
+                f"    {backend}/{model}: {len(calls)} calls, {failed} failed, "
+                f"{tokens_in} tokens in, {tokens_out} out",
+                fg=typer.colors.YELLOW if failed else None,
+            )
     typer.echo()

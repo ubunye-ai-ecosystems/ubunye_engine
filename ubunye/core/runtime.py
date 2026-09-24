@@ -243,13 +243,17 @@ class Engine:
 
         self._timings = []
         state["timings"] = self._timings
+        state["llm_calls"] = []
         with chain.task(ctx, cfg, state):
             if self._manage_backend:
                 self.backend.start()
             try:
                 sources = self._read_inputs(ctx, chain, inputs_cfg)
                 state["inputs"] = self._to_ports(sources)
-                outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
+                from ubunye import llm
+
+                with llm.recording(state["llm_calls"]):
+                    outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
                 outputs_map = self._check_expectations(cfg, outputs_map, state)
                 ports = self._to_ports(outputs_map)
                 self._write_outputs(ctx, chain, outputs_cfg, ports)
