@@ -302,3 +302,81 @@ class TestParseMode:
     def test_an_unknown_mode_is_refused(self, tmp_path):
         with pytest.raises(SourceReadError, match="SOMETIMES"):
             _read(tmp_path, "csv", "a\n1\n", options={"mode": "SOMETIMES"})
+
+
+class TestQuotesLikeSpark:
+    """Quotes Spark does not unescape.
+
+    Spark's escape character is a backslash, so a doubled quote inside a quoted
+    field is not an escape: Spark keeps the field much as written. The Titanic
+    data has 53 such names, and the pandas backend read every one differently.
+    Each expected value below is what Spark 4.2 read from the same line.
+    """
+
+    SPARK = [
+        ('"McGowan, Miss. Anna ""Annie"""', '"McGowan, Miss. Anna ""Annie"""'),
+        ('"Petroff, Mr. Pastcho (""Pentcho"")"', '"Petroff, Mr. Pastcho (""Pentcho"")"'),
+        ('"a""b"', '"a""b"'),
+        ('""""', '""'),
+        ('"x""', 'x"'),
+        ('"abc"def', '"abc"def'),
+        ('"abc" def', '"abc" def'),
+        ('"x" ', "x"),
+        (' "x"', ' "x"'),
+        ('abc"def', 'abc"def'),
+        ('"a\\"b"', 'a"b'),
+        ("a\\b", "a\\b"),
+        ('"a\\\\"', "a\\"),
+        ('""', None),
+    ]
+
+    @pytest.mark.parametrize("field,spark", SPARK, ids=[c for c, _ in SPARK])
+    def test_one_field_reads_as_spark_reads_it(self, tmp_path, field, spark):
+        frame = _read(tmp_path, "csv", f"name,end\n{field},END\n", options={"header": "true"})
+        got = frame.native["name"].iloc[0]
+        assert (None if pd.isna(got) else got) == spark
+        assert frame.native["end"].tolist() == ["END"]
+
+    def test_an_unclosed_quote_ends_with_its_line(self, tmp_path):
+        # Spark: a line holding one quote is a value holding one quote, and the
+        # next line is a record of its own (multiLine is off).
+        frame = _read(tmp_path, "csv", 'name\n"\nnext\n', options={"header": "true"})
+        assert frame.native["name"].tolist() == ['"', "next"]
+
+    def test_an_unexpected_quote_keeps_the_text_to_the_next_delimiter(self, tmp_path):
+        # Spark: '"a,b""c,d"' is the fields '"a,b""c' and 'd"'.
+        frame = _read(tmp_path, "csv", 'x,y\n"a,b""c,d"\n', options={"header": "true"})
+        assert frame.native.iloc[0].tolist() == ['"a,b""c', 'd"']
+
+    def test_types_are_still_inferred(self, tmp_path):
+        text = 'id,name,age\n1,"Anna ""Annie""",22\n2,"Bo",\n'
+        frame = _read(tmp_path, "csv", text, options={"header": "true", "inferSchema": "true"})
+        assert _arrow_types(frame) == {"id": pa.int32(), "name": pa.string(), "age": pa.int32()}
+        assert frame.native["name"].tolist() == ['"Anna ""Annie"""', "Bo"]
+        assert frame.native["age"].isna().tolist() == [False, True]
+
+    def test_the_null_marker_still_applies(self, tmp_path):
+        text = 'a;b\n"x""y";NA\n'
+        frame = _read(
+            tmp_path, "csv", text, options={"header": "true", "sep": ";", "nullValue": "NA"}
+        )
+        assert frame.native["a"].tolist() == ['"x""y"']
+        assert frame.native["b"].isna().tolist() == [True]
+
+    def test_a_doubled_quote_is_an_escape_when_the_escape_is_the_quote(self, tmp_path):
+        text = 'name\n"Anna ""Annie"""\n'
+        frame = _read(tmp_path, "csv", text, options={"header": "true", "escape": '"'})
+        assert frame.native["name"].tolist() == ['Anna "Annie"']
+
+    def test_a_line_of_blanks_is_dropped_like_spark(self, tmp_path):
+        # Spark drops a line that trims to nothing; pyarrow read it as a row.
+        frame = _read(tmp_path, "csv", "a,b\n1,2\n  \t \n3,4\n", options={"header": "true"})
+        assert frame.native["a"].tolist() == ["1", "3"]
+
+    def test_a_gzipped_file_with_such_quotes(self, tmp_path):
+        import gzip
+
+        src = tmp_path / "in.csv.gz"
+        src.write_bytes(gzip.compress(b'name\n"a""b"\n'))
+        frame = PandasBackend().read_frame("csv", str(src), options={"header": "true"})
+        assert frame.native["name"].tolist() == ['"a""b"']

@@ -46,6 +46,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The pandas backend reads quoted CSV values exactly as Spark does.** Spark's
+  escape character is a backslash, so a doubled quote inside a quoted value is
+  not an escape: Spark keeps `"McGowan, Miss. Anna ""Annie"""` as written.
+  pyarrow unescaped it, so 53 of the 891 Titanic names came out different on
+  pandas, with nothing to say so. Files with such quotes (or a stray quote, a
+  backslash, or a line of only spaces, which Spark skips) are now split by a
+  port of Spark's own CSV parser, univocity 2.9.1, and only the lines that need
+  it; every other file is read by pyarrow as before. The port is fuzzed
+  against live Spark for each escape setting, line ending and `multiLine`.
+  `escape: '"'` now reads doubled quotes as quotes, as in Spark.
 - **A typo in `config.yaml` says where it is.** A YAML syntax error escaped as a
   raw `yaml.ParserError`, so `run`, `validate` and `plan` crashed with a
   traceback. It is now a config error naming the file, the line and the column,

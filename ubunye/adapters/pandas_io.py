@@ -268,20 +268,11 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
 
     header = _truthy(opts.get("header", "false"))
     infer = _truthy(opts.get("inferschema", "false")) and schema is None
-    encoding = str(opts.get("encoding", "utf8"))
-    parse = pcsv.ParseOptions(
-        delimiter=str(opts.get("sep") or opts.get("delimiter") or ","),
-        quote_char=str(opts.get("quote", '"')) or False,
-        # Spark's default escape character is a backslash.
-        escape_char=str(opts.get("escape", "\\")) or False,
-        newlines_in_values=_truthy(opts.get("multiline", "false")),
-        # DROPMALFORMED skips a row with the wrong number of fields, as Spark does;
-        # FAILFAST and PERMISSIVE stop at it.
-        invalid_row_handler=_skip if _drop_malformed(opts) else None,
-    )
+    dialect = _CsvDialect(opts)
 
     tables = []
     for f in files:
+        data, encoding, parse = _csv_source(f, str(opts.get("encoding", "utf8")), dialect, opts)
         if schema is not None:
             # Spark: an explicit schema names the columns by position, and the
             # header line (if any) is skipped.
@@ -289,7 +280,7 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
         else:
             # The first record alone names the columns (Spark does the same); it is
             # read on its own so a malformed row further down cannot stop it.
-            names = _first_record(f, encoding, parse)
+            names = _first_record(data, encoding, parse)
             if not header:
                 names = [f"_c{n}" for n in range(len(names))]
         convert = pcsv.ConvertOptions(
@@ -304,7 +295,12 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
         read = pcsv.ReadOptions(encoding=encoding, column_names=names, skip_rows=1 if header else 0)
         try:
             tables.append(
-                pcsv.read_csv(f, read_options=read, parse_options=parse, convert_options=convert)
+                pcsv.read_csv(
+                    pa.BufferReader(data),
+                    read_options=read,
+                    parse_options=parse,
+                    convert_options=convert,
+                )
             )
         except pa.ArrowInvalid as exc:
             # PERMISSIVE (Spark's default) keeps a row with the wrong number of
@@ -314,7 +310,7 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
             if not _permissive(opts) or "columns" not in str(exc):
                 raise
             evened = _even_rows(
-                f,
+                data,
                 encoding,
                 parse,
                 len(names),
@@ -336,6 +332,56 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
     return _instants(table, timezone)
 
 
+class _CsvDialect:
+    """How Spark is told to split a CSV file: the delimiter, quote and escape."""
+
+    def __init__(self, opts: Dict[str, Any]) -> None:
+        self.delimiter = str(opts.get("sep") or opts.get("delimiter") or ",")
+        self.quote = str(opts.get("quote", '"'))
+        # Spark's default escape character is a backslash, not a doubled quote.
+        self.escape = str(opts.get("escape", "\\"))
+        self.multiline = _truthy(opts.get("multiline", "false"))
+        self.null_text = str(opts.get("nullvalue", ""))
+
+
+def _csv_source(path: str, encoding: str, dialect: _CsvDialect, opts: Dict[str, Any]) -> Any:
+    """A CSV file's bytes, their encoding, and the pyarrow options that split them as Spark does.
+
+    pyarrow splits a file exactly as Spark does unless the file has a quote or
+    escape character that is not simply the two ends of a quoted field (a
+    doubled quote, a backslash, a quote in mid value), or a line of blanks.
+    Those files are split by :mod:`ubunye.adapters.spark_csv`, a port of
+    Spark's own parser, and handed back as plain CSV. Compressed files (.gz and
+    so on) are opened by their extension, as pyarrow and Spark both do.
+    """
+    import pyarrow as pa
+    import pyarrow.csv as pcsv
+
+    from ubunye.adapters import spark_csv
+
+    with pa.input_stream(path, compression="detect") as stream:
+        data = stream.read()
+    text = data.decode(_text_encoding(encoding), errors="replace")
+    d = dialect
+    plain = not spark_csv.needs_spark_split(text, d.delimiter, d.quote, d.escape, d.multiline)
+    parse = pcsv.ParseOptions(
+        delimiter=d.delimiter,
+        quote_char=d.quote or (False if plain else '"'),
+        # A plain file has nothing to unescape, and a split one is written back
+        # with doubled quotes only.
+        escape_char=False,
+        double_quote=True,
+        newlines_in_values=d.multiline,
+        # DROPMALFORMED skips a row with the wrong number of fields, as Spark does;
+        # FAILFAST and PERMISSIVE stop at it.
+        invalid_row_handler=_skip if _drop_malformed(opts) else None,
+    )
+    if plain:
+        return bytes(data), encoding, parse
+    text = spark_csv.respell(text, d.delimiter, d.quote, d.escape, d.multiline, d.null_text)
+    return text.encode("utf-8"), "utf8", parse
+
+
 def _csv_dialect(parse: Any) -> Dict[str, Any]:
     """pyarrow's parse options as keyword arguments for Python's csv module."""
     return {
@@ -350,11 +396,17 @@ def _text_encoding(encoding: str) -> str:
     return "utf-8" if encoding.lower().replace("-", "") == "utf8" else encoding
 
 
-def _first_record(path: str, encoding: str, parse: Any) -> List[str]:
-    """The first non blank record of a CSV file, as its fields."""
+def _text(data: bytes, encoding: str) -> Any:
+    import io
+
+    return io.TextIOWrapper(io.BytesIO(data), encoding=_text_encoding(encoding), newline="")
+
+
+def _first_record(data: bytes, encoding: str, parse: Any) -> List[str]:
+    """The first non blank record of a CSV file's bytes, as its fields."""
     import csv
 
-    with open(path, encoding=_text_encoding(encoding), newline="") as handle:
+    with _text(data, encoding) as handle:
         for row in csv.reader(handle, **_csv_dialect(parse)):
             if row:
                 return row
@@ -366,9 +418,9 @@ def _permissive(opts: Dict[str, Any]) -> bool:
 
 
 def _even_rows(
-    path: str, encoding: str, parse: Any, width: int, *, skip_header: bool, pad: str = ""
+    data: bytes, encoding: str, parse: Any, width: int, *, skip_header: bool, pad: str = ""
 ) -> Any:
-    """The CSV at ``path`` with every row cut or padded to ``width`` fields.
+    """The CSV in ``data`` with every row cut or padded to ``width`` fields.
 
     What Spark's PERMISSIVE mode does with a row that has too many or too few
     fields. Returned as bytes to parse again, so types are inferred exactly as
@@ -381,7 +433,7 @@ def _even_rows(
     dialect = _csv_dialect(parse)
     out = io.StringIO()
     writer = csv.writer(out, lineterminator=chr(10), **dialect)
-    with open(path, encoding=text_encoding, newline="") as handle:
+    with _text(data, encoding) as handle:
         reader = csv.reader(handle, **dialect)
         for number, row in enumerate(reader):
             if not row:
