@@ -16,6 +16,7 @@ All commands accept `--help` for full option details.
 | `backends` | List the execution backends and what each can do |
 | `doctor` | Check this machine, and optionally tasks, before a run |
 | `gate` | Fail a pull request when a run receipt regresses ([Gate](patterns/gate.md)) |
+| `mcp` | Serve the engine to agents over MCP ([Agents over MCP](patterns/mcp.md)) |
 | `plugins` | List all discovered plugins |
 | `config` | Show the expanded (Jinja-rendered + validated) config |
 | `version` | Print the engine version |

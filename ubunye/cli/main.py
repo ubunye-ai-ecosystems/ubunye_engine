@@ -85,6 +85,38 @@ app.command("doctor")(doctor_command)
 app.command("gate")(gate_command)
 
 
+@app.command("mcp")
+def mcp_command(
+    usecase_dir: Path = typer.Option(
+        Path("."), "-d", "--usecase-dir", help="The pipelines folder the server works in."
+    ),
+    allow_run: bool = typer.Option(
+        False, "--allow-run", help="Offer the `run` tool (every other tool only reads)."
+    ),
+    allow_live_llm: bool = typer.Option(
+        False,
+        "--allow-live-llm",
+        help="Let `run` call models live (default: replay, no key, no spend).",
+    ),
+    lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+):
+    """Serve the engine to agents over MCP (stdio): tasks, doctor, plan, runs, gate, focus."""
+    from ubunye.core.errors import UbunyeError
+    from ubunye.mcp_server import build_server
+
+    try:
+        server = build_server(
+            usecase_dir,
+            allow_run=allow_run,
+            allow_live_llm=allow_live_llm,
+            lineage_dir=lineage_dir,
+        )
+    except UbunyeError as exc:
+        typer.secho(f"[ERROR] {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    server.run("stdio")
+
+
 @app.command()
 def plugins():
     """List discovered Reader/Writer/Transform plugins."""
