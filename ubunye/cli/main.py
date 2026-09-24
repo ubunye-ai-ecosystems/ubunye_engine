@@ -355,6 +355,25 @@ def _print_plan(report: Dict[str, Any]) -> None:
         mode = entry["resolved_mode"] or entry["requested_mode"] or "-"
         typer.echo(f"    {entry['name']:<12} {fmt:<14} {entry['location']}")
         typer.echo(f"    {'':<12} mode {mode}")
+    llm = report.get("llm")
+    if llm:
+        limits = ", ".join(f"{k}={v:g}" for k, v in llm["limits"].items() if v is not None)
+        typer.echo(f"  Model calls  mode {llm['mode']}" + (f", {limits}" if limits else ""))
+        for g in llm["recorded"]:
+            money = "no price" if g["cost_usd"] is None else f"${g['cost_usd']:.6f}"
+            typer.echo(
+                f"    {g['backend']}/{g['model']}: {g['calls']} recorded calls, "
+                f"{g['input_tokens']} tokens in, {g['output_tokens']} out, {money}"
+            )
+        if llm["estimated_usd"] is not None:
+            ceiling = llm["limits"].get("max_usd")
+            of = f" of ${ceiling:g}" if ceiling is not None else ""
+            typer.echo(
+                f"    estimated ${llm['estimated_usd']:.6f}{of} "
+                f"(prices as of {llm['prices_as_of']})"
+            )
+        elif not llm["recorded"]:
+            typer.echo("    no recorded calls to estimate from (UBUNYE_LLM_MODE=record once)")
     for warning in report["warnings"]:
         typer.secho(f"  warning: {warning}", fg=typer.colors.YELLOW)
     for problem in report["problems"]:
