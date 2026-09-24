@@ -54,3 +54,40 @@ class TestGenerateNotebook:
         # lineage rework removed from the engine itself. Columns are free.
         assert "df.columns" in source
         assert "df.count()" not in source
+
+
+class TestThePackagesTheTransformNeeds:
+    """A deployed task gets what its transform imports and the cluster lacks (ADR 005).
+
+    Databricks brings Spark and pandas; it does not bring Narwhals. A task
+    written with Narwhals deployed by `ubunye deploy databricks` failed on its
+    first line, because the notebook installed the engine alone.
+    """
+
+    def _notebook(self, tmp_path, transform: str) -> str:
+        from ubunye.deploy.databricks import DatabricksDeployAdapter
+        from ubunye.interfaces.deploy import DeployContext
+
+        task_dir = tmp_path / "uc" / "pipe" / "task"
+        task_dir.mkdir(parents=True)
+        (task_dir / "transformations.py").write_text(transform, encoding="utf-8")
+        ctx = DeployContext(
+            task_dir=task_dir,
+            usecase="uc",
+            pipeline="pipe",
+            task_name="task",
+            config={},
+            target_name="dev",
+        )
+        result = DatabricksDeployAdapter().deploy(
+            ctx, {"host": "https://adb-1.azuredatabricks.net"}, dry_run=True
+        )
+        return result.metadata["notebook_source"]
+
+    def test_a_narwhals_transform_gets_narwhals(self, tmp_path):
+        source = self._notebook(tmp_path, "import narwhals as nw\n")
+        assert "%pip install ubunye-engine narwhals\n" in source
+
+    def test_a_spark_transform_gets_the_engine_alone(self, tmp_path):
+        source = self._notebook(tmp_path, "from pyspark.sql import functions as F\n")
+        assert "%pip install ubunye-engine\n" in source

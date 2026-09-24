@@ -1,7 +1,8 @@
 # Titanic — Local Production Example
 
 A production-grade reference pipeline that runs the Ubunye Engine locally with a
-real Spark session, against the canonical Kaggle Titanic training set.
+real Spark session, or on the pandas backend with no Java, against the canonical
+Kaggle Titanic training set. Both give the same data hash in the run record.
 
 This example is one half of a portability demonstration: the same
 `transformations.py` module is reused verbatim by
@@ -31,16 +32,17 @@ titanic_local/
 ├── pipelines/                                # usecase_dir passed to the CLI
 │   └── titanic/analytics/survival_by_class/
 │       ├── config.yaml                       # pipeline config (dev/prod profiles)
-│       └── transformations.py                # Task subclass + Spark aggregation
+│       └── transformations.py                # Task subclass, Narwhals aggregation
 ├── data/                                     # gitignored; CSV fetched at runtime
 ├── expected_output/
 │   └── survival_by_class.parquet             # golden output (committed)
 ├── scripts/
 │   ├── fetch_titanic.sh                      # canonical CSV download
+│   ├── same_receipt.sh                       # Spark and pandas run records agree
 │   └── validate_output.py                    # compares pipeline output to golden
 ├── tests/
 │   ├── conftest.py                           # sys.path + session-scoped SparkSession
-│   └── test_transformations.py               # PySpark unit tests
+│   └── test_transformations.py               # the transform on Spark and pandas
 └── README.md
 ```
 
@@ -50,9 +52,10 @@ titanic_local/
 
 | Requirement       | Version            | Why                                        |
 |-------------------|--------------------|--------------------------------------------|
-| Python            | 3.11 (CI target)   | Matches the workflow; 3.9+ also works.     |
-| Java              | 17                 | Required by PySpark.                       |
-| `ubunye-engine`   | `>=0.1.5`, `[spark]` extra | Provides the CLI and Spark backend. |
+| Python            | 3.10 to 3.13       | 3.11 is the CI target.                     |
+| Java              | 17                 | Required by PySpark (not by the pandas run). |
+| `ubunye-engine`   | `>=0.6.0`, `[spark]` and `[pandas]` extras | The CLI and both backends. |
+| `narwhals`        | `>=2`              | The transform is written with it.          |
 | `pyarrow`         | latest             | Parquet read/write for golden validation.  |
 
 Install from the repo root:
@@ -115,8 +118,41 @@ output/mode=DEV/dt=2026-04-15/
 ```
 
 The `--lineage` flag writes a JSON run record under
-`examples/production/titanic_local/.ubunye/lineage/` which `ubunye lineage show`
-can render.
+`examples/production/titanic_local/pipelines/.ubunye/lineage/` which
+`ubunye lineage show` can render.
+
+### The same folder on pandas (no Java)
+
+The transform is written once with Narwhals, so the same folder runs on the
+pandas backend, with no Spark and no Java, into the same output:
+
+```bash
+# 7. Run on pandas: same task, same config, same output path.
+ubunye run \
+  -d examples/production/titanic_local/pipelines \
+  -u titanic -p analytics -t survival_by_class \
+  -dt 2026-04-15 -m DEV --lineage --backend pandas
+
+# 8. The same golden check passes.
+python examples/production/titanic_local/scripts/validate_output.py \
+  --actual "examples/production/titanic_local/output/mode=DEV/dt=2026-04-15" \
+  --expected "examples/production/titanic_local/expected_output/survival_by_class.parquet"
+
+# 9. And the two run records agree, hash for hash.
+bash examples/production/titanic_local/scripts/same_receipt.sh \
+  examples/production/titanic_local/pipelines titanic analytics survival_by_class
+```
+
+```
+  config_hash: sha256:...  (unchanged)
+  Output 'survival_by_class':
+      row_count: 3  (unchanged)
+      schema_hash: sha256:...  (unchanged)
+      data_hash: sha256:...  (unchanged)
+OK: Spark and pandas left the same receipt for titanic/analytics/survival_by_class
+```
+
+CI runs all nine steps on every change (`.github/workflows/local_pipeline.yml`).
 
 ---
 
@@ -126,8 +162,8 @@ can render.
 pytest examples/production/titanic_local/tests -v
 ```
 
-Five unit tests run against a session-scoped local `SparkSession` fixture,
-so the production code is the code under test:
+Six unit tests run against a session-scoped local `SparkSession` fixture
+(and one also on pandas), so the production code is the code under test:
 
 | Test                                       | Purpose                                                    |
 |--------------------------------------------|------------------------------------------------------------|
@@ -136,6 +172,7 @@ so the production code is the code under test:
 | `test_missing_column_raises`               | Missing input column surfaces as `ValueError`.             |
 | `test_deterministic_ordering`              | Output is sorted by `Pclass` regardless of input order.    |
 | `test_golden_matches_canonical_titanic_stats` | Golden parquet matches Kaggle Titanic known stats.      |
+| `test_pandas_gives_the_same_rows_as_spark` | The same function on pandas gives Spark's rows, in order.  |
 
 Requires Java 17 on PATH (PySpark prerequisite).
 
@@ -154,8 +191,10 @@ See `pipelines/titanic/analytics/survival_by_class/config.yaml`. Highlights:
 | Partitioned Parquet writer  | `format: s3` + `file_format: parquet` + templated path            |
 
 Profile keys are uppercase (`DEV`, `PROD`) to match the CLI's default `-m DEV`.
-`merged_spark_conf` silently falls back to the base config if the mode does
-not match any profile key — see `docs/config/engine.md`.
+When a config defines profiles, the mode must name one of them: a mode that
+matches none stops the run with an error listing the profiles (see
+`docs/config/engine.md`). The pandas backend reads `spark.sql.session.timeZone`
+from the same settings and ignores the rest.
 
 ---
 
@@ -174,6 +213,11 @@ not match any profile key — see `docs/config/engine.md`.
 ## Single implementation
 
 `transformations.py` exposes one function, `compute_survival_by_class`,
-using the Spark DataFrame API. The unit tests drive it through a local
-`SparkSession` fixture so the production code is the code under test - no
-parallel pandas implementation to keep in lock-step.
+written once with [Narwhals](https://narwhals-dev.github.io/narwhals/). It takes
+and returns the engine's own frame, so it runs unchanged on Spark (here and on
+Databricks) and on pandas. The unit tests run it on both and require the same
+rows, so there is no parallel implementation to keep in lock-step. Two things
+make the engines agree: `Survived` is cast to a 64 bit integer before the sum
+(Spark widens sums, pandas does not), and the survival rates never land exactly
+halfway when rounded (Spark rounds half up, pandas half to even). See
+[Execution backends](../../../docs/backends.md#one-transform-for-every-engine).

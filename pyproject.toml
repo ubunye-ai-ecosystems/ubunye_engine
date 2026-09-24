@@ -201,3 +201,8 @@ select = ["E", "F", "I"]
 ignore = [
   "E501",   # line too long — handled by Black; long help strings in CLI are acceptable
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Databricks notebook source files: imports come after the %pip cell, and
+# dbutils, spark and display are globals the runtime provides.
+"examples/**/notebooks/*.py" = ["E402", "F821"]

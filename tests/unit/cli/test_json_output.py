@@ -156,6 +156,20 @@ class TestLineage:
         assert doc["outputs"]["out"]["data_hash"]["state"] == "unchanged"
         assert doc["outputs"]["out"]["row_count"] == {"a": 2, "b": 2, "changed": False}
 
+    def test_compare_text_lines_up_every_output_field(self, two_runs):
+        a, b = _json(
+            runner.invoke(app, ["lineage", "list", *_where(two_runs, "-t", "copy", "--json")])
+        )
+        args = ["lineage", "compare", *_where(two_runs, "-t", "copy")]
+        result = runner.invoke(app, [*args, "--run-id1", a["run_id"], "--run-id2", b["run_id"]])
+        fields = [
+            line
+            for line in result.output.splitlines()
+            if line.lstrip().startswith(("row_count:", "schema_hash:", "data_hash:"))
+        ]
+        assert len(fields) == 3
+        assert {len(line) - len(line.lstrip()) for line in fields} == {6}, fields
+
     def test_search(self, two_runs):
         result = runner.invoke(app, ["lineage", "search", "-d", str(two_runs), "--json"])
         assert len(_json(result)) == 2

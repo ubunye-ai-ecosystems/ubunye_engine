@@ -93,3 +93,36 @@ class TestAggregate:
         bad = spark.createDataFrame([(1,)], ["Pclass"])
         with pytest.raises(ValueError, match="Missing required columns"):
             agg_mod.aggregate_survival(bad)
+
+
+def _records(native):
+    """Rows of a Spark or pandas frame as plain dicts, in order."""
+    if hasattr(native, "collect"):
+        return [row.asDict() for row in native.collect()]
+    return native.to_dict("records")
+
+
+def test_both_tasks_give_the_same_rows_on_pandas_as_on_spark(raw_passengers):
+    """One implementation for both engines (ADR 005): same rows, same order."""
+    import math
+
+    import pandas as pd
+
+    raw_pandas = raw_passengers.toPandas()
+    cleaned = {
+        "spark": clean_mod.clean_titanic(raw_passengers),
+        "pandas": clean_mod.clean_titanic(raw_pandas),
+    }
+    spark_clean = sorted(_records(cleaned["spark"]), key=lambda r: r["PassengerId"])
+    pandas_clean = sorted(_records(cleaned["pandas"]), key=lambda r: r["PassengerId"])
+    for mine, theirs in zip(pandas_clean, spark_clean):
+        for key, value in theirs.items():
+            if value is None or (isinstance(value, float) and math.isnan(value)):
+                assert mine[key] is None or math.isnan(mine[key]), key
+            else:
+                assert mine[key] == value, key
+
+    summary_spark = agg_mod.aggregate_survival(cleaned["spark"])
+    summary_pandas = agg_mod.aggregate_survival(cleaned["pandas"])
+    assert type(summary_pandas) is pd.DataFrame
+    assert _records(summary_pandas) == _records(summary_spark)
