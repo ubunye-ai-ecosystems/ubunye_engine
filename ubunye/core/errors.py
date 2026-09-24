@@ -123,6 +123,17 @@ class TransformOutputError(UbunyeError, TypeError):
     """Raised when a transform returns an unexpected type or missing output."""
 
 
+class ExpectationError(UbunyeError, ValueError):
+    """Raised when an output breaks a ``fail`` expectation; nothing has been written.
+
+    ``results`` holds one entry per rule checked, passed or not.
+    """
+
+    def __init__(self, message: str, *, results: Any = None, **kwargs: Any) -> None:
+        super().__init__(message, **kwargs)
+        self.results = results or []
+
+
 # ---------------------------------------------------------------------------
 # Backend errors
 # ---------------------------------------------------------------------------

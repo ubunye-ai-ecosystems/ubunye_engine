@@ -39,6 +39,9 @@ dependencies = [
   "jinja2>=3",
   "pydantic>=2",
   "typer>=0.15.4",
+  # Expectations (CONFIG.expectations) are checked with Narwhals on any backend's
+  # frames. Pure Python, no dependencies of its own.
+  "narwhals>=2.0",
   # pyspark is large; declare as optional so users can choose version
 ]
 

@@ -232,6 +232,7 @@ class Engine:
             try:
                 sources = self._read_inputs(ctx, chain, inputs_cfg)
                 outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
+                outputs_map = self._check_expectations(cfg, outputs_map, state)
                 ports = self._to_ports(outputs_map)
                 self._write_outputs(ctx, chain, outputs_cfg, ports)
                 # Hooks (lineage, monitors) get the port; the caller gets native frames.
@@ -278,14 +279,37 @@ class Engine:
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        ports = self._to_ports(outputs)
-        if not as_run:
-            self._write_outputs(ctx, chain, outputs_cfg, ports)
-            return
         state: Dict[str, Any] = {"outputs": None}
+        if not as_run:
+            outputs = self._check_expectations(cfg, outputs, state)
+            self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
+            return
         with chain.task(ctx, cfg, state):
+            outputs = self._check_expectations(cfg, outputs, state)
+            ports = self._to_ports(outputs)
             self._write_outputs(ctx, chain, outputs_cfg, ports)
             state["outputs"] = ports
+
+    def _check_expectations(
+        self, cfg: dict, outputs: Dict[str, Any], state: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """``CONFIG.expectations``: check every output before any is written.
+
+        Returns the frames to write: clean rows, plus the quarantined rows under
+        their quarantine output. Raises ``ExpectationError`` (nothing written)
+        when a ``fail`` rule is broken. Every rule's result goes into
+        ``state["expectations"]`` for the hooks.
+        """
+        raw = (cfg.get("CONFIG") or {}).get("expectations") or {}
+        if not raw:
+            return outputs
+        from ubunye.config.schema import ExpectationSet
+        from ubunye.core import expectations
+
+        specs = {name: ExpectationSet.model_validate(spec) for name, spec in raw.items()}
+        checked, results = expectations.apply(self._to_natives(outputs), specs)
+        state["expectations"] = [r.as_dict() for r in results]
+        return checked
 
     # ---------- the frame boundary (ADR 004) ----------
 

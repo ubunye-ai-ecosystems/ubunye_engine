@@ -66,9 +66,9 @@ jobs:
         # numpy<2: pandas 2.2.0 and pyarrow 14 were built before numpy 2.
         run: |
           pip install -e ".[dev]"
-          pip install "pyyaml==6.0" "jinja2==3.0.0" "pydantic==2.0" "typer==0.15.4" \
+          pip install "pyyaml==6.0" "jinja2==3.0.0" "pydantic==2.0" "typer==0.15.4" "narwhals==2.0.0" \
             "pandas==2.2.0" "pyarrow==14.0.0" "numpy<2"
-          pip list | grep -iE "^(pyyaml|jinja2|pydantic|typer|pandas|pyarrow|numpy) "
+          pip list | grep -iE "^(pyyaml|jinja2|pydantic|typer|narwhals|pandas|pyarrow|numpy) "
 
       - name: Run unit tests
         run: pytest tests/unit/ --tb=short -m "not integration"
