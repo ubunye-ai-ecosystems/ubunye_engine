@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **`ubunye export airflow` writes a DAG that runs, on Airflow 2.4+ and Airflow 3.**
+  The generated DAG used `schedule_interval` (removed in Airflow 3), imported
+  `BashOperator` only from its Airflow 2 home, and passed `env=` without
+  `append_env=True`, which replaces the whole environment, so `ubunye` was not on
+  `PATH` and every run failed. It now uses `schedule=`, imports from the standard
+  provider on Airflow 3 and falls back on Airflow 2, keeps the environment, passes
+  Airflow's logical date as `-dt {{ ds }}`, quotes the command, and is compiled
+  before it is written. New options: `--usecase-dir` (where the pipelines are on
+  the Airflow workers), `--backend`, `--lineage`.
 - **One command to Kubernetes, Azure Container Apps and EMR Serverless.**
   `ubunye deploy k8s` runs a task as a Kubernetes Job (kubectl's context, no
   retries, cleaned up after a day); `ubunye deploy container-apps` as an Azure

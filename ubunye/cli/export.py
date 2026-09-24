@@ -13,7 +13,7 @@ Usage
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import typer
 
@@ -35,7 +35,13 @@ def _load_orchestration_options(config_path: Path) -> Dict[str, Any]:
     artifact generation is profile-independent; ``--profile`` only gets embedded
     into the generated bash/spark-python command.
     """
-    cfg = load_config(str(config_path), variables={})
+    # The run's variables do not exist yet: each scheduled run brings its own dt. A
+    # config that uses {{ dt }} (most scheduled ones) failed to export with
+    # "undefined variable 'dt'", so it is rendered here with stand-ins; only the
+    # ORCHESTRATION block is read from the result.
+    cfg = load_config(
+        str(config_path), variables={"dt": "1970-01-01", "dtf": "%Y-%m-%d", "mode": "PROD"}
+    )
     if cfg.ORCHESTRATION is None:
         return {}
     return cfg.ORCHESTRATION.model_dump(mode="json", exclude_none=True)
@@ -48,10 +54,18 @@ def export_airflow(
     ),
     output: Path = typer.Option(..., "-o", "--output", help="Where to write the generated DAG."),
     profile: str = typer.Option("prod", "--profile", help="Profile embedded in the bash command."),
+    usecase_dir: Optional[str] = typer.Option(
+        None, "--usecase-dir", help="The pipelines folder where Airflow runs (default: this one)."
+    ),
+    backend: Optional[str] = typer.Option(None, "--backend", help="Backend for the run."),
+    lineage: bool = typer.Option(False, "--lineage", help="Record each run (run record)."),
 ):
-    """Generate an Airflow DAG Python file for the task."""
+    """Generate an Airflow DAG (Airflow 2.4+ and 3) that runs the task with the CLI."""
     opts = _load_orchestration_options(config)
     opts["profile"] = profile
+    opts["usecase_dir"] = usecase_dir
+    opts["backend"] = backend
+    opts["lineage"] = lineage
     path = AirflowExporter().export(config, output_path=output, options=opts)
     typer.secho(f"[OK] Airflow DAG written to {path}", fg=typer.colors.GREEN)
 
