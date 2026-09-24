@@ -134,3 +134,36 @@ def test_dockerfile_container_writes_the_entry_script_too(tmp_path):
         runner.invoke(app, ["deploy", "dockerfile", "container", "--out", str(out)]).exit_code == 0
     )
     assert (tmp_path / "ubunye_entry.py").read_text(encoding="utf-8") == package.ENTRY_SCRIPT
+
+
+@pytest.mark.parametrize("exists", [False, True])
+def test_container_apps_sets_env_vars_the_way_create_and_update_each_take_them(monkeypatch, exists):
+    """`job create` takes --env-vars; `job update` refuses it and takes --replace-env-vars.
+
+    The first live run created the job and passed; every later run updated it and
+    failed with "unrecognized arguments: --env-vars".
+    """
+    calls = []
+
+    def fake_run(argv, capture_output=False, text=False):
+        calls.append(argv)
+        code = 0 if (argv[2:4] != ["job", "show"] or exists) else 3
+        out = "exec-1\n" if argv[2:4] == ["job", "start"] else ""
+        return subprocess.CompletedProcess(argv, code, stdout=out, stderr="")
+
+    settings = {
+        "job": "ubunye-t", "resource_group": "rg", "environment": "env", "image": "img",
+        "cpu": "0.5", "memory": "1Gi", "timeout": 600, "env": ["A=1", "B=2"],
+        "registry_identity": "", "registry_server": "", "wait": False,
+    }  # fmt: skip
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(sys, "argv", ["-c", json.dumps(settings)])
+    with pytest.raises(SystemExit) as done:
+        exec(containers._ACA_RUN, {"__name__": "__main__"})
+    assert done.value.code == 0
+    (write,) = [c for c in calls if c[2:4] in (["job", "create"], ["job", "update"])]
+    assert write[3] == ("update" if exists else "create")
+    flag = "--replace-env-vars" if exists else "--env-vars"
+    assert write[write.index(flag) + 1 : write.index(flag) + 3] == ["A=1", "B=2"]
+    other = "--env-vars" if exists else "--replace-env-vars"
+    assert other not in write
