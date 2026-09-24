@@ -103,6 +103,23 @@ def _attempt(spark: Any, statement: str, what: str, table: str) -> None:
 class UnityTableWriter(Writer):
     """Write DataFrame to a Unity Catalog table (Delta by default)."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    # `path` is read by the s3 writer, not this one; it is accepted so one
+    # output block can serve both (UBUNYE_SINK picks which is real).
+    CONFIG_KEYS = frozenset(
+        {
+            "catalog",
+            "schema",
+            "table",
+            "tbl_name",
+            "file_format",
+            "partitionBy",
+            "optimize",
+            "vacuum",
+            "path",
+        }
+    )
+
     # Needs a live SparkSession; checked before a run (ADR 002).
     REQUIRES = frozenset({SPARK})
 

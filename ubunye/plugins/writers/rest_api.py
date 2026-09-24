@@ -182,6 +182,9 @@ class RestApiWriter(Writer):
     failure counts per batch.
     """
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"url", "method", "headers", "auth", "batch_size", "rate_limit"})
+
     SUPPORTS_MERGE = False
     MERGE_FILE_FORMATS = frozenset()
 

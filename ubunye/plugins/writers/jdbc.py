@@ -39,6 +39,9 @@ SUPPORTED_MODES = write_modes.NATIVE_SAVE_MODES
 class JdbcWriter(Writer):
     """Write a Spark DataFrame to any JDBC destination using Spark's JDBC connector."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"url", "driver", "user", "password", "table", "dbtable"})
+
     REQUIRED = ("url", "table")
 
     SUPPORTS_MERGE = False  # a JDBC target has no MERGE in Spark

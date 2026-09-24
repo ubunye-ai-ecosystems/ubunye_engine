@@ -428,6 +428,22 @@ class RestApiReader(Reader):
     api_key, basic), rate limiting, and retry with exponential backoff.
     """
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset(
+        {
+            "url",
+            "method",
+            "headers",
+            "params",
+            "body",
+            "auth",
+            "pagination",
+            "response",
+            "rate_limit",
+            "schema",
+        }
+    )
+
     # Needs a live SparkSession; checked before a run (ADR 002).
     REQUIRES = frozenset({SPARK})
 

@@ -16,6 +16,9 @@ from ubunye.core.interfaces import Reader
 class HiveReader(Reader):
     """Read a Spark DataFrame from Hive using `db_name.tbl_name` or a custom SQL."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"db_name", "tbl_name", "sql"})
+
     # Needs a live SparkSession; checked before a run (ADR 002).
     REQUIRES = frozenset({SPARK})
 

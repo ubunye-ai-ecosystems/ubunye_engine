@@ -47,6 +47,9 @@ def _qualify(cfg: Dict[str, Any]) -> str:
 class HiveWriter(Writer):
     """Write a Spark DataFrame to a Hive table."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"db_name", "tbl_name", "table", "file_format", "partitionBy"})
+
     # Needs a live SparkSession; checked before a run (ADR 002).
     REQUIRES = frozenset({SPARK})
 

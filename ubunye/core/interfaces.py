@@ -176,6 +176,13 @@ class Connector(ABC):
     #: connector has not said, and nothing is pre-checked.
     REQUIRES: ClassVar[FrozenSet[str]] = frozenset()
 
+    #: The settings this connector reads from its config block, besides ``format``
+    #: and ``options`` (and, for a writer, the engine's write-mode keys every output
+    #: may carry). Declared, it turns a typo like ``paht`` into a validation error
+    #: that names the closest real key, instead of a setting silently ignored.
+    #: ``None`` means the connector has not said, and any key is accepted.
+    CONFIG_KEYS: ClassVar[Optional[FrozenSet[str]]] = None
+
     @classmethod
     def validate_config(cls, cfg: Dict[str, Any]) -> List[str]:
         """Return a list of problems with ``cfg`` — empty means it is usable.

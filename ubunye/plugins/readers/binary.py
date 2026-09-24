@@ -32,6 +32,9 @@ FORMAT = "binaryFile"
 class BinaryReader(Reader):
     """Read raw files into a DataFrame, one row per file."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"path", "path_glob_filter", "recursive"})
+
     # Needs a live SparkSession; checked before a run (ADR 002).
     REQUIRES = frozenset({SPARK})
 

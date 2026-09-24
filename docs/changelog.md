@@ -22,6 +22,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **A typo inside a connector block fails validation, with a suggestion.**
+  Input and output blocks accept keys the engine does not know, because each
+  connector reads its own settings, so `paht: data/in.csv` validated and was
+  ignored. Connectors can now declare `CONFIG_KEYS`; for one that does, any other
+  key is an error that names the closest real key (`inputs.src: 'paht' is not a
+  setting of 's3'; did you mean 'path'?`), reported before the "requires" error
+  it usually causes. Every built-in reader and writer declares its keys; `format`
+  and `options` are allowed everywhere, and `mode`, `merge_keys` and
+  `replace_where` on every output. A connector that declares nothing (most
+  third-party ones) accepts any key, as before. The s3 and unity writers each
+  accept the other's key (`table`, `path`) so one output block can serve both,
+  as the run-anywhere example does. All 53 task configs in the engine and
+  examples repos and two downstream projects still validate.
 
 ### Changed
 

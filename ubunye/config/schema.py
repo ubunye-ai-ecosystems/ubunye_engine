@@ -10,6 +10,7 @@ are a conscious tradeoff documented in the PR that introduced strict mode.
 
 from __future__ import annotations
 
+import difflib
 import re
 from enum import Enum
 from functools import lru_cache
@@ -123,6 +124,14 @@ def _connectors(group: str) -> Dict[str, Any]:
     except Exception:  # noqa: BLE001
         pass
     return found
+
+
+#: Keys any input or output block may carry, whatever its connector.
+COMMON_IO_KEYS = frozenset({"format", "options"})
+
+#: Keys any output block may carry: the engine's own write-mode settings, read by
+#: ``core/write_modes.py`` for every writer.
+OUTPUT_IO_KEYS = frozenset({"mode", "merge_keys", "replace_where"})
 
 
 def _registered_formats() -> frozenset:
@@ -259,7 +268,8 @@ class TaskConfig(BaseModel):
         declare any, it gets none: `Connector.validate_config` returns `[]` by default,
         so a simple connector stays simple.
         """
-        errors: List[str] = []
+        # A misspelt key explains a "requires" error below it, so it is reported first.
+        errors: List[str] = self._unknown_key_errors()
 
         for role, group, blocks in (
             ("inputs", "ubunye.readers", self.inputs),
@@ -293,6 +303,47 @@ class TaskConfig(BaseModel):
         if errors:
             raise ValueError("; ".join(errors))
         return self
+
+    def _unknown_key_errors(self) -> List[str]:
+        """A key the connector does not read is a typo until proven otherwise.
+
+        ``IOConfig`` accepts any key, because connectors read their own settings, so
+        ``paht:`` used to validate and be ignored. A connector that declares
+        ``CONFIG_KEYS`` gets every other key reported, with the closest real one. A
+        connector that declares nothing keeps accepting anything: the check is the
+        plugin's to opt into, like ``validate_config``.
+        """
+        errors: List[str] = []
+        for role, group, blocks in (
+            ("inputs", "ubunye.readers", self.inputs),
+            ("outputs", "ubunye.writers", self.outputs),
+        ):
+            plugins = _connectors(group)
+            for name, io in blocks.items():
+                declared = getattr(plugins.get(io.format), "CONFIG_KEYS", None)
+                if declared is None:
+                    continue
+                allowed = set(declared) | COMMON_IO_KEYS
+                if role == "outputs":
+                    allowed |= OUTPUT_IO_KEYS
+                # An explicit null is "not set": a parsed config dumped and read back
+                # carries every common field, most of them None.
+                given = {k for k in io.model_fields_set if getattr(io, k) is not None}
+                given |= {k for k, v in (io.model_extra or {}).items() if v is not None}
+                for key in sorted(given - allowed):
+                    near = difflib.get_close_matches(key, sorted(allowed), n=1, cutoff=0.6)
+                    if near:
+                        errors.append(
+                            f"{role}.{name}: '{key}' is not a setting of '{io.format}'; "
+                            f"did you mean '{near[0]}'?"
+                        )
+                    else:
+                        errors.append(
+                            f"{role}.{name}: '{key}' is not a setting of '{io.format}', "
+                            f"which reads: {', '.join(sorted(allowed))}. Options for the "
+                            "underlying engine go under 'options'."
+                        )
+        return errors
 
     @model_validator(mode="after")
     def _check_writable_outputs(self) -> "TaskConfig":

@@ -31,6 +31,11 @@ DEFAULT_MODE = "append"
 class S3Writer(Writer):
     """Write a Spark DataFrame to S3 (or any filesystem path Spark understands)."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    # `table` is read by the unity writer, not this one; it is accepted so one
+    # output block can serve both (UBUNYE_SINK picks which is real).
+    CONFIG_KEYS = frozenset({"path", "file_format", "partitionBy", "table"})
+
     # Reads and writes paths through the backend's path IO (ADR 002).
     REQUIRES = frozenset({PATH_IO})
 

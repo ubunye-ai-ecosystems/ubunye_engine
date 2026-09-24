@@ -27,6 +27,9 @@ from ubunye.core.interfaces import Reader
 class UnityTableReader(Reader):
     """Read a DataFrame from a Unity Catalog table or SQL."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"catalog", "schema", "table", "db_name", "tbl_name", "sql"})
+
     # Needs a live SparkSession; checked before a run (ADR 002).
     REQUIRES = frozenset({SPARK})
 
