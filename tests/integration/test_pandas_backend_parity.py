@@ -33,7 +33,7 @@ from pyspark.sql import SparkSession  # noqa: E402
 from ubunye.api import run_task  # noqa: E402
 
 # The ambient-session backend reuses the shared integration SparkSession, and its
-# stop() is a no-op: a SparkBackend here would stop the session-scoped fixture.
+# stop() is a no-op.
 from ubunye.backends.databricks_backend import DatabricksBackend  # noqa: E402
 from ubunye.backends.pandas_backend import PandasBackend  # noqa: E402
 from ubunye.core.write_modes import ResolvedWriteMode  # noqa: E402

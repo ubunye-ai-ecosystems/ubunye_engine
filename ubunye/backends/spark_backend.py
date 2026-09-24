@@ -62,6 +62,9 @@ class SparkBackend(Backend):
 
     def __init__(self, app_name: str = "ubunye", conf: Optional[Dict[str, str]] = None) -> None:
         self._spark: Optional["SparkSession"] = None
+        # Whether start() created the session. One that was already running
+        # belongs to whoever started it, and is never stopped here.
+        self._owns_session = False
         self._app_name = app_name
         self._conf = dict(conf or {})
 
@@ -84,10 +87,12 @@ class SparkBackend(Backend):
         # Lazy import to avoid hard dependency during pip install
         from pyspark.sql import SparkSession
 
+        running = SparkSession.getActiveSession()
         builder = SparkSession.builder.appName(self._app_name)
         for k, v in self._conf.items():
             builder = builder.config(k, v)
         self._spark = builder.getOrCreate()
+        self._owns_session = running is None
 
     def _check_master_not_hijacked(self) -> None:
         """Refuse to let a config override a master the platform already chose.
@@ -141,12 +146,18 @@ class SparkBackend(Backend):
             return None
 
     def stop(self) -> None:
-        """Stop the SparkSession if running."""
+        """Stop the SparkSession if this backend started it.
+
+        A session that was already running when :meth:`start` attached to it (the
+        user's own, or a notebook's) is left running.
+        """
         if self._spark is not None:
             try:
-                self._spark.stop()
+                if self._owns_session:
+                    self._spark.stop()
             finally:
                 self._spark = None
+                self._owns_session = False
 
     # Context manager support
     def __enter__(self) -> "SparkBackend":

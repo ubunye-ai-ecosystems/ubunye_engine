@@ -33,6 +33,26 @@ and each is added up over all rows. Adding does not care about order.
 | Timezone does not matter | Timestamps are written in UTC |
 | Same on every engine | Spark runs it as one aggregation; pandas builds the identical line |
 
+**Types by one set of names.** The hash covers the schema too, with every type
+written by the same name on every engine:
+
+| Spark | Arrow / pandas | Name in the hash |
+|---|---|---|
+| `tinyint`, `smallint`, `int`, `bigint` | `int8` to `int64` | `int8`, `int16`, `int32`, `int64` |
+| `float`, `double` | `float32`, `float64` | `float32`, `float64` |
+| `boolean` | `bool` | `bool` |
+| `string`, `varchar`, `char` | `string`, `large_string` | `string` |
+| `binary` | `binary` | `binary` |
+| `date` | `date32` | `date` |
+| `timestamp` / `timestamp_ntz` | `timestamp` with / without a zone | `timestamp` / `timestamp_ntz` |
+| `decimal(p,s)` | `decimal128(p,s)` | `decimal(p,s)` |
+| `array`, `map`, `struct` | `list`, `map`, `struct` | `list<...>`, `map<...,...>`, `struct<name:type,...>` |
+
+A backend whose frames are neither Spark nor pandas is hashed from its port
+(`collect()` and `schema`), so its `schema` must give these names. The backend
+conformance suite (`ubunye.testing.backend_conformance`) checks it by requiring
+the same hash as the reference.
+
 On Spark the work stays on the cluster: one `agg` returns three numbers. The
 integration tier checks that Spark and pandas give the same hash for the same
 table (nested types, NaN, awkward text, a non-UTC session), and that a whole
