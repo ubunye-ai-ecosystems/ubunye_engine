@@ -45,6 +45,11 @@ pre-commit install
 The Spark tier includes the parity suite, which runs the same data through
 Spark and pandas and checks they agree on types, values, files and run
 records. Any change to how data is read, written or hashed must keep it green.
+It also runs the backend conformance suite (`ubunye.testing.backend_conformance`,
+which a new backend runs too) and a distributed check: one task on a single
+core and on a two-executor Spark must leave the same run record, with the
+driver's result size capped far below the data, so nothing may pull rows back
+to the driver.
 
 ## How a change is made
 
