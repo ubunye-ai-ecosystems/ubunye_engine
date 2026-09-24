@@ -247,3 +247,12 @@ def test_the_run_record_lists_every_model_call(tmp_path, provider):
     )  # fmt: skip
     assert shown.exit_code == 0, shown.output
     assert "anthropic/c: 2 calls, 0 failed, 22 tokens in, 8 out" in shown.output
+
+
+def test_an_error_wrapped_in_a_list_reads_as_its_message(provider):
+    """Gemini's OpenAI-compatible endpoint answers errors as [{"error": {...}}]."""
+    provider.answer([{"error": {"code": 404, "message": "model gone, use model-2"}}], status=404)
+    port = llm.port("openai_compatible", model="m", base_url=provider.url + "/v1", backoff_s=0)
+    with pytest.raises(LLMError) as err:
+        port.complete("hi")
+    assert "HTTP 404: model gone, use model-2" in str(err.value)

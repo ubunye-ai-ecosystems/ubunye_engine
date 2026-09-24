@@ -433,6 +433,8 @@ def _error_detail(exc: urllib.error.HTTPError) -> str:
         body = json.loads(exc.read().decode("utf-8", "replace"))
     except Exception:
         return exc.reason or ""
+    if isinstance(body, list) and body:  # Gemini: [{"error": {...}}]
+        body = body[0]
     error = body.get("error", body) if isinstance(body, dict) else body
     if isinstance(error, dict):
         error = error.get("message") or json.dumps(error)
