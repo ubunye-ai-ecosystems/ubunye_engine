@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Record once, replay anywhere: model calls answered from a file, for nothing.**
+  `UBUNYE_LLM_MODE=record` calls the model and keeps each answer in the task's
+  `.ubunye/llm-replay.jsonl` (or `UBUNYE_LLM_STORE`), keyed by the request's hash;
+  prompts are never stored. `UBUNYE_LLM_MODE=replay` answers from that file with no
+  key, no network and no cost, and fails closed: a request with no recorded answer
+  stops the run with its key, and never falls through to a live call. Every call in
+  the run record now says its `source` (`live`, `record` or `replay`). A recorded
+  run replays to the same data and row hashes on any machine.
 - **`ubunye.llm`: one port for language model calls, seen by the engine.** A task
   calls `llm.port("anthropic" | "openai_compatible" | "databricks_serving",
   model=...)` and then `complete()` or `complete_many()` (answers in prompt order,
