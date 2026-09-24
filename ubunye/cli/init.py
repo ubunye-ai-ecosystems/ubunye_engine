@@ -58,6 +58,7 @@ def _build_dev_notebook(task: str, usecase: str, package: str) -> dict:
             "from ubunye.config import load_config\n"
             "from ubunye.core.runtime import Registry\n"
             "from ubunye.backends.databricks_backend import DatabricksBackend\n"
+            "from ubunye.core.secrets import resolve as resolve_secrets\n"
             "\n"
             f'task_dir = "{usecase}/{package}/{task}"\n'
             'cfg = load_config(task_dir, variables={"dt": dt, "mode": mode})\n'
@@ -73,7 +74,7 @@ def _build_dev_notebook(task: str, usecase: str, package: str) -> dict:
             "sources = {}\n"
             "for name, icfg in cfg.CONFIG.inputs.items():\n"
             "    reader_cls = reg.readers[icfg.format]\n"
-            '    sources[name] = reader_cls().read(icfg.model_dump(mode="json"), backend)\n'
+            '    sources[name] = reader_cls().read(resolve_secrets(icfg.model_dump(mode="json")), backend)\n'
             '    print(f"{name}: columns={sources[name].columns}")  # cheap: no scan'
         ),
         _md_cell("## Inspect Sources"),
@@ -109,7 +110,7 @@ def _build_dev_notebook(task: str, usecase: str, package: str) -> dict:
             "# WARNING: Uncomment to write outputs to the configured destinations.\n"
             "# for name, ocfg in cfg.CONFIG.outputs.items():\n"
             "#     writer_cls = reg.writers[ocfg.format]\n"
-            '#     writer_cls().write(outputs[name], ocfg.model_dump(mode="json"), backend)\n'
+            '#     writer_cls().write(outputs[name], resolve_secrets(ocfg.model_dump(mode="json")), backend)\n'
             '#     print(f"Written: {name}")'
         ),
         _md_cell("## Sandbox\nSpark session is available for free exploration."),

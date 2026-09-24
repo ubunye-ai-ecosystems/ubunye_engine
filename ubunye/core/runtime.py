@@ -19,6 +19,7 @@ from ubunye.core.errors import (
 )
 from ubunye.core.hooks import Hook, HookChain
 from ubunye.core.interfaces import Backend, Reader, Transform, Writer
+from ubunye.core.secrets import SecretResolver
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +174,8 @@ class Engine:
         self.context = context or EngineContext(run_id=str(uuid.uuid4()))
         self._hooks_override = list(hooks) if hooks is not None else None
         self._extra_hooks = list(extra_hooks) if extra_hooks else []
+        # One per engine, so each secret is fetched once per run.
+        self._secrets = SecretResolver()
         self._manage_backend = manage_backend
 
     @property
@@ -372,7 +375,8 @@ class Engine:
                     f"Installed reader plugins: {', '.join(sorted(self.registry.readers))}",
                 )
             with chain.step(ctx, f"Reader:{rtype}", {"input": name}):
-                sources[name] = reader_cls().read(icfg, self.backend)
+                # Secrets are swapped in only here, in the connector's copy.
+                sources[name] = reader_cls().read(self._secrets.resolve(icfg), self.backend)
         return sources
 
     def _apply_transforms(
@@ -433,7 +437,7 @@ class Engine:
                     hint="Ensure your transform returns a dict with keys matching CONFIG.outputs.",
                 )
             with chain.step(ctx, f"Writer:{wtype}", {"output": name}):
-                writer_cls().write(outputs_map[name], ocfg, self.backend)
+                writer_cls().write(outputs_map[name], self._secrets.resolve(ocfg), self.backend)
 
     # ---------- internal helpers ----------
 

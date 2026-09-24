@@ -81,6 +81,10 @@ objectstore = ["fsspec>=2023.1.0"]
 # skipped; without pyarrow the parquet tests failed instead of skipping.
 dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14; platform_system != 'Windows'", "pyarrow>=24; platform_system == 'Windows'", "narwhals>=2"]
 databricks = ["databricks-sdk>=0.20"]
+# Cloud secret stores for secret://aws-sm, secret://gcp-sm, secret://azure-kv.
+aws = ["boto3>=1.28"]
+gcp = ["google-cloud-secret-manager>=2.16"]
+azure = ["azure-identity>=1.15", "azure-keyvault-secrets>=4.7"]
 
 # Project URLs. These populate the sidebar links on the PyPI page, which
 # otherwise shows none, so anyone finding the package can reach the docs, the
@@ -101,6 +105,14 @@ ubunye = "ubunye.cli.main:main"
 spark = "ubunye.backends.spark_backend:SparkBackend"
 databricks = "ubunye.backends.databricks_backend:DatabricksBackend"
 pandas = "ubunye.backends.pandas_backend:PandasBackend"
+
+[project.entry-points."ubunye.secrets"]
+env = "ubunye.plugins.secrets:EnvSecrets"
+file = "ubunye.plugins.secrets:FileSecrets"
+databricks = "ubunye.plugins.secrets:DatabricksSecrets"
+"aws-sm" = "ubunye.plugins.secrets:AwsSecretsManager"
+"gcp-sm" = "ubunye.plugins.secrets:GcpSecretManager"
+"azure-kv" = "ubunye.plugins.secrets:AzureKeyVault"
 
 [project.entry-points."ubunye.readers"]
 hive = "ubunye.plugins.readers.hive:HiveReader"

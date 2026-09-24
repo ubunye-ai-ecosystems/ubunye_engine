@@ -117,7 +117,13 @@ def _connector_problems(
                 f"handles {', '.join(sorted(caps.file_formats))}."
             )
         path = cfg.get("path")
-        if isinstance(path, str) and is_remote(path) and REMOTE_PATHS not in caps.features:
+        # A secret:// path is only known at run time; it cannot be judged here.
+        if (
+            isinstance(path, str)
+            and not path.startswith("secret://")
+            and is_remote(path)
+            and REMOTE_PATHS not in caps.features
+        ):
             problems.append(
                 f"{where} uses the remote path {path}; the {backend_name} backend "
                 "reads and writes local paths only."

@@ -395,6 +395,19 @@ class TaskConfig(BaseModel):
     expectations: Dict[str, ExpectationSet] = Field(default_factory=dict)
 
     @model_validator(mode="after")
+    def _check_secret_references(self) -> "TaskConfig":
+        """Every ``secret://`` reference names an installed provider. Nothing is fetched."""
+        from ubunye.core import secrets
+
+        errors: List[str] = []
+        for role, blocks in (("inputs", self.inputs), ("outputs", self.outputs)):
+            for name, io in blocks.items():
+                errors += secrets.problems(io.model_dump(exclude_none=True), f"{role}.{name}")
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
+
+    @model_validator(mode="after")
     def _check_expectations_name_outputs(self) -> "TaskConfig":
         errors: List[str] = []
         quarantines = [s.quarantine for s in self.expectations.values() if s.quarantine]

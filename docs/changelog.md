@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **Secrets by reference: `secret://<provider>/<reference>`.** A config names a
+  secret (`password: "secret://aws-sm/prod/db#password"`) and the engine fetches
+  it only into the copy of the config a connector receives, at the moment it
+  reads or writes. The config hash, `plan`, `config`, run records and logs keep
+  the reference, so a secret cannot leak through them, and rotating it does not
+  change the config hash (tested). Providers are plugins (`ubunye.secrets`):
+  `env`, `file`, `databricks`, `aws-sm`, `gcp-sm`, `azure-kv`, with `#field` for
+  JSON secrets and new `aws`, `gcp`, `azure` extras for the cloud SDKs. `validate`
+  refuses an unknown provider with the closest name; `doctor` names the package a
+  task's provider is missing; neither fetches anything. See
+  [Secrets](config/secrets.md).
 - **`CONFIG.expectations`: what an output must look like, checked before anything
   is written.** Declared rules per output (`not_null`, `unique`, `between`,
   `one_of`, `matches`, `row_count`), each with a severity: `fail` stops the run

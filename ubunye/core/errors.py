@@ -123,6 +123,13 @@ class TransformOutputError(UbunyeError, TypeError):
     """Raised when a transform returns an unexpected type or missing output."""
 
 
+class SecretError(UbunyeError, KeyError):
+    """Raised when a ``secret://`` reference cannot be read. Never carries the value."""
+
+    def __str__(self) -> str:  # KeyError would quote the whole message
+        return UbunyeError.__str__(self)
+
+
 class ExpectationError(UbunyeError, ValueError):
     """Raised when an output breaks a ``fail`` expectation; nothing has been written.
 
