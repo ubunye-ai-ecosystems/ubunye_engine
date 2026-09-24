@@ -1,12 +1,12 @@
 # ADR 003: One order for choosing a backend; the task never names it
 
-**Status:** accepted, 0.6.0
+**Status:** accepted, 0.7.0
 
 ## Context
 
 The same task folder should run on a laptop, on a cluster and on Databricks.
 If `config.yaml` named its engine, the folder would stop being portable. But
-something has to decide, and before 0.6.0 the CLI and the Python API decided
+something has to decide, and before 0.7.0 the CLI and the Python API decided
 differently: the API attached to an active Databricks session, the CLI always
 created its own (and stopped it at the end).
 

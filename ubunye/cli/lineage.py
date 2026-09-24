@@ -151,7 +151,7 @@ def data_hash_state(sa: Optional[StepRecord], sb: Optional[StepRecord]) -> Dict[
 
     ``state`` is ``unchanged``, ``changed``, ``unknown`` (a hash is missing: two
     missing hashes are unknown, not unchanged) or ``not comparable`` (made by
-    different methods: records from before 0.6.0 hashed a sample, and saying
+    different methods: records from before 0.7.0 hashed a sample, and saying
     "changed" against a ``rows-v1`` hash would be as wrong as "unchanged").
     """
     ha, hb = getattr(sa, "data_hash", None), getattr(sb, "data_hash", None)
@@ -311,8 +311,8 @@ def _print_data_hash(verdict: Dict[str, Any]) -> None:
     elif state == "not comparable":
         typer.secho(
             f"      data_hash: not comparable (made by "
-            f"{verdict['method_a'] or 'the pre-0.6 sample'} and "
-            f"{verdict['method_b'] or 'the pre-0.6 sample'})",
+            f"{verdict['method_a'] or 'the pre-0.7 sample'} and "
+            f"{verdict['method_b'] or 'the pre-0.7 sample'})",
             fg=typer.colors.YELLOW,
         )
     elif state == "unchanged":

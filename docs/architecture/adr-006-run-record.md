@@ -1,12 +1,12 @@
 # ADR 006: The run record is correct before it is sold
 
-**Status:** accepted, 0.6.0
+**Status:** accepted, 0.7.0
 
 ## Context
 
 `--lineage` leaves a record of every run: what was read, what was written, and
 a data hash per output, so `ubunye lineage compare` can say whether two runs
-produced the same data. Before 0.6.0 that hash could not carry the claim:
+produced the same data. Before 0.7.0 that hash could not carry the claim:
 
 - it read a **1 percent sample**, so most changes were invisible to it;
 - on Spark it depended on **row order**, so a repartition changed it;
@@ -73,7 +73,7 @@ the same identity, so `ubunye lineage list` finds every run.
 
 - Hashing every row costs one extra scan of each output. On Spark it runs where
   the data is; only three numbers come back.
-- Records written before 0.6.0 have no `hash_method`. `lineage compare` calls
+- Records written before 0.7.0 have no `hash_method`. `lineage compare` calls
   them "not comparable" with new records rather than "changed", and calls two
   missing hashes "unknown" rather than "unchanged".
 - The `sample_fraction` setting is ignored and kept only so old configs load.
@@ -101,5 +101,5 @@ large to read twice, and those inputs then show `-` for their row count.
 
 Monitors receive the new evidence (`inputs`, `expectations`, `timings`) only if
 their `task_end` accepts those arguments (or `**kwargs`), so monitors written
-for 0.6 keep working unchanged. A v1 record loads as `record_version: 1` with
+for 0.7 keep working unchanged. A v1 record loads as `record_version: 1` with
 the new fields empty.

@@ -75,7 +75,7 @@ class StepRecord:
     schema_hash: Optional[str] = None  # "sha256:<hex>" of the canonical schema
     data_hash: Optional[str] = None  # "sha256:<hex>" of every row (see hash_method)
     #: How data_hash was computed ("rows-v1": every row, order independent, the
-    #: same on every engine). Records from before 0.6.0 have none: their hash was
+    #: same on every engine). Records from before 0.7.0 have none: their hash was
     #: a sample and is not comparable.
     hash_method: Optional[str] = None
     #: Why there is no data_hash, when the rows could not be read.

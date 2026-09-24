@@ -89,7 +89,7 @@ command with a subcommand name.
 | `--template` | | no | `local` | `local` or `databricks` |
 | `--overwrite` | | no | `no-overwrite` | Overwrite existing files |
 
-!!! note "Changed in 0.6.0"
+!!! note "Changed in 0.7.0"
     `ubunye init -d ...` now works as written (it needed `ubunye init pipeline`),
     and the default scaffold is the local one above.
 
@@ -195,7 +195,7 @@ It checks:
 | `--var` | | no | — | Extra template variable, `key=value` (repeatable) |
 | `--backend` | | no | — | Also check against what this backend can do |
 
-!!! note "Changed in 0.6.0"
+!!! note "Changed in 0.7.0"
     `plan` used to print the config's names back and always exit `0`. It now
     checks the task and exits `1` when something would stop the run, so it can
     guard a CI job or an agent before a real run.
@@ -427,7 +427,7 @@ ubunye lineage compare \
 ```
 
 A data hash is compared only when both runs have one made the same way.
-Two missing hashes show as "unknown", and a record from before 0.6.0 (which
+Two missing hashes show as "unknown", and a record from before 0.7.0 (which
 hashed a sample) shows as "not comparable" with a newer one. See
 [the run record](architecture/adr-006-run-record.md).
 

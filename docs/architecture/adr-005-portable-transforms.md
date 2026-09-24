@@ -1,6 +1,6 @@
 # ADR 005: One transform for every engine: Narwhals, detected not declared
 
-**Status:** accepted, 0.6.0
+**Status:** accepted, 0.7.0
 
 ## Context
 

@@ -68,7 +68,7 @@ ubunye version
 prints the version you installed, for example:
 
 ```
-Ubunye Engine v0.6.0
+Ubunye Engine v0.7.0
 ```
 
 See which engines you can run on, and what each can do:

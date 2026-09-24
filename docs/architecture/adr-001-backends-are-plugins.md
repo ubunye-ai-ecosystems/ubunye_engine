@@ -1,11 +1,11 @@
 # ADR 001: Backends are plugins, found by name
 
-**Status:** accepted, 0.6.0
+**Status:** accepted, 0.7.0
 
 ## Context
 
 A backend is the engine that runs a task: Spark, Databricks' own session, or
-pandas. Until 0.6.0 the CLI chose one with an `if/elif` naming Spark and pandas,
+pandas. Until 0.7.0 the CLI chose one with an `if/elif` naming Spark and pandas,
 and the core's `Engine` imported `SparkBackend` for its default. Readers,
 writers, transforms and hooks were already plugins; the most important plugin,
 the engine itself, was not. A new engine meant editing Ubunye.
@@ -34,4 +34,4 @@ core no longer imports any backend.
 - A backend whose dependencies are missing does not break the others: asking for
   it by name gives a clear error with the `pip install` that fixes it.
 - `Backend.name`, `Backend.create` and `Backend.from_platform` are new, all with
-  defaults, so a backend written before 0.6.0 still works unchanged.
+  defaults, so a backend written before 0.7.0 still works unchanged.
