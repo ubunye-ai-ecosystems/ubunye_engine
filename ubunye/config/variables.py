@@ -17,6 +17,7 @@ from typing import Any, Dict, Iterable, Mapping, Optional
 #: Names a variable cannot take, and why.
 RESERVED = {
     "env": "it is the environment ({{ env.NAME }})",
+    "task_dir": "it is the task's own folder, set for every config ({{ task_dir }})",
 }
 #: Standard variables that have their own flag and must be set there.
 OWN_FLAG = {

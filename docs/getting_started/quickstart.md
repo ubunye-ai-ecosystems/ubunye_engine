@@ -1,221 +1,139 @@
 # Quickstart
 
-Build and run your first Ubunye pipeline in under 5 minutes.
+Your first pipeline, running on your laptop in a few minutes, with no Java and
+no cloud account. The commands in step 2 are run by the test suite exactly as
+written, on every change, so they work as shown.
 
 ---
 
 ## 1. Install
 
 ```bash
-pip install ubunye-engine
+pip install "ubunye-engine[pandas]"
 ```
+
+The `pandas` extra is what lets a task run with no Spark and no Java. (Add
+`[spark]` later to run the same task on Spark.)
 
 ---
 
-## 2. Scaffold a task
+## 2. Make a task, check it, run it
 
+<!-- quickstart:begin -->
 ```bash
-ubunye init -d pipelines -u demo -p etl -t hello_world
+ubunye init -d pipelines -u demo -p starter -t filter_adults
+ubunye plan -d pipelines -u demo -p starter -t filter_adults --backend pandas
+ubunye run -d pipelines -u demo -p starter -t filter_adults --backend pandas --lineage
+ubunye lineage list -d pipelines -u demo -p starter -t filter_adults
 ```
+<!-- quickstart:end -->
 
-This creates:
+What each one did:
 
-```
-pipelines/demo/etl/hello_world/
-    config.yaml              ← I/O and compute config
-    transformations.py       ← your Python transform
-    notebooks/
-        hello_world_dev.ipynb  ← interactive dev notebook
-```
+1. **`init`** made a folder, and the folder is the whole task:
+
+    ```
+    pipelines/demo/starter/filter_adults/
+        config.yaml          reads data/people.csv, writes output/adults as Parquet
+        transformations.py   keeps the people aged 18 and over
+        data/people.csv      eight people, some of them children
+        notebooks/           a notebook for trying things step by step
+    ```
+
+2. **`plan`** checked everything it could without moving any data: the input
+   file is there, the transform loads, the write mode makes sense, and the
+   pandas backend can do all of it. It exits `1` if anything would stop the run.
+
+3. **`run`** read the CSV, kept the adults, and wrote
+   `pipelines/demo/starter/filter_adults/output/adults/` as Parquet. With
+   `--backend pandas` that happens in plain Python, no Java involved.
+
+4. **`lineage list`** shows the record the run left: when it ran, how it went,
+   how many rows came out. Each record also keeps a hash of every row written,
+   so two runs can be compared exactly (`ubunye lineage compare`).
 
 ---
 
-## 3. Edit the config
+## 3. Change it
 
-Open `pipelines/demo/etl/hello_world/config.yaml`:
-
-```yaml
-MODEL: etl
-VERSION: "1.0.0"
-
-CONFIG:
-  inputs:
-    source:
-      format: hive
-      db_name: default
-      tbl_name: sample_data
-
-  transform: {}
-
-  outputs:
-    sink:
-      format: delta
-      path: /tmp/ubunye_demo/output
-      mode: overwrite
-```
-
-!!! tip "No Spark handy?"
-    Swap the connectors for REST API or JDBC to run without a Hive metastore.
-    See the [Connectors overview](../connectors/overview.md).
-
----
-
-## 4. (Optional) Add a transform
-
-Edit `transformations.py`:
+Open `transformations.py`:
 
 ```python
-from ubunye.core.interfaces import Task
-
-class HelloWorldTask(Task):
-    def transform(self, sources: dict) -> dict:
-        df = sources["source"]
-        return {"sink": df.filter("value IS NOT NULL")}
+class FilterAdults(Task):
+    def transform(self, sources):
+        people = sources["people"]
+        return {"adults": people[people["age"] >= 18]}
 ```
 
-Then reference it in `config.yaml`:
+Change `18` to `21` and run it again. `ubunye lineage list` now shows two runs;
+`ubunye lineage compare ... --run-id1 <first> --run-id2 <second>` shows that
+the row count and the data hash changed.
 
-```yaml
-  transform:
-    type: task          # loads transformations.py automatically
-```
+The line `people[people["age"] >= 18]` means the same thing in pandas and in
+Spark, which is why this task can run on either.
 
 ---
 
-## 5. Validate the config
+## 4. Run the same folder on Spark
+
+With Java installed and `pip install "ubunye-engine[spark]"`, leave out
+`--backend`:
 
 ```bash
-ubunye validate -d pipelines -u demo -p etl -t hello_world
+ubunye run -d pipelines -u demo -p starter -t filter_adults --lineage
 ```
 
-Expected output:
-
-```
-[OK] Config is valid.
-```
+Same folder, same config, same result: the run record carries the same data
+hash as the pandas run. On Databricks the notebook's session is used
+automatically.
 
 ---
 
-## 6. Preview the execution plan
-
-```bash
-ubunye plan -d pipelines -u demo -p etl -t hello_world
-```
-
-Prints a DAG: inputs → transform → outputs. Nothing is executed.
-
----
-
-## 7. Run
-
-```bash
-ubunye run -d pipelines -u demo -p etl -t hello_world --profile dev
-```
-
-Optionally capture lineage:
-
-```bash
-ubunye run -d pipelines -u demo -p etl -t hello_world --profile dev --lineage
-```
-
-View recorded runs:
-
-```bash
-ubunye lineage list
-```
-
----
-
----
-
-## 8. (Optional) Run from Python
-
-On Databricks or in a notebook, use the Python API instead of the CLI:
+## 5. From Python
 
 ```python
 import ubunye
 
-outputs = ubunye.run_task(
-    task_dir="pipelines/demo/etl/hello_world",
-    mode="DEV",
-)
+outputs = ubunye.run_task("pipelines/demo/starter/filter_adults", backend="pandas")
+print(len(outputs["adults"]))   # a pandas DataFrame
 ```
-
-The Python API auto-detects an active SparkSession (Databricks) and reuses it.
 
 ---
 
 ## Common errors
 
-The engine validates configs strictly and gives structured, actionable error
-messages across all subsystems. Every error includes context and a hint.
+Every error says what went wrong, where, and what to try.
 
-**Unknown field (typo)**
+**A typo in a field name**
 
 ```
-Unknown fields in pipelines/fraud/ingestion/claim_etl/config.yaml:
+Unknown fields in pipelines/demo/starter/filter_adults/config.yaml:
 
   (top level):
     Unknown field 'ENGNE'
     Did you mean 'ENGINE'?
 ```
 
-**Undefined template variable**
+**A template variable with no value**
 
 ```
-Template resolution failed for config.yaml:
-  Undefined variable 'ds' in config value 's3://bucket/{{ ds }}/'.
-  Available variables: ['env']. Use '| default(...)' for optional values.
+Template resolution failed for .../config.yaml:
+  Undefined variable 'region' in config value '.../{{ region }}'. ...
 ```
 
-Fix: pass the variable via CLI (`--var ds=2025-01-01`) or add a default
-(`{{ ds | default('1970-01-01') }}`).
+Pass it with `--var region=gauteng`, or give it a default:
+`{{ region | default('gauteng') }}`.
 
-**Missing transformations.py**
-
-```
-TaskNotFoundError: Missing transformations.py at .../hello_world/transformations.py.
-
-  Task dir:      pipelines/demo/etl/hello_world
-  Expected file: pipelines/demo/etl/hello_world/transformations.py
-  Hint: Run 'ubunye init' to scaffold a new task, or check the directory path.
-```
-
-**Unknown reader plugin**
+**Something the backend cannot do**
 
 ```
-ReaderNotFoundError: Reader plugin 'hve' not found.
-
-  Format:    hve
-  Input:     source
-  Installed: ['hive', 'jdbc', 'rest_api', 's3', 'unity']
-  Hint: Check the 'format' field in CONFIG.inputs.source.
+This task cannot run on the pandas backend:
+  - input 'orders' uses the 'hive' connector, which needs spark; the pandas backend does not provide it.
 ```
 
-**Invalid profile**
+`ubunye plan --backend pandas` finds these before anything runs.
 
-```
-ConfigProfileError: Profile 'staging' not found.
-
-  Profile:   staging
-  Available: ['dev', 'prod']
-  Hint: Valid profiles: dev, prod
-```
-
-See the full [Error Reference](../errors.md) for the complete hierarchy and
-catching patterns.
-
----
-
-## 9. (Optional) Deploy to Databricks
-
-```bash
-pip install ubunye-engine[databricks]
-ubunye deploy databricks -d pipelines -u demo -p etl -t hello_world --target dev --dry-run
-```
-
-See the full [Databricks Deployment Guide](../deployment/databricks.md) for
-setting up `targets.yaml` and deploying for real.
+See the full [Error Reference](../errors.md).
 
 ---
 
@@ -223,10 +141,10 @@ setting up `targets.yaml` and deploying for real.
 
 | Topic | Link |
 |---|---|
-| Full YAML schema | [Config Reference](../config/overview.md) |
-| All built-in connectors | [Connectors](../connectors/overview.md) |
-| Python API reference | [API Reference](../api.md) |
+| How a config is laid out | [Config Reference](../config/overview.md) |
+| Reading and writing data | [Connectors](../connectors/overview.md) |
+| Choosing Spark or pandas | [Execution Backends](../backends.md) |
+| Every command and flag | [CLI Reference](../cli.md) |
+| Running from Python and notebooks | [API Reference](../api.md) |
 | Deploying to Databricks | [Deployment](../deployment/databricks.md) |
-| Training and versioning ML models | [Model Contract](../ml/model_contract.md) |
-| CLI flags and sub-commands | [CLI Reference](../cli.md) |
-| Writing custom plugins | [Plugin Guide](../connectors/plugin_guide.md) |
+| Training and versioning models | [Model Contract](../ml/model_contract.md) |

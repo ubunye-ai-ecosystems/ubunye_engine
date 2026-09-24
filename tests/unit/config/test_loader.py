@@ -303,3 +303,16 @@ class TestBrokenYaml:
         (tmp_path / "config.yaml").write_text("- a\n- b\n", encoding="utf-8")
         with pytest.raises(ConfigError, match="must be a YAML mapping"):
             load_config(str(tmp_path))
+
+
+def test_task_dir_is_the_tasks_own_folder(tmp_path):
+    task = tmp_path / "uc" / "pkg" / "t"
+    task.mkdir(parents=True)
+    (task / "config.yaml").write_text(
+        'MODEL: etl\nVERSION: "1.0.0"\nCONFIG:\n  inputs:\n    a:\n      format: s3\n'
+        '      path: "{{ task_dir }}/data/a.csv"\n  transform: {}\n  outputs:\n'
+        '    b:\n      format: s3\n      path: "{{ task_dir }}/out"\n',
+        encoding="utf-8",
+    )
+    cfg = load_config(str(task))
+    assert cfg.CONFIG.inputs["a"].path == task.resolve().as_posix() + "/data/a.csv"

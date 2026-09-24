@@ -40,88 +40,55 @@ Same pipeline runs on your laptop today and on a production cluster tomorrow, wi
 
 ## Quickstart
 
-Install it:
+On a laptop, with no Java and no cloud account:
 
 ```bash
-pip install ubunye-engine
+pip install "ubunye-engine[pandas]"
 ```
 
-Scaffold a new pipeline folder:
-
+<!-- quickstart:begin -->
 ```bash
-ubunye init -d ./pipelines -u demo -p starter -t filter_adults
+ubunye init -d pipelines -u demo -p starter -t filter_adults
+ubunye plan -d pipelines -u demo -p starter -t filter_adults --backend pandas
+ubunye run -d pipelines -u demo -p starter -t filter_adults --backend pandas --lineage
+ubunye lineage list -d pipelines -u demo -p starter -t filter_adults
 ```
+<!-- quickstart:end -->
 
-You get:
+These four commands are run by the test suite exactly as written. `init` makes a
+folder, and the folder is the whole task:
 
 ```
 pipelines/demo/starter/filter_adults/
-  config.yaml              ← describes the pipeline (inputs, outputs, settings)
-  transformations.py       ← your code goes here
-  notebooks/               ← an interactive dev notebook for exploring
+  config.yaml            what to read and write
+  transformations.py     your code
+  data/people.csv        a small sample to start from
 ```
 
-`ubunye init` gives you a working starting point you can customise. For a minimal run-it-on-your-laptop example, edit `config.yaml` to read a local CSV and write Parquet:
-
-```yaml
-CONFIG:
-  inputs:
-    people:
-      format: s3              # generic file reader; "file://" paths work too
-      file_format: csv
-      path: "file:///tmp/people.csv"
-      options:
-        header: "true"
-        inferSchema: "true"
-
-  outputs:
-    adults:
-      format: s3
-      file_format: parquet
-      path: "file:///tmp/adults/"
-      mode: overwrite
-```
-
-Then open `transformations.py` and write your logic:
+`plan` checks it without moving any data, `run` reads the CSV and writes
+Parquet, and `lineage list` shows the record the run left, including a hash of
+every row written. The code is one line:
 
 ```python
-from typing import Any, Dict
-from ubunye.core.interfaces import Task
-
-
 class FilterAdults(Task):
-    """Keep only rows where age is 18 or older."""
-
-    def transform(self, sources: Dict[str, Any]) -> Dict[str, Any]:
+    def transform(self, sources):
         people = sources["people"]
-        return {"adults": people.filter("age >= 18")}
+        return {"adults": people[people["age"] >= 18]}
 ```
 
-Two things to notice:
-
-- `sources["people"]` matches the `inputs.people` name from the YAML.
-- The return key `"adults"` matches the `outputs.adults` name.
-
-Run it:
-
-```bash
-ubunye run -d ./pipelines -u demo -p starter -t filter_adults
-```
-
-That's the whole loop. Ubunye reads `/tmp/people.csv`, hands you a Spark DataFrame, and writes whatever you return to `/tmp/adults/`.
-
-**Running on Databricks?** Call it from a notebook instead:
+That line means the same thing in pandas and in Spark. With Java installed
+(`pip install "ubunye-engine[spark]"`), leave out `--backend pandas` and the same
+folder runs on Spark, leaving the same data hash. On Databricks, call it from a
+notebook and the notebook's session is used:
 
 ```python
 import ubunye
-outputs = ubunye.run_task(task_dir="./pipelines/demo/starter/filter_adults")
+outputs = ubunye.run_task("pipelines/demo/starter/filter_adults")
 ```
 
-Ubunye detects Databricks' active Spark session and reuses it — same pipeline, no code change.
-
-Want realistic end-to-end examples? They live in their own repository:
+Step by step: the [Quickstart](https://ubunye-ai-ecosystems.github.io/ubunye_engine/getting_started/quickstart/).
+Realistic end to end examples live in
 [**ubunye-examples**](https://github.com/ubunye-ai-ecosystems/ubunye-examples).
-Every one of them has been run for real, and most run on several environments.
 
 ---
 
