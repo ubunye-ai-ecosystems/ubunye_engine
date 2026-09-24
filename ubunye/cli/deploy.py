@@ -15,7 +15,7 @@ import typer
 
 deploy_app = typer.Typer(
     name="deploy",
-    help="Deploy task(s) to execution environments (Databricks, Glue, Dataproc).",
+    help="Deploy task(s): Databricks, Glue, Dataproc, Kubernetes, Container Apps, EMR Serverless.",
     add_completion=False,
 )
 
@@ -225,7 +225,7 @@ def deploy_dataproc(
 
 @deploy_app.command("dockerfile")
 def deploy_dockerfile(
-    platform: str = typer.Argument(..., help="dataproc or emr-serverless"),
+    platform: str = typer.Argument(..., help="dataproc, emr-serverless or container"),
     pipelines: str = typer.Option(
         "pipelines", "--pipelines", help="Folder copied into the image as /app/pipelines."
     ),
@@ -235,8 +235,8 @@ def deploy_dockerfile(
     """Write a Dockerfile for a Spark job image on PLATFORM, and the entry script next to it."""
     from ubunye.deploy import package as packaging
 
-    if platform not in packaging.IMAGE_PLATFORMS:
-        raise typer.BadParameter(f"PLATFORM is one of {', '.join(packaging.IMAGE_PLATFORMS)}")
+    if platform not in packaging.IMAGE_KINDS:
+        raise typer.BadParameter(f"PLATFORM is one of {', '.join(packaging.IMAGE_KINDS)}")
     text = packaging.dockerfile(platform, pipelines=pipelines, engine=engine)
     if out is None:
         typer.echo(text)
@@ -245,3 +245,138 @@ def deploy_dockerfile(
     entry = out.parent / "ubunye_entry.py"
     entry.write_text(packaging.ENTRY_SCRIPT, encoding="utf-8")
     typer.secho(f"[OK] wrote {out} and {entry}", fg=typer.colors.GREEN)
+
+
+# --- container jobs (B5b): Kubernetes, Azure Container Apps, EMR Serverless ---------------
+
+
+@deploy_app.command("k8s")
+def deploy_k8s(
+    usecase: str = typer.Option(..., "-u", "--usecase"),
+    package: str = typer.Option(..., "-p", "--package"),
+    task: str = typer.Option(..., "-t", "--task"),
+    image: str = typer.Option(
+        ..., "--image", help="Image from `deploy dockerfile container` (pipelines baked in)."
+    ),
+    namespace: str = typer.Option("default", "--namespace", "-n"),
+    job: Optional[str] = typer.Option(None, "--job", help="Job name (default from the task)."),
+    cpu: str = typer.Option("1", "--cpu"),
+    memory: str = typer.Option("2Gi", "--memory"),
+    timeout: int = typer.Option(1800, "--timeout", help="Seconds to wait for the job."),
+    mode: str = typer.Option("PROD", "-m", "--mode"),
+    dt: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
+    env: Optional[List[str]] = typer.Option(None, "--env", help=_ENV_HELP),
+    var: Optional[List[str]] = typer.Option(None, "--var", help=_VAR_HELP),
+    wait: bool = typer.Option(True, "--wait/--no-wait", help="Follow the run to its end."),
+    record_out: Optional[Path] = typer.Option(None, "--record-out", help=_OUT_HELP),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print the plan; run nothing."),
+) -> None:
+    """Run a task as a Kubernetes Job, with kubectl (its current context)."""
+    from ubunye.deploy.containers import plan_k8s
+
+    plan = plan_k8s(
+        usecase,
+        package,
+        task,
+        image=image,
+        namespace=namespace,
+        job=job,
+        cpu=cpu,
+        memory=memory,
+        timeout_s=timeout,
+        mode=mode,
+        dt=dt,
+        env=_pairs(env, "--env"),
+        variables=_pairs(var, "--var"),
+        wait=wait,
+    )
+    _finish(plan, dry_run, record_out)
+
+
+@deploy_app.command("container-apps")
+def deploy_container_apps(
+    usecase: str = typer.Option(..., "-u", "--usecase"),
+    package: str = typer.Option(..., "-p", "--package"),
+    task: str = typer.Option(..., "-t", "--task"),
+    image: str = typer.Option(
+        ..., "--image", help="Image from `deploy dockerfile container` (pipelines baked in)."
+    ),
+    resource_group: str = typer.Option(..., "--resource-group", "-g"),
+    environment: str = typer.Option(..., "--environment", help="Container Apps environment."),
+    job: Optional[str] = typer.Option(None, "--job", help="Job name (default from the task)."),
+    registry_server: Optional[str] = typer.Option(None, "--registry-server"),
+    registry_identity: Optional[str] = typer.Option(
+        None, "--registry-identity", help="Managed identity (resource id) that pulls the image."
+    ),
+    cpu: str = typer.Option("2", "--cpu"),
+    memory: str = typer.Option("4Gi", "--memory"),
+    timeout: int = typer.Option(1800, "--timeout", help="Seconds a replica may run."),
+    mode: str = typer.Option("PROD", "-m", "--mode"),
+    dt: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
+    env: Optional[List[str]] = typer.Option(None, "--env", help=_ENV_HELP),
+    var: Optional[List[str]] = typer.Option(None, "--var", help=_VAR_HELP),
+    wait: bool = typer.Option(True, "--wait/--no-wait", help="Follow the run to its end."),
+    record_out: Optional[Path] = typer.Option(None, "--record-out", help=_OUT_HELP),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print the plan; run nothing."),
+) -> None:
+    """Run a task as an Azure Container Apps job, with the az CLI."""
+    from ubunye.deploy.containers import plan_container_apps
+
+    plan = plan_container_apps(
+        usecase,
+        package,
+        task,
+        image=image,
+        resource_group=resource_group,
+        environment=environment,
+        job=job,
+        registry_server=registry_server,
+        registry_identity=registry_identity,
+        cpu=cpu,
+        memory=memory,
+        timeout_s=timeout,
+        mode=mode,
+        dt=dt,
+        env=_pairs(env, "--env"),
+        variables=_pairs(var, "--var"),
+        wait=wait,
+    )
+    _finish(plan, dry_run, record_out)
+
+
+@deploy_app.command("emr-serverless")
+def deploy_emr_serverless(
+    usecase: str = typer.Option(..., "-u", "--usecase"),
+    package: str = typer.Option(..., "-p", "--package"),
+    task: str = typer.Option(..., "-t", "--task"),
+    application_id: str = typer.Option(
+        ...,
+        "--application-id",
+        help="An application whose image is `deploy dockerfile emr-serverless`.",
+    ),
+    role: str = typer.Option(..., "--role", help="Job execution role ARN."),
+    bucket: str = typer.Option(..., "--bucket", help="S3 bucket for the job's logs."),
+    region: Optional[str] = typer.Option(None, "--region"),
+    mode: str = typer.Option("PROD", "-m", "--mode"),
+    dt: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
+    env: Optional[List[str]] = typer.Option(None, "--env", help=_ENV_HELP),
+    var: Optional[List[str]] = typer.Option(None, "--var", help=_VAR_HELP),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print the plan; run nothing."),
+) -> None:
+    """Start a task run on AWS EMR Serverless, with the aws CLI (does not wait)."""
+    from ubunye.deploy.containers import plan_emr_serverless
+
+    plan = plan_emr_serverless(
+        usecase,
+        package,
+        task,
+        application_id=application_id,
+        role=role,
+        bucket=bucket,
+        region=region,
+        mode=mode,
+        dt=dt,
+        env=_pairs(env, "--env"),
+        variables=_pairs(var, "--var"),
+    )
+    _finish(plan, dry_run, None)
