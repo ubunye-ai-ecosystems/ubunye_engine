@@ -130,6 +130,10 @@ class LLMBackend:
     #: False when a key is optional (a local server).
     KEY_REQUIRED: bool = True
     DEFAULT_BASE_URL: str = ""
+    #: Who runs the model and bills for it, and the service's name (FOCUS
+    #: ServiceProviderName and ServiceName).
+    PROVIDER: Optional[str] = None
+    SERVICE: Optional[str] = None
 
     def __init__(
         self, *, model: str, api_key: Optional[str] = None, base_url: Optional[str] = None
@@ -137,6 +141,10 @@ class LLMBackend:
         self.model = model
         self.api_key = api_key
         self.base_url = (base_url or self.DEFAULT_BASE_URL).rstrip("/")
+
+    def provider(self) -> Tuple[Optional[str], Optional[str]]:
+        """(provider, service) for cost records; None when it cannot be told."""
+        return self.PROVIDER, self.SERVICE
 
     def build(self, request: LLMRequest) -> Tuple[str, Dict[str, str], Dict[str, Any]]:
         """The URL, headers and JSON body for one request."""
@@ -280,6 +288,10 @@ class LLMPort:
         }
         active = _ACTIVE.get()
         price = self.price or prices.lookup(self.name, request.model)
+        call["provider"], call["service"] = self.backend.provider()
+        call["price_usd_per_mtok"] = list(price) if price is not None else None
+        if price is not None:
+            call["price_as_of"] = "given" if self.price else prices.AS_OF
         held: List[Tuple[Any, float]] = []
         try:
             if self.mode == "replay":

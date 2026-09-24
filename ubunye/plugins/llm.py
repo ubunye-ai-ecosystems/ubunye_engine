@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from typing import Any, Dict, Optional, Tuple
+from urllib.parse import urlparse
 
 from ubunye.core.errors import LLMError
 from ubunye.llm import LLMBackend, LLMRequest, LLMResponse
@@ -18,6 +19,8 @@ class AnthropicBackend(LLMBackend):
 
     KEY_ENV = "ANTHROPIC_API_KEY"
     DEFAULT_BASE_URL = "https://api.anthropic.com"
+    PROVIDER = "Anthropic"
+    SERVICE = "Anthropic API"
     VERSION = "2023-06-01"
 
     def build(self, request: LLMRequest) -> Tuple[str, Dict[str, str], Dict[str, Any]]:
@@ -59,6 +62,15 @@ class OpenAICompatibleBackend(LLMBackend):
     KEY_ENV = "OPENAI_API_KEY"
     KEY_REQUIRED = False
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
+
+    def provider(self) -> Tuple[Optional[str], Optional[str]]:
+        """Told from the server's address; a local or unknown server is its host name."""
+        host = urlparse(self.base_url).hostname or ""
+        if host == "api.openai.com":
+            return "OpenAI", "OpenAI API"
+        if host.endswith(".openai.azure.com"):
+            return "Microsoft", "Azure OpenAI"
+        return (host or None), "OpenAI-compatible API"
 
     def _body(self, request: LLMRequest) -> Dict[str, Any]:
         messages = list(request.messages)
@@ -102,6 +114,9 @@ class DatabricksServingBackend(OpenAICompatibleBackend):
     KEY_ENV = "DATABRICKS_TOKEN"
     KEY_REQUIRED = True
     DEFAULT_BASE_URL = ""
+
+    def provider(self) -> Tuple[Optional[str], Optional[str]]:
+        return "Databricks", "Databricks Model Serving"
 
     def __init__(
         self, *, model: str, api_key: Optional[str] = None, base_url: Optional[str] = None

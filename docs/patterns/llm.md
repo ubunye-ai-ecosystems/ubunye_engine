@@ -175,3 +175,30 @@ limit that is not a number, or a dollar ceiling on a recorded model with no pric
 It warns when the estimate is over the ceiling, and when live calls have no dollar
 ceiling at all. A task never recorded gets its mode and limits checked, and no
 estimate. `ubunye plan --json` carries the same in each task's `llm` section.
+
+## The model bill in FinOps tools (FOCUS)
+
+`ubunye lineage focus` writes a run's model calls as
+[FOCUS](https://focus.finops.org/) 1.4 cost rows, the FinOps Foundation's format for
+cost and usage data, so they load next to the cloud bill:
+
+```bash
+ubunye lineage focus -d pipelines -u shop -p reviews -t label > focus.csv
+ubunye lineage focus -d pipelines -u shop -p reviews -t label --format jsonl -o focus.jsonl
+```
+
+There is one row per provider, model and token direction (input and output tokens
+have different prices). Every mandatory FOCUS 1.4 column is filled: `ChargeCategory`
+is `Usage`, `ServiceCategory` is `AI and Machine Learning`, `PricingUnit` is
+`1000000 Tokens`, the charge period is the run's start and end, and the billing
+period is its calendar month, all in UTC. Custom columns start with `x_`: the run id,
+the task, the model, the token direction, the date of the prices used, and the cost
+basis.
+
+The costs are tokens times the list price the run used, so `BilledCost`,
+`EffectiveCost`, `ContractedCost` and `ListCost` are equal. The engine cannot see
+discounts or credits: the provider's invoice is the authority, and `x_CostBasis`
+says so on every row. Replayed calls are not charges and make no rows; calls with
+no price are left out, and the command says how many. Name the billing account with
+`UBUNYE_FOCUS_BILLING_ACCOUNT_ID` and `UBUNYE_FOCUS_BILLING_ACCOUNT_NAME`
+(default `unknown`).
