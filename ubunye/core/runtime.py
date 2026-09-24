@@ -123,6 +123,17 @@ def _default_hooks(cfg: Dict[str, Any]) -> List[Hook]:
     return hooks
 
 
+def _unwrap(frame: Any) -> Any:
+    """A frame wrapper as the frame it wraps (ADR 005).
+
+    A transform written with Narwhals may return the Narwhals frame; it offers
+    ``to_native()``, and so does any wrapper that follows the same protocol. The
+    engine unwraps by that method alone and never imports the wrapper's library.
+    """
+    to_native = getattr(type(frame), "to_native", None)
+    return frame.to_native() if callable(to_native) else frame
+
+
 class Engine:
     """
     Executes a task by reading inputs, applying one or more transforms, and writing outputs.
@@ -287,14 +298,16 @@ class Engine:
 
     def _to_natives(self, frames: Dict[str, Any]) -> Dict[str, Any]:
         """Frames as a transform sees them: the backend's own type."""
+        frames = {name: _unwrap(frame) for name, frame in frames.items()}
         if not isinstance(self.backend, Backend):
-            return dict(frames)  # a test double or pre-0.6 object: pass through
+            return frames  # a test double or pre-0.6 object: pass through
         return {name: self.backend.to_native(frame) for name, frame in frames.items()}
 
     def _to_ports(self, frames: Dict[str, Any]) -> Dict[str, Any]:
         """Frames as the engine sees them: behind the DataFramePort."""
+        frames = {name: _unwrap(frame) for name, frame in frames.items()}
         if not isinstance(self.backend, Backend):
-            return dict(frames)
+            return frames
         return {name: self.backend.to_port(frame) for name, frame in frames.items()}
 
     # ---------- shared helpers ----------
