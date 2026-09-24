@@ -36,7 +36,13 @@ import importlib.util
 from pathlib import Path
 from typing import Any, Dict, List
 
-import pytest
+try:
+    import pytest
+except ImportError as exc:  # the suite is a set of pytest tests
+    raise ImportError(
+        "ubunye.testing.backend_conformance is a pytest suite; install pytest to run it "
+        "(pip install pytest)."
+    ) from exc
 
 from ubunye.core import backends as registry
 from ubunye.core.capabilities import PATH_IO, Capabilities
