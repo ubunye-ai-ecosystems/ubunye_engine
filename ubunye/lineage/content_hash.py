@@ -34,7 +34,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 METHOD = "rows-v1"
 _MASK = (1 << 64) - 1
@@ -277,15 +277,16 @@ def _members(name: str, kind: str, values: List[Any]) -> List[Optional[str]]:
     return [None if v is None else prefix + value_text(v, kind) for v in values]
 
 
-def _encode_string(text: str) -> str:
+def _dumps_string(text: str) -> str:
     return json.dumps(text, ensure_ascii=False)
 
 
+_encode_string: Callable[[str], str] = _dumps_string
 try:  # the C encoder json.dumps(s, ensure_ascii=False) uses for a str
     from json.encoder import encode_basestring as _c_encode
 
     if _c_encode('a"b\né') == json.dumps('a"b\né', ensure_ascii=False):
-        _encode_string = _c_encode  # noqa: F811
+        _encode_string = _c_encode
 except ImportError:  # pragma: no cover
     pass
 
