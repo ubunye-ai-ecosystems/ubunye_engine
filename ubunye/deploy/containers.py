@@ -204,7 +204,8 @@ for attempt in range(40):  # Log Analytics lags a few minutes behind the job
     out = subprocess.run(["az", "monitor", "log-analytics", "query", "-w", workspace,
                           "--analytics-query", query, "--query", "[].Log_s", "-o", "tsv",
                           "--only-show-errors"], capture_output=True, text=True).stdout
-    if "UBUNYE-RUN-RECORD-END" in out or (state != "Succeeded" and out.strip()):
+    # Wait for the record itself: the end marker can arrive before the record line.
+    if '"run_id"' in out or (state != "Succeeded" and out.strip()):
         break
     time.sleep(20)
 print(out)
