@@ -165,3 +165,33 @@ If your constructor takes other arguments, override the `create` class method.
 If your engine should claim a session the platform already started, override
 `from_platform`. See the [architecture decisions](architecture/index.md) for why
 it works this way.
+
+### Prove it: the conformance suite
+
+The tests every backend must pass ship with the engine, and the Spark and pandas
+backends run them too. Subclass them in your backend's tests:
+
+```python
+import pytest
+
+from ubunye.testing.backend_conformance import BackendConformance
+
+
+class TestMyBackend(BackendConformance):
+    @pytest.fixture
+    def backend(self):
+        backend = MyBackend(conf={"spark.sql.session.timeZone": "UTC"})
+        backend.start()
+        yield backend
+        backend.stop()
+```
+
+They check that it is registered under its name and declares what it can do;
+that transforms get its own frames and the engine a port whose `count()` means
+rows; that it reads a CSV file exactly as Spark does, **leaving the same run
+record hash as every other engine** for the same data; that what it writes it
+reads back unchanged; and that the write modes it claims behave as Spark's do.
+Anything your backend does not claim (a format, a write mode) is skipped, with
+the reason. For the hash to match, a port that is not Spark or pandas reports
+its column types by the run record's names (`int32`, `int64`, `float64`,
+`bool`, `string`, `date`, `timestamp`, ...; see [ADR 006](architecture/adr-006-run-record.md)).

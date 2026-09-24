@@ -163,6 +163,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A conformance suite every backend must pass, shipped for yours.**
+  `ubunye.testing.backend_conformance` is the set of tests that says a backend
+  keeps the engine's promises: it is registered under its name and declares
+  what it can do, gives transforms its own frames and the engine a port,
+  reads a CSV file exactly as Spark does and so leaves the same run record hash
+  as every other engine (checked against a reference built from plain Python
+  values), reads back what it writes, and honours the write modes it claims.
+  Subclass it in a backend's tests. The pandas backend passes it in the unit
+  tier, and both Spark backends in the integration tier. ADR 006 now lists the
+  type names the hash uses, which a port that is not Spark or pandas must
+  report.
 - **One transform for every engine, written with Narwhals (ADR 005).** A
   transform written with the Spark API runs only on Spark, and one written with
   pandas only on pandas. Two ways to write it once were tested on the Titanic
