@@ -4,6 +4,7 @@ Commands:
 - init:     scaffold a new usecase/package/tasks
 - validate: validate config file(s) before execution
 - run:      run task(s) in a package
+- doctor:   check this machine (and optionally tasks) before a run
 - plugins:  list discovered plugins
 - config:   show/validate config
 - plan:     show resolved IO graph
@@ -26,6 +27,7 @@ from ubunye.adapters.spark.catalog import set_catalog_and_schema
 from ubunye.cli.backend_choice import backends_command
 from ubunye.cli.backend_choice import resolve_or_exit as _resolve_backend_or_exit
 from ubunye.cli.deploy import deploy_app
+from ubunye.cli.doctor import doctor_command
 from ubunye.cli.export import export_app
 from ubunye.cli.init import init_app
 from ubunye.cli.lineage import lineage_app
@@ -77,6 +79,7 @@ def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path
 
 
 app.command("backends")(backends_command)
+app.command("doctor")(doctor_command)
 
 
 @app.command()

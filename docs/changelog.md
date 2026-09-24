@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`ubunye doctor`: what will fail, and why, before a run.** One command
+  checks the Python version, every backend (usable, or what it needs and the
+  install command), whether a run without `--backend` would work, that Java
+  suits the installed Spark, that `delta-spark` is built for the same Spark
+  major (a mismatch installs cleanly and fails at run time), `winutils.exe` on
+  Windows, and that every plugin loads. Given tasks (`-d -u -p -t`), it names the
+  environment variables they use without a default that are not set, and checks
+  their configs load. Warnings are environment problems that matter only for
+  what you use; failures are what makes a run fail, and set exit code 1.
+  `--json` prints one document. The config resolver gains
+  `required_env_references()` for the variable check.
+
 ### Changed
 
 - **The Titanic examples run on Spark and on pandas, with the same receipt.**
