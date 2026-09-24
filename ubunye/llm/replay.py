@@ -75,7 +75,10 @@ def store_for(explicit: Optional[str], task_dir: Optional[str]) -> ReplayStore:
         path = Path(chosen)
     else:
         path = Path(task_dir or ".") / ".ubunye" / DEFAULT_NAME
-    resolved = str(path.resolve())
+    # Lexical, not Path.resolve(): on Windows resolve() spells a folder differently
+    # (8.3 short name or not) before and after it exists, which split one file
+    # into two stores, each holding half the answers.
+    resolved = os.path.normcase(os.path.abspath(path))
     with _stores_lock:
         store = _stores.get(resolved)
         if store is None:

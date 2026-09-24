@@ -142,3 +142,26 @@ def test_a_task_records_next_to_itself_and_replays_offline(provider, tmp_path, m
     # Same data from the live and the replayed run.
     hashes = {r.outputs[0].data_hash for r in runs}
     assert len(hashes) == 1
+
+
+def test_the_store_is_found_by_its_spelling_not_by_asking_the_filesystem(tmp_path, monkeypatch):
+    """One file, one store, whatever the disk is doing.
+
+    The cache was keyed by Path.resolve(), which on Windows asks the filesystem and
+    can spell one folder two ways (8.3 short name or not), for example while another
+    thread has the file open. One task's answers then split across two stores and
+    replay missed half of them.
+    """
+    from pathlib import Path
+
+    from ubunye.llm import replay
+
+    def no_disk(self, *a, **k):
+        raise AssertionError("store_for must not resolve paths")
+
+    monkeypatch.setattr(Path, "resolve", no_disk)
+    task = tmp_path / "uc" / "pkg" / "t"
+    first = replay.store_for(None, str(task))
+    task.joinpath(".ubunye").mkdir(parents=True)
+    assert replay.store_for(None, str(task)) is first
+    assert replay.store_for(None, str(task) + "/") is first
