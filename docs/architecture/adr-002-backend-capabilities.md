@@ -1,12 +1,12 @@
 # ADR 002: Backends say what they can do; tasks are checked before they run
 
-**Status:** accepted, 0.6.0
+**Status:** accepted, 0.7.0
 
 ## Context
 
 With more than one backend, a task can ask for something its backend cannot do:
 a Hive table on pandas, a `merge` on plain files, a cloud path on a laptop
-engine. Before 0.6.0 that failed wherever it happened to break, often halfway
+engine. Before 0.7.0 that failed wherever it happened to break, often halfway
 through a run, with an error from deep inside (`AttributeError: ... has no
 attribute 'spark'`). The engine also tested `backend.is_spark`, which assumes
 there are only two kinds of engine.

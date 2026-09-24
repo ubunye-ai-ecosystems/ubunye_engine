@@ -246,7 +246,7 @@ class NotebookContext:
 
         If *outputs* is ``None``, uses the result of the last :meth:`transform`
         call. With ``lineage=True`` every write leaves a run record, exactly as
-        ``ubunye.run_task`` does (before 0.6.0 a notebook recorded nothing).
+        ``ubunye.run_task`` does (before 0.7.0 a notebook recorded nothing).
         """
         if outputs is None:
             outputs = self._last_outputs

@@ -86,7 +86,7 @@ class LineageRecorder:
     base_dir:
         Root directory for the ``FileSystemLineageStore``.
     sample_fraction:
-        Ignored since 0.6.0 and kept so existing configs still load: every row is
+        Ignored since 0.7.0 and kept so existing configs still load: every row is
         hashed now (the ``rows-v1`` content hash), so there is nothing to sample.
     """
 

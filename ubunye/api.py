@@ -55,7 +55,7 @@ def _task_identity(task_path: Path) -> Tuple[Path, str]:
 
     The one identity every entry point records lineage under, so a run started
     from Python is found by ``ubunye lineage list -d <usecase_dir> -u -p -t``
-    exactly like a CLI run. Before 0.6.0 ``run_task`` and ``notebook`` keyed
+    exactly like a CLI run. Before 0.7.0 ``run_task`` and ``notebook`` keyed
     lineage by the folder name alone, under the package folder, so their records
     were invisible to the CLI.
     """

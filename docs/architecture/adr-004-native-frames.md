@@ -1,6 +1,6 @@
 # ADR 004: Your transform gets native frames; the engine gets the port
 
-**Status:** accepted, 0.6.0
+**Status:** accepted, 0.7.0
 
 ## Context
 

@@ -8,7 +8,7 @@ Two templates:
     in pandas and in Spark. It runs on a laptop with no Java
     (``--backend pandas``) and on Spark from the same files.
 ``databricks``
-    The scaffold ``ubunye init`` wrote before 0.6.0: read a Unity Catalog table,
+    The scaffold ``ubunye init`` wrote before 0.7.0: read a Unity Catalog table,
     write to an ``s3a://`` bucket.
 """
 

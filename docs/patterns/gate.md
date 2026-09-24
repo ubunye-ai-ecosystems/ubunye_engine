@@ -31,7 +31,7 @@ changed between the runs (config, code, environment, which inputs); a change
 with none of them is reported as a transform that is not deterministic.
 
 Warnings never fail the gate: a `warn` expectation broken, rows quarantined, a
-new output, hashes that cannot be compared (a record from before 0.6.0, or an
+new output, hashes that cannot be compared (a record from before 0.7.0, or an
 unreadable output).
 
 Exit code 1 when the gate fails; `--json` prints the findings; `--summary FILE`

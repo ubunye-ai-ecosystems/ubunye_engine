@@ -240,7 +240,7 @@ def flush(timeout_millis: int = 5000) -> None:
 
 
 def init_tracer(service_name: str = "ubunye") -> None:
-    """Kept for code written against 0.6; same as :func:`setup`."""
+    """Kept for code written against 0.5 and earlier; same as :func:`setup`."""
     setup(service_name)
 
 

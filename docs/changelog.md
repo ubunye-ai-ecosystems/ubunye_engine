@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] (2026-09-25)
+
+One release where three were planned (0.6, 0.7 and 0.8). The same task folder
+runs on Spark or on pandas (no Java) and leaves the same run record hash for the
+same data; that record is now proof: code, environment, input hashes, timings and
+expectations, sent as OpenLineage and OpenTelemetry, checked in CI by `ubunye gate`,
+and deployable in one command to AWS Glue, GCP Dataproc Serverless, Kubernetes,
+Azure Container Apps and EMR Serverless, or exported to Airflow 2 and 3 and Spark
+Declarative Pipelines. The same data hashes were written on Glue, Dataproc,
+Kubernetes (kind), Azure Container Apps and Spark Declarative Pipelines; EMR
+Serverless is built but not yet run (the AWS free plan blocks EMR). A
+task can call a language model through one port that the engine sees: every call
+in the record, the bill capped before it is sent and priced before the run, the
+whole run replayable for nothing, and the cost exported as FOCUS 1.4 rows. Agents
+drive it all through `ubunye mcp`. Python 3.10 to 3.13 on Linux, Windows and macOS.
+
+Not in this release, on purpose: a positional `ubunye run ./task` (four flags stay
+the interface), a DuckDB backend (it failed SQL parity with Spark), a tool port and
+divergence ledger for agents, Dagster and Prefect exporters, and a benchmark suite
+(a separate project, later).
+
 ### Added
 
 - **`ubunye mcp`: the engine as an MCP server for agents.** Tools `tasks`, `doctor`,
@@ -212,6 +233,163 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as the run-anywhere example does. All 53 task configs in the engine and
   examples repos and two downstream projects still validate.
 
+- **A conformance suite every backend must pass, shipped for yours.**
+  `ubunye.testing.backend_conformance` is the set of tests that says a backend
+  keeps the engine's promises: it is registered under its name and declares
+  what it can do, gives transforms its own frames and the engine a port,
+  reads a CSV file exactly as Spark does and so leaves the same run record hash
+  as every other engine (checked against a reference built from plain Python
+  values), reads back what it writes, and honours the write modes it claims.
+  Subclass it in a backend's tests. The pandas backend passes it in the unit
+  tier, and both Spark backends in the integration tier. ADR 006 now lists the
+  type names the hash uses, which a port that is not Spark or pandas must
+  report.
+- **One transform for every engine, written with Narwhals (ADR 005).** A
+  transform written with the Spark API runs only on Spark, and one written with
+  pandas only on pandas. Two ways to write it once were tested on the Titanic
+  example's own logic against Spark: Narwhals gave the same data hash on both
+  engines (with a sum cast to a 64 bit integer, which Spark does and pandas
+  does not), and SQL did not (DuckDB and Spark type the same aggregate
+  differently), so Narwhals ships and SQL waits for a DuckDB backend, not in this release. A
+  transform may return a Narwhals frame; the engine unwraps it without
+  importing Narwhals. There is no config field for portability: `ubunye plan`
+  reads the imports in `transformations.py` and says what it is written for
+  (`pyspark`, `narwhals`, `pandas`), in text and in `--json`, and warns when
+  that is not what `--backend` gives it. The example in the docs is run on both
+  engines by the test suite.
+- **`--json` for scripts and agents.** `plan`, `validate`, `backends`, every
+  `lineage` command and `models list/info/compare` print exactly one JSON
+  document on stdout with `--json`, errors included (`{"ok": false, "error":
+  ...}`), and keep their exit codes. `lineage compare --json` reports each data
+  hash as `unchanged`, `changed`, `unknown` or `not comparable`, the same
+  verdict the text form prints.
+- **The pandas backend understands Spark's `mode` option, and backends check
+  their IO details before a run.** Every Titanic example reads its CSV with
+  `mode: "FAILFAST"`, which the pandas backend refused, so none of them could
+  run there. `mode` now works for CSV and JSON exactly as Spark 4.2 does it
+  (checked against Spark): FAILFAST stops at a bad row, DROPMALFORMED skips it,
+  and PERMISSIVE, Spark's default, cuts a row with too many fields and pads one
+  with too few with null. A backend can also check an input's or output's
+  details (options, schema) before anything runs (`Backend.check_io`); the
+  pandas backend uses it, so `plan`, `validate --backend` and the run's own
+  preflight report an option it cannot honour instead of failing on open.
+- **`--var key=value`, documented for years, now works.** It was in the README
+  and three docs pages and was never implemented, so every example that used it
+  failed. It now works on every command that renders a config (`run`,
+  `validate`, `plan`, `config`, `test run`), and the Python API takes the same
+  thing as `variables=` on `run_task`, `run_pipeline` and `notebook`. Names must
+  be valid template names, `env` is reserved and `mode` has its own flag;
+  `--var dt=...` works like `-dt`, and the same name with two values is refused
+  instead of one silently winning. The variables a run used are kept in its run
+  record. On the way, `validate` stopped setting `dtf` to the timestamp's value
+  (it now has `-dtf`), and `test run` now renders with `mode` (its profile), as
+  `run` does.
+- **The run record's data hash now means "these exact rows" (ADR 006).** It
+  read a 1 percent sample, changed with row order on Spark, and on pandas
+  quietly recorded the schema hash as the data hash. The new `rows-v1` hash
+  reads every row in the same pass as the count, ignores row and column order,
+  changes when any cell changes, tells null from NaN, does not depend on the
+  timezone, and is the same on Spark and pandas for the same data (Spark
+  computes it in one aggregation on the cluster). When rows cannot be read the
+  record says why instead of inventing a hash. Records also carry the Ubunye
+  version, the backend, the run variables and each output's `hash_method`, and
+  runs from `run_task` and `run_pipeline` are stored under the same folder and
+  name as CLI runs, so `ubunye lineage list` finds them. `lineage compare` calls
+  two missing hashes "unknown" (it said "unchanged") and a pre-0.7 hash "not
+  comparable". `sample_fraction` is ignored and kept so old configs load.
+- **A pandas transform gets a plain pandas DataFrame (ADR 004).** It used to get
+  an adapter and had to write `sources["x"].native` to reach the DataFrame. The
+  `Backend` port gains `to_native` and `to_port`, and the engine converts at the
+  edges: transforms get and may return native frames; writers, hooks and
+  lineage get the port, where `count()` means rows (a raw pandas `count()`
+  counts non-nulls per column). `run_task`, `run_pipeline` and the notebook's
+  `read()` and `transform()` return native frames, so on pandas use
+  `len(frame)` for rows. Both methods default to doing nothing, so Spark tasks
+  and older backends are unchanged.
+- **Backends are plugins, and say what they can do (ADR 001, 002).** Spark,
+  Databricks and pandas now register in a new `ubunye.backends` entry point
+  group, exactly as a third party engine would, so adding an engine is a package
+  with one entry point and no edit to Ubunye. Each backend declares its
+  capabilities (features such as a SparkSession or path IO, file formats, write
+  modes, distributed, needs Java) and each connector declares what it requires.
+  Before anything starts, the engine checks every input and output against the
+  backend and lists every problem at once, so a task that cannot run stops in
+  the first second instead of halfway through. The core no longer imports
+  `SparkBackend` (a test now reads every import in `ubunye/core` and fails on
+  any engine). `Backend.is_spark` still works, read from the capabilities, and
+  is deprecated. Backends and connectors written before 0.7.0 declare nothing
+  and behave exactly as before.
+- **Choose a backend by name everywhere, with one resolution order (ADR 003).**
+  `--backend NAME` on `ubunye run`, `ubunye test run` and `ubunye validate`;
+  `backend="pandas"` (or an instance) on `run_task`, `run_pipeline` and
+  `notebook`. With no choice: the platform's session if there is one (on
+  Databricks, the notebook's), else Spark. The CLI now follows that order too:
+  run inside a process that already has a SparkSession, it attaches to it
+  instead of stopping it at the end. New `ubunye backends` (and `--json`) lists
+  what is installed and what each backend can do; `ubunye validate --backend
+  pandas` checks a task can run there without starting anything. An unknown or
+  broken backend gives a clear error with the installed names or the `pip
+  install` that fixes it. New page: Execution Backends; new section:
+  Architecture Decisions.
+- **A pandas backend, so `ubunye run --backend pandas` runs a task on a laptop
+  with no Spark and no JVM (issue #38).** `Backend` was a port with a single kind
+  of adapter (Spark), and a port with one adapter has never really been tested as
+  a port. It has a second one now. `PandasBackend` reads and writes the generic
+  path formats (csv, parquet, json) with pandas; lakehouse formats and managed
+  tables stay Spark's job, and their connectors say so, so an unsupported pairing
+  fails with a clear message instead of a stray `AttributeError`. This works
+  because the data plane gained a small read/write seam on `Backend`
+  (`read_frame` / `execute_write`): a path connector like `s3` asks the backend to
+  do the IO instead of naming Spark, so the same task and the same `config.yaml`
+  run on either backend. The proof is an integration test that runs one passthrough
+  task through the engine on Spark and on pandas and asserts the output is
+  identical. Install the extra with `pip install 'ubunye-engine[pandas]'`.
+- **The pandas backend reads data exactly as Spark does.** The first version
+  used pandas' own defaults, so the same CSV gave different columns and types on
+  the two backends: pandas assumed a header Spark does not, guessed types Spark
+  leaves as text, read JSON as one array where Spark reads one object per line,
+  and could not read a folder Spark had written. Reads now follow Spark: no
+  header by default (`_c0`, `_c1`), text unless `inferSchema`, Spark's inferred
+  types (`int` when every value fits, else `bigint`; an all empty column is
+  text), JSON Lines with columns sorted by name, folders of part files, globs,
+  explicit `schema:` strings, and timestamps read in
+  `spark.sql.session.timeZone` (UTC when unset). Columns are Arrow backed, so a
+  whole number column with nulls stays whole numbers. Options it cannot honour,
+  nested schema types and remote paths are refused by name instead of ignored.
+  Needs pandas 2.2 and pyarrow 14 or newer.
+- **The pandas backend writes data exactly as Spark does, so each can read the
+  other's output.** It used to write one file where Spark writes a folder, so
+  Spark could not read pandas output as a table, and `append` re-read and
+  rewrote the whole file every run. It now writes Spark's layout (a folder of
+  `part-*` files and `_SUCCESS`); `append` adds a part file; `overwrite` is
+  staged and swapped in only when complete, so a failed write keeps the old
+  data. The text formats match Spark byte for byte on the cases tested: CSV
+  without a header by default, minimal quoting with a backslash escape, text
+  trimmed, Java style numbers, Spark's timestamp text; JSON Lines without null
+  fields. Parquet timestamps are written as UTC microseconds (Spark cannot read
+  nanoseconds). A named index (what `groupby` leaves) is kept as columns.
+  `partition_by`, unknown write options, nested values in CSV and non pandas
+  frames are refused by name.
+- **Connectors that need Spark say so on the pandas backend.** hive, jdbc,
+  delta, unity, binary and rest_api build on a SparkSession. On the pandas
+  backend they used to fail with `AttributeError: 'PandasBackend' object has no
+  attribute 'spark'`, and rest_api only after fetching every page. They now stop
+  first, before any network call, with a message naming the connector and the
+  way out (`--backend spark`, or csv/parquet/json paths with `format: s3`).
+- **Proof that the two backends agree, run against real Spark.** The old parity
+  test compared one passthrough task as strings. The new suite runs Spark 4.2
+  beside the pandas backend and compares Arrow types and Python values, never
+  strings: eight reader cases (CSV with and without header, inferSchema,
+  explicit schema, separators and null values; JSON Lines, multiLine and
+  schema), a folder Spark wrote, each engine reading what the other wrote for
+  parquet, CSV and JSON, CSV and JSON files byte for byte, and one task end to
+  end on both backends. It runs in a timezone other than UTC so a timezone slip
+  cannot hide. It found two gaps, now fixed: explicit `TIMESTAMP` schemas could
+  not read text without an offset, and JSON was not written the way Spark
+  writes it.
+
+---
+
 ### Changed
 
 - **The Titanic examples run on Spark and on pandas, with the same receipt.**
@@ -376,163 +554,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   at all. A notebook write now counts as a run: `nb.write(...)` and `nb.run()`
   each leave one record, in the same place and with the same hash as
   `run_task`.
-
-### Added
-
-- **A conformance suite every backend must pass, shipped for yours.**
-  `ubunye.testing.backend_conformance` is the set of tests that says a backend
-  keeps the engine's promises: it is registered under its name and declares
-  what it can do, gives transforms its own frames and the engine a port,
-  reads a CSV file exactly as Spark does and so leaves the same run record hash
-  as every other engine (checked against a reference built from plain Python
-  values), reads back what it writes, and honours the write modes it claims.
-  Subclass it in a backend's tests. The pandas backend passes it in the unit
-  tier, and both Spark backends in the integration tier. ADR 006 now lists the
-  type names the hash uses, which a port that is not Spark or pandas must
-  report.
-- **One transform for every engine, written with Narwhals (ADR 005).** A
-  transform written with the Spark API runs only on Spark, and one written with
-  pandas only on pandas. Two ways to write it once were tested on the Titanic
-  example's own logic against Spark: Narwhals gave the same data hash on both
-  engines (with a sum cast to a 64 bit integer, which Spark does and pandas
-  does not), and SQL did not (DuckDB and Spark type the same aggregate
-  differently), so Narwhals ships and SQL waits for the 0.7 DuckDB backend. A
-  transform may return a Narwhals frame; the engine unwraps it without
-  importing Narwhals. There is no config field for portability: `ubunye plan`
-  reads the imports in `transformations.py` and says what it is written for
-  (`pyspark`, `narwhals`, `pandas`), in text and in `--json`, and warns when
-  that is not what `--backend` gives it. The example in the docs is run on both
-  engines by the test suite.
-- **`--json` for scripts and agents.** `plan`, `validate`, `backends`, every
-  `lineage` command and `models list/info/compare` print exactly one JSON
-  document on stdout with `--json`, errors included (`{"ok": false, "error":
-  ...}`), and keep their exit codes. `lineage compare --json` reports each data
-  hash as `unchanged`, `changed`, `unknown` or `not comparable`, the same
-  verdict the text form prints.
-- **The pandas backend understands Spark's `mode` option, and backends check
-  their IO details before a run.** Every Titanic example reads its CSV with
-  `mode: "FAILFAST"`, which the pandas backend refused, so none of them could
-  run there. `mode` now works for CSV and JSON exactly as Spark 4.2 does it
-  (checked against Spark): FAILFAST stops at a bad row, DROPMALFORMED skips it,
-  and PERMISSIVE, Spark's default, cuts a row with too many fields and pads one
-  with too few with null. A backend can also check an input's or output's
-  details (options, schema) before anything runs (`Backend.check_io`); the
-  pandas backend uses it, so `plan`, `validate --backend` and the run's own
-  preflight report an option it cannot honour instead of failing on open.
-- **`--var key=value`, documented for years, now works.** It was in the README
-  and three docs pages and was never implemented, so every example that used it
-  failed. It now works on every command that renders a config (`run`,
-  `validate`, `plan`, `config`, `test run`), and the Python API takes the same
-  thing as `variables=` on `run_task`, `run_pipeline` and `notebook`. Names must
-  be valid template names, `env` is reserved and `mode` has its own flag;
-  `--var dt=...` works like `-dt`, and the same name with two values is refused
-  instead of one silently winning. The variables a run used are kept in its run
-  record. On the way, `validate` stopped setting `dtf` to the timestamp's value
-  (it now has `-dtf`), and `test run` now renders with `mode` (its profile), as
-  `run` does.
-- **The run record's data hash now means "these exact rows" (ADR 006).** It
-  read a 1 percent sample, changed with row order on Spark, and on pandas
-  quietly recorded the schema hash as the data hash. The new `rows-v1` hash
-  reads every row in the same pass as the count, ignores row and column order,
-  changes when any cell changes, tells null from NaN, does not depend on the
-  timezone, and is the same on Spark and pandas for the same data (Spark
-  computes it in one aggregation on the cluster). When rows cannot be read the
-  record says why instead of inventing a hash. Records also carry the Ubunye
-  version, the backend, the run variables and each output's `hash_method`, and
-  runs from `run_task` and `run_pipeline` are stored under the same folder and
-  name as CLI runs, so `ubunye lineage list` finds them. `lineage compare` calls
-  two missing hashes "unknown" (it said "unchanged") and a pre-0.6 hash "not
-  comparable". `sample_fraction` is ignored and kept so old configs load.
-- **A pandas transform gets a plain pandas DataFrame (ADR 004).** It used to get
-  an adapter and had to write `sources["x"].native` to reach the DataFrame. The
-  `Backend` port gains `to_native` and `to_port`, and the engine converts at the
-  edges: transforms get and may return native frames; writers, hooks and
-  lineage get the port, where `count()` means rows (a raw pandas `count()`
-  counts non-nulls per column). `run_task`, `run_pipeline` and the notebook's
-  `read()` and `transform()` return native frames, so on pandas use
-  `len(frame)` for rows. Both methods default to doing nothing, so Spark tasks
-  and older backends are unchanged.
-- **Backends are plugins, and say what they can do (ADR 001, 002).** Spark,
-  Databricks and pandas now register in a new `ubunye.backends` entry point
-  group, exactly as a third party engine would, so adding an engine is a package
-  with one entry point and no edit to Ubunye. Each backend declares its
-  capabilities (features such as a SparkSession or path IO, file formats, write
-  modes, distributed, needs Java) and each connector declares what it requires.
-  Before anything starts, the engine checks every input and output against the
-  backend and lists every problem at once, so a task that cannot run stops in
-  the first second instead of halfway through. The core no longer imports
-  `SparkBackend` (a test now reads every import in `ubunye/core` and fails on
-  any engine). `Backend.is_spark` still works, read from the capabilities, and
-  is deprecated. Backends and connectors written before 0.6.0 declare nothing
-  and behave exactly as before.
-- **Choose a backend by name everywhere, with one resolution order (ADR 003).**
-  `--backend NAME` on `ubunye run`, `ubunye test run` and `ubunye validate`;
-  `backend="pandas"` (or an instance) on `run_task`, `run_pipeline` and
-  `notebook`. With no choice: the platform's session if there is one (on
-  Databricks, the notebook's), else Spark. The CLI now follows that order too:
-  run inside a process that already has a SparkSession, it attaches to it
-  instead of stopping it at the end. New `ubunye backends` (and `--json`) lists
-  what is installed and what each backend can do; `ubunye validate --backend
-  pandas` checks a task can run there without starting anything. An unknown or
-  broken backend gives a clear error with the installed names or the `pip
-  install` that fixes it. New page: Execution Backends; new section:
-  Architecture Decisions.
-- **A pandas backend, so `ubunye run --backend pandas` runs a task on a laptop
-  with no Spark and no JVM (issue #38).** `Backend` was a port with a single kind
-  of adapter (Spark), and a port with one adapter has never really been tested as
-  a port. It has a second one now. `PandasBackend` reads and writes the generic
-  path formats (csv, parquet, json) with pandas; lakehouse formats and managed
-  tables stay Spark's job, and their connectors say so, so an unsupported pairing
-  fails with a clear message instead of a stray `AttributeError`. This works
-  because the data plane gained a small read/write seam on `Backend`
-  (`read_frame` / `execute_write`): a path connector like `s3` asks the backend to
-  do the IO instead of naming Spark, so the same task and the same `config.yaml`
-  run on either backend. The proof is an integration test that runs one passthrough
-  task through the engine on Spark and on pandas and asserts the output is
-  identical. Install the extra with `pip install 'ubunye-engine[pandas]'`.
-- **The pandas backend reads data exactly as Spark does.** The first version
-  used pandas' own defaults, so the same CSV gave different columns and types on
-  the two backends: pandas assumed a header Spark does not, guessed types Spark
-  leaves as text, read JSON as one array where Spark reads one object per line,
-  and could not read a folder Spark had written. Reads now follow Spark: no
-  header by default (`_c0`, `_c1`), text unless `inferSchema`, Spark's inferred
-  types (`int` when every value fits, else `bigint`; an all empty column is
-  text), JSON Lines with columns sorted by name, folders of part files, globs,
-  explicit `schema:` strings, and timestamps read in
-  `spark.sql.session.timeZone` (UTC when unset). Columns are Arrow backed, so a
-  whole number column with nulls stays whole numbers. Options it cannot honour,
-  nested schema types and remote paths are refused by name instead of ignored.
-  Needs pandas 2.2 and pyarrow 14 or newer.
-- **The pandas backend writes data exactly as Spark does, so each can read the
-  other's output.** It used to write one file where Spark writes a folder, so
-  Spark could not read pandas output as a table, and `append` re-read and
-  rewrote the whole file every run. It now writes Spark's layout (a folder of
-  `part-*` files and `_SUCCESS`); `append` adds a part file; `overwrite` is
-  staged and swapped in only when complete, so a failed write keeps the old
-  data. The text formats match Spark byte for byte on the cases tested: CSV
-  without a header by default, minimal quoting with a backslash escape, text
-  trimmed, Java style numbers, Spark's timestamp text; JSON Lines without null
-  fields. Parquet timestamps are written as UTC microseconds (Spark cannot read
-  nanoseconds). A named index (what `groupby` leaves) is kept as columns.
-  `partition_by`, unknown write options, nested values in CSV and non pandas
-  frames are refused by name.
-- **Connectors that need Spark say so on the pandas backend.** hive, jdbc,
-  delta, unity, binary and rest_api build on a SparkSession. On the pandas
-  backend they used to fail with `AttributeError: 'PandasBackend' object has no
-  attribute 'spark'`, and rest_api only after fetching every page. They now stop
-  first, before any network call, with a message naming the connector and the
-  way out (`--backend spark`, or csv/parquet/json paths with `format: s3`).
-- **Proof that the two backends agree, run against real Spark.** The old parity
-  test compared one passthrough task as strings. The new suite runs Spark 4.2
-  beside the pandas backend and compares Arrow types and Python values, never
-  strings: eight reader cases (CSV with and without header, inferSchema,
-  explicit schema, separators and null values; JSON Lines, multiLine and
-  schema), a folder Spark wrote, each engine reading what the other wrote for
-  parquet, CSV and JSON, CSV and JSON files byte for byte, and one task end to
-  end on both backends. It runs in a timezone other than UTC so a timezone slip
-  cannot hide. It found two gaps, now fixed: explicit `TIMESTAMP` schemas could
-  not read text without an offset, and JSON was not written the way Spark
-  writes it.
 
 ---
 

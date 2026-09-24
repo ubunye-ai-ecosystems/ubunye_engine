@@ -362,7 +362,7 @@ class Engine:
         """Frames as a transform sees them: the backend's own type."""
         frames = {name: _unwrap(frame) for name, frame in frames.items()}
         if not isinstance(self.backend, Backend):
-            return frames  # a test double or pre-0.6 object: pass through
+            return frames  # a test double or pre-0.7 object: pass through
         return {name: self.backend.to_native(frame) for name, frame in frames.items()}
 
     def _to_ports(self, frames: Dict[str, Any]) -> Dict[str, Any]:
