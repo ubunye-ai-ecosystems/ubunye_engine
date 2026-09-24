@@ -157,3 +157,21 @@ nothing and are never refused.
 Each call in the run record has `cost_usd` and the `estimated_usd` it reserved. The
 record's `llm_budget` keeps the limits, what was spent, and how many calls were made
 and refused; `ubunye lineage trace` prints both.
+
+## See the bill before the run
+
+`ubunye plan` prices a task's recorded calls (its replay file) at today's prices and
+sets them against the ceiling. It reads no data and calls no model:
+
+```
+  Model calls  mode live, max_usd=0.5
+    anthropic/claude-haiku-4-5: 120 recorded calls, 492000 tokens in, 24000 out, $0.612000
+    estimated $0.612000 of $0.5 (prices as of 2026-09-24)
+  warning: llm: a run like the recorded one costs $0.612000, over UBUNYE_LLM_MAX_USD=$0.5; ...
+```
+
+The plan fails (exit 1) when the run would: replay mode with nothing recorded, a
+limit that is not a number, or a dollar ceiling on a recorded model with no price.
+It warns when the estimate is over the ceiling, and when live calls have no dollar
+ceiling at all. A task never recorded gets its mode and limits checked, and no
+estimate. `ubunye plan --json` carries the same in each task's `llm` section.

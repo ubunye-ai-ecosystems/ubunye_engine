@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ubunye plan` shows the bill before the run.** For a task that calls a model,
+  the plan prices its recorded calls (the replay file) at today's prices and sets
+  them against `UBUNYE_LLM_MAX_USD`, with no data read and no model called. It fails
+  on what would stop the run (replay with nothing recorded, a limit that is not a
+  number, a dollar ceiling on an unpriced model) and warns on an estimate over the
+  ceiling or live calls with no ceiling. `--json` adds an `llm` section per task.
 - **The bill is capped before the run.** `UBUNYE_LLM_MAX_USD`, `UBUNYE_LLM_MAX_CALLS`
   and `UBUNYE_LLM_MAX_SECONDS` set one budget per run, shared by every port (and by
   calls running at the same time); `llm.port(max_usd=, max_calls=, max_seconds=)`

@@ -225,6 +225,16 @@ def build_plan(
     elif ttype is not None and ttype not in registry.transforms:
         problems.append(f"transform: no transform plugin registered for type '{ttype}'")
 
+    # --- model calls: the bill before the run (ubunye.llm.estimate) ----------
+    from ubunye.llm.estimate import plan_section
+
+    source = ""
+    if transform["source"]:
+        source = Path(transform["source"]).read_text(encoding="utf-8", errors="replace")
+    llm_section, llm_problems, llm_warnings = plan_section(task_dir, source)
+    problems += llm_problems
+    warnings += llm_warnings
+
     # --- outputs, with the write mode nobody resolved until write time -------
     outputs: List[Dict[str, Any]] = []
     for name in sorted(cfg.CONFIG.outputs):
@@ -279,6 +289,7 @@ def build_plan(
         "inputs": inputs,
         "transform": transform,
         "outputs": outputs,
+        "llm": llm_section,
         "problems": problems,
         "warnings": warnings,
         "ok": not problems,

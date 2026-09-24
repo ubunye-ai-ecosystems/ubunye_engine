@@ -68,13 +68,17 @@ class ReplayStore:
             answers[key] = entry
 
 
-def store_for(explicit: Optional[str], task_dir: Optional[str]) -> ReplayStore:
-    """The store a call uses: ``store=``, else ``UBUNYE_LLM_STORE``, else the task's own."""
+def path_for(explicit: Optional[str], task_dir: Optional[str]) -> Path:
+    """The replay file: ``store=``, else ``UBUNYE_LLM_STORE``, else the task's own."""
     chosen = explicit or os.environ.get("UBUNYE_LLM_STORE")
     if chosen:
-        path = Path(chosen)
-    else:
-        path = Path(task_dir or ".") / ".ubunye" / DEFAULT_NAME
+        return Path(chosen)
+    return Path(task_dir or ".") / ".ubunye" / DEFAULT_NAME
+
+
+def store_for(explicit: Optional[str], task_dir: Optional[str]) -> ReplayStore:
+    """The store a call uses (see :func:`path_for`); one per file per process."""
+    path = path_for(explicit, task_dir)
     # Lexical, not Path.resolve(): on Windows resolve() spells a folder differently
     # (8.3 short name or not) before and after it exists, which split one file
     # into two stores, each holding half the answers.
