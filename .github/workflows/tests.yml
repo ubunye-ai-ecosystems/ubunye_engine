@@ -68,6 +68,8 @@ jobs:
           pip install -e ".[dev]"
           pip install "pyyaml==6.0" "jinja2==3.0.0" "pydantic==2.0" "typer==0.15.4" "narwhals==2.0.0" \
             "pandas==2.2.0" "pyarrow==14.0.0" "numpy<2"
+          # The mcp extra needs pydantic 2.12; its tests skip without it.
+          pip uninstall -y mcp
           pip list | grep -iE "^(pyyaml|jinja2|pydantic|typer|narwhals|pandas|pyarrow|numpy) "
 
       - name: Run unit tests

@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ubunye mcp`: the engine as an MCP server for agents.** Tools `tasks`, `doctor`,
+  `plan`, `runs`, `record`, `gate` and `focus` only read; `run` exists only with
+  `--allow-run`. Tasks are named, never paths, and must sit under `-d`. An agent's
+  run replays its model calls unless the server starts with `--allow-live-llm`, and
+  the run's limits apply. A task's prints go to stderr, so stdout stays the
+  protocol's. A failed run is reported with its record, not raised. New `mcp`
+  extra (the MCP Python SDK 2.x).
 - **The gate covers model calls; a model step replays in CI.** `ubunye gate` reports
   a run's model calls (count, replayed, tokens, list-price cost) and gains
   `--require-replay` (fail if a call went live) and `--max-llm-cost-increase` (fail

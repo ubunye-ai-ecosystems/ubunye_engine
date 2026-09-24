@@ -93,6 +93,7 @@ nav:
       - OpenTelemetry: patterns/opentelemetry.md
       - Gate Pull Requests: patterns/gate.md
       - Language Model Steps: patterns/llm.md
+      - Agents over MCP: patterns/mcp.md
   - Reference:
       - CLI: cli.md
       - Python API: api.md
