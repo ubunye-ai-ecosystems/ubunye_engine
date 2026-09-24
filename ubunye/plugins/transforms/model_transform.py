@@ -112,6 +112,9 @@ class ModelTransform(Transform):
                 model=model,
                 metrics=metrics,
                 lineage_run_id=lineage_run_id,
+                # Stored with the model, so a later promotion from the CLI checks
+                # the same gates this run would have.
+                promotion_gates=registry_cfg.get("promotion_gates"),
             )
 
             promote_to = registry_cfg.get("promote_to")

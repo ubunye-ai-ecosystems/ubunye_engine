@@ -33,6 +33,26 @@ CONFIG:
 
 ---
 
+## The task's own folder: `{{ task_dir }}`
+
+Every config gets `{{ task_dir }}`, the absolute path of the folder that holds
+it. Use it for files that live next to the task:
+
+```yaml
+CONFIG:
+  inputs:
+    people:
+      format: s3
+      path: "{{ task_dir }}/data/people.csv"
+```
+
+A relative path is resolved by the engine's own filesystem: pandas reads it from
+the folder you ran the command in, and Spark from where its JVM started (on a
+cluster, its default filesystem). `{{ task_dir }}` means the same thing
+everywhere, so prefer it for anything next to the task.
+
+---
+
 ## CLI-injected variables
 
 Pass arbitrary key-value pairs with `--var` (repeatable):
@@ -64,7 +84,8 @@ A few rules, so a typo is caught instead of rendering the wrong thing:
 
 - A name must be a valid template name: letters, digits and underscores, not
   starting with a digit (`env_name`, not `env-name`).
-- `env` is reserved for the environment (`{{ env.NAME }}`), and `mode` is set with
+- `env` is reserved for the environment (`{{ env.NAME }}`), `task_dir` for the
+  task's folder, and `mode` is set with
   `-m`.
 - `--var dt=...` works like `-dt`; giving both with different values is refused.
 - The variables a run used are kept in its run record (`--lineage`).

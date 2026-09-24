@@ -14,9 +14,11 @@ from typing import List, Optional
 
 import typer
 
+from ubunye.cli import scaffold
+
 init_app = typer.Typer(
     name="init",
-    help="Scaffold pipelines and CI workflows.",
+    help="Scaffold a task (ubunye init -d ... -u ... -p ... -t ...) or a CI workflow.",
     add_completion=False,
 )
 
@@ -137,6 +139,84 @@ def _build_dev_notebook(task: str, usecase: str, package: str) -> dict:
 # ── init pipeline ────────────────────────────────────────────────────
 
 
+_TEMPLATE_HELP = (
+    "What to scaffold: 'local' (default) reads a sample CSV next to the task and "
+    "writes Parquet, and runs on pandas (no Java) or Spark; 'databricks' reads a "
+    "Unity Catalog table and writes to s3a://."
+)
+
+
+def _scaffold(
+    usecase_dir: Path,
+    usecase: str,
+    package: str,
+    task_list: List[str],
+    template: str,
+    overwrite: bool,
+) -> None:
+    if template not in scaffold.TEMPLATES:
+        raise typer.BadParameter(
+            f"unknown template '{template}'; use one of: {', '.join(scaffold.TEMPLATES)}",
+            param_hint="--template",
+        )
+    for task in task_list:
+        target = usecase_dir / usecase / package / task
+        target.mkdir(parents=True, exist_ok=True)
+        files = scaffold.files_for(template, usecase, package, task, target)
+        files[target / "notebooks" / f"{task}_dev.ipynb"] = json.dumps(
+            _build_dev_notebook(task, usecase, package), indent=1
+        )
+        for path, text in files.items():
+            if path.exists() and not overwrite:
+                typer.echo(f"exists: {path}")
+                continue
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+            typer.echo(f"created: {path}")
+
+    typer.secho("[OK] Scaffold complete", fg=typer.colors.GREEN)
+    if template == "local":
+        typer.echo()
+        for line in scaffold.next_steps(usecase_dir, usecase, package, task_list):
+            typer.echo(line)
+
+
+@init_app.callback(invoke_without_command=True)
+def init(
+    ctx: typer.Context,
+    usecase_dir: Optional[Path] = typer.Option(
+        None, "-d", "--usecase-dir", help="Root directory of pipelines."
+    ),
+    usecase: Optional[str] = typer.Option(None, "-u", "--usecase", help="Use case name."),
+    package: Optional[str] = typer.Option(None, "-p", "--package", help="Pipeline/package name."),
+    task_list: Optional[List[str]] = typer.Option(
+        None, "-t", "--task-list", help="Task(s) to scaffold (repeatable)."
+    ),
+    template: str = typer.Option("local", "--template", help=_TEMPLATE_HELP),
+    overwrite: bool = typer.Option(False, help="Overwrite existing files"),
+):
+    """Scaffold a task folder: ubunye init -d pipelines -u demo -p starter -t my_task"""
+    if ctx.invoked_subcommand is not None:
+        return
+    given = {
+        "--usecase-dir": usecase_dir,
+        "--usecase": usecase,
+        "--package": package,
+        "--task-list": task_list,
+    }
+    if not any(given.values()):
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
+    missing = [flag for flag, value in given.items() if not value]
+    if missing:
+        raise typer.BadParameter(
+            f"missing {', '.join(missing)}. "
+            "Example: ubunye init -d pipelines -u demo -p starter -t filter_adults"
+        )
+    assert usecase_dir and usecase and package and task_list  # narrowed for mypy
+    _scaffold(usecase_dir, usecase, package, task_list, template, overwrite)
+
+
 @init_app.command("pipeline")
 def init_pipeline(
     usecase_dir: Path = typer.Option(
@@ -149,74 +229,11 @@ def init_pipeline(
     task_list: List[str] = typer.Option(
         ..., "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."
     ),
+    template: str = typer.Option("local", "--template", help=_TEMPLATE_HELP),
     overwrite: bool = typer.Option(False, help="Overwrite existing files"),
 ):
-    """Scaffold task folders with config.yaml and transformations.py."""
-    for task in task_list:
-        target = usecase_dir / usecase / package / task
-        cfg_file = target / "config.yaml"
-        feat_file = target / "transformations.py"
-        target.mkdir(parents=True, exist_ok=True)
-
-        if cfg_file.exists() and not overwrite:
-            typer.echo(f"exists: {cfg_file}")
-        else:
-            cfg = f"""MODEL: "etl"
-VERSION: "0.1.0"
-ENGINE:
-  spark_conf:
-    spark.sql.shuffle.partitions: "50"
-
-CONFIG:
-  inputs:
-    tx_data:
-      format: unity
-      db_name: raw_db
-      tbl_name: {task}_input
-  transform: {{}}
-  outputs:
-    output_features:
-      format: s3
-      path: "s3a://your-bucket/{usecase}/{package}/{task}/{{{{ dt | default('1970-01-01') }}}}"
-      mode: overwrite
-"""
-            cfg_file.write_text(cfg, encoding="utf-8")
-            typer.echo(f"created: {cfg_file}")
-
-        if feat_file.exists() and not overwrite:
-            typer.echo(f"exists: {feat_file}")
-        else:
-            class_name = "".join(s.capitalize() for s in task.replace("-", "_").split("_"))
-            feat = f"""from typing import Dict, Any
-from ubunye.core.interfaces import Task
-
-class {class_name}(Task):
-    \"\"\"User-defined Spark transformation task.\"\"\"
-    def setup(self) -> None:
-        pass
-
-    def transform(self, sources: Dict[str, Any]) -> Dict[str, Any]:
-        # Replace with your pure DataFrame transformations.
-        df = sources.get("tx_data")
-        return {{"output_features": df}}
-"""
-            feat_file.write_text(feat, encoding="utf-8")
-            typer.echo(f"created: {feat_file}")
-
-        # --- Dev notebook ---
-        nb_dir = target / "notebooks"
-        nb_dir.mkdir(parents=True, exist_ok=True)
-        nb_file = nb_dir / f"{task}_dev.ipynb"
-        if nb_file.exists() and not overwrite:
-            typer.echo(f"exists: {nb_file}")
-        else:
-            nb_file.write_text(
-                json.dumps(_build_dev_notebook(task, usecase, package), indent=1),
-                encoding="utf-8",
-            )
-            typer.echo(f"created: {nb_file}")
-
-    typer.secho("[OK] Scaffold complete", fg=typer.colors.GREEN)
+    """Scaffold task folders (the same as ubunye init with options)."""
+    _scaffold(usecase_dir, usecase, package, task_list, template, overwrite)
 
 
 # ── init github-actions ──────────────────────────────────────────────

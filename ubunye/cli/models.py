@@ -113,8 +113,18 @@ def promote(
     version: str = _version_opt,
     to: str = typer.Option(..., "--to", help="Target stage: staging | production."),
     promoted_by: Optional[str] = typer.Option(None, "--promoted-by", help="Username."),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Promote without checking the model's promotion gates. The version "
+        "records that it was forced.",
+    ),
 ):
-    """Promote a model version to a higher lifecycle stage."""
+    """Promote a model version to a higher lifecycle stage.
+
+    The version must pass the promotion gates stored with the model (set by
+    the training run's promotion_gates); --force skips them, with a warning.
+    """
     try:
         target_stage = ModelStage(to)
     except ValueError:
@@ -127,9 +137,19 @@ def promote(
 
     registry = ModelRegistry(store)
     try:
-        mv = registry.promote(use_case, model, version, target_stage, promoted_by=promoted_by)
+        gates = registry.promotion_gates(use_case, model)
+        if force and gates:
+            typer.secho(
+                f"[WARN] Promoting without checking its {len(gates)} gate(s): "
+                + ", ".join(f"{k}={v}" for k, v in sorted(gates.items())),
+                fg=typer.colors.YELLOW,
+            )
+        mv = registry.promote(
+            use_case, model, version, target_stage, promoted_by=promoted_by, force=force
+        )
+        checked = f"  ({len(gates)} gate(s) passed)" if gates and not force else ""
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} -> {mv.stage.value}",
+            f"[OK] {use_case}/{model} v{mv.version} -> {mv.stage.value}{checked}",
             fg=typer.colors.GREEN,
         )
     except (FileNotFoundError, ValueError) as e:

@@ -46,6 +46,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The quickstart works, and a test keeps it working.** It used flags that do not
+  exist (`run --profile`), a `lineage list` with no task, and a Hive to Delta
+  config no laptop could run. It is rewritten around the `ubunye init` scaffold,
+  and its commands, in the README and on the Quickstart page, are run by the
+  test suite exactly as written. `CONTRIBUTING.md`, which the README linked to,
+  now exists (the docs page shows the same file), and stale claims are gone:
+  "Spark native", "288 tests", and `run --profile` in the engine docs.
+- **The first command in the README works, and what it makes runs.** The README
+  and quickstart said `ubunye init -d ... -t ...`, but the command was
+  `ubunye init pipeline ...`, so the first thing a new person typed failed. Both
+  forms work now. The default scaffold (`--template local`) has a small sample
+  CSV next to the task, a config that reads it and writes Parquet into `output/`
+  next to it, and a transform (`people[people["age"] >= 18]`) that means the
+  same in pandas and in Spark: it runs with no Java and on Spark unchanged, and
+  the two runs leave the same data hash (checked against Spark). `--template
+  databricks` writes the old Unity Catalog scaffold. Configs get a built in
+  `{{ task_dir }}` variable, the task's own folder, so a path next to the task
+  works from any folder and on either engine (Spark resolves a relative path
+  from where its JVM started, pandas from the current folder).
+- **`ubunye models promote` honours the model's promotion gates.** Gates were
+  read from the training task's config and applied only when that run promoted
+  the model itself; the CLI never saw them, so a model failing every gate could
+  be promoted by hand. The registry now keeps a model's gates (set when the
+  training run registers it), every promotion checks them by default, and a
+  failing gate is named. `--force` (and `force=True` in Python) skips them with
+  a warning and marks the version `promotion_forced`, with the gates it skipped.
 - **A typo in `config.yaml` says where it is.** A YAML syntax error escaped as a
   raw `yaml.ParserError`, so `run`, `validate` and `plan` crashed with a
   traceback. It is now a config error naming the file, the line and the column,

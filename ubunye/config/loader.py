@@ -92,7 +92,11 @@ def load_config(
         )
 
     try:
-        resolved = resolve_config(raw, cli_vars=variables or {})
+        # {{ task_dir }} is the task's own folder, so a path next to the task
+        # works from any working directory and on any backend (Spark resolves
+        # a relative path from where its JVM started, pandas from Python's).
+        template_vars = {**(variables or {}), "task_dir": config_path.parent.resolve().as_posix()}
+        resolved = resolve_config(raw, cli_vars=template_vars)
     except ConfigTemplateError:
         raise
     except ValueError as exc:

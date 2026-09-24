@@ -14,7 +14,7 @@ ENGINE:
     spark.executor.memory: "4g"
 
   profiles:
-    dev:                               # overrides applied with --profile dev
+    dev:                               # overrides applied with -m dev
       spark_conf:
         spark.sql.shuffle.partitions: "4"
         spark.executor.memory: "512m"
@@ -59,12 +59,15 @@ Profile-only keys are additive; base keys not overridden by the profile are kept
 
 ## Using profiles at runtime
 
-```bash
-# Development — small cluster, few shuffle partitions
-ubunye run -d pipelines -u fraud -p etl -t claims --profile dev
+`run` picks a profile with `-m` (`validate` also takes `--profile`). The name must
+match a key under `profiles:` exactly, including its case.
 
-# Production — full cluster
-ubunye run -d pipelines -u fraud -p etl -t claims --profile prod
+```bash
+# Development: small cluster, few shuffle partitions
+ubunye run -d pipelines -u fraud -p etl -t claims -m dev
+
+# Production: full cluster
+ubunye run -d pipelines -u fraud -p etl -t claims -m prod
 ```
 
 ---
