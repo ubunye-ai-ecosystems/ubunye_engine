@@ -1,0 +1,21 @@
+MODEL: "etl"
+VERSION: "1.0.0"
+
+# Reads the reviews, labels each one with a language model (transformations.py),
+# writes the labelled reviews. The model's answers replay from llm-replay.jsonl
+# in this folder when UBUNYE_LLM_MODE=replay.
+CONFIG:
+  inputs:
+    reviews:
+      format: s3
+      path: "{{ env.REVIEWS_INPUT_PATH }}"
+      file_format: csv
+      options:
+        header: "true"
+  transform: {}
+  outputs:
+    labelled:
+      format: s3
+      path: "{{ env.REVIEWS_OUTPUT_PATH }}"
+      file_format: parquet
+      mode: overwrite

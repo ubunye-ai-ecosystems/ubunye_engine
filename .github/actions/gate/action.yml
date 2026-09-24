@@ -33,6 +33,12 @@ inputs:
   gate-args:
     description: Extra `ubunye gate` flags, e.g. "--max-slowdown 0.5 --allow-data-change".
     default: ""
+  llm-mode:
+    description: >
+      UBUNYE_LLM_MODE for both runs. "replay" (the default) answers model calls from
+      the task's committed replay file: no key, no spend, and a changed prompt fails
+      closed. "live" calls the model on both runs and spends money.
+    default: replay
   python-version:
     description: Python to run on.
     default: "3.12"
@@ -72,6 +78,7 @@ runs:
         PKG: ${{ inputs.package }}
         TASK: ${{ inputs.task }}
         BACKEND: ${{ inputs.backend }}
+        UBUNYE_LLM_MODE: ${{ inputs.llm-mode }}
       run: |
         set -euo pipefail
         run_and_export() {

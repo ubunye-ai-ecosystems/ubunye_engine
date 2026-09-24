@@ -201,3 +201,13 @@ says so on every row. Replayed calls are not charges and make no rows; calls wit
 no price are left out, and the command says how many. Name the billing account with
 `UBUNYE_FOCUS_BILLING_ACCOUNT_ID` and `UBUNYE_FOCUS_BILLING_ACCOUNT_NAME`
 (default `unknown`).
+
+## In CI: replay, and gate
+
+Commit the replay file with the task and replay it in CI: no key, no spend, the
+same answers on every machine. `ubunye gate --require-replay` fails a run whose
+calls went live, and `--max-llm-cost-increase` fails a change that makes the task
+send more tokens (see [Gate Pull Requests](gate.md)).
+`examples/production/llm_replay` does this on Linux, Windows and macOS: its CI job
+replays six calls with nothing listening at the model's address, checks the rows
+against a golden hash, and gates two replayed runs.

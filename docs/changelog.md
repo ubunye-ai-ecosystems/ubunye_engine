@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The gate covers model calls; a model step replays in CI.** `ubunye gate` reports
+  a run's model calls (count, replayed, tokens, list-price cost) and gains
+  `--require-replay` (fail if a call went live) and `--max-llm-cost-increase` (fail
+  if the list price of the tokens, or the tokens for an unpriced model, grew by more
+  than a share; measured on replayed runs too). The gate Action's new `llm-mode`
+  input defaults to `replay`. A new example, `examples/production/llm_replay`,
+  labels reviews through `ubunye.llm` with answers recorded from a stub model, and a
+  CI job replays it on Linux, Windows and macOS against a golden hash with nothing
+  listening at the model's address.
 - **`ubunye lineage focus`: the model bill as FOCUS 1.4 cost rows.** A run's model
   calls become rows a FinOps tool loads next to the cloud bill: every mandatory
   FOCUS 1.4 column, one row per provider, model and token direction, cost equal to
