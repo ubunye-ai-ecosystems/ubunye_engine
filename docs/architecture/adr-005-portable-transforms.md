@@ -19,12 +19,15 @@ each result compared with the Spark reference by the run record's content hash
 | **Narwhals** (one dataframe API over pandas and PySpark) | same hash as the reference | same hash as the reference, once the sum is cast (below) | **ships** |
 | **SQL**: Spark SQL on Spark, DuckDB on pandas | same hash | clean step same, aggregate different: `SUM(BIGINT)` is `DECIMAL(38,0)` in DuckDB, `bigint` in Spark | not shipped |
 
-Narwhals has one type difference of the same kind: a sum of whole numbers is
-`bigint` on Spark and keeps the column's type on pandas (`int32` for small
-numbers read from CSV), so the aggregate matched only with
-`nw.col("Survived").cast(nw.Int64).sum()`. The difference is small, local and
-fixed in the transform; it is documented, and the run record's hash, which
-covers types, shows it when it is missed.
+Narwhals keeps each engine's own rules, and two differences are known. A sum of
+whole numbers is `bigint` on Spark and keeps the column's type on pandas
+(`int32` for small numbers read from CSV), so the aggregate matched only once
+`Survived` was cast to `Int64` (best before the group by: inside `agg` pandas
+takes a slow path). And a value exactly halfway rounds half up on Spark and
+half to even on pandas (0.125 to two places: 0.13 and 0.12); the Titanic rates
+never land on a tie. Both are small and local, both are documented, and the
+run record's hash, which covers every value and type, shows either one when it
+is missed.
 
 The SQL result is not a bug to fix but a property of SQL: two engines agree on
 the language and differ on types. Every aggregate a user writes would need a

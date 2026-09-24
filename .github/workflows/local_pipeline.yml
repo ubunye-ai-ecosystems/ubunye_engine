@@ -5,12 +5,15 @@ name: examples/titanic_local
 # Stages (each one fails the job with a distinct message):
 #   1. Checkout + Python/Java setup (with pip cache)
 #   2. Install engine + test deps
-#   3. Unit tests (pandas, no Spark)
+#   3. Unit tests (the transform on Spark and on pandas)
 #   4. Fetch Titanic CSV
 #   5. ubunye validate  (config + Jinja)
 #   6. ubunye plan      (resolved I/O graph)
 #   7. ubunye run       (Spark; writes Parquet + lineage)
 #   8. Validate Parquet output against the committed golden
+#   9. ubunye run --backend pandas (same task, same output, no Java)
+#  10. Validate the pandas output against the same golden
+#  11. The two run records carry the same config hash and data hash
 
 on:
   push:
@@ -64,7 +67,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[spark,dev]" pandas pyarrow
 
-      - name: Unit tests (pandas, no Spark)
+      - name: Unit tests (the transform on Spark and on pandas)
         run: pytest "${EXAMPLE_DIR}/tests" -v
 
       - name: Fetch Titanic CSV
@@ -102,6 +105,26 @@ jobs:
             --actual "${EXAMPLE_DIR}/output/mode=${MODE}/dt=${DATA_TIMESTAMP}" \
             --expected "${EXAMPLE_DIR}/expected_output/survival_by_class.parquet"
 
+      # The same folder on the pandas backend: no Java, same config, same output
+      # path. Its run record must match Spark's, hash for hash.
+      - name: ubunye run --backend pandas
+        run: |
+          ubunye run \
+            -d "${EXAMPLE_DIR}/pipelines" \
+            -u titanic -p analytics -t survival_by_class \
+            -dt "${DATA_TIMESTAMP}" -m "${MODE}" --lineage --backend pandas
+
+      - name: Validate the pandas output against the same golden
+        run: |
+          python "${EXAMPLE_DIR}/scripts/validate_output.py" \
+            --actual "${EXAMPLE_DIR}/output/mode=${MODE}/dt=${DATA_TIMESTAMP}" \
+            --expected "${EXAMPLE_DIR}/expected_output/survival_by_class.parquet"
+
+      - name: Same receipt on Spark and pandas
+        run: |
+          bash "${EXAMPLE_DIR}/scripts/same_receipt.sh" \
+            "${EXAMPLE_DIR}/pipelines" titanic analytics survival_by_class
+
       - name: Upload pipeline output (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -109,6 +132,6 @@ jobs:
           name: titanic-local-output-${{ github.run_id }}
           path: |
             ${{ env.EXAMPLE_DIR }}/output
-            ${{ env.EXAMPLE_DIR }}/.ubunye
+            ${{ env.EXAMPLE_DIR }}/pipelines/.ubunye
           if-no-files-found: ignore
           retention-days: 7

@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The Titanic examples run on Spark and on pandas, with the same receipt.**
+  Their three transforms (survival by class; clean, then aggregate) are
+  written once with Narwhals, identically in the local and Databricks examples.
+  CI runs each local example on Spark, then on the pandas backend into the same
+  output, checks the golden output again, and requires the two run records to
+  carry the same config hash and data hash (`scripts/same_receipt.sh`, which
+  uses only `ubunye lineage list` and `lineage compare`). On the real 891-row
+  file the pandas run takes 0.4 s against Spark's 4 s. The example tests run
+  every transform on both engines. The Databricks notebooks install Narwhals.
+  The docs now name the two known Spark and pandas differences under Narwhals:
+  the type of a sum (cast first) and rounding exactly halfway.
+
 - **Python 3.10 to 3.13, tested on Linux, Windows and macOS.** Python 3.9 is
   no longer supported (it reached end of life in October 2025). CI now runs the
   unit tier on every supported Python on all three systems (Windows and macOS

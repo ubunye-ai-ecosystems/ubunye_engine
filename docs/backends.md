@@ -85,15 +85,13 @@ class SurvivalByGroup(Task):
         people = nw.from_native(sources["titanic"])  # pandas or Spark, as given
         summary = (
             people.with_columns(
-                age_group=nw.when(nw.col("Age") < 18).then(nw.lit("child")).otherwise(nw.lit("adult"))
-            )
-            .group_by("Pclass", "age_group")
-            .agg(
-                nw.len().alias("passengers"),
+                age_group=nw.when(nw.col("Age") < 18).then(nw.lit("child")).otherwise(nw.lit("adult")),
                 # Spark widens every sum to a 64 bit integer; pandas keeps the
                 # column's type. Cast first and both give the same type.
-                nw.col("Survived").cast(nw.Int64).sum().alias("survivors"),
+                Survived=nw.col("Survived").cast(nw.Int64),
             )
+            .group_by("Pclass", "age_group")
+            .agg(nw.len().alias("passengers"), nw.col("Survived").sum().alias("survivors"))
             .sort("Pclass", "age_group")
         )
         return {"summary": summary}  # returning the Narwhals frame is fine
@@ -104,11 +102,20 @@ same data hash: the same rows, values and types (the engine's own tests check
 this against Spark). The engine hands your transform its own frames and
 unwraps what you return, so writers, hooks and lineage never see Narwhals.
 
-Narwhals gives one API, not one set of types. Where the engines differ, cast:
-the known case is a sum of whole numbers, which Spark makes `bigint` and pandas
-leaves as the column's type (`int32` for small numbers read from CSV). The run
-record's data hash covers types, so comparing the two runs' hashes shows
-whether a transform really gives the same result on both.
+Narwhals gives one API, not one set of engine rules. Two differences are known:
+
+- **A sum of whole numbers** is `bigint` on Spark and keeps the column's type on
+  pandas (`int32` for small numbers read from CSV). Cast the column before the
+  group by, as above. (Casting inside `agg` works too, but pandas then runs the
+  sum the slow way, and Narwhals warns.)
+- **Rounding a value exactly halfway**: Spark rounds half up and pandas rounds
+  half to even, so `round(2)` makes 0.125 into 0.13 on Spark and 0.12 on pandas.
+  Other values round the same. Round for presentation, or where ties cannot
+  occur.
+
+The run record's data hash covers every value and type, so comparing the two
+runs' hashes (`ubunye lineage compare`) shows whether a transform really gives
+the same result on both.
 
 You do not declare which engines a transform supports. `ubunye plan` reads the
 imports in `transformations.py` and says what it is written for:

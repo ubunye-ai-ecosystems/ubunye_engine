@@ -9,11 +9,13 @@ name: examples/titanic_multitask_local
 # Stages:
 #   1. Checkout + Python/Java setup
 #   2. Install engine + test deps
-#   3. Unit tests (Spark)
+#   3. Unit tests (both tasks on Spark and on pandas)
 #   4. Fetch Titanic CSV
 #   5. ubunye validate (both tasks)
 #   6. ubunye run (both tasks sequentially via -t flag)
 #   7. Verify output Parquet exists and has rows
+#   8. ubunye run --backend pandas (both tasks, same outputs, no Java)
+#   9. Each task's two run records carry the same config and data hashes
 
 on:
   push:
@@ -67,7 +69,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[spark,dev]" pandas pyarrow
 
-      - name: Unit tests (Spark)
+      - name: Unit tests (both tasks on Spark and on pandas)
         run: pytest "${EXAMPLE_DIR}/tests" -v
 
       - name: Fetch Titanic CSV
@@ -106,6 +108,23 @@ jobs:
           echo "Output Parquet found at $SUMMARY_DIR"
           ls -la "$SUMMARY_DIR"
 
+      # The same pipeline on the pandas backend: no Java, same configs, same
+      # output paths (aggregate reads what the pandas clean_data just wrote).
+      - name: "ubunye run --backend pandas: clean_data -> aggregate"
+        run: |
+          ubunye run \
+            -d "${EXAMPLE_DIR}/pipelines" \
+            -u titanic -p pipeline \
+            -t clean_data -t aggregate \
+            -dt "${DATA_TIMESTAMP}" -m "${MODE}" --lineage --backend pandas
+
+      - name: Same receipts on Spark and pandas
+        run: |
+          for task in clean_data aggregate; do
+            bash "${EXAMPLE_DIR}/scripts/same_receipt.sh" \
+              "${EXAMPLE_DIR}/pipelines" titanic pipeline "$task"
+          done
+
       - name: Upload pipeline output (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -113,6 +132,6 @@ jobs:
           name: titanic-multitask-output-${{ github.run_id }}
           path: |
             ${{ env.EXAMPLE_DIR }}/output
-            ${{ env.EXAMPLE_DIR }}/.ubunye
+            ${{ env.EXAMPLE_DIR }}/pipelines/.ubunye
           if-no-files-found: ignore
           retention-days: 7
