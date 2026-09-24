@@ -189,7 +189,9 @@ from ubunye.core.interfaces import Task
 class Label(Task):
     def setup(self):
         p = self.config["CONFIG"]["transform"]["params"]
-        self.model = llm.port("anthropic", model="c", api_key="k", base_url=p["url"])
+        self.model = llm.port(
+            "anthropic", model=p.get("model", "c"), api_key="k", base_url=p["url"]
+        )
 
     def transform(self, sources):
         df = sources["raw"].copy()
@@ -198,7 +200,7 @@ class Label(Task):
 """
 
 
-def _task(root: Path, url: str) -> Path:
+def _task(root: Path, url: str, model: str = "c") -> Path:
     task = root / "uc" / "pkg" / "label"
     task.mkdir(parents=True)
     (root / "raw.csv").write_text("id,text\n1,good\n2,bad\n", encoding="utf-8")
@@ -210,7 +212,7 @@ CONFIG:
     raw: {{format: s3, path: "{(root / 'raw.csv').as_posix()}", file_format: csv,
            options: {{header: "true"}}}}
   transform:
-    params: {{url: "{url}"}}
+    params: {{url: "{url}", model: "{model}"}}
   outputs:
     labelled: {{format: s3, path: "{(root / 'out').as_posix()}", file_format: parquet,
                 mode: overwrite}}

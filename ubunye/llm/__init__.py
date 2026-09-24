@@ -27,6 +27,11 @@ A port has a mode (``mode=`` or ``UBUNYE_LLM_MODE``): ``live`` calls the provide
 ``record`` calls it and keeps each answer in a replay file; ``replay`` answers from
 that file, needs no key and no network, and fails on a request it has no answer
 for. See :mod:`ubunye.llm.replay`.
+
+Limits on dollars, calls and seconds are checked before each call is sent, and a
+call that could pass one is refused (:mod:`ubunye.llm.budget`, prices in
+:mod:`ubunye.llm.prices`). Each logged call carries ``cost_usd`` (None when the
+model has no price) and the ``estimated_usd`` worst case that was reserved.
 """
 
 from __future__ import annotations
@@ -45,7 +50,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
-from ubunye.core.errors import LLMError
+from ubunye.core.errors import LLMBudgetError, LLMError
+from ubunye.llm import prices
 
 log = logging.getLogger(__name__)
 
@@ -145,9 +151,12 @@ class LLMBackend:
 
 
 class _CallLog:
-    def __init__(self, into: List[Dict[str, Any]], task_dir: Optional[str]) -> None:
+    def __init__(
+        self, into: List[Dict[str, Any]], task_dir: Optional[str], budget: Any = None
+    ) -> None:
         self.calls = into
         self.task_dir = task_dir
+        self.budget = budget
         self.lock = threading.Lock()
 
     def add(self, call: Dict[str, Any]) -> None:
@@ -162,14 +171,18 @@ _ACTIVE: contextvars.ContextVar[Optional[_CallLog]] = contextvars.ContextVar(
 
 @contextmanager
 def recording(
-    into: Optional[List[Dict[str, Any]]] = None, *, task_dir: Optional[str] = None
+    into: Optional[List[Dict[str, Any]]] = None,
+    *,
+    task_dir: Optional[str] = None,
+    budget: Any = None,
 ) -> Iterator[List[Dict[str, Any]]]:
     """Collect every call made inside the block; the engine opens one per run.
 
-    ``task_dir`` is where a replay file lives by default (``.ubunye/llm-replay.jsonl``).
+    ``task_dir`` is where a replay file lives by default (``.ubunye/llm-replay.jsonl``);
+    ``budget`` (a :class:`ubunye.llm.budget.Budget`) is shared by every port in the block.
     """
     calls: List[Dict[str, Any]] = into if into is not None else []
-    token = _ACTIVE.set(_CallLog(calls, task_dir))
+    token = _ACTIVE.set(_CallLog(calls, task_dir, budget))
     try:
         yield calls
     finally:
@@ -192,6 +205,8 @@ class LLMPort:
         backoff_s: float = 1.0,
         mode: str = "live",
         store: Optional[str] = None,
+        price: Optional[Tuple[float, float]] = None,
+        budget: Any = None,
     ) -> None:
         self.backend = backend
         self.name = name
@@ -200,6 +215,11 @@ class LLMPort:
         self.backoff_s = backoff_s
         self.mode = mode
         self.store = store
+        self.price = (float(price[0]), float(price[1])) if price else None
+        #: The port's own limits (max_usd= and the rest), on top of the run's.
+        self.own_budget = budget
+        #: The environment's limits, for calls made outside a run.
+        self._env_budget: Any = None
 
     @property
     def model(self) -> str:
@@ -256,12 +276,17 @@ class LLMPort:
             "output_tokens": 0,
             "attempts": 0,
             "source": self.mode,
+            "cost_usd": None,
         }
         active = _ACTIVE.get()
+        price = self.price or prices.lookup(self.name, request.model)
+        held: List[Tuple[Any, float]] = []
         try:
             if self.mode == "replay":
                 response = self._replay(request, key, active)
+                call["cost_usd"] = 0.0
             else:
+                held = self._reserve(request, price, active, call)
                 answer, call["attempts"] = self._post(request)
                 response = self.backend.parse(answer, request)
                 response.request_key = key
@@ -275,15 +300,61 @@ class LLMPort:
                 output_tokens=response.output_tokens,
                 stop_reason=response.stop_reason,
             )
+            if self.mode != "replay" and price is not None:
+                call["cost_usd"] = round(
+                    prices.cost(price, response.input_tokens, response.output_tokens), 10
+                )
+            for b, reserved in held:
+                b.settle(reserved, call["cost_usd"])
+            held = []
             return response
+        except LLMBudgetError as exc:
+            call["status"] = "refused"
+            call["error"] = str(exc.args[0])[:300]
+            raise
         except LLMError as exc:
             call["attempts"] = exc.context.get("Attempts", call["attempts"])
             call["error"] = str(exc.args[0])[:300]
             raise
         finally:
+            for b, reserved in held:  # a failed call: charged nothing
+                b.settle(reserved, 0.0)
             call["seconds"] = round(time.perf_counter() - started, 6)
             if active is not None:
                 active.add(call)
+
+    def _reserve(
+        self,
+        request: LLMRequest,
+        price: Optional[Tuple[float, float]],
+        active: Optional[_CallLog],
+        call: Dict[str, Any],
+    ) -> List[Tuple[Any, float]]:
+        """Reserve the call's worst case in every budget that applies, or refuse it."""
+        run_budget = active.budget if active is not None else self._outside_run_budget()
+        held: List[Tuple[Any, float]] = []
+        try:
+            for b in (run_budget, self.own_budget):
+                if b is not None and b.limited:
+                    held.append((b, b.reserve(backend=self.name, request=request, price=price)))
+        except LLMBudgetError:
+            for b, reserved in held:
+                b.release(reserved)
+            raise
+        if price is not None:
+            from ubunye.llm.budget import estimate_input_tokens
+
+            call["estimated_usd"] = round(
+                prices.cost(price, estimate_input_tokens(request), request.max_tokens), 10
+            )
+        return held
+
+    def _outside_run_budget(self) -> Any:
+        if self._env_budget is None:
+            from ubunye.llm.budget import Budget
+
+            self._env_budget = Budget.from_env()
+        return self._env_budget
 
     def _store(self, active: Optional[_CallLog]) -> Any:
         from ubunye.llm.replay import store_for
@@ -403,6 +474,10 @@ def port(
     backoff_s: float = 1.0,
     mode: Optional[str] = None,
     store: Optional[str] = None,
+    price: Optional[Tuple[float, float]] = None,
+    max_usd: Optional[float] = None,
+    max_calls: Optional[int] = None,
+    max_seconds: Optional[float] = None,
 ) -> LLMPort:
     """A port to ``model`` on ``backend``.
 
@@ -414,6 +489,10 @@ def port(
     ``mode`` is ``live``, ``record`` or ``replay`` (default: ``UBUNYE_LLM_MODE``, else
     ``live``). ``store`` is the replay file (default: ``UBUNYE_LLM_STORE``, else
     ``.ubunye/llm-replay.jsonl`` in the task's folder).
+
+    ``max_usd``, ``max_calls`` and ``max_seconds`` limit this port, on top of the
+    run's limits (``UBUNYE_LLM_MAX_*``). ``price`` is ``(input, output)`` in USD per
+    million tokens, for a model the price table does not list.
     """
     from ubunye._internal.discovery import _get
 
@@ -440,4 +519,25 @@ def port(
         backoff_s=backoff_s,
         mode=chosen,
         store=store,
+        price=price,
+        budget=_own_budget(max_usd, max_calls, max_seconds),
     )
+
+
+def _own_budget(
+    max_usd: Optional[float], max_calls: Optional[int], max_seconds: Optional[float]
+) -> Any:
+    if max_usd is None and max_calls is None and max_seconds is None:
+        return None
+    from ubunye.llm.budget import Budget
+
+    return Budget(max_usd=max_usd, max_calls=max_calls, max_seconds=max_seconds)
+
+
+def __getattr__(name: str) -> Any:
+    """``llm.budget`` and ``llm.replay``, imported when first used."""
+    if name in ("budget", "replay"):
+        import importlib
+
+        return importlib.import_module(f"ubunye.llm.{name}")
+    raise AttributeError(f"module 'ubunye.llm' has no attribute {name!r}")

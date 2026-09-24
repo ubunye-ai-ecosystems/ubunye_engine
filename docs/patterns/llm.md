@@ -108,3 +108,52 @@ Replay fails closed. A request with no recorded answer (a new prompt, another
 model, another `temperature`) stops the run with the request's key and the hint to
 record again; it never falls back to a live call. Each call in the run record says
 where its answer came from: `"source": "live"`, `"record"` or `"replay"`.
+
+## Cap the bill before the run
+
+Set a ceiling and a call that could pass it is refused before it is sent:
+
+| Variable | Limit |
+| --- | --- |
+| `UBUNYE_LLM_MAX_USD` | Dollars for the whole run |
+| `UBUNYE_LLM_MAX_CALLS` | Number of calls |
+| `UBUNYE_LLM_MAX_SECONDS` | Wall clock since the run's first transform started |
+
+```bash
+UBUNYE_LLM_MAX_USD=2 ubunye run -d pipelines -u shop -p reviews -t label
+```
+
+One budget covers every port in the run. A port can add its own, narrower limits
+with `llm.port(..., max_usd=, max_calls=, max_seconds=)`. Outside a run (a notebook),
+the variables limit each port.
+
+Before each call the port reserves the call's worst case: the prompt's tokens counted
+high (one per 3 characters, plus 4 per message) and the whole `max_tokens` of output.
+If what was spent, plus what is in flight, plus that worst case would pass
+`UBUNYE_LLM_MAX_USD`, the call is refused with `LLMBudgetError` and never sent.
+After the call the reservation becomes the real cost, so many small answers fit
+under a ceiling their worst cases would not. Calls running at the same time share
+the ceiling. A refused call stops the task before anything is written.
+
+Prices come from a table in the engine (`ubunye.llm.prices`), dated and taken from
+the provider's own page: Anthropic's current models, as of 2026-09-24. For any other
+model, give the price in USD per million input and output tokens, read from your
+provider's pricing page (the numbers below are placeholders):
+
+```python
+self.model = llm.port("openai_compatible", model="my-model", price=(0.5, 1.5))
+```
+
+or in a JSON file named by `UBUNYE_LLM_PRICES`:
+
+```json
+{"openai_compatible": {"my-model": [0.5, 1.5], "llama3.2": [0, 0]}}
+```
+
+A model with no price has an unknown cost, never zero: its calls show
+`"cost_usd": null`, and a dollar ceiling on it fails closed. Replayed calls cost
+nothing and are never refused.
+
+Each call in the run record has `cost_usd` and the `estimated_usd` it reserved. The
+record's `llm_budget` keeps the limits, what was spent, and how many calls were made
+and refused; `ubunye lineage trace` prints both.

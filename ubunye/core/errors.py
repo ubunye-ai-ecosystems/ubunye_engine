@@ -134,6 +134,10 @@ class LLMError(UbunyeError, RuntimeError):
     """Raised when a language model call fails, or cannot be made. Never carries the key."""
 
 
+class LLMBudgetError(LLMError):
+    """Raised when a model call is refused before sending: it could pass a limit."""
+
+
 class ExpectationError(UbunyeError, ValueError):
     """Raised when an output breaks a ``fail`` expectation; nothing has been written.
 

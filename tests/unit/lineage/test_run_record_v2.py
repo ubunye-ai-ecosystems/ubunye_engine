@@ -99,7 +99,13 @@ def test_an_older_monitor_gets_no_new_arguments():
     state = {"inputs": {"a": 1}, "expectations": [], "timings": [{"step": "x"}]}
     assert _evidence(Old(), state) == {}
     assert _evidence(New(), state) == {"timings": [{"step": "x"}]}
-    assert set(_evidence(Any_(), state)) == {"inputs", "expectations", "timings", "llm_calls"}
+    assert set(_evidence(Any_(), state)) == {
+        "inputs",
+        "expectations",
+        "timings",
+        "llm_calls",
+        "llm_budget",
+    }
 
 
 # --- end to end on pandas -----------------------------------------------------------
