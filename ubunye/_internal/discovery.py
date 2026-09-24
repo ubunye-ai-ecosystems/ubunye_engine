@@ -29,16 +29,8 @@ def _load_group(group: str) -> Dict[str, Any]:
     if group in _cache:
         return _cache[group]
 
-    eps: Any = md.entry_points()
-    if hasattr(eps, "select"):
-        group_eps = eps.select(group=group)
-    elif isinstance(eps, dict):
-        group_eps = eps.get(group, [])
-    else:
-        group_eps = [ep for ep in eps if ep.group == group]
-
     loaded: Dict[str, Any] = {}
-    for ep in group_eps:
+    for ep in md.entry_points(group=group):
         try:
             loaded[ep.name] = ep.load()
         except Exception:

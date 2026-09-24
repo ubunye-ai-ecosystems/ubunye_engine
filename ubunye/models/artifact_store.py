@@ -190,13 +190,7 @@ def _registered_stores() -> Dict[str, Any]:
 
     found: Dict[str, Any] = {}
     try:
-        eps: Any = md.entry_points()
-        group = (
-            eps.get("ubunye.artifact_stores", [])
-            if hasattr(eps, "get")
-            else eps.select(group="ubunye.artifact_stores")
-        )
-        for ep in group:
+        for ep in md.entry_points(group="ubunye.artifact_stores"):
             try:
                 found[ep.name] = ep.load()
             except Exception:  # noqa: BLE001 — one broken plugin must not break storage

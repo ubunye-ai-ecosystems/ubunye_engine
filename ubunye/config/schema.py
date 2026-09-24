@@ -115,9 +115,7 @@ def _connectors(group: str) -> Dict[str, Any]:
 
     found: Dict[str, Any] = {}
     try:
-        eps: Any = md.entry_points()
-        group_eps = eps.get(group, []) if hasattr(eps, "get") else eps.select(group=group)
-        for ep in group_eps:
+        for ep in md.entry_points(group=group):
             try:
                 found[ep.name] = ep.load()
             except Exception:  # noqa: BLE001 — one broken plugin must not break validation
@@ -219,7 +217,9 @@ class RegistryConfig(BaseModel):
 class ModelTransformParams(BaseModel):
     """Typed params for ``transform.type: model`` — for documentation and validation."""
 
-    model_config = ConfigDict(extra="forbid")
+    # ``model_class`` is the config's own name, so pydantic's reserved ``model_``
+    # prefix is switched off here (pydantic 2.0 refused the field; later ones warn).
+    model_config = ConfigDict(extra="forbid", protected_namespaces=())
 
     action: Literal["train", "predict"]
     model_class: str

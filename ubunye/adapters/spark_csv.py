@@ -18,7 +18,9 @@ The splitter is a port of univocity's ``CsvParser`` with the settings Spark
 uses (no whitespace trimming, quotes and escapes not kept, unquoted values not
 unescaped). The method names follow the Java source so each rule can be
 checked against it; tests/integration/test_csv_quote_parity.py fuzzes it
-against a live Spark session.
+against a live Spark session, on Spark 3.5 and Spark 4. It follows Spark 4
+where the two differ, which is known only for multi-line files that mix line
+endings (a CR CR LF line end).
 """
 
 from __future__ import annotations

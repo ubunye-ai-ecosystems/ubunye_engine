@@ -8,7 +8,7 @@ name = "ubunye-engine"
 version = "0.5.0"
 description = "Config-first, backend-neutral data and ML pipelines that you can check on a laptop and prove anywhere"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{name="Thabang Mashinini-Sekgoto", email="thabangline@gmail.com"}]
@@ -25,9 +25,10 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Database",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Software Development :: Libraries :: Application Frameworks",
@@ -37,12 +38,12 @@ dependencies = [
   "pyyaml>=6",
   "jinja2>=3",
   "pydantic>=2",
-  "typer>=0.12",
+  "typer>=0.15.4",
   # pyspark is large; declare as optional so users can choose version
 ]
 
 [project.optional-dependencies]
-spark = ["pyspark>=3.3"]
+spark = ["pyspark>=3.5"]
 # Delta Lake. Needed to exercise mode: merge / replace_where against a real
 # Delta table; the integration tests skip cleanly without it. Databricks ships
 # Delta in the runtime, so this is a local/CI concern only.
@@ -57,7 +58,7 @@ delta = ["delta-spark>=4.0"]
 # match Spark's (a nullable int stays an int). pandas 2.2 is the first with the
 # Arrow-backed reads it relies on.
 # pyarrow before 24 cannot find a timezone database on Windows, so every
-# timestamp would fail there; Windows asks for 24 (Python 3.10 and newer).
+# timestamp would fail there; Windows asks for 24.
 pandas = [
   "pandas>=2.2",
   "pyarrow>=14; platform_system != 'Windows'",
@@ -75,7 +76,7 @@ rest = ["requests>=2.28"]
 objectstore = ["fsspec>=2023.1.0"]
 # pandas and pyarrow are here so the pandas backend is tested on every CI run, not
 # skipped; without pyarrow the parquet tests failed instead of skipping.
-dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14; platform_system != 'Windows'", "pyarrow>=24; platform_system == 'Windows'", "narwhals>=2; python_version >= '3.10'"]
+dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14; platform_system != 'Windows'", "pyarrow>=24; platform_system == 'Windows'", "narwhals>=2"]
 databricks = ["databricks-sdk>=0.20"]
 
 # Project URLs. These populate the sidebar links on the PyPI page, which
@@ -165,7 +166,7 @@ include = ["ubunye*"]
 ubunye = ["py.typed"]
 
 [tool.mypy]
-python_version = "3.10"  # mypy no longer targets 3.9; runtime support for 3.9 is unchanged
+python_version = "3.10"  # the oldest Python the package supports
 ignore_missing_imports = true   # pyspark, delta and mlflow ship no stubs
 warn_unused_ignores = true
 warn_redundant_casts = true
