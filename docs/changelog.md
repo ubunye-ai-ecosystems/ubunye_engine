@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Python 3.10 to 3.13, tested on Linux, Windows and macOS.** Python 3.9 is
+  no longer supported (it reached end of life in October 2025). CI now runs the
+  unit tier on every supported Python on all three systems (Windows and macOS
+  ran none of it before), the Spark tier on Spark 4 with Python 3.10 and Java
+  17 and with Python 3.13 and Java 21, and on Spark 3.5 with Java 11.
+- **The oldest versions the package accepts are tested, and two were raised.**
+  A new CI job installs exactly the declared minimum of every dependency and
+  runs the unit tier, and a test keeps that job and `pyproject.toml` in step.
+  It found that `typer>=0.12` could not work with today's click (the CLI
+  could not start), so the minimum is now `typer>=0.15.4`, the first that
+  works. The `spark` extra now asks for `pyspark>=3.5` (it said 3.3, which was
+  never tested); the whole Spark tier passes on Spark 3.5.
+
 - **`ubunye plan` is a real dry run, and exits 1 when it finds a problem.** It
   printed the config's names back and always exited 0. Built on the September
   work, it now checks each local input exists or is written by an earlier task

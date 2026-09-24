@@ -32,13 +32,13 @@ jobs:
   package:
     # What a user gets from PyPI: the wheel, installed alone in a clean venv.
     # A backend's missing packages must be named, not crash; with the pandas
-    # extra, a real task must run with no Java. Linux and Windows.
+    # extra, a real task must run with no Java. Linux, Windows and macOS.
     name: Package (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     defaults:
       run:
         shell: bash

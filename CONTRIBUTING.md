@@ -66,7 +66,9 @@ records. Any change to how data is read, written or hashed must keep it green.
    found through entry points.
 
 Then open a pull request against `main` and say what changed, why, and how you
-tested it. CI runs every tier on Linux and Windows.
+tested it. CI runs the unit tier on Python 3.10 to 3.13 on Linux, Windows and
+macOS, and again on the oldest versions of every dependency the package accepts;
+the Spark tier runs on Spark 3.5 and Spark 4.
 
 ## Writing style
 
