@@ -52,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the oldest version its requirements allowed, and pydantic 2.1 to 2.9 warned
   about it. The prefix is switched off for that one config model. Found by
   CI's new minimum-versions job.
+- **No DeprecationWarning on every plugin lookup.** Readers, writers, backends,
+  hooks and artifact stores were found through the dict interface of
+  `entry_points()`, kept for Python 3.9 and deprecated on 3.10 and 3.11, so
+  every lookup warned there. They now ask `entry_points(group=...)`.
 - **The pandas backend reads quoted CSV values exactly as Spark does.** Spark's
   escape character is a backslash, so a doubled quote inside a quoted value is
   not an escape: Spark keeps `"McGowan, Miss. Anna ""Annie"""` as written.

@@ -40,8 +40,7 @@ _EXTRAS = {"spark": "spark", "databricks": "spark", "pandas": "pandas"}
 
 
 def _entry_points() -> List[Any]:
-    eps: Any = md.entry_points()
-    return list(eps.get(GROUP, []) if hasattr(eps, "get") else eps.select(group=GROUP))
+    return list(md.entry_points(group=GROUP))
 
 
 def _installed(package: str) -> bool:
