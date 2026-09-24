@@ -13,6 +13,7 @@ Every command takes ``--json`` for one JSON document on stdout.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -211,6 +212,38 @@ def compare_records(a: RunContext, b: RunContext) -> Dict[str, Any]:
         "inputs": steps(a.inputs, b.inputs),
         "outputs": steps(a.outputs, b.outputs),
     }
+
+
+@lineage_app.command("openlineage")
+def openlineage_events(
+    usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
+    usecase: str = typer.Option(..., "-u", "--usecase"),
+    package: str = typer.Option(..., "-p", "--package"),
+    task: str = typer.Option(..., "-t", "--task"),
+    run_id: Optional[str] = typer.Option(None, "--run-id", help="One run; default: every run."),
+    lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    namespace: Optional[str] = typer.Option(None, "--namespace", help="Job namespace."),
+    send: bool = typer.Option(
+        False, "--send", help="Also send them where OPENLINEAGE_URL points (a backfill)."
+    ),
+):
+    """Stored runs as OpenLineage events, one JSON per line (START, then COMPLETE or FAIL)."""
+    from ubunye.lineage.openlineage import Emitter, events
+
+    store = _store(str(usecase_dir / lineage_dir))
+    tp = _task_path(usecase, package, task)
+    try:
+        records = [store.load(tp, run_id)] if run_id else store.list_runs(tp, n=1_000_000)
+    except FileNotFoundError as e:
+        fail(str(e), as_json=True)
+    emitter = Emitter.from_env() if send else None
+    if send and emitter is None:
+        fail("--send needs OPENLINEAGE_URL (or UBUNYE_OPENLINEAGE_FILE).", as_json=True)
+    for ctx in sorted(records, key=lambda r: r.started_at):
+        for event in events(ctx, namespace=namespace):
+            typer.echo(json.dumps(event, default=str))
+            if emitter is not None:
+                emitter.send(event)
 
 
 @lineage_app.command("compare")

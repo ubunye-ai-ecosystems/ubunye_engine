@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **OpenLineage events: the receipt lands in your catalogue.** A recorded run
+  sends START and COMPLETE or FAIL (OpenLineage 2-0-2) to any OpenLineage server
+  (Marquez, DataHub, OpenMetadata, Google Dataplex) when `OPENLINEAGE_URL` is set,
+  and/or to a JSON-lines file (`UBUNYE_OPENLINEAGE_FILE`). Datasets are named by
+  the OpenLineage conventions with credentials removed; events carry the standard
+  `outputStatistics`, `dataQualityMetrics`, `dataQualityAssertions` and
+  `errorMessage` facets plus `ubunye_evidence` and `ubunye_hash` (schemas in
+  `docs/schemas`). No new dependency; a server that is down never fails a run.
+  `ubunye lineage openlineage` exports (and with `--send`, backfills) stored
+  runs. Every event in the tests is validated against the vendored OpenLineage
+  spec. See [OpenLineage](patterns/openlineage.md).
 - **Run record v2: the receipt says why two runs differ.** Each record now
   carries a hash of the task's code, the environment (Python, platform and the
   versions of the packages that can change a result, plus one hash of them),
