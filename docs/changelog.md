@@ -116,6 +116,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **One transform for every engine, written with Narwhals (ADR 005).** A
+  transform written with the Spark API runs only on Spark, and one written with
+  pandas only on pandas. Two ways to write it once were tested on the Titanic
+  example's own logic against Spark: Narwhals gave the same data hash on both
+  engines (with a sum cast to a 64 bit integer, which Spark does and pandas
+  does not), and SQL did not (DuckDB and Spark type the same aggregate
+  differently), so Narwhals ships and SQL waits for the 0.7 DuckDB backend. A
+  transform may return a Narwhals frame; the engine unwraps it without
+  importing Narwhals. There is no config field for portability: `ubunye plan`
+  reads the imports in `transformations.py` and says what it is written for
+  (`pyspark`, `narwhals`, `pandas`), in text and in `--json`, and warns when
+  that is not what `--backend` gives it. The example in the docs is run on both
+  engines by the test suite.
 - **`--json` for scripts and agents.** `plan`, `validate`, `backends`, every
   `lineage` command and `models list/info/compare` print exactly one JSON
   document on stdout with `--json`, errors included (`{"ok": false, "error":

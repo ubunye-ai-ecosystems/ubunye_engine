@@ -132,6 +132,44 @@ class TestPandas:
         assert (tmp_path / "out" / "_SUCCESS").exists()
 
 
+class TestNarwhals:
+    """ADR 005: one transform for both engines, written with Narwhals.
+
+    The transform wraps what it gets (``nw.from_native``) and may return the
+    Narwhals frame as it is: the engine unwraps anything that offers
+    ``to_native()``, without importing Narwhals itself.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _narwhals(self):
+        pytest.importorskip("narwhals")
+
+    RETURNS = "__import__('narwhals').from_native(out)"
+
+    def test_returning_a_narwhals_frame_is_written(self, tmp_path):
+        ubunye.run_task(str(_task(tmp_path, returns=self.RETURNS)), backend="pandas")
+        written = PandasBackend().read_frame("parquet", str(tmp_path / "out")).native
+        assert sorted(written["city_upper"]) == ["CPT", "JHB", "PTA"]
+
+    def test_the_caller_and_the_hooks_never_see_the_wrapper(self, tmp_path):
+        hook = CaptureOutputs()
+        outputs = ubunye.run_task(
+            str(_task(tmp_path, returns=self.RETURNS)), backend="pandas", hooks=[hook]
+        )
+        assert type(outputs["out"]) is pd.DataFrame
+        assert isinstance(hook.outputs["out"], PandasDataFrameAdapter)
+
+    def test_the_notebook_unwraps_it_too(self, tmp_path):
+        nb = ubunye.notebook(str(_task(tmp_path, returns=self.RETURNS)), backend="pandas")
+        try:
+            outputs = nb.transform(nb.read())
+            assert type(outputs["out"]) is pd.DataFrame
+            nb.write(outputs)
+        finally:
+            nb.close()
+        assert (tmp_path / "out" / "_SUCCESS").exists()
+
+
 class TestTheBoundary:
     def test_pandas_backend_converts_both_ways(self):
         backend = PandasBackend()

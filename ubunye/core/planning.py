@@ -10,7 +10,9 @@ now, what happens, and what will stop it?** For every task, in order, it:
   plan writes it (so a pipeline of tasks plans clean before its first run);
 * asks the chosen backend whether it can do what each input and output needs
   (its declared capabilities, ADR 002), rather than keeping a list of names;
-* resolves the transform class from ``transformations.py``;
+* resolves the transform class from ``transformations.py``, and reads its
+  imports to say which dataframe API it is written for (ADR 005), warning when
+  that is not what the chosen backend gives it;
 * asks each writer to resolve its write mode, which is where ``merge`` without
   ``merge_keys`` and ``overwrite_partitions`` without ``partitionBy`` are caught
   (they used to fail on a cluster, after the transform had run);
@@ -32,8 +34,9 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 from ubunye.config.hashing import config_hash
 from ubunye.config.schema import UbunyeConfig
 from ubunye.core import write_modes
-from ubunye.core.capabilities import check_task
+from ubunye.core.capabilities import SPARK, check_task
 from ubunye.core.errors import UbunyeError
+from ubunye.core.portability import frame_api, mismatch
 from ubunye.core.runtime import Registry
 
 
@@ -131,11 +134,13 @@ def build_plan(
     cfg_dict = cfg.model_dump(mode="json")
 
     # --- what the backend can do (ADR 002) -----------------------------------
+    spark_backend: Optional[bool] = None
     if backend:
         from ubunye.core import backends
 
         try:
             cls = backends.load_class(backend)
+            spark_backend = SPARK in cls.CAPABILITIES.features
             problems += check_task(
                 cls.CAPABILITIES,
                 cfg_dict,
@@ -190,6 +195,8 @@ def build_plan(
         "type": cfg.CONFIG.transform.type,
         "class": None,
         "source": None,
+        "frame_api": None,
+        "frame_imports": [],
     }
     ttype = cfg.CONFIG.transform.type
     if ttype in (None, "noop") and task_dir is not None:
@@ -198,6 +205,14 @@ def build_plan(
             problems.append("transform: no transformations.py in the task folder")
         else:
             transform["source"] = str(module_path)
+            # What it is written for, from its imports (ADR 005), before running it.
+            found = frame_api(module_path)
+            transform["frame_api"] = found.api
+            transform["frame_imports"] = list(found.imports)
+            if spark_backend is not None:
+                message = mismatch(found, backend=str(backend), spark_backend=spark_backend)
+                if message:
+                    warnings.append(f"transform: {message}")
             try:
                 from ubunye.core.task_runner import _load_task_class, _with_task_dir_on_path
 

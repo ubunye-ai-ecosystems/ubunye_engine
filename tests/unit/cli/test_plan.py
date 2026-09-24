@@ -184,6 +184,63 @@ class TestBackends:
         assert result.exit_code == 1 and "duckdb" in result.output
 
 
+# pyspark is imported inside the method, so the class loads where pyspark is not
+# installed and the plan's verdict is the only thing under test.
+SPARK_TRANSFORM = """\
+from ubunye.core.interfaces import Task
+
+
+class Adults(Task):
+    def transform(self, sources):
+        from pyspark.sql import functions as F
+
+        return {"out": sources["src"].filter(F.col("id") > 0)}
+"""
+
+
+class TestWhatTheTransformIsWrittenFor:
+    """ADR 005: portability is detected from the transform's imports, not declared."""
+
+    def test_a_spark_api_transform_warns_before_a_pandas_run(self, data):
+        _task(
+            data,
+            "a",
+            src=(data / "in.csv").as_posix(),
+            out=(data / "mid").as_posix(),
+            transform=SPARK_TRANSFORM,
+        )
+        result = _plan(data, "a", extra=["--backend", "pandas"])
+        assert result.exit_code == 0, result.output  # a warning: it may still be fine
+        assert "written for pyspark" in result.output
+        assert "warning: transform:" in result.output and "narwhals" in result.output
+
+    def test_it_is_quiet_on_spark(self, data):
+        _task(
+            data,
+            "a",
+            src=(data / "in.csv").as_posix(),
+            out=(data / "mid").as_posix(),
+            transform=SPARK_TRANSFORM,
+        )
+        result = _plan(data, "a", extra=["--backend", "spark"])
+        assert "warning: transform:" not in result.output
+
+    def test_the_json_plan_says_it_too(self, data):
+        import json
+
+        _task(
+            data,
+            "a",
+            src=(data / "in.csv").as_posix(),
+            out=(data / "mid").as_posix(),
+            transform="import narwhals as nw\n" + TRANSFORM,
+        )
+        result = _plan(data, "a", extra=["--backend", "pandas", "--json"])
+        (plan,) = json.loads(result.output)["tasks"]
+        assert plan["transform"]["frame_api"] == "narwhals"
+        assert plan["transform"]["frame_imports"] == ["narwhals"]
+
+
 def test_the_plan_and_the_run_record_agree_on_the_config_hash(data):
     task = _task(data, "a", src=(data / "in.csv").as_posix(), out=(data / "mid").as_posix())
     cfg = load_config(str(task), variables={"dt": None, "dtf": None, "mode": "DEV"})

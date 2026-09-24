@@ -75,7 +75,7 @@ rest = ["requests>=2.28"]
 objectstore = ["fsspec>=2023.1.0"]
 # pandas and pyarrow are here so the pandas backend is tested on every CI run, not
 # skipped; without pyarrow the parquet tests failed instead of skipping.
-dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14; platform_system != 'Windows'", "pyarrow>=24; platform_system == 'Windows'"]
+dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14; platform_system != 'Windows'", "pyarrow>=24; platform_system == 'Windows'", "narwhals>=2; python_version >= '3.10'"]
 databricks = ["databricks-sdk>=0.20"]
 
 # Project URLs. These populate the sidebar links on the PyPI page, which

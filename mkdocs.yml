@@ -101,6 +101,7 @@ nav:
           - ADR 002 Backend Capabilities: architecture/adr-002-backend-capabilities.md
           - ADR 003 Choosing a Backend: architecture/adr-003-backend-resolution.md
           - ADR 004 Native Frames: architecture/adr-004-native-frames.md
+          - ADR 005 Portable Transforms: architecture/adr-005-portable-transforms.md
           - ADR 006 The Run Record: architecture/adr-006-run-record.md
       - Contributing: contributing.md
 

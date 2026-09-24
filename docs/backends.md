@@ -66,6 +66,61 @@ stops in the first second, not halfway through.
 The pandas backend reads and writes exactly as Spark does: see
 [Anywhere with spark-submit](deployment/anywhere.md#no-spark-at-all-the-pandas-backend).
 
+## One transform for every engine
+
+The config runs anywhere; the transform runs where its code does. A transform
+that calls the Spark API (`F.col`, `groupBy`) needs a Spark backend, and one
+written with pandas needs the pandas backend. To run the same task on both,
+write the transform once with [Narwhals](https://narwhals-dev.github.io/narwhals/)
+(`pip install narwhals`):
+
+```python
+import narwhals as nw
+
+from ubunye.core.interfaces import Task
+
+
+class SurvivalByGroup(Task):
+    def transform(self, sources):
+        people = nw.from_native(sources["titanic"])  # pandas or Spark, as given
+        summary = (
+            people.with_columns(
+                age_group=nw.when(nw.col("Age") < 18).then(nw.lit("child")).otherwise(nw.lit("adult"))
+            )
+            .group_by("Pclass", "age_group")
+            .agg(
+                nw.len().alias("passengers"),
+                # Spark widens every sum to a 64 bit integer; pandas keeps the
+                # column's type. Cast first and both give the same type.
+                nw.col("Survived").cast(nw.Int64).sum().alias("survivors"),
+            )
+            .sort("Pclass", "age_group")
+        )
+        return {"summary": summary}  # returning the Narwhals frame is fine
+```
+
+Run it with `--backend pandas` and on Spark, and the two run records carry the
+same data hash: the same rows, values and types (the engine's own tests check
+this against Spark). The engine hands your transform its own frames and
+unwraps what you return, so writers, hooks and lineage never see Narwhals.
+
+Narwhals gives one API, not one set of types. Where the engines differ, cast:
+the known case is a sum of whole numbers, which Spark makes `bigint` and pandas
+leaves as the column's type (`int32` for small numbers read from CSV). The run
+record's data hash covers types, so comparing the two runs' hashes shows
+whether a transform really gives the same result on both.
+
+You do not declare which engines a transform supports. `ubunye plan` reads the
+imports in `transformations.py` and says what it is written for:
+
+```text
+  Transform  SurvivalByGroup  (transformations.py), written for narwhals
+```
+
+and with `--backend pandas` on a transform written for pyspark it warns before
+the run instead of failing on the first line. Why it works this way, and why
+SQL is not the answer yet: [ADR 005](architecture/adr-005-portable-transforms.md).
+
 ## Write your own
 
 A backend is a subclass of `ubunye.core.interfaces.Backend` registered as an

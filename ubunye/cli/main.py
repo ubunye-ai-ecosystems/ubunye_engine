@@ -341,7 +341,8 @@ def _print_plan(report: Dict[str, Any]) -> None:
     t = report["transform"]
     what = t["class"] or t["type"] or "-"
     source = f"  ({Path(t['source']).name})" if t["source"] else ""
-    typer.echo(f"  Transform  {what}{source}")
+    api = f", written for {t['frame_api']}" if t.get("frame_api") else ""
+    typer.echo(f"  Transform  {what}{source}{api}")
     typer.echo("  Outputs")
     for entry in report["outputs"]:
         fmt = " ".join(x for x in (entry["format"], entry.get("file_format") or "") if x)
