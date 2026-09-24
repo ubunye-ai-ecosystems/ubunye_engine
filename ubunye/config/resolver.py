@@ -37,6 +37,18 @@ def extract_env_references(raw_yaml: str) -> Set[str]:
     return set(_ENV_REF_RE.findall(raw_yaml))
 
 
+_ENV_REF_DEFAULT_RE = re.compile(r"\{\{\s*env\.(\w+)\s*(\|\s*default\b)?")
+
+
+def required_env_references(raw_yaml: str) -> Set[str]:
+    """The ``{{ env.X }}`` names that have no ``| default(...)`` somewhere they are used.
+
+    A variable used once with a default and once without is required: the use
+    without a default fails when it is unset.
+    """
+    return {name for name, default in _ENV_REF_DEFAULT_RE.findall(raw_yaml) if not default}
+
+
 def resolve_config(
     raw: Any,
     cli_vars: Optional[Dict[str, Any]] = None,

@@ -14,6 +14,7 @@ All commands accept `--help` for full option details.
 | `plan` | Print the execution plan |
 | `run` | Execute one or more tasks |
 | `backends` | List the execution backends and what each can do |
+| `doctor` | Check this machine, and optionally tasks, before a run |
 | `plugins` | List all discovered plugins |
 | `config` | Show the expanded (Jinja-rendered + validated) config |
 | `version` | Print the engine version |
@@ -274,6 +275,47 @@ ubunye backends --json
 
 A backend that is registered but cannot load (a missing dependency) is listed
 with the reason. See [Execution backends](backends.md).
+
+---
+
+## `ubunye doctor`
+
+Check this machine before a run: what is installed, what will fail, and why.
+
+```bash
+ubunye doctor
+ubunye doctor -d pipelines -u fraud -p ingestion -t claims   # also check a task
+ubunye doctor --json
+```
+
+It checks:
+
+- the Python version (tested: 3.10 to 3.13) and the engine version;
+- every backend: usable here, or what it needs and the command to install it;
+  and whether a run without `--backend` would work;
+- for Spark: that Java is found and suits the installed Spark (Spark 4 needs
+  Java 17 or 21, Spark 3.5 needs 8, 11 or 17), that `delta-spark` is built for
+  the same Spark major, and on Windows that `HADOOP_HOME` points at `winutils.exe`;
+- that every reader, writer, transform and hook plugin loads;
+- for each task named with `-t`: the `{{ env.X }}` variables it uses without a
+  default that are not set, and whether its config loads and validates.
+
+Each line is `[OK]`, `[WARN]` or `[FAIL]`, with a fix under anything that is not
+OK. A warning is about the environment and matters only for what you use (Spark
+without Java is fine if you run on pandas). A failure means a run would fail: no
+backend can run here, or a named task's config cannot load. Any failure makes
+the exit code 1, so `ubunye doctor` can gate a script or a CI step.
+
+```text
+[OK] python: Python 3.13.6 on win32
+[OK] backend: pandas: usable, single machine
+[WARN] backend: spark (default): needs pyspark
+       fix: pip install 'ubunye-engine[spark]'
+[WARN] default backend: a run without --backend uses 'spark', which cannot run here
+       fix: Pass --backend pandas, or install what 'spark' needs.
+[FAIL] task claims: environment: not set, and used without a default: CLAIMS_ROOT
+       fix: Set them, or give each a default: {{ env.NAME | default('value') }}.
+```
 
 ---
 
