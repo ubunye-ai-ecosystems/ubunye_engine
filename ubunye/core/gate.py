@@ -11,7 +11,11 @@ What fails:
   deliberate change bumps the version, or is allowed with ``allow_data_change``);
 - an output disappeared;
 - a limit set in the policy: slower by more than ``max_slowdown``, longer than
-  ``max_seconds``, or a row count moved by more than ``max_row_change``.
+  ``max_seconds``, or a row count moved by more than ``max_row_change``;
+- model calls (``ubunye.llm``): with ``require_replay``, a call that went live
+  instead of replaying; with ``max_llm_cost_increase``, a bill that grew by more
+  than that share, priced from the recorded tokens at list prices (so a replayed
+  run is measured too), or by tokens when a model has no price.
 
 Every changed output also says what else changed between the runs (config,
 code, environment, inputs), and a change with none of them is called out as
@@ -43,6 +47,11 @@ class Policy:
     max_seconds: Optional[float] = None
     #: e.g. 0.1: fail when an output's row count moved by more than 10%.
     max_row_change: Optional[float] = None
+    #: Fail when any of the candidate's model calls did not replay.
+    require_replay: bool = False
+    #: e.g. 0.2: fail when the model bill (list price of the tokens, or the tokens
+    #: when a model has no price) grew by more than 20%.
+    max_llm_cost_increase: Optional[float] = None
 
 
 @dataclass
@@ -169,6 +178,8 @@ def evaluate(base: RunContext, cand: RunContext, policy: Optional[Policy] = None
                     )
                 )
 
+    found += _llm_findings(base, cand, policy)
+
     # --- time ---------------------------------------------------------------------------
     b_s, c_s = base.duration_sec, cand.duration_sec
     if policy.max_seconds is not None and c_s is not None and c_s > policy.max_seconds:
@@ -188,6 +199,66 @@ def evaluate(base: RunContext, cand: RunContext, policy: Optional[Policy] = None
                 f"{policy.max_slowdown:.0%}",
             )
         )
+    return found
+
+
+def _bill(record: RunContext) -> Dict[str, Any]:
+    """Calls, replays, tokens and the list-price cost (None if a model has no price)."""
+    calls = [c for c in record.llm_calls or [] if c.get("status") == "ok"]
+    tokens = sum(int(c.get("input_tokens") or 0) + int(c.get("output_tokens") or 0) for c in calls)
+    cost: Optional[float] = 0.0
+    for c in calls:
+        price = c.get("price_usd_per_mtok")
+        if not price or cost is None:
+            cost = None
+            continue
+        cost += (
+            int(c.get("input_tokens") or 0) * float(price[0])
+            + int(c.get("output_tokens") or 0) * float(price[1])
+        ) / 1_000_000
+    replayed = sum(1 for c in calls if c.get("source") == "replay")
+    return {"calls": len(calls), "replayed": replayed, "tokens": tokens, "cost": cost}
+
+
+def _llm_findings(base: RunContext, cand: RunContext, policy: Policy) -> List[Finding]:
+    if not (cand.llm_calls or base.llm_calls):
+        return []
+    b, c = _bill(base), _bill(cand)
+    money = f"${c['cost']:.6f} at list prices" if c["cost"] is not None else "cost unknown"
+    found = [
+        Finding(
+            "llm",
+            OK,
+            f"{c['calls']} calls ({c['replayed']} replayed), {c['tokens']} tokens, {money}",
+        )
+    ]
+    if policy.require_replay:
+        live = [x for x in cand.llm_calls if x.get("source") != "replay"]
+        if live:
+            found.append(
+                Finding(
+                    "llm",
+                    FAIL,
+                    f"{len(live)} of {len(cand.llm_calls)} model calls went live; the gate's "
+                    "runs must replay (UBUNYE_LLM_MODE=replay)",
+                )
+            )
+    if policy.max_llm_cost_increase is not None:
+        if b["cost"] and c["cost"] is not None:
+            what, before, after = "cost", b["cost"], c["cost"]
+            shown = f"${before:.6f} -> ${after:.6f}"
+        else:
+            what, before, after = "tokens", b["tokens"], c["tokens"]
+            shown = f"{before} -> {after} tokens"
+        if before and after > before * (1 + policy.max_llm_cost_increase):
+            found.append(
+                Finding(
+                    "llm",
+                    FAIL,
+                    f"model {what} {shown} ({after / before - 1:.0%} more), more than "
+                    f"{policy.max_llm_cost_increase:.0%}",
+                )
+            )
     return found
 
 

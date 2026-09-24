@@ -95,6 +95,17 @@ def gate_command(
         "--max-row-change",
         help="Fail when an output's row count moved by more than this (0.1 = 10%).",
     ),
+    require_replay: bool = typer.Option(
+        False,
+        "--require-replay",
+        help="Fail if any model call went live instead of replaying (UBUNYE_LLM_MODE=replay).",
+    ),
+    max_llm_cost_increase: Optional[float] = typer.Option(
+        None,
+        "--max-llm-cost-increase",
+        help="Fail if the model bill (list price of the tokens) grew by more than this "
+        "share, e.g. 0.2.",
+    ),
     summary: Optional[Path] = typer.Option(
         None, "--summary", help="Append a Markdown table to this file ($GITHUB_STEP_SUMMARY)."
     ),
@@ -114,6 +125,8 @@ def gate_command(
         max_slowdown=max_slowdown,
         max_seconds=max_seconds,
         max_row_change=max_row_change,
+        require_replay=require_replay,
+        max_llm_cost_increase=max_llm_cost_increase,
     )
     findings = gate_rules.evaluate(base, cand, policy)
     ok = gate_rules.passed(findings)

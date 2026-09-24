@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The gate covers model calls; a model step replays in CI.** `ubunye gate` reports
+  a run's model calls (count, replayed, tokens, list-price cost) and gains
+  `--require-replay` (fail if a call went live) and `--max-llm-cost-increase` (fail
+  if the list price of the tokens, or the tokens for an unpriced model, grew by more
+  than a share; measured on replayed runs too). The gate Action's new `llm-mode`
+  input defaults to `replay`. A new example, `examples/production/llm_replay`,
+  labels reviews through `ubunye.llm` with answers recorded from a stub model, and a
+  CI job replays it on Linux, Windows and macOS against a golden hash with nothing
+  listening at the model's address.
 - **`ubunye lineage focus`: the model bill as FOCUS 1.4 cost rows.** A run's model
   calls become rows a FinOps tool loads next to the cloud bill: every mandatory
   FOCUS 1.4 column, one row per provider, model and token direction, cost equal to
@@ -40,8 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `ubunye lineage trace` prints them. No new config field: limits are
   environment variables and port arguments.
 - **Record once, replay anywhere: model calls answered from a file, for nothing.**
-  `UBUNYE_LLM_MODE=record` calls the model and keeps each answer in the task's
-  `.ubunye/llm-replay.jsonl` (or `UBUNYE_LLM_STORE`), keyed by the request's hash;
+  `UBUNYE_LLM_MODE=record` calls the model and keeps each answer in the task
+  folder's `llm-replay.jsonl`, next to `config.yaml`, to be committed with the task
+  (or in `UBUNYE_LLM_STORE`), keyed by the request's hash;
   prompts are never stored. `UBUNYE_LLM_MODE=replay` answers from that file with no
   key, no network and no cost, and fails closed: a request with no recorded answer
   stops the run with its key, and never falls through to a live call. Every call in

@@ -1,0 +1,88 @@
+name: examples/llm_replay
+
+# A task with language model calls, replayed on every operating system.
+#
+# The task labels reviews with a model through ubunye.llm. Its answers are
+# committed next to it (llm-replay.jsonl), so this job needs no key and no
+# network: nothing listens at the model's address, and a replay that missed
+# would fail the run rather than call out. Each OS must write the golden rows,
+# and `ubunye gate --require-replay` must pass two replayed runs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/production/llm_replay/**"
+      - ".github/workflows/llm_replay.yml"
+      - "ubunye/**"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "examples/production/llm_replay/**"
+      - ".github/workflows/llm_replay.yml"
+      - "ubunye/**"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+concurrency:
+  group: llm-replay-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    name: replay (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      EXAMPLE: examples/production/llm_replay
+      UBUNYE_LLM_MODE: replay
+      # Nothing listens here; a replayed run never calls out.
+      LLM_BASE_URL: http://127.0.0.1:9/v1
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install the engine (pandas, no Java)
+        run: pip install -e ".[pandas]"
+
+      - name: Paths
+        run: |
+          python - <<'PY' >> "$GITHUB_ENV"
+          import os, pathlib, tempfile
+          work = pathlib.Path(tempfile.mkdtemp())
+          example = pathlib.Path(os.environ["EXAMPLE"]).resolve()
+          print("REVIEWS_INPUT_PATH=" + (example / "data" / "reviews.csv").as_posix())
+          print("REVIEWS_OUTPUT_PATH=" + (work / "out").as_posix())
+          print("WORK=" + work.as_posix())
+          PY
+
+      - name: ubunye plan (the bill before the run is $0 in replay)
+        run: ubunye plan -d "$EXAMPLE/pipelines" -u shop -p reviews -t label
+
+      - name: ubunye run, replayed, twice
+        run: |
+          for i in 1 2; do
+            ubunye run -d "$EXAMPLE/pipelines" -u shop -p reviews -t label \
+              --backend pandas --lineage --lineage-dir "$WORK/lin"
+          done
+
+      - name: Every call replayed, and the rows are the golden ones
+        run: python "$EXAMPLE/scripts/check_golden.py" --lineage-dir "$WORK/lin"
+
+      - name: ubunye gate --require-replay
+        run: |
+          ubunye gate -d "$WORK" --lineage-dir lin -u shop -p reviews -t label \
+            --require-replay --summary "$GITHUB_STEP_SUMMARY"

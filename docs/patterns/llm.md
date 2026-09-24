@@ -97,12 +97,11 @@ UBUNYE_LLM_MODE=record ubunye run -d pipelines -u shop -p reviews -t label   # o
 UBUNYE_LLM_MODE=replay ubunye run -d pipelines -u shop -p reviews -t label   # anywhere, for nothing
 ```
 
-The replay file is `.ubunye/llm-replay.jsonl` in the task's folder, or the path in
-`UBUNYE_LLM_STORE` (or `store=`). It holds one line per answer, under the request's
-key; it never holds the prompt. Commit it next to the task and CI, a colleague's
-laptop or another cloud replays the same answers, so the run writes the same data
-and the same row hashes. If your `.gitignore` excludes `.ubunye/`, point
-`UBUNYE_LLM_STORE` at a path you commit.
+The replay file is `llm-replay.jsonl` in the task's folder, next to `config.yaml`,
+or the path in `UBUNYE_LLM_STORE` (or `store=`). It holds one line per answer, under
+the request's key; it never holds the prompt. Commit it with the task and CI, a
+colleague's laptop or another cloud replays the same answers, so the run writes the
+same data and the same row hashes.
 
 Replay fails closed. A request with no recorded answer (a new prompt, another
 model, another `temperature`) stops the run with the request's key and the hint to
@@ -202,3 +201,13 @@ says so on every row. Replayed calls are not charges and make no rows; calls wit
 no price are left out, and the command says how many. Name the billing account with
 `UBUNYE_FOCUS_BILLING_ACCOUNT_ID` and `UBUNYE_FOCUS_BILLING_ACCOUNT_NAME`
 (default `unknown`).
+
+## In CI: replay, and gate
+
+Commit the replay file with the task and replay it in CI: no key, no spend, the
+same answers on every machine. `ubunye gate --require-replay` fails a run whose
+calls went live, and `--max-llm-cost-increase` fails a change that makes the task
+send more tokens (see [Gate Pull Requests](gate.md)).
+`examples/production/llm_replay` does this on Linux, Windows and macOS: its CI job
+replays six calls with nothing listening at the model's address, checks the rows
+against a golden hash, and gates two replayed runs.

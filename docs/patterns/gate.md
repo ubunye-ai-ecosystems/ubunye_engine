@@ -61,3 +61,20 @@ It installs the engine, runs the task on the pull request's base and on its head
 table to the job summary. Inputs: `backend`, `engine` (a pip requirement),
 `extra-packages`, `baseline-ref` (default: the pull request's base), `gate-args`,
 `python-version`. Output: `passed`.
+
+## Tasks that call a model
+
+For a task that calls a language model (`ubunye.llm`), the gate reports the calls:
+how many, how many replayed, the tokens, and their cost at list prices. Two more
+rules:
+
+| Flag | Fails when |
+| --- | --- |
+| `--require-replay` | Any of the candidate's model calls went live instead of replaying. |
+| `--max-llm-cost-increase 0.2` | The model bill grew by more than 20%: the list price of the recorded tokens, or the tokens themselves when a model has no price. |
+
+The cost is measured from the recorded tokens, so it works on replayed runs, which
+spend nothing. The Action's `llm-mode` input (default `replay`) sets
+`UBUNYE_LLM_MODE` for both runs: a pull request is gated on the committed answers,
+with no key and no spend, and a changed prompt fails the run closed until its
+answers are recorded again.
