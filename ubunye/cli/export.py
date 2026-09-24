@@ -35,7 +35,13 @@ def _load_orchestration_options(config_path: Path) -> Dict[str, Any]:
     artifact generation is profile-independent; ``--profile`` only gets embedded
     into the generated bash/spark-python command.
     """
-    cfg = load_config(str(config_path), variables={})
+    # The run's variables do not exist yet: each scheduled run brings its own dt. A
+    # config that uses {{ dt }} (most scheduled ones) failed to export with
+    # "undefined variable 'dt'", so it is rendered here with stand-ins; only the
+    # ORCHESTRATION block is read from the result.
+    cfg = load_config(
+        str(config_path), variables={"dt": "1970-01-01", "dtf": "%Y-%m-%d", "mode": "PROD"}
+    )
     if cfg.ORCHESTRATION is None:
         return {}
     return cfg.ORCHESTRATION.model_dump(mode="json", exclude_none=True)

@@ -133,3 +133,18 @@ def test_the_dag_runs_on_airflow_2_and_3_and_keeps_the_environment(tmp_path):
     assert "append_env=True" in dag_src
     assert "ubunye run -d /opt/pipelines " in dag_src
     assert "--backend pandas --lineage -dt {{ ds }}" in dag_src
+
+
+def test_a_config_that_uses_dt_exports(tmp_path):
+    """Found by running the exported DAG on real Airflow: `{{ dt }}` broke the export."""
+    cfg = dict(_BASE_CONFIG)
+    cfg["CONFIG"] = {
+        "inputs": {"src": {"format": "s3", "path": "in/{{ dt }}.csv", "file_format": "csv"}},
+        "outputs": {"out": {"format": "s3", "path": "out/{{ dt }}", "file_format": "parquet"}},
+    }
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.dump(cfg), encoding="utf-8")
+    result = runner.invoke(
+        app, ["export", "airflow", "-c", str(path), "-o", str(tmp_path / "d.py")]
+    )
+    assert result.exit_code == 0, result.output
