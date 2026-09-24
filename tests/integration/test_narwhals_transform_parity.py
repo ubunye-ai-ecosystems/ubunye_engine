@@ -72,23 +72,7 @@ def _docs_example() -> str:
     return section.split("```python\n", 1)[1].split("```", 1)[0]
 
 
-def _task(root, transform=TRANSFORM, outputs=("clean", "summary")):
-    task = root / "uc" / "titanic" / "survival"
-    task.mkdir(parents=True)
-    (task / "titanic.csv").write_text(DATA, encoding="utf-8")
-    (task / "transformations.py").write_text(transform, encoding="utf-8")
-    written = "".join(
-        f"""\
-    {name}:
-      format: s3
-      path: "{{{{ task_dir }}}}/output/{{{{ backend }}}}/{name}"
-      file_format: parquet
-      mode: overwrite
-"""
-        for name in outputs
-    )
-    (task / "config.yaml").write_text(
-        """\
+CONFIG = """\
 MODEL: etl
 VERSION: "1.0.0"
 CONFIG:
@@ -103,9 +87,23 @@ CONFIG:
   transform: {}
   outputs:
 """
-        + written,
-        encoding="utf-8",
-    )
+
+OUTPUT = """\
+    NAME:
+      format: s3
+      path: "{{ task_dir }}/output/{{ backend }}/NAME"
+      file_format: parquet
+      mode: overwrite
+"""
+
+
+def _task(root, transform=TRANSFORM, outputs=("clean", "summary")):
+    task = root / "uc" / "titanic" / "survival"
+    task.mkdir(parents=True)
+    (task / "titanic.csv").write_text(DATA, encoding="utf-8")
+    (task / "transformations.py").write_text(transform, encoding="utf-8")
+    config = CONFIG + "".join(OUTPUT.replace("NAME", name) for name in outputs)
+    (task / "config.yaml").write_text(config, encoding="utf-8")
     return task
 
 
