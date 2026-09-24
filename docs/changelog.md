@@ -71,6 +71,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The Spark backend stops only a session it started.** `start()` attaches to
+  a session that is already running (`getOrCreate`), and `stop()` then stopped
+  it anyway, as did the garbage collector through `__del__`. So
+  `run_task(..., backend="spark")` in a process that already had a Spark
+  session, a user's own or a notebook's, ended that session when the run
+  finished. A session the backend did not start is now left running. Found by
+  the new backend conformance suite.
 - **`ubunye deploy databricks` installs what the transform needs.** The
   generated notebook installed the engine alone, so a task written with
   Narwhals failed on Databricks at its first line. The deploy now reads the
