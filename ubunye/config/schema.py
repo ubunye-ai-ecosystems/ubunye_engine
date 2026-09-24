@@ -307,7 +307,8 @@ class ExpectationRule(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: Optional[str] = None
+    #: Defaults to "<column>_<kind>" (or the kind alone) when left empty.
+    name: str = ""
     severity: Literal["fail", "quarantine", "warn"] = "fail"
     description: Optional[str] = None
     not_null: Optional[str] = None
@@ -348,7 +349,7 @@ class ExpectationRule(BaseModel):
                 f"'{kinds[0]}' is about the whole output, not a row, so it cannot "
                 "quarantine rows; use severity fail or warn"
             )
-        if self.name is None:
+        if not self.name:
             column = (self.column or "").replace(", ", "_")
             self.name = f"{column}_{kinds[0]}" if column else kinds[0]
         return self
