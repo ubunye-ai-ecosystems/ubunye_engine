@@ -1,4 +1,4 @@
-# One command to a serverless Spark service
+# One command to the cloud: Glue, Dataproc, Kubernetes, Container Apps, EMR
 
 `ubunye deploy glue` and `ubunye deploy dataproc` run a task, unchanged, on AWS
 Glue or GCP Dataproc Serverless, with the cloud's own CLI (`aws`, `gcloud`) and
@@ -54,3 +54,36 @@ The entry script prints the run's record between two markers at the end of the
 job; `--record-out` saves it. It is the same record a local run writes, so
 `ubunye gate` and `ubunye lineage compare` work across clouds: the same task on
 two platforms must write the same data.
+
+## Kubernetes and Azure Container Apps
+
+For a runtime with no managed Spark, the image carries everything: Java, Spark in
+local mode, Delta, the engine and your pipelines.
+
+```bash
+ubunye deploy dockerfile container --pipelines pipelines --out Dockerfile
+docker build -t myregistry/ubunye-jobs:1 . && docker push myregistry/ubunye-jobs:1
+
+# a Kubernetes Job, in kubectl's current context
+ubunye deploy k8s -u shop -p orders -t clean --image myregistry/ubunye-jobs:1   --namespace data --env UBUNYE_DATA_ROOT=s3a://my-bucket/data --record-out k8s.json
+
+# an Azure Container Apps job, pulling with a managed identity (no password)
+ubunye deploy container-apps -u shop -p orders -t clean --image myacr.azurecr.io/ubunye-jobs:1   -g my-rg --environment my-env --registry-server myacr.azurecr.io   --registry-identity /subscriptions/.../userAssignedIdentities/pull --record-out aca.json
+```
+
+The Kubernetes Job has no retries (`backoffLimit: 0`) and is cleaned up a day
+after it finishes; `--cpu`, `--memory`, `--timeout`. The Container Apps job is
+created the first time and updated after; its output (and so the run record)
+reaches Log Analytics a few minutes after the job ends, and the command waits
+for it.
+
+## EMR Serverless
+
+```bash
+ubunye deploy dockerfile emr-serverless --out Dockerfile     # push it, set it on the application
+ubunye deploy emr-serverless -u shop -p orders -t clean   --application-id 00fabc... --role arn:aws:iam::...:role/emr-job --bucket my-bucket
+```
+
+This starts the run and returns; the driver's output (with the run record) is in
+`s3://<bucket>/logs/`. An AWS account on the free plan cannot use EMR; this
+command is tested as a plan, not against a live application.

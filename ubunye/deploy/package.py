@@ -33,6 +33,7 @@ next to this script: a local path or an s3:// URI), --backend, and any number of
 import argparse
 import json
 import os
+import sys
 import tempfile
 import zipfile
 
@@ -62,13 +63,18 @@ def main():
     # Glue takes each argument once, so it passes these two as JSON objects.
     parser.add_argument("--env_json", default="{}")
     parser.add_argument("--var_json", default="{}")
-    args, _platform_args = parser.parse_known_args()
+    # A platform whose CLI cannot pass arguments that start with "--" (Azure
+    # Container Apps) passes them as a JSON list in UBUNYE_ENTRY_ARGS instead.
+    argv = json.loads(os.environ.get("UBUNYE_ENTRY_ARGS", "[]")) + sys.argv[1:]
+    args, _platform_args = parser.parse_known_args(argv)
     env = dict(pair.partition("=")[::2] for pair in args.env)
     env.update(json.loads(args.env_json))
     os.environ.update({k: str(v) for k, v in env.items()})
 
     root = os.getcwd()
-    for candidate in ("bundle", "."):
+    # Unpacked next to the script (Dataproc), the working folder (a container image
+    # sets it), or where the images bake the pipelines.
+    for candidate in ("bundle", ".", "/app/pipelines"):
         if os.path.isdir(os.path.join(candidate, args.task)):
             root = os.path.abspath(candidate)
             break
@@ -203,10 +209,48 @@ IMAGE_PLATFORMS = {
 }
 
 
+CONTAINER_DOCKERFILE = """\
+# Written by `ubunye deploy dockerfile container`. A self-contained Spark job for a
+# plain container runtime (Kubernetes, Azure Container Apps, Docker): Java, Spark in
+# local mode, Delta, the engine and the pipelines, all baked in.
+FROM python:3.11-slim-bookworm
+
+RUN apt-get update \\
+ && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps curl \\
+ && rm -rf /var/lib/apt/lists/*
+
+ARG UBUNYE_ENGINE="{engine}"
+RUN pip install --no-cache-dir "pyspark==3.5.*" "delta-spark=={delta}" "${{UBUNYE_ENGINE}}"
+
+# Delta for Spark 3.5 (Scala 2.12), baked in: the job downloads nothing.
+RUN mkdir -p /opt/jars \\
+ && curl -fsSL -o /opt/jars/delta-spark_2.12-{delta}.jar \\
+      https://repo1.maven.org/maven2/io/delta/delta-spark_2.12/{delta}/delta-spark_2.12-{delta}.jar \\
+ && curl -fsSL -o /opt/jars/delta-storage-{delta}.jar \\
+      https://repo1.maven.org/maven2/io/delta/delta-storage/{delta}/delta-storage-{delta}.jar
+ENV PYSPARK_SUBMIT_ARGS="--jars /opt/jars/delta-spark_2.12-{delta}.jar,/opt/jars/delta-storage-{delta}.jar \\
+--conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \\
+--conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog pyspark-shell"
+
+COPY {pipelines} /app/pipelines
+COPY ubunye_entry.py /app/ubunye_entry.py
+WORKDIR /app/pipelines
+RUN useradd -u 1001 -m ubunye && chown -R ubunye /app
+USER ubunye
+ENTRYPOINT ["python", "/app/ubunye_entry.py"]
+"""
+
+#: The platforms `ubunye deploy dockerfile` knows: the managed Spark ones, and a
+#: plain container.
+IMAGE_KINDS = (*IMAGE_PLATFORMS, "container")
+
+
 def dockerfile(
     platform: str, pipelines: str = "pipelines", engine: str = "ubunye-engine", delta: str = "3.2.0"
 ) -> str:
-    """A Dockerfile for a Spark job on ``platform`` (see :data:`IMAGE_PLATFORMS`)."""
+    """A Dockerfile for a Spark job on ``platform`` (see :data:`IMAGE_KINDS`)."""
+    if platform == "container":
+        return CONTAINER_DOCKERFILE.format(pipelines=pipelines, engine=engine, delta=delta)
     spec = IMAGE_PLATFORMS[platform]
     return DOCKERFILE.format(
         platform=platform, pipelines=pipelines, engine=engine, delta=delta, **spec

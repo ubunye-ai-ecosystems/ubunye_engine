@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **One command to Kubernetes, Azure Container Apps and EMR Serverless.**
+  `ubunye deploy k8s` runs a task as a Kubernetes Job (kubectl's context, no
+  retries, cleaned up after a day); `ubunye deploy container-apps` as an Azure
+  Container Apps job pulling with a managed identity, reading the run record back
+  from Log Analytics; `ubunye deploy emr-serverless` starts a run in an EMR
+  Serverless application (tested as a plan: the free plan blocks EMR).
+  `ubunye deploy dockerfile container` writes a self-contained image (Java, Spark
+  in local mode, Delta, engine, pipelines). The entry script also reads its
+  arguments from `UBUNYE_ENTRY_ARGS`, for runtimes whose CLI cannot pass them.
 - **One command to AWS Glue and GCP Dataproc Serverless.** `ubunye deploy glue`
   and `ubunye deploy dataproc` run a task unchanged on either service, through the
   cloud's own CLI and login: the task goes up as a zip with a small entry script
