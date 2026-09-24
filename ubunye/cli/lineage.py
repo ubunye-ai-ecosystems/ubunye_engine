@@ -239,19 +239,19 @@ def compare(
 def _print_data_hash(verdict: Dict[str, Any]) -> None:
     state = verdict["state"]
     if state == "unknown":
-        typer.secho(f"    data_hash: unknown ({verdict['why']})", fg=typer.colors.YELLOW)
+        typer.secho(f"      data_hash: unknown ({verdict['why']})", fg=typer.colors.YELLOW)
     elif state == "not comparable":
         typer.secho(
-            f"    data_hash: not comparable (made by "
+            f"      data_hash: not comparable (made by "
             f"{verdict['method_a'] or 'the pre-0.6 sample'} and "
             f"{verdict['method_b'] or 'the pre-0.6 sample'})",
             fg=typer.colors.YELLOW,
         )
     elif state == "unchanged":
-        typer.echo(f"    data_hash: {verdict['a']}  (unchanged)")
+        typer.echo(f"      data_hash: {verdict['a']}  (unchanged)")
     else:
         typer.secho(
-            f"    data_hash: {verdict['a']} -> {verdict['b']}  CHANGED", fg=typer.colors.YELLOW
+            f"      data_hash: {verdict['a']} -> {verdict['b']}  CHANGED", fg=typer.colors.YELLOW
         )
 
 
