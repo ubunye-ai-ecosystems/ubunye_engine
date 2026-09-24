@@ -171,9 +171,11 @@ def az(*args, capture=True):
 exists = subprocess.run(["az", "containerapp", "job", "show", "-n", s["job"], *rg, "--only-show-errors"],
                         capture_output=True).returncode == 0
 common = ["--image", s["image"], "--cpu", s["cpu"], "--memory", s["memory"],
-          "--replica-timeout", str(s["timeout"]), "--env-vars", *s["env"]]
+          "--replica-timeout", str(s["timeout"])]
 if exists:
-    az("containerapp", "job", "update", "-n", s["job"], *rg, *common, "-o", "none")
+    # `job update` refuses --env-vars; it replaces them with --replace-env-vars.
+    az("containerapp", "job", "update", "-n", s["job"], *rg, *common,
+       "--replace-env-vars", *s["env"], "-o", "none")
 else:
     extra = []
     if s["registry_identity"]:
@@ -182,7 +184,7 @@ else:
         extra += ["--registry-server", s["registry_server"]]
     az("containerapp", "job", "create", "-n", s["job"], *rg, "--environment", s["environment"],
        "--trigger-type", "Manual", "--replica-retry-limit", "0", "--parallelism", "1",
-       "--replica-completion-count", "1", *common, *extra, "-o", "none")
+       "--replica-completion-count", "1", *common, "--env-vars", *s["env"], *extra, "-o", "none")
 execution = az("containerapp", "job", "start", "-n", s["job"], *rg, "--query", "name", "-o", "tsv").strip()
 print("execution", execution, file=sys.stderr)
 if not s["wait"]:

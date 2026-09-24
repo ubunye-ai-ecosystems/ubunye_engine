@@ -248,6 +248,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`ubunye deploy container-apps` runs a second time.** The job is created on the
+  first deploy and updated after that, and `az containerapp job update` refuses
+  `--env-vars` (it takes `--replace-env-vars`), so every deploy after the first
+  failed. Found by running the release candidate on Azure Container Apps again.
+
 - **`ubunye lineage list` no longer reports an input of 0 rows it never
   counted.** A run record counts and hashes its outputs (ADR 006), not its
   inputs, and the list added the missing counts up as `in:0`, which read as an
