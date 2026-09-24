@@ -128,7 +128,7 @@ def test_a_task_records_next_to_itself_and_replays_offline(provider, tmp_path, m
     lineage = tmp_path / "lineage"
     monkeypatch.setenv("UBUNYE_LLM_MODE", "record")
     ubunye.run_task(str(task), backend="pandas", lineage=True, lineage_dir=str(lineage))
-    assert (task / ".ubunye" / "llm-replay.jsonl").exists()
+    assert (task / "llm-replay.jsonl").exists()
     sent = len(provider.requests)
 
     monkeypatch.setenv("UBUNYE_LLM_MODE", "replay")
@@ -162,6 +162,6 @@ def test_the_store_is_found_by_its_spelling_not_by_asking_the_filesystem(tmp_pat
     monkeypatch.setattr(Path, "resolve", no_disk)
     task = tmp_path / "uc" / "pkg" / "t"
     first = replay.store_for(None, str(task))
-    task.joinpath(".ubunye").mkdir(parents=True)
+    task.mkdir(parents=True)
     assert replay.store_for(None, str(task)) is first
     assert replay.store_for(None, str(task) + "/") is first

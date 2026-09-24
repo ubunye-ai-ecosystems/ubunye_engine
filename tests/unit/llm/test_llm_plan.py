@@ -34,8 +34,7 @@ def _clean_env(monkeypatch):
 
 def _recorded(task, entries):
     """A replay file with (model, input_tokens, output_tokens) answers."""
-    folder = task / ".ubunye"
-    folder.mkdir(exist_ok=True)
+    folder = task
     lines = [
         json.dumps({"key": f"sha256:{i:064x}", "backend": "anthropic", "model": model,
                     "recorded_at": "2026-09-24T00:00:00Z",

@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-#: The file's name inside a task folder's ``.ubunye`` directory.
+#: The file's name in the task folder, next to ``config.yaml``.
 DEFAULT_NAME = "llm-replay.jsonl"
 
 _stores: Dict[str, "ReplayStore"] = {}
@@ -73,7 +73,9 @@ def path_for(explicit: Optional[str], task_dir: Optional[str]) -> Path:
     chosen = explicit or os.environ.get("UBUNYE_LLM_STORE")
     if chosen:
         return Path(chosen)
-    return Path(task_dir or ".") / ".ubunye" / DEFAULT_NAME
+    # In the task folder itself, next to config.yaml: the file is meant to be
+    # committed, and projects commonly ignore .ubunye/ (lineage records live there).
+    return Path(task_dir or ".") / DEFAULT_NAME
 
 
 def store_for(explicit: Optional[str], task_dir: Optional[str]) -> ReplayStore:

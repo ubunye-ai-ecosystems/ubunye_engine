@@ -186,7 +186,7 @@ def recording(
 ) -> Iterator[List[Dict[str, Any]]]:
     """Collect every call made inside the block; the engine opens one per run.
 
-    ``task_dir`` is where a replay file lives by default (``.ubunye/llm-replay.jsonl``);
+    ``task_dir`` is where a replay file lives by default (``llm-replay.jsonl``);
     ``budget`` (a :class:`ubunye.llm.budget.Budget`) is shared by every port in the block.
     """
     calls: List[Dict[str, Any]] = into if into is not None else []
@@ -500,7 +500,7 @@ def port(
 
     ``mode`` is ``live``, ``record`` or ``replay`` (default: ``UBUNYE_LLM_MODE``, else
     ``live``). ``store`` is the replay file (default: ``UBUNYE_LLM_STORE``, else
-    ``.ubunye/llm-replay.jsonl`` in the task's folder).
+    ``llm-replay.jsonl`` in the task's folder).
 
     ``max_usd``, ``max_calls`` and ``max_seconds`` limit this port, on top of the
     run's limits (``UBUNYE_LLM_MAX_*``). ``price`` is ``(input, output)`` in USD per

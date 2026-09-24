@@ -97,12 +97,11 @@ UBUNYE_LLM_MODE=record ubunye run -d pipelines -u shop -p reviews -t label   # o
 UBUNYE_LLM_MODE=replay ubunye run -d pipelines -u shop -p reviews -t label   # anywhere, for nothing
 ```
 
-The replay file is `.ubunye/llm-replay.jsonl` in the task's folder, or the path in
-`UBUNYE_LLM_STORE` (or `store=`). It holds one line per answer, under the request's
-key; it never holds the prompt. Commit it next to the task and CI, a colleague's
-laptop or another cloud replays the same answers, so the run writes the same data
-and the same row hashes. If your `.gitignore` excludes `.ubunye/`, point
-`UBUNYE_LLM_STORE` at a path you commit.
+The replay file is `llm-replay.jsonl` in the task's folder, next to `config.yaml`,
+or the path in `UBUNYE_LLM_STORE` (or `store=`). It holds one line per answer, under
+the request's key; it never holds the prompt. Commit it with the task and CI, a
+colleague's laptop or another cloud replays the same answers, so the run writes the
+same data and the same row hashes.
 
 Replay fails closed. A request with no recorded answer (a new prompt, another
 model, another `temperature`) stops the run with the request's key and the hint to
