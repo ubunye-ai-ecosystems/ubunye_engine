@@ -208,13 +208,13 @@ def test_discover_hooks_finds_builtin_telemetry():
 def test_default_hooks_honors_telemetry_flag(monkeypatch):
     import ubunye.core.runtime as runtime
 
-    monkeypatch.setattr(runtime, "_TELEMETRY_ENABLED", False)
+    monkeypatch.setenv("UBUNYE_TELEMETRY", "0")
     hooks = runtime._default_hooks({})
     # Only LegacyMonitorsHook when telemetry disabled
     assert len(hooks) == 1
     assert type(hooks[0]).__name__ == "LegacyMonitorsHook"
 
-    monkeypatch.setattr(runtime, "_TELEMETRY_ENABLED", True)
+    monkeypatch.setenv("UBUNYE_TELEMETRY", "1")
     hooks = runtime._default_hooks({})
     names = {type(h).__name__ for h in hooks}
     assert "LegacyMonitorsHook" in names
@@ -228,7 +228,7 @@ def test_default_hooks_skips_broken_discovered_hook(monkeypatch):
         def __init__(self):
             raise RuntimeError("broken init")
 
-    monkeypatch.setattr(runtime, "_TELEMETRY_ENABLED", True)
+    monkeypatch.setenv("UBUNYE_TELEMETRY", "1")
     monkeypatch.setattr(runtime, "_discover_hooks", lambda: [Boom])
     hooks = runtime._default_hooks({})
     # Boom's __init__ raised; only LegacyMonitorsHook remains

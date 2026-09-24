@@ -76,7 +76,13 @@ class Registry:
 
 
 # ---------------- Default hook assembly ----------------
-_TELEMETRY_ENABLED = os.getenv("UBUNYE_TELEMETRY", "0") not in ("0", "", "false", "False")
+def _telemetry_enabled() -> bool:
+    """``UBUNYE_TELEMETRY``, read when a run starts.
+
+    It was read once at import, so setting it in a notebook (or anywhere after
+    ``import ubunye``) did nothing.
+    """
+    return os.getenv("UBUNYE_TELEMETRY", "0").strip().lower() not in ("0", "", "false", "no", "off")
 
 
 def _discover_hooks() -> List[type[Hook]]:
@@ -110,7 +116,7 @@ def _default_hooks(cfg: Dict[str, Any]) -> List[Hook]:
     from ubunye.telemetry.hooks import LegacyMonitorsHook
 
     hooks: List[Hook] = []
-    if _TELEMETRY_ENABLED:
+    if _telemetry_enabled():
         for hook_cls in _discover_hooks():
             try:
                 hooks.append(hook_cls())
