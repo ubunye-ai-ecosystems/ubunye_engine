@@ -80,6 +80,7 @@ nav:
       - Kubernetes: deployment/kubernetes.md
       - AWS: deployment/aws.md
       - GCP: deployment/gcp.md
+      - Glue and Dataproc, one command: deployment/serverless.md
       - Anywhere with spark-submit: deployment/anywhere.md
   - How-to Guides:
       - Notebook Prototyping: patterns/notebook.md

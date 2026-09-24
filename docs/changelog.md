@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **One command to AWS Glue and GCP Dataproc Serverless.** `ubunye deploy glue`
+  and `ubunye deploy dataproc` run a task unchanged on either service, through the
+  cloud's own CLI and login: the task goes up as a zip with a small entry script
+  that runs it with a run record and prints the record back, so `--record-out`
+  saves it and `ubunye gate` can compare runs across clouds. Glue pip-installs
+  the engine (or an uploaded wheel) and supplies Delta; Dataproc runs in an image
+  whose Dockerfile `ubunye deploy dockerfile dataproc` writes, following
+  Dataproc's rules. `--env`, `--var`, `--dry-run`, `--wait/--no-wait`. See
+  [Glue and Dataproc](deployment/serverless.md).
 - **`ubunye gate` and a GitHub Action: the receipt gates pull requests.** The
   gate compares a run record with a baseline and fails when the run failed, a
   `fail` expectation broke, an output's data or schema changed without a
