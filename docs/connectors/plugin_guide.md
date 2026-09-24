@@ -118,6 +118,25 @@ CONFIG:
       url: "https://..."
 ```
 
+### Declare your settings, so typos fail early
+
+Input and output blocks accept keys the engine does not know, because your
+connector reads its own settings. That also means a typo (`tokne:`) is silently
+ignored, unless you say which keys you read:
+
+```python
+class MyApiReader(Reader):
+    CONFIG_KEYS = frozenset({"url", "token"})
+```
+
+With `CONFIG_KEYS` declared, `ubunye validate` rejects any other key in a block
+that uses your connector and names the closest real one
+(`inputs.data: 'tokne' is not a setting of 'my_api'; did you mean 'token'?`).
+You do not list `format` or `options` (every block may have them), nor, for a
+writer, `mode`, `merge_keys` and `replace_where` (the engine reads those for
+every output). Leave `CONFIG_KEYS` out and any key is accepted, as before. Every
+built-in connector declares its keys.
+
 ---
 
 ## Backend reference

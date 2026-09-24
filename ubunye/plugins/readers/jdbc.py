@@ -41,6 +41,24 @@ from ubunye.core.interfaces import Reader
 class JdbcReader(Reader):
     """Read a Spark DataFrame from any JDBC source using Spark's built-in JDBC connector."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset(
+        {
+            "url",
+            "driver",
+            "user",
+            "password",
+            "table",
+            "dbtable",
+            "sql",
+            "fetchsize",
+            "partitionColumn",
+            "lowerBound",
+            "upperBound",
+            "numPartitions",
+        }
+    )
+
     # Needs a live SparkSession; checked before a run (ADR 002).
     REQUIRES = frozenset({SPARK})
 

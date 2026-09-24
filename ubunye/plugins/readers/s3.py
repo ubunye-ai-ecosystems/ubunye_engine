@@ -25,6 +25,9 @@ from ubunye.core.interfaces import Reader
 class S3Reader(Reader):
     """Read a Spark DataFrame from S3 (or any filesystem path Spark understands)."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"path", "file_format", "schema"})
+
     # Reads and writes paths through the backend's path IO (ADR 002).
     REQUIRES = frozenset({PATH_IO})
 

@@ -60,6 +60,9 @@ def _target(cfg: Dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
 class DeltaWriter(Writer):
     """Write a Spark DataFrame to a Delta table, by path or by name."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"path", "table", "db_name", "tbl_name", "partitionBy"})
+
     # Needs a live SparkSession; checked before a run (ADR 002).
     REQUIRES = frozenset({SPARK})
 

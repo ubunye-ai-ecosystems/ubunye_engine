@@ -26,6 +26,11 @@ from ubunye.core.interfaces import Reader
 class DeltaReader(Reader):
     """Read a Spark DataFrame from a Delta table."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset(
+        {"path", "table", "db_name", "tbl_name", "sql", "version_as_of", "timestamp_as_of"}
+    )
+
     # Needs a live SparkSession; checked before a run (ADR 002).
     REQUIRES = frozenset({SPARK})
 
