@@ -89,6 +89,7 @@ nav:
       - REST API Ingestion: patterns/rest_api.md
       - Observability Hooks: patterns/hooks.md
       - OpenLineage: patterns/openlineage.md
+      - OpenTelemetry: patterns/opentelemetry.md
   - Reference:
       - CLI: cli.md
       - Python API: api.md

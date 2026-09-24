@@ -22,6 +22,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **OpenTelemetry done properly.** The OTel hook now follows OpenTelemetry's own
+  configuration (`OTEL_EXPORTER_OTLP_ENDPOINT`, protocol, headers,
+  `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER`, `OTEL_SERVICE_NAME`), exports
+  over OTLP (http/protobuf or grpc) with the new `otel` extra, reuses a host
+  application's providers, and flushes when a task ends so short CLI runs export.
+  It used to print every span to the console and ignore the endpoint. Spans now
+  nest steps under the task, carry the run id, backend and config hash, and mark
+  failures as errors with the exception recorded. New metrics:
+  `ubunye.task.runs`, `ubunye.task.duration`, `ubunye.step.duration`,
+  `ubunye.rows.read`, `ubunye.rows.written` (rows counted where free, on Spark
+  only with `UBUNYE_OTEL_COUNT_ROWS=1`). `UBUNYE_TELEMETRY` is read when a run
+  starts, not at import, so setting it in a notebook works. The Prometheus hook is
+  unchanged; its row and byte counters are fed only by callers of
+  `observe_step()`, never by the engine, as before. See
+  [OpenTelemetry](patterns/opentelemetry.md).
 - **OpenLineage events: the receipt lands in your catalogue.** A recorded run
   sends START and COMPLETE or FAIL (OpenLineage 2-0-2) to any OpenLineage server
   (Marquez, DataHub, OpenMetadata, Google Dataplex) when `OPENLINEAGE_URL` is set,

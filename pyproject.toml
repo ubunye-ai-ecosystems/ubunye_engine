@@ -79,8 +79,10 @@ rest = ["requests>=2.28"]
 objectstore = ["fsspec>=2023.1.0"]
 # pandas and pyarrow are here so the pandas backend is tested on every CI run, not
 # skipped; without pyarrow the parquet tests failed instead of skipping.
-dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14; platform_system != 'Windows'", "pyarrow>=24; platform_system == 'Windows'", "narwhals>=2", "jsonschema>=4.18"]
+dev = ["pytest", "pytest-cov>=4", "pytest-timeout", "hypothesis>=6", "requests>=2.28", "black", "ruff", "build", "mypy>=1.8", "pandas>=2.2", "pyarrow>=14; platform_system != 'Windows'", "pyarrow>=24; platform_system == 'Windows'", "narwhals>=2", "jsonschema>=4.18", "opentelemetry-sdk>=1.24"]
 databricks = ["databricks-sdk>=0.20"]
+# OpenTelemetry traces and metrics, exported over OTLP (http/protobuf or grpc).
+otel = ["opentelemetry-sdk>=1.24", "opentelemetry-exporter-otlp>=1.24"]
 # Cloud secret stores for secret://aws-sm, secret://gcp-sm, secret://azure-kv.
 aws = ["boto3>=1.28"]
 gcp = ["google-cloud-secret-manager>=2.16"]

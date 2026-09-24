@@ -236,7 +236,7 @@ If you need to change pipeline behavior, write a plugin
 |---|---|
 | `ubunye/core/hooks.py` | `Hook` base class, `HookChain` multiplexer |
 | `ubunye/telemetry/hooks/events.py` | JSON event logger hook |
-| `ubunye/telemetry/hooks/otel.py` | OpenTelemetry spans |
+| `ubunye/telemetry/hooks/otel.py` | OpenTelemetry spans and metrics ([OpenTelemetry](opentelemetry.md)) |
 | `ubunye/telemetry/hooks/prometheus.py` | Prometheus metrics |
 | `ubunye/telemetry/hooks/monitors.py` | Legacy `CONFIG.monitors` bridge |
 | `tests/unit/test_hooks.py` | Reference tests — recording hook, failure propagation, dry-run |
