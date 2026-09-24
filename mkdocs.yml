@@ -90,6 +90,7 @@ nav:
       - Observability Hooks: patterns/hooks.md
       - OpenLineage: patterns/openlineage.md
       - OpenTelemetry: patterns/opentelemetry.md
+      - Gate Pull Requests: patterns/gate.md
   - Reference:
       - CLI: cli.md
       - Python API: api.md

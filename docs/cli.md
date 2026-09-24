@@ -15,6 +15,7 @@ All commands accept `--help` for full option details.
 | `run` | Execute one or more tasks |
 | `backends` | List the execution backends and what each can do |
 | `doctor` | Check this machine, and optionally tasks, before a run |
+| `gate` | Fail a pull request when a run receipt regresses ([Gate](patterns/gate.md)) |
 | `plugins` | List all discovered plugins |
 | `config` | Show the expanded (Jinja-rendered + validated) config |
 | `version` | Print the engine version |

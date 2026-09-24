@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **`ubunye gate` and a GitHub Action: the receipt gates pull requests.** The
+  gate compares a run record with a baseline and fails when the run failed, a
+  `fail` expectation broke, an output's data or schema changed without a
+  `VERSION` bump, an output went missing, or a limit was passed
+  (`--max-slowdown`, `--max-seconds`, `--max-row-change`). Each changed output
+  says what else changed (config, code, environment, which inputs), and a change
+  with none of them is reported as nondeterminism. Runs are named by record file,
+  run id, `previous` or `latest`; `--json` and `--summary` (Markdown for the job
+  summary). The composite action `.github/actions/gate` runs a task on a pull
+  request's base and head and gates them. See [Gate](patterns/gate.md).
 - **OpenTelemetry done properly.** The OTel hook now follows OpenTelemetry's own
   configuration (`OTEL_EXPORTER_OTLP_ENDPOINT`, protocol, headers,
   `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER`, `OTEL_SERVICE_NAME`), exports
