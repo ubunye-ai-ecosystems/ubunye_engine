@@ -45,8 +45,10 @@ def _lines(seed: int, count: int, newlines: bool) -> list:
 
 
 def _write(path, lines, ending):
-    # Bytes, so the line ending is the one asked for on every OS.
-    path.write_bytes((ending.join(lines) + ending).replace("\n", ending).encode("utf-8"))
+    # Bytes, so the line ending is the one asked for on every OS: every line
+    # break, between lines or inside a multi-line value, is `ending`.
+    text = "\n".join(lines) + "\n"
+    path.write_bytes(text.replace("\n", ending).encode("utf-8"))
     return path
 
 

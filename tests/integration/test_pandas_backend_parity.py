@@ -109,7 +109,15 @@ def _same_values(a, b):
 
 
 def spark_arrow(df):
-    return df.toArrow()
+    if hasattr(df, "toArrow"):  # Spark 4
+        return df.toArrow()
+    # Spark 3.5 has no public toArrow; this is the collection toPandas uses.
+    from pyspark.sql.pandas.types import to_arrow_schema
+
+    batches = df._collect_as_arrow()
+    if not batches:
+        return to_arrow_schema(df.schema).empty_table()
+    return pa.Table.from_batches(batches)
 
 
 def pandas_arrow(frame):
