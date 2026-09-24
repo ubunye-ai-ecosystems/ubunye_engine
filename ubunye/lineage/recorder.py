@@ -101,6 +101,10 @@ class LineageRecorder:
         # Inputs are hashed like outputs (every row). It costs a pass over each
         # input; turn it off for inputs too large to read twice.
         self._hash_inputs = hash_inputs
+        # OpenLineage events, when OPENLINEAGE_URL or UBUNYE_OPENLINEAGE_FILE is set.
+        from ubunye.lineage.openlineage import Emitter
+
+        self._openlineage = Emitter.from_env()
         self._sample_fraction = sample_fraction
         # In-flight run contexts keyed by run_id (supports concurrent tasks)
         self._runs: Dict[str, RunContext] = {}
@@ -161,6 +165,8 @@ class LineageRecorder:
             self._store.save(ctx)
         except Exception:
             pass  # Never break the task due to lineage recording failure
+        if self._openlineage is not None:
+            self._openlineage.emit(ctx, "START")
 
     def task_end(
         self,
@@ -212,6 +218,8 @@ class LineageRecorder:
             self._store.save(ctx)
         except Exception:
             pass
+        if self._openlineage is not None:
+            self._openlineage.emit(ctx, "COMPLETE" if status == "success" else "FAIL")
 
         # Clean up in-flight state
         self._runs.pop(run_id, None)

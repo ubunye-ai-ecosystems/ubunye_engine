@@ -88,6 +88,7 @@ nav:
       - Drift Detection: patterns/drift.md
       - REST API Ingestion: patterns/rest_api.md
       - Observability Hooks: patterns/hooks.md
+      - OpenLineage: patterns/openlineage.md
   - Reference:
       - CLI: cli.md
       - Python API: api.md
