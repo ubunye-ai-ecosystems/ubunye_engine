@@ -59,6 +59,10 @@ def _location_from_io_cfg(io_cfg: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
+#: The run record layout this engine writes (``RunContext.record_version``).
+RECORD_VERSION = 2
+
+
 @dataclass
 class StepRecord:
     """Captures lineage metadata for a single input or output step."""
@@ -138,6 +142,18 @@ class RunContext:
     backend: str = ""
     #: The template variables the run was given (dt, dtf, mode, ...).
     variables: Dict[str, Any] = field(default_factory=dict)
+    #: 2 since 0.7.0 (code, environment, input hashes, timings, expectations);
+    #: a record without it is 1.
+    record_version: int = RECORD_VERSION
+    #: ``sha256:`` of the task's Python files (ubunye.lineage.evidence.code_hash).
+    code_hash: Optional[str] = None
+    #: Python, platform and the versions of the packages that can change a result.
+    environment: Dict[str, Any] = field(default_factory=dict)
+    environment_hash: Optional[str] = None
+    #: One entry per read, transform and write: {"step", "input"|"output", "seconds"}.
+    timings: List[Dict[str, Any]] = field(default_factory=list)
+    #: Every expectation checked, passed or not (ubunye.core.expectations).
+    expectations: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -168,4 +184,10 @@ class RunContext:
             engine_version=d.get("engine_version", ""),
             backend=d.get("backend", ""),
             variables=dict(d.get("variables") or {}),
+            record_version=int(d.get("record_version") or 1),
+            code_hash=d.get("code_hash"),
+            environment=dict(d.get("environment") or {}),
+            environment_hash=d.get("environment_hash"),
+            timings=list(d.get("timings") or []),
+            expectations=list(d.get("expectations") or []),
         )

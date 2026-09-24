@@ -156,12 +156,20 @@ class TestLineage:
         assert doc["outputs"]["out"]["data_hash"]["state"] == "unchanged"
         assert doc["outputs"]["out"]["row_count"] == {"a": 2, "b": 2, "changed": False}
 
-    def test_list_text_does_not_turn_an_unknown_count_into_zero(self, two_runs):
-        # Inputs are not counted (only outputs are, ADR 006): "in:0" claimed an
-        # empty input. Unknown is shown as unknown.
+    def test_list_text_counts_inputs_and_outputs(self, two_runs):
+        # Since run record v2 inputs are hashed and counted like outputs.
         result = runner.invoke(app, ["lineage", "list", *_where(two_runs, "-t", "copy")])
         rows = [line for line in result.output.splitlines() if "success" in line]
-        assert rows and all("in:-" in r and "out:2" in r for r in rows), rows
+        assert rows and all("in:2" in r and "out:2" in r for r in rows), rows
+
+    def test_list_text_does_not_turn_an_unknown_count_into_zero(self):
+        # A record with no count (hash_inputs=False, or an older record) must not
+        # claim an empty input: unknown is shown as unknown.
+        from ubunye.cli.lineage import _rows
+        from ubunye.lineage.context import StepRecord
+
+        uncounted = [StepRecord(name="src", direction="input", format="s3", location="x")]
+        assert _rows(uncounted) == "-"
 
     def test_compare_text_lines_up_every_output_field(self, two_runs):
         a, b = _json(
@@ -174,7 +182,8 @@ class TestLineage:
             for line in result.output.splitlines()
             if line.lstrip().startswith(("row_count:", "schema_hash:", "data_hash:"))
         ]
-        assert len(fields) == 3
+        # One input and one output since run record v2, each with the same three fields.
+        assert len(fields) == 6
         assert {len(line) - len(line.lstrip()) for line in fields} == {6}, fields
 
     def test_search(self, two_runs):

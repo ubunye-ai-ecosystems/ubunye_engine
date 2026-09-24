@@ -26,8 +26,9 @@ with final status, duration, and per-step hashes at ``task_end``.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
+from ubunye.lineage import evidence
 from ubunye.lineage.context import RunContext, StepRecord
 from ubunye.lineage.storage import FileSystemLineageStore, LineageStore, S3LineageStore
 
@@ -59,6 +60,22 @@ def _make_store(store: str, base_dir: str) -> LineageStore:
     return FileSystemLineageStore(base_dir)
 
 
+def _fingerprint_into(step: StepRecord, frame: Any) -> None:
+    """Every row, one pass, the same method on every engine (ADR 006).
+
+    A failure is recorded as a failure: no data_hash and the reason, never the
+    schema hash standing in for the data.
+    """
+    from ubunye.lineage.content_hash import fingerprint
+
+    print_ = fingerprint(frame)
+    step.schema_hash = print_.schema_hash
+    step.data_hash = print_.data_hash
+    step.row_count = print_.row_count
+    step.hash_method = print_.method
+    step.hash_error = print_.error
+
+
 class LineageRecorder:
     """Monitor plugin that persists run lineage as structured JSON.
 
@@ -78,8 +95,12 @@ class LineageRecorder:
         store: str = "filesystem",
         base_dir: str = ".ubunye/lineage",
         sample_fraction: float = 0.01,
+        hash_inputs: bool = True,
     ) -> None:
         self._store: LineageStore = _make_store(store, base_dir)
+        # Inputs are hashed like outputs (every row). It costs a pass over each
+        # input; turn it off for inputs too large to read twice.
+        self._hash_inputs = hash_inputs
         self._sample_fraction = sample_fraction
         # In-flight run contexts keyed by run_id (supports concurrent tasks)
         self._runs: Dict[str, RunContext] = {}
@@ -110,6 +131,7 @@ class LineageRecorder:
         model = top_cfg.get("MODEL", "")
         version = top_cfg.get("VERSION", "")
 
+        env = evidence.environment()
         ctx = RunContext(
             run_id=run_id,
             task_path=task_path,
@@ -125,6 +147,9 @@ class LineageRecorder:
             started_at=_utcnow(),
             engine_version=_engine_version(),
             backend=getattr(context, "backend", None) or "",
+            code_hash=evidence.code_hash(getattr(context, "task_dir", None)),
+            environment=env,
+            environment_hash=evidence.environment_hash(env),
             variables={
                 k: v
                 for k, v in dict(getattr(context, "variables", {}) or {}).items()
@@ -145,6 +170,9 @@ class LineageRecorder:
         outputs: Optional[Dict[str, Any]],
         status: str,
         duration_sec: float,
+        inputs: Optional[Dict[str, Any]] = None,
+        expectations: Optional[List[Dict[str, Any]]] = None,
+        timings: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         """Update the run record with final status, duration, and step hashes."""
         run_id = context.run_id
@@ -160,27 +188,23 @@ class LineageRecorder:
         inputs_cfg: Dict[str, Any] = cfg_section.get("inputs", {}) or {}
         outputs_cfg: Dict[str, Any] = cfg_section.get("outputs", {}) or {}
 
-        # --- Build input StepRecords (no DataFrame hashing — inputs were read) ---
-        ctx.inputs = [
-            StepRecord.from_io_cfg(name, "input", io_cfg) for name, io_cfg in inputs_cfg.items()
-        ]
+        ctx.timings = list(timings or [])
+        ctx.expectations = list(expectations or [])
+
+        # --- Input StepRecords, hashed like outputs when the frames are given ---
+        ctx.inputs = []
+        for name, io_cfg in inputs_cfg.items():
+            step = StepRecord.from_io_cfg(name, "input", io_cfg)
+            if self._hash_inputs and inputs and inputs.get(name) is not None:
+                _fingerprint_into(step, inputs[name])
+            ctx.inputs.append(step)
 
         # --- Build output StepRecords with optional DataFrame hashes ---
         step_outputs: list[StepRecord] = []
         for name, io_cfg in outputs_cfg.items():
             step = StepRecord.from_io_cfg(name, "output", io_cfg)
             if outputs and name in outputs and outputs[name] is not None:
-                from ubunye.lineage.content_hash import fingerprint
-
-                # Every row, one pass, the same method on every engine (ADR 006). A
-                # failure is recorded as a failure: no data_hash and the reason,
-                # never the schema hash standing in for the data.
-                print_ = fingerprint(outputs[name])
-                step.schema_hash = print_.schema_hash
-                step.data_hash = print_.data_hash
-                step.row_count = print_.row_count
-                step.hash_method = print_.method
-                step.hash_error = print_.error
+                _fingerprint_into(step, outputs[name])
             step_outputs.append(step)
         ctx.outputs = step_outputs
 

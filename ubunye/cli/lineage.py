@@ -40,7 +40,7 @@ def _task_path(usecase: str, package: str, task: str) -> str:
 
 
 def _rows(steps: Any) -> str:
-    """The total row count, or "-" when none was recorded (inputs are not counted)."""
+    """The total row count, or "-" when none was recorded (never a false 0)."""
     counts = [s.row_count for s in steps if s.row_count is not None]
     return str(sum(counts)) if counts else "-"
 
@@ -171,16 +171,32 @@ def _field(a: Any, b: Any) -> Dict[str, Any]:
 
 def compare_records(a: RunContext, b: RunContext) -> Dict[str, Any]:
     """Two run records side by side, as data."""
-    a_out = {s.name: s for s in a.outputs}
-    b_out = {s.name: s for s in b.outputs}
-    outputs = {}
-    for name in sorted(set(a_out) | set(b_out)):
-        sa, sb = a_out.get(name), b_out.get(name)
-        outputs[name] = {
-            "row_count": _field(sa.row_count if sa else None, sb.row_count if sb else None),
-            "schema_hash": _field(sa.schema_hash if sa else None, sb.schema_hash if sb else None),
-            "data_hash": data_hash_state(sa, sb),
-        }
+
+    def steps(a_steps: Any, b_steps: Any) -> Dict[str, Any]:
+        a_by, b_by = {s.name: s for s in a_steps}, {s.name: s for s in b_steps}
+        found = {}
+        for name in sorted(set(a_by) | set(b_by)):
+            sa, sb = a_by.get(name), b_by.get(name)
+            found[name] = {
+                "row_count": _field(sa.row_count if sa else None, sb.row_count if sb else None),
+                "schema_hash": _field(
+                    sa.schema_hash if sa else None, sb.schema_hash if sb else None
+                ),
+                "data_hash": data_hash_state(sa, sb),
+            }
+        return found
+
+    a_pkgs = (a.environment or {}).get("packages", {})
+    b_pkgs = (b.environment or {}).get("packages", {})
+    packages = {
+        name: {"a": a_pkgs.get(name), "b": b_pkgs.get(name)}
+        for name in sorted(set(a_pkgs) | set(b_pkgs))
+        if a_pkgs.get(name) != b_pkgs.get(name)
+    }
+    for key in ("python", "platform"):
+        va, vb = (a.environment or {}).get(key), (b.environment or {}).get(key)
+        if va != vb:
+            packages[key] = {"a": va, "b": vb}
     return {
         "task": a.task_path,
         "a": {"run_id": a.run_id, "started_at": a.started_at, "status": a.status},
@@ -188,7 +204,12 @@ def compare_records(a: RunContext, b: RunContext) -> Dict[str, Any]:
         "status": _field(a.status, b.status),
         "duration_sec": _field(a.duration_sec, b.duration_sec),
         "config_hash": _field(a.config_hash, b.config_hash),
-        "outputs": outputs,
+        "code_hash": _field(a.code_hash, b.code_hash),
+        "environment_hash": _field(a.environment_hash, b.environment_hash),
+        # What changed in the environment, when it did: {"pandas": {"a": .., "b": ..}}.
+        "environment_changes": packages,
+        "inputs": steps(a.inputs, b.inputs),
+        "outputs": steps(a.outputs, b.outputs),
     }
 
 
@@ -233,6 +254,15 @@ def compare(
     _cmp("status", report["status"])
     _cmp("duration_sec", report["duration_sec"])
     _cmp("config_hash", report["config_hash"])
+    _cmp("code_hash", report["code_hash"])
+    _cmp("environment_hash", report["environment_hash"])
+    for what, change in report["environment_changes"].items():
+        typer.secho(f"    {what}: {change['a']} -> {change['b']}", fg=typer.colors.YELLOW)
+    for name, inp in report["inputs"].items():
+        typer.echo(f"  Input '{name}':")
+        _cmp("    row_count", inp["row_count"])
+        _cmp("    schema_hash", inp["schema_hash"])
+        _print_data_hash(inp["data_hash"])
     for name, out in report["outputs"].items():
         typer.echo(f"  Output '{name}':")
         _cmp("    row_count", out["row_count"])
@@ -375,4 +405,34 @@ def trace(
     typer.echo()
     typer.secho("  OUTPUTS", fg=typer.colors.CYAN)
     _print_steps(ctx.outputs)
+    typer.echo()
+    if ctx.record_version >= 2:
+        _print_evidence(ctx)
+
+
+def _print_evidence(ctx: RunContext) -> None:
+    """The v2 part of a record: code, environment, timings, expectations."""
+    typer.secho("  CODE AND ENVIRONMENT", fg=typer.colors.CYAN)
+    typer.echo(f"    code        : {ctx.code_hash or '-'}")
+    env = ctx.environment or {}
+    typer.echo(f"    python      : {env.get('python', '-')} on {env.get('platform', '-')}")
+    for name, version in sorted((env.get("packages") or {}).items()):
+        typer.echo(f"    {name:<12}: {version}")
+    typer.echo(f"    environment : {ctx.environment_hash or '-'}")
+    if ctx.timings:
+        typer.echo()
+        typer.secho("  STEPS", fg=typer.colors.CYAN)
+        for t in ctx.timings:
+            where = t.get("input") or t.get("output") or ""
+            typer.echo(f"    {t['step']:<34} {where:<20} {t['seconds']:>9.3f}s")
+    if ctx.expectations:
+        typer.echo()
+        typer.secho("  EXPECTATIONS", fg=typer.colors.CYAN)
+        for e in ctx.expectations:
+            mark = "ok" if e.get("passed") else e.get("severity", "?")
+            colour = typer.colors.GREEN if e.get("passed") else typer.colors.YELLOW
+            typer.secho(
+                f"    {mark:<10} {e['output']}.{e['rule']:<28} {e['failed']}/{e['total']}",
+                fg=colour,
+            )
     typer.echo()

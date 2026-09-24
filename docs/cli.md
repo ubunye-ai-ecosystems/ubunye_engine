@@ -414,7 +414,9 @@ ubunye lineage list \
 
 ### `lineage compare`
 
-Diff two run records — highlight changes in hashes, row counts, and status.
+Diff two run records: status, config, code and environment hashes (naming the
+packages whose versions changed), and each input's and output's row count,
+schema hash and data hash.
 
 ```bash
 ubunye lineage compare \
