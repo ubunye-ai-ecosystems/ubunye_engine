@@ -8,11 +8,12 @@ keeps the text much as written, up to the next delimiter
 so the same file gave different rows.
 
 Most files never meet those cases, and pyarrow reads them exactly as Spark
-does, fast. :func:`needs_spark_split` finds the files that do, with regular
-expressions over the text. Only those go through :func:`respell`, which splits
-them here, in Python, and writes them back as plain CSV for pyarrow, so types
-and nulls are read the normal way. With multiLine off each line stands alone,
-so only the lines that need it are split; the rest are kept as they are.
+does, fast. :func:`needs_spark_split` finds the files that do, from the
+positions of their quotes, escapes and line breaks (numpy, no Python loop over
+the text). Only those go through :func:`respell`, which splits them here, in
+Python, and writes them back as plain CSV for pyarrow, so types and nulls are
+read the normal way. With multiLine off each line stands alone, so only the
+lines that need it are split; the rest are kept as they are.
 
 The splitter is a port of univocity's ``CsvParser`` with the settings Spark
 uses (no whitespace trimming, quotes and escapes not kept, unquoted values not
@@ -28,7 +29,7 @@ from __future__ import annotations
 import csv
 import io
 import re
-from typing import Iterator, List, Optional
+from typing import Any, Iterator, List, Optional
 
 _NUL = "\0"
 _NL = "\n"
@@ -37,41 +38,126 @@ _NL = "\n"
 #: empty unquoted field), which Spark then reads as null.
 Value = Optional[str]
 
-# A line of nothing but blanks (Scala's trim removes chars up to the space).
-_BLANK_LINE = re.compile("(?:^|[\r\n])[\x00-\x09\x0b\x0c\x0e-\x20]+(?=[\r\n]|$)")
 _LINE_END = re.compile("\r\n|\r|\n")
-
-
-def _plain_fields(delimiter: str, quote: str, escape: str, multiline: bool) -> "re.Pattern[str]":
-    """A quoted field pyarrow reads as Spark does: nothing to unescape inside."""
-    q, d = re.escape(quote), re.escape(delimiter)
-    banned = q + (re.escape(escape) if escape else "") + "\r" + ("" if multiline else "\n")
-    start, end = f"(?:^|(?<=\n)|(?<={d})){q}", f"{q}(?=$|\r?\n|{d})"
-    if escape:
-        return re.compile(f"{start}[^{banned}]*{end}")
-    # With no escape character, Spark reads an empty quoted value at the end of
-    # a line as one quote (univocity compares the empty escape with its empty
-    # "previous character"); only before a delimiter is it read as empty.
-    return re.compile(f"{start}(?:[^{banned}]+{end}|{q}(?={d}))")
 
 
 def needs_spark_split(text: str, delimiter: str, quote: str, escape: str, multiline: bool) -> bool:
     """Whether pyarrow could read ``text`` differently from Spark.
 
-    True when a quote or escape character appears anywhere other than as the
-    two ends of a plain quoted field (one that holds no quote, escape or
-    carriage return, and no newline unless ``multiline``), or, with multiLine
-    off, when a line holds only blanks (Spark drops it, pyarrow keeps it).
+    True when a quote is anywhere but the two ends of a plain quoted field (one
+    that holds no quote or carriage return, and no newline unless
+    ``multiline``), when an escape character comes before a quote or another
+    escape, or, with multiLine off, when a line holds only blanks (Spark drops
+    it, pyarrow keeps it) or a lone carriage return ends a line.
     """
-    if not multiline and _BLANK_LINE.search(text):
-        return True
-    specials = [c for c in (quote, escape) if c]
-    if not any(c in text for c in specials):
-        return False
-    if not quote:
-        return True
-    rest = _plain_fields(delimiter, quote, escape, multiline).sub("", text)
-    return any(c in rest for c in specials)
+    flags = _messy(text, delimiter, quote, escape, multiline)
+    return bool(flags.any())
+
+
+def _messy(text: str, delimiter: str, quote: str, escape: str, multiline: bool) -> Any:
+    """Which lines pyarrow could read differently from Spark (one flag per line).
+
+    With multiLine on, one flag for the whole text. The checks run over the
+    UTF-8 bytes with numpy, on the positions of the few characters that matter
+    (line breaks, quotes, escapes), never byte by byte in Python: the quote,
+    delimiter, escape and line breaks are ASCII, so they never occur inside
+    another character's bytes. An 18 MB file of plain quoted fields is checked
+    in tens of milliseconds (the regular expression this replaced took most of a
+    second).
+    """
+    import numpy as np
+
+    raw = text.encode("utf-8", "surrogatepass")
+    b = np.frombuffer(raw, dtype=np.uint8)
+    n = len(b)
+    NL, CR = 10, 13
+    D = ord(delimiter)
+    Q = ord(quote) if quote else None
+    E = ord(escape) if escape and escape != quote else None
+
+    newlines = np.flatnonzero(b == NL)
+    lines = len(newlines) + 1
+    messy = np.zeros(1 if multiline else lines, dtype=bool)
+
+    def line_of(positions: Any) -> Any:
+        """The line each position is on (a newline is on the line it ends)."""
+        return np.searchsorted(newlines, positions)
+
+    def mark(positions: Any) -> None:
+        if len(positions):
+            if multiline:
+                messy[0] = True
+            else:
+                messy[line_of(positions)] = True
+
+    def after(positions: Any) -> Any:
+        """The byte after each position (a newline past the end)."""
+        nxt = positions + 1
+        return np.where(nxt < n, b[np.minimum(nxt, n - 1)], NL)
+
+    def before(positions: Any) -> Any:
+        prv = positions - 1
+        return np.where(prv >= 0, b[np.maximum(prv, 0)], NL)
+
+    cr = np.flatnonzero(b == CR)
+    if len(cr) and not multiline and bool((after(cr) != NL).any()):
+        messy[:] = True  # a lone CR ends a line for both, but splits lines differently
+        return messy
+
+    if Q is None:
+        # No quoting: every field is read as written, by both; only an escape
+        # character could differ, and only Spark's parser knows how.
+        if escape and bool((b == ord(escape)).any()):
+            messy[:] = True
+    else:
+        qpos = np.flatnonzero(b == Q)
+        esc = np.flatnonzero(b == E) if E is not None else np.empty(0, dtype=np.intp)
+        if len(esc):
+            # An escape before a quote or an escape: Spark unescapes, pyarrow does not.
+            mark(esc[(after(esc) == Q) | (after(esc) == E)])
+        if len(qpos):
+            if multiline:
+                rank = np.arange(len(qpos))
+                if len(qpos) % 2:
+                    messy[0] = True
+                    return messy
+            else:
+                line_q = line_of(qpos)
+                rank = np.arange(len(qpos)) - np.searchsorted(line_q, line_q, side="left")
+                counts = np.bincount(line_q, minlength=lines)
+                messy |= counts % 2 == 1
+                even = counts[line_q] % 2 == 0
+                qpos, rank = qpos[even], rank[even]
+            opens, closes = qpos[rank % 2 == 0], qpos[rank % 2 == 1]
+            bad = (before(opens) != D) & (before(opens) != NL)
+            nxt = after(closes)
+            bad |= (nxt != D) & (nxt != NL) & (nxt != CR)
+            # Nothing inside a quoted value that either parser treats specially:
+            # count those characters between each pair by their sorted positions.
+            special = [cr, esc] if multiline else [cr, esc, newlines]
+            specials = np.sort(np.concatenate(special))
+            between = np.searchsorted(specials, closes) - np.searchsorted(specials, opens + 1)
+            bad |= between > 0
+            if not escape:
+                # Spark reads an empty quoted value at a line end as one quote.
+                bad |= (closes == opens + 1) & (nxt != D)
+            mark(opens[bad])
+
+    if not multiline:
+        # A line of blanks: Spark drops it (Scala's trim), pyarrow keeps it.
+        # Only a line that starts with a blank can be one, so only those are read.
+        starts = np.concatenate(([0], newlines + 1))
+        starts = starts[starts < n]
+        first = b[starts]
+        for line in np.flatnonzero((first <= 0x20) & (first != NL) & (first != CR)).tolist():
+            end = int(newlines[line]) if line < len(newlines) else n
+            content = raw[int(starts[line]) : end].rstrip(b"\r")
+            if content and not content.translate(None, _BLANK_BYTES):
+                messy[line] = True
+    return messy
+
+
+_BLANK_BYTES = bytes(range(0x21))
 
 
 def respell(
@@ -89,21 +175,22 @@ def respell(
     def write(row: List[Value]) -> None:
         writer.writerow([null_text if v is None else v for v in row])
 
-    if multiline or not quote:
-        # Records may span lines, or unquoted lines may hold quotes: split it all.
+    flags = None if multiline or not quote else _messy(text, delimiter, quote, escape, False)
+    if flags is None or bool(flags.all()):
+        # Records may span lines, unquoted lines may hold quotes, or a lone CR
+        # ends lines: split it all.
         for row in split_text(text, delimiter, quote, escape, multiline):
             write(row)
         return out.getvalue()
-    specials = [c for c in (quote, escape) if c]
-    plain = _plain_fields(delimiter, quote, escape, False)
-    for line in _LINE_END.split(text):
-        if not line.strip(_BLANKS):
-            continue  # Spark drops blank lines
-        rest = plain.sub("", line) if any(c in line for c in specials) else ""
-        if any(c in rest for c in specials):
+    # Line by line: each plain line is kept as written, and only the lines
+    # that need it are split (the flags count lines the same way, at "\n").
+    for line, needs in zip(text.split(_NL), flags.tolist()):
+        line = line[:-1] if line.endswith("\r") else line
+        if not needs:
+            if line:
+                out.write(line + _NL)
+        elif line.strip(_BLANKS):  # Spark drops blank lines
             write(split_line(line, delimiter, quote, escape))
-        else:
-            out.write(line + _NL)
     return out.getvalue()
 
 
