@@ -116,6 +116,11 @@ databricks = "ubunye.plugins.secrets:DatabricksSecrets"
 "gcp-sm" = "ubunye.plugins.secrets:GcpSecretManager"
 "azure-kv" = "ubunye.plugins.secrets:AzureKeyVault"
 
+[project.entry-points."ubunye.llm_backends"]
+anthropic = "ubunye.plugins.llm:AnthropicBackend"
+openai_compatible = "ubunye.plugins.llm:OpenAICompatibleBackend"
+databricks_serving = "ubunye.plugins.llm:DatabricksServingBackend"
+
 [project.entry-points."ubunye.readers"]
 hive = "ubunye.plugins.readers.hive:HiveReader"
 jdbc = "ubunye.plugins.readers.jdbc:JdbcReader"

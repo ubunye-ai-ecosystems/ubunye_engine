@@ -179,6 +179,7 @@ class LineageRecorder:
         inputs: Optional[Dict[str, Any]] = None,
         expectations: Optional[List[Dict[str, Any]]] = None,
         timings: Optional[List[Dict[str, Any]]] = None,
+        llm_calls: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         """Update the run record with final status, duration, and step hashes."""
         run_id = context.run_id
@@ -196,6 +197,7 @@ class LineageRecorder:
 
         ctx.timings = list(timings or [])
         ctx.expectations = list(expectations or [])
+        ctx.llm_calls = list(llm_calls or [])
 
         # --- Input StepRecords, hashed like outputs when the frames are given ---
         ctx.inputs = []

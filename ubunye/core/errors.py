@@ -130,6 +130,10 @@ class SecretError(UbunyeError, KeyError):
         return UbunyeError.__str__(self)
 
 
+class LLMError(UbunyeError, RuntimeError):
+    """Raised when a language model call fails, or cannot be made. Never carries the key."""
+
+
 class ExpectationError(UbunyeError, ValueError):
     """Raised when an output breaks a ``fail`` expectation; nothing has been written.
 

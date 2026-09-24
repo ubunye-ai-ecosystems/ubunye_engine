@@ -20,7 +20,7 @@ from ubunye.telemetry.monitors import load_monitors, safe_call
 
 #: What the engine knows beyond the outputs; given only to a monitor whose
 #: ``task_end`` accepts it, so older monitors keep working unchanged.
-EVIDENCE = ("inputs", "expectations", "timings")
+EVIDENCE = ("inputs", "expectations", "timings", "llm_calls")
 
 
 def _evidence(monitor: Any, state: Dict[str, Any]) -> Dict[str, Any]:

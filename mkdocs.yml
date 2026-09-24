@@ -92,6 +92,7 @@ nav:
       - OpenLineage: patterns/openlineage.md
       - OpenTelemetry: patterns/opentelemetry.md
       - Gate Pull Requests: patterns/gate.md
+      - Language Model Steps: patterns/llm.md
   - Reference:
       - CLI: cli.md
       - Python API: api.md
