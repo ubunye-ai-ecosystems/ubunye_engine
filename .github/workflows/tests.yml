@@ -17,6 +17,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
+    defaults:
+      run:
+        # Windows runners default to PowerShell, which cannot read the steps'
+        # bash line continuations.
+        shell: bash
 
     steps:
       - uses: actions/checkout@v6
