@@ -23,6 +23,21 @@ from typing import Any, Dict, Optional, Union
 
 from ubunye.interfaces.deploy import DeployContext, DeployResult
 
+#: Libraries a transform may import that a Databricks runtime does not bring
+#: (it brings Spark and pandas). The notebook installs them next to the engine.
+NOT_ON_DATABRICKS = ("narwhals",)
+
+
+def _pip_install(task_dir: Union[str, Path]) -> str:
+    """What the task's notebook installs: the engine, plus what its transform needs.
+
+    Read from the transform's imports (ADR 005), not from a config field.
+    """
+    from ubunye.core.portability import frame_api
+
+    found = frame_api(Path(task_dir) / "transformations.py")
+    return " ".join(["ubunye-engine", *(lib for lib in NOT_ON_DATABRICKS if lib in found.imports)])
+
 
 class DatabricksDeployAdapter:
     """DeployAdapter implementation for Databricks workspaces.
@@ -75,6 +90,7 @@ class DatabricksDeployAdapter:
             workspace_task_path=workspace_task_path,
             mode=ctx.mode,
             dt=ctx.dt,
+            pip_install=_pip_install(ctx.task_dir),
         )
 
         if dry_run:

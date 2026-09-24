@@ -59,6 +59,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`ubunye deploy databricks` installs what the transform needs.** The
+  generated notebook installed the engine alone, so a task written with
+  Narwhals failed on Databricks at its first line. The deploy now reads the
+  transform's imports (the same detection `plan` uses, ADR 005) and installs
+  Narwhals next to the engine when the transform imports it.
 - **`import ubunye` works on every pydantic the package accepts.** The model
   transform's `model_class` field starts with pydantic's reserved `model_`
   prefix: pydantic 2.0 refused it at import, so the package failed to load on
