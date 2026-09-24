@@ -46,6 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`import ubunye` works on every pydantic the package accepts.** The model
+  transform's `model_class` field starts with pydantic's reserved `model_`
+  prefix: pydantic 2.0 refused it at import, so the package failed to load on
+  the oldest version its requirements allowed, and pydantic 2.1 to 2.9 warned
+  about it. The prefix is switched off for that one config model. Found by
+  CI's new minimum-versions job.
 - **The pandas backend reads quoted CSV values exactly as Spark does.** Spark's
   escape character is a backslash, so a doubled quote inside a quoted value is
   not an escape: Spark keeps `"McGowan, Miss. Anna ""Annie"""` as written.
