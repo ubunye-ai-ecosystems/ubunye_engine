@@ -5,6 +5,7 @@ Commands:
 - validate: validate config file(s) before execution
 - run:      run task(s) in a package
 - doctor:   check this machine (and optionally tasks) before a run
+- gate:     fail a pull request when a run receipt regresses
 - plugins:  list discovered plugins
 - config:   show/validate config
 - plan:     show resolved IO graph
@@ -29,6 +30,7 @@ from ubunye.cli.backend_choice import resolve_or_exit as _resolve_backend_or_exi
 from ubunye.cli.deploy import deploy_app
 from ubunye.cli.doctor import doctor_command
 from ubunye.cli.export import export_app
+from ubunye.cli.gate import gate_command
 from ubunye.cli.init import init_app
 from ubunye.cli.lineage import lineage_app
 from ubunye.cli.models import models_app
@@ -80,6 +82,7 @@ def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path
 
 app.command("backends")(backends_command)
 app.command("doctor")(doctor_command)
+app.command("gate")(gate_command)
 
 
 @app.command()
