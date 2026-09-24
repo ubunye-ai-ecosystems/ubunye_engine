@@ -22,3 +22,18 @@ class TestPandasBackend(BackendConformance):
         backend.start()
         yield backend
         backend.stop()
+
+
+def test_without_pytest_the_suite_says_what_to_install():
+    import subprocess
+    import sys
+
+    code = (
+        "import sys; sys.modules['pytest'] = None\n"
+        "try:\n"
+        "    import ubunye.testing.backend_conformance\n"
+        "except ImportError as exc:\n"
+        "    print(exc)\n"
+    )
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert "pip install pytest" in done.stdout, done.stdout + done.stderr

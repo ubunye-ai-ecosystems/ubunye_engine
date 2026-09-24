@@ -39,14 +39,18 @@ def _task_path(usecase: str, package: str, task: str) -> str:
     return f"{usecase}/{package}/{task}"
 
 
+def _rows(steps: Any) -> str:
+    """The total row count, or "-" when none was recorded (inputs are not counted)."""
+    counts = [s.row_count for s in steps if s.row_count is not None]
+    return str(sum(counts)) if counts else "-"
+
+
 def _fmt_row(ctx: RunContext) -> str:
     duration = f"{ctx.duration_sec:.1f}s" if ctx.duration_sec is not None else "-"
-    in_rows = sum(s.row_count or 0 for s in ctx.inputs)
-    out_rows = sum(s.row_count or 0 for s in ctx.outputs)
     return (
         f"{ctx.run_id[:8]}  {ctx.started_at[:19]}  "
         f"{ctx.status:<8}  {duration:>7}  "
-        f"in:{in_rows}  out:{out_rows}"
+        f"in:{_rows(ctx.inputs)}  out:{_rows(ctx.outputs)}"
     )
 
 
