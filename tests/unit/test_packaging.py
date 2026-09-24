@@ -101,6 +101,27 @@ def test_the_oldest_spark_accepted_is_the_oldest_ci_runs():
     assert f'"pyspark=={floor}.*"' in workflow, f"pyspark>={floor} is accepted but not tested"
 
 
+def test_ci_lints_with_the_versions_the_hooks_pin():
+    """The Lint job and the pre-commit hooks must format alike.
+
+    CI once installed the newest black while the hooks pinned an older one, so a
+    file the hooks passed failed in CI (black 26 hugs multi-line strings).
+    """
+    import re
+
+    import yaml
+
+    hooks = yaml.safe_load((ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
+    pinned = {
+        repo["repo"].rstrip("/").rsplit("/", 1)[1]: repo["rev"].lstrip("v")
+        for repo in hooks["repos"]
+    }
+    workflow = (ROOT / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+    lint = workflow.split("\n  lint:", 1)[1]
+    installed = dict(re.findall(r'"(black|ruff)==([0-9.]+)"', lint))
+    assert installed == {"black": pinned["black"], "ruff": pinned["ruff-pre-commit"]}
+
+
 def test_one_urls_table_with_the_project_links():
     urls = META["urls"]
     assert {"Homepage", "Documentation", "Repository", "Issues"} <= set(urls)

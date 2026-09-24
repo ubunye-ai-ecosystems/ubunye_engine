@@ -129,7 +129,8 @@ jobs:
           cache: pip
 
       - name: Install dev tools
-        run: pip install ruff black
+        # The versions .pre-commit-config.yaml pins, so CI and the hooks agree.
+        run: pip install "ruff==0.16.8" "black==26.5.1"
 
       - name: Run ruff
         run: ruff check ubunye/ tests/
