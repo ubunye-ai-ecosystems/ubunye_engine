@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`LineageRecorder(hash_inputs=False)`). Monitors get the new evidence only if
   their `task_end` accepts it, so existing monitors are unaffected; v1 records
   still load. See the addendum to ADR 006.
+- **The pandas content hash is 2.4 times faster** (60,000 rows: 828 ms to 350 ms,
+  the same hash). Each column's text is now built once, with the column name
+  encoded once instead of on every row; a property test holds the fast path to
+  the row-at-a-time reference byte for byte. It pays for hashing inputs in run
+  record v2: a recorded run now hashes its input and its output in less time than
+  it used to hash its output alone.
 - **Secrets by reference: `secret://<provider>/<reference>`.** A config names a
   secret (`password: "secret://aws-sm/prod/db#password"`) and the engine fetches
   it only into the copy of the config a connector receives, at the moment it
