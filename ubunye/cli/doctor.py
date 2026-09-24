@@ -284,6 +284,8 @@ def task_checks(task_dir: Path, task: str, variables: dict) -> List[Check]:
     else:
         checks.append(Check(f"task {task}: environment", OK, "every variable it needs is set"))
 
+    checks += _secret_checks(task, raw)
+
     try:
         load_config(str(config_path), variables)
     except Exception as exc:
@@ -291,6 +293,33 @@ def task_checks(task_dir: Path, task: str, variables: dict) -> List[Check]:
         checks.append(Check(f"task {task}: config", FAIL, first))
     else:
         checks.append(Check(f"task {task}: config", OK, "loads and validates"))
+    return checks
+
+
+def _secret_checks(task: str, raw: str) -> List[Check]:
+    """Each ``secret://`` provider a task uses: installed, with what it needs.
+
+    Nothing is fetched: doctor must not read secrets, and a login may only exist
+    where the task really runs.
+    """
+    from ubunye.core import secrets
+
+    names = sorted(set(re.findall(r"secret://([A-Za-z0-9_.-]+)/", raw)))
+    checks: List[Check] = []
+    for name in names:
+        label = f"task {task}: secret provider {name}"
+        if name not in secrets.providers():
+            checks.append(Check(label, FAIL, "no such provider is installed"))
+            continue
+        missing = secrets.missing_packages(name)
+        if missing:
+            checks.append(
+                Check(
+                    label, FAIL, "needs " + ", ".join(missing), "pip install " + " ".join(missing)
+                )
+            )
+        else:
+            checks.append(Check(label, OK, "installed (the secret itself is read at run time)"))
     return checks
 
 
