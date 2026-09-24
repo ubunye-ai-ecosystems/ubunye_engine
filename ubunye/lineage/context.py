@@ -157,6 +157,8 @@ class RunContext:
     #: Every language model call the task made (ubunye.llm): backend, model,
     #: tokens, seconds, status and the request's hash; never the prompt or answer.
     llm_calls: List[Dict[str, Any]] = field(default_factory=list)
+    #: The run's limits and what was spent (ubunye.llm.budget); empty with no limits.
+    llm_budget: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -194,4 +196,5 @@ class RunContext:
             timings=list(d.get("timings") or []),
             expectations=list(d.get("expectations") or []),
             llm_calls=list(d.get("llm_calls") or []),
+            llm_budget=dict(d.get("llm_budget") or {}),
         )

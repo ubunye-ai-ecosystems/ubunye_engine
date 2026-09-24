@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The bill is capped before the run.** `UBUNYE_LLM_MAX_USD`, `UBUNYE_LLM_MAX_CALLS`
+  and `UBUNYE_LLM_MAX_SECONDS` set one budget per run, shared by every port (and by
+  calls running at the same time); `llm.port(max_usd=, max_calls=, max_seconds=)`
+  adds a port's own. Before each call the port reserves its worst case (prompt
+  tokens counted high, plus the whole `max_tokens`); a call that could pass a limit
+  raises `LLMBudgetError` and is never sent, and the task writes nothing. After the
+  call the reservation becomes the real cost. Prices come from a dated table of
+  Anthropic's current models taken from its pricing page, or from `price=` or a
+  `UBUNYE_LLM_PRICES` file; an unpriced model has an unknown cost, not zero, and a
+  dollar ceiling on it fails closed. Each call records `cost_usd` and
+  `estimated_usd`; the run record's new `llm_budget` keeps the limits and the spend,
+  and `ubunye lineage trace` prints them. No new config field: limits are
+  environment variables and port arguments.
 - **Record once, replay anywhere: model calls answered from a file, for nothing.**
   `UBUNYE_LLM_MODE=record` calls the model and keeps each answer in the task's
   `.ubunye/llm-replay.jsonl` (or `UBUNYE_LLM_STORE`), keyed by the request's hash;

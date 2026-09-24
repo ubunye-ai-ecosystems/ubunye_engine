@@ -478,9 +478,28 @@ def _print_evidence(ctx: RunContext) -> None:
             failed = sum(1 for c in calls if c.get("status") != "ok")
             tokens_in = sum(int(c.get("input_tokens") or 0) for c in calls)
             tokens_out = sum(int(c.get("output_tokens") or 0) for c in calls)
+            costs = [c.get("cost_usd") for c in calls if c.get("status") == "ok"]
+            known = [float(v) for v in costs if v is not None]
+            if not costs:
+                money = ""
+            elif len(known) == len(costs):
+                money = f", ${sum(known):.6f}"
+            else:
+                money = ", cost unknown (no price)"
             typer.secho(
                 f"    {backend}/{model}: {len(calls)} calls, {failed} failed, "
-                f"{tokens_in} tokens in, {tokens_out} out",
+                f"{tokens_in} tokens in, {tokens_out} out{money}",
                 fg=typer.colors.YELLOW if failed else None,
             )
+    if ctx.llm_budget:
+        b = ctx.llm_budget
+        limits = ", ".join(
+            f"{name}={b[name]:g}"
+            for name in ("max_usd", "max_calls", "max_seconds")
+            if b.get(name) is not None
+        )
+        typer.echo(
+            f"    budget {limits}: spent ${b.get('spent_usd', 0):.6f} on "
+            f"{b.get('calls', 0)} calls, {b.get('refused', 0)} refused"
+        )
     typer.echo()

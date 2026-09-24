@@ -252,8 +252,12 @@ class Engine:
                 state["inputs"] = self._to_ports(sources)
                 from ubunye import llm
 
-                with llm.recording(state["llm_calls"], task_dir=ctx.task_dir):
-                    outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
+                budget = llm.budget.Budget.from_env()
+                try:
+                    with llm.recording(state["llm_calls"], task_dir=ctx.task_dir, budget=budget):
+                        outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
+                finally:
+                    state["llm_budget"] = budget.summary() if budget.limited else {}
                 outputs_map = self._check_expectations(cfg, outputs_map, state)
                 ports = self._to_ports(outputs_map)
                 self._write_outputs(ctx, chain, outputs_cfg, ports)
