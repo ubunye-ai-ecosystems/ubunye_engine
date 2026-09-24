@@ -41,6 +41,7 @@ pre-commit install
 | Types | `python -m mypy ubunye` | nothing else |
 | Lint | `pre-commit run --all-files` | nothing else |
 | Docs | `pip install -r docs/requirements.txt && mkdocs build --strict` | nothing else |
+| Performance | `python benchmarks/guard.py --base <checkout of the base branch>` | a second checkout (`git worktree add ../base origin/main`) |
 
 The Spark tier includes the parity suite, which runs the same data through
 Spark and pandas and checks they agree on types, values, files and run
@@ -50,6 +51,9 @@ which a new backend runs too) and a distributed check: one task on a single
 core and on a two-executor Spark must leave the same run record, with the
 driver's result size capped far below the data, so nothing may pull rows back
 to the driver.
+
+CI also times every pull request against the branch it goes into
+(`benchmarks/guard.py`) and fails it if an operation gets more than 30% slower.
 
 ## How a change is made
 
