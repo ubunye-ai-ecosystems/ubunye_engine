@@ -7,6 +7,7 @@ Mounted on the main app as a sub-command group:
     ubunye lineage compare -d DIR -u USECASE -p PKG -t TASK --run-id1 ID1 --run-id2 ID2
     ubunye lineage search  -d DIR [--status error] [--since 2025-01-01]
     ubunye lineage trace   -d DIR -u USECASE -p PKG -t TASK
+    ubunye lineage focus   -d DIR -u USECASE -p PKG -t TASK [--format csv|jsonl] [-o FILE]
 
 Every command takes ``--json`` for one JSON document on stdout.
 """
@@ -503,3 +504,52 @@ def _print_evidence(ctx: RunContext) -> None:
             f"{b.get('calls', 0)} calls, {b.get('refused', 0)} refused"
         )
     typer.echo()
+
+
+# ---------------------------------------------------------------------------
+# focus
+# ---------------------------------------------------------------------------
+
+
+@lineage_app.command("focus")
+def focus_rows(
+    usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
+    usecase: str = typer.Option(..., "-u", "--usecase"),
+    package: str = typer.Option(..., "-p", "--package"),
+    task: str = typer.Option(..., "-t", "--task"),
+    run_id: Optional[str] = typer.Option(None, "--run-id", help="Specific run (default: latest)."),
+    lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    fmt: str = typer.Option("csv", "--format", help="csv or jsonl."),
+    output: Optional[Path] = typer.Option(None, "-o", "--output", help="File (default: stdout)."),
+):
+    """A run's model calls as FOCUS 1.4 cost rows, for FinOps tools (CSV or JSON lines)."""
+    import csv
+    import io
+
+    from ubunye.lineage import focus
+
+    if fmt not in ("csv", "jsonl"):
+        fail(f"--format must be csv or jsonl, not {fmt!r}", as_json=False)
+    store = _store(str(usecase_dir / lineage_dir))
+    ctx = _load_one(store, _task_path(usecase, package, task), run_id, as_json=False)
+    records = focus.rows(ctx)
+    buffer = io.StringIO()
+    if fmt == "jsonl":
+        for row in records:
+            buffer.write(json.dumps(row, ensure_ascii=False) + "\n")
+    elif records:
+        writer = csv.DictWriter(buffer, fieldnames=list(records[0]), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(records)
+    if output is None:
+        typer.echo(buffer.getvalue(), nl=False)
+    else:
+        output.write_text(buffer.getvalue(), encoding="utf-8")
+    skipped = focus.left_out(ctx)
+    if any(skipped.values()):
+        typer.secho(
+            f"left out: {skipped['replayed']} replayed call(s) (no charge), "
+            f"{skipped['unpriced']} with no price (unknown cost)",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )

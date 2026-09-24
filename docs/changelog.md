@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ubunye lineage focus`: the model bill as FOCUS 1.4 cost rows.** A run's model
+  calls become rows a FinOps tool loads next to the cloud bill: every mandatory
+  FOCUS 1.4 column, one row per provider, model and token direction, cost equal to
+  quantity times unit price, times in UTC, custom columns prefixed `x_` (run, task,
+  model, direction, price date, cost basis). Costs are tokens times the list price
+  the run used; the provider's invoice is the authority and every row says so.
+  Replayed calls make no rows; unpriced calls are left out and counted. CSV or JSON
+  lines. Each logged call now carries its provider, service, unit prices and their
+  date.
 - **`ubunye plan` shows the bill before the run.** For a task that calls a model,
   the plan prices its recorded calls (the replay file) at today's prices and sets
   them against `UBUNYE_LLM_MAX_USD`, with no data read and no model called. It fails
