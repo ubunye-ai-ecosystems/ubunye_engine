@@ -22,6 +22,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **`CONFIG.expectations`: what an output must look like, checked before anything
+  is written.** Declared rules per output (`not_null`, `unique`, `between`,
+  `one_of`, `matches`, `row_count`), each with a severity: `fail` stops the run
+  with nothing written, `quarantine` moves the breaking rows to a named output
+  with a `_ubunye_failed_rules` column listing every rule each row broke, `warn`
+  logs. `max_quarantine_rate` fails a run when too much is set aside. A missing
+  value passes every rule but `not_null`, as in SQL. The rules run through
+  Narwhals, so the same config gives the same verdicts on Spark and pandas
+  (tested on both, and at the oldest supported versions, where pandas 2.2 and
+  pandas 3 disagree about a missing value in a pattern match). Narwhals becomes a
+  dependency (`narwhals>=2.0`, pure Python, no dependencies of its own). Every
+  rule's result, passed or not, is on the error and in the run state for the run
+  record. See [Expectations](config/expectations.md).
 - **A typo inside a connector block fails validation, with a suggestion.**
   Input and output blocks accept keys the engine does not know, because each
   connector reads its own settings, so `paht: data/in.csv` validated and was

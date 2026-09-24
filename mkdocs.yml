@@ -48,6 +48,7 @@ nav:
       - Inputs and Outputs: config/io.md
       - Engine and Profiles: config/engine.md
       - Transform: config/transform.md
+      - Expectations: config/expectations.md
       - Jinja Templating: config/jinja.md
       - Orchestration: config/orchestration.md
   - Connectors:
