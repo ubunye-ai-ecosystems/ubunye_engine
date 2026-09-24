@@ -252,7 +252,7 @@ class Engine:
                 state["inputs"] = self._to_ports(sources)
                 from ubunye import llm
 
-                with llm.recording(state["llm_calls"]):
+                with llm.recording(state["llm_calls"], task_dir=ctx.task_dir):
                     outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
                 outputs_map = self._check_expectations(cfg, outputs_map, state)
                 ports = self._to_ports(outputs_map)

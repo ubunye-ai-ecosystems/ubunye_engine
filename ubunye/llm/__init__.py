@@ -22,6 +22,11 @@ vLLM, Ollama, LiteLLM and any server with ``/chat/completions``) and
 
 Calls run where the task's Python runs: on Spark that is the driver, so collect
 the column to label, or keep the frame small.
+
+A port has a mode (``mode=`` or ``UBUNYE_LLM_MODE``): ``live`` calls the provider;
+``record`` calls it and keeps each answer in a replay file; ``replay`` answers from
+that file, needs no key and no network, and fails on a request it has no answer
+for. See :mod:`ubunye.llm.replay`.
 """
 
 from __future__ import annotations
@@ -57,6 +62,9 @@ Messages = List[Dict[str, Any]]
 
 #: HTTP statuses worth another try: rate limits, overload, and server errors.
 RETRY_STATUSES = frozenset({408, 409, 429, 500, 502, 503, 504, 529})
+#: live: call the provider; record: call it and keep the answer; replay: answer
+#: from the replay file only.
+MODES = ("live", "record", "replay")
 #: The longest wait a ``retry-after`` header can ask for.
 MAX_RETRY_AFTER_S = 60.0
 
@@ -137,8 +145,9 @@ class LLMBackend:
 
 
 class _CallLog:
-    def __init__(self, into: List[Dict[str, Any]]) -> None:
+    def __init__(self, into: List[Dict[str, Any]], task_dir: Optional[str]) -> None:
         self.calls = into
+        self.task_dir = task_dir
         self.lock = threading.Lock()
 
     def add(self, call: Dict[str, Any]) -> None:
@@ -152,10 +161,15 @@ _ACTIVE: contextvars.ContextVar[Optional[_CallLog]] = contextvars.ContextVar(
 
 
 @contextmanager
-def recording(into: Optional[List[Dict[str, Any]]] = None) -> Iterator[List[Dict[str, Any]]]:
-    """Collect every call made inside the block; the engine opens one per run."""
+def recording(
+    into: Optional[List[Dict[str, Any]]] = None, *, task_dir: Optional[str] = None
+) -> Iterator[List[Dict[str, Any]]]:
+    """Collect every call made inside the block; the engine opens one per run.
+
+    ``task_dir`` is where a replay file lives by default (``.ubunye/llm-replay.jsonl``).
+    """
     calls: List[Dict[str, Any]] = into if into is not None else []
-    token = _ACTIVE.set(_CallLog(calls))
+    token = _ACTIVE.set(_CallLog(calls, task_dir))
     try:
         yield calls
     finally:
@@ -176,12 +190,16 @@ class LLMPort:
         timeout_s: float = 60.0,
         retries: int = 3,
         backoff_s: float = 1.0,
+        mode: str = "live",
+        store: Optional[str] = None,
     ) -> None:
         self.backend = backend
         self.name = name
         self.timeout_s = timeout_s
         self.retries = retries
         self.backoff_s = backoff_s
+        self.mode = mode
+        self.store = store
 
     @property
     def model(self) -> str:
@@ -237,11 +255,20 @@ class LLMPort:
             "input_tokens": 0,
             "output_tokens": 0,
             "attempts": 0,
+            "source": self.mode,
         }
+        active = _ACTIVE.get()
         try:
-            answer, call["attempts"] = self._post(request)
-            response = self.backend.parse(answer, request)
-            response.request_key = key
+            if self.mode == "replay":
+                response = self._replay(request, key, active)
+            else:
+                answer, call["attempts"] = self._post(request)
+                response = self.backend.parse(answer, request)
+                response.request_key = key
+                if self.mode == "record":
+                    self._store(active).put(
+                        key, backend=self.name, model=request.model, response=_saved(response)
+                    )
             call.update(
                 status="ok",
                 input_tokens=response.input_tokens,
@@ -255,9 +282,33 @@ class LLMPort:
             raise
         finally:
             call["seconds"] = round(time.perf_counter() - started, 6)
-            active = _ACTIVE.get()
             if active is not None:
                 active.add(call)
+
+    def _store(self, active: Optional[_CallLog]) -> Any:
+        from ubunye.llm.replay import store_for
+
+        return store_for(self.store, active.task_dir if active else None)
+
+    def _replay(self, request: LLMRequest, key: str, active: Optional[_CallLog]) -> LLMResponse:
+        store = self._store(active)
+        entry = store.get(key)
+        if entry is None:
+            raise LLMError(
+                f"No recorded answer for {key} ({self.name}/{request.model})",
+                context={"Replay file": str(store.path), "Attempts": 0},
+                hint="Record it first: run once with UBUNYE_LLM_MODE=record, which calls "
+                "the model and keeps the answer. Replay never calls out.",
+            )
+        saved = entry["response"]
+        return LLMResponse(
+            text=saved.get("text", ""),
+            model=saved.get("model") or request.model,
+            input_tokens=int(saved.get("input_tokens") or 0),
+            output_tokens=int(saved.get("output_tokens") or 0),
+            stop_reason=saved.get("stop_reason"),
+            request_key=key,
+        )
 
     def _post(self, request: LLMRequest) -> Tuple[Dict[str, Any], int]:
         url, headers, body = self.backend.build(request)
@@ -322,6 +373,17 @@ def _hint(status: int, backend: LLMBackend) -> Optional[str]:
     return None
 
 
+def _saved(response: LLMResponse) -> Dict[str, Any]:
+    """What a replay file keeps of an answer: enough to give it back, no raw payload."""
+    return {
+        "text": response.text,
+        "model": response.model,
+        "input_tokens": response.input_tokens,
+        "output_tokens": response.output_tokens,
+        "stop_reason": response.stop_reason,
+    }
+
+
 def _resolve_key(value: Optional[str]) -> Optional[str]:
     from ubunye.core import secrets
 
@@ -339,18 +401,32 @@ def port(
     timeout_s: float = 60.0,
     retries: int = 3,
     backoff_s: float = 1.0,
+    mode: Optional[str] = None,
+    store: Optional[str] = None,
 ) -> LLMPort:
     """A port to ``model`` on ``backend``.
 
     ``api_key`` may be a ``secret://`` reference; without one the backend's usual
     environment variable is read (``ANTHROPIC_API_KEY``, ``OPENAI_API_KEY``,
-    ``DATABRICKS_TOKEN``). A missing key fails here, before any call.
+    ``DATABRICKS_TOKEN``). A missing key fails here, before any call, except in
+    replay, which needs none.
+
+    ``mode`` is ``live``, ``record`` or ``replay`` (default: ``UBUNYE_LLM_MODE``, else
+    ``live``). ``store`` is the replay file (default: ``UBUNYE_LLM_STORE``, else
+    ``.ubunye/llm-replay.jsonl`` in the task's folder).
     """
     from ubunye._internal.discovery import _get
 
+    chosen = (mode or os.environ.get("UBUNYE_LLM_MODE") or "live").strip().lower()
+    if chosen not in MODES:
+        raise LLMError(
+            f"Unknown LLM mode '{chosen}'",
+            context={"Modes": ", ".join(MODES)},
+            hint="Set UBUNYE_LLM_MODE (or mode=) to live, record or replay.",
+        )
     cls = _get("ubunye.llm_backends", backend)
     key = _resolve_key(api_key) or (os.environ.get(cls.KEY_ENV) if cls.KEY_ENV else None)
-    if cls.KEY_REQUIRED and not key:
+    if cls.KEY_REQUIRED and not key and chosen != "replay":
         raise LLMError(
             f"No key for {backend}",
             context={"Backend": backend, "Model": model},
@@ -362,4 +438,6 @@ def port(
         timeout_s=timeout_s,
         retries=retries,
         backoff_s=backoff_s,
+        mode=chosen,
+        store=store,
     )

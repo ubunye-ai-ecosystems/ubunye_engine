@@ -69,7 +69,7 @@ Every call, passed or failed, is in the record's `llm_calls`:
 {"backend": "anthropic", "model": "claude-haiku-4-5-20251001",
  "request_key": "sha256:9c1e...", "status": "ok",
  "input_tokens": 41, "output_tokens": 2, "attempts": 1,
- "stop_reason": "end_turn", "seconds": 0.62}
+ "stop_reason": "end_turn", "source": "live", "seconds": 0.62}
 ```
 
 The prompt and the answer are never stored in the record. `request_key` is a hash of
@@ -81,3 +81,30 @@ everything that can change the answer (backend, model, system prompt, messages,
   MODEL CALLS
     anthropic/claude-haiku-4-5-20251001: 120 calls, 0 failed, 4920 tokens in, 240 out
 ```
+
+## Record once, replay anywhere
+
+A port has three modes, set with `UBUNYE_LLM_MODE` (or `llm.port(..., mode=)`):
+
+| Mode | What it does |
+| --- | --- |
+| `live` (default) | Calls the provider. |
+| `record` | Calls the provider and keeps each answer in a replay file. |
+| `replay` | Answers from the replay file only. No key, no network, no cost. |
+
+```bash
+UBUNYE_LLM_MODE=record ubunye run -d pipelines -u shop -p reviews -t label   # once, with a key
+UBUNYE_LLM_MODE=replay ubunye run -d pipelines -u shop -p reviews -t label   # anywhere, for nothing
+```
+
+The replay file is `.ubunye/llm-replay.jsonl` in the task's folder, or the path in
+`UBUNYE_LLM_STORE` (or `store=`). It holds one line per answer, under the request's
+key; it never holds the prompt. Commit it next to the task and CI, a colleague's
+laptop or another cloud replays the same answers, so the run writes the same data
+and the same row hashes. If your `.gitignore` excludes `.ubunye/`, point
+`UBUNYE_LLM_STORE` at a path you commit.
+
+Replay fails closed. A request with no recorded answer (a new prompt, another
+model, another `temperature`) stops the run with the request's key and the hint to
+record again; it never falls back to a live call. Each call in the run record says
+where its answer came from: `"source": "live"`, `"record"` or `"replay"`.

@@ -107,17 +107,17 @@ class DatabricksServingBackend(OpenAICompatibleBackend):
         self, *, model: str, api_key: Optional[str] = None, base_url: Optional[str] = None
     ) -> None:
         host = base_url or os.environ.get("DATABRICKS_HOST") or ""
-        if not host:
-            raise LLMError(
-                "No Databricks workspace for databricks_serving",
-                context={"Endpoint": model},
-                hint="Set DATABRICKS_HOST, or pass base_url=.",
-            )
-        if not host.startswith("http"):
+        if host and not host.startswith("http"):
             host = "https://" + host
         super().__init__(model=model, api_key=api_key, base_url=host)
 
     def build(self, request: LLMRequest) -> Tuple[str, Dict[str, str], Dict[str, Any]]:
+        if not self.base_url:
+            raise LLMError(
+                "No Databricks workspace for databricks_serving",
+                context={"Endpoint": request.model},
+                hint="Set DATABRICKS_HOST, or pass base_url=.",
+            )
         body = self._body(request)
         body.pop("model")  # the endpoint is the model
         url = f"{self.base_url}/serving-endpoints/{request.model}/invocations"
