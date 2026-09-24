@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what you use; failures are what makes a run fail, and set exit code 1.
   `--json` prints one document. The config resolver gains
   `required_env_references()` for the variable check.
+- **`ubunye export spark-pipeline`: a task as a Spark Declarative Pipeline.** Writes
+  `spark-pipeline.yml`, a definitions module and a copy of the task, for
+  `spark-pipelines run` on Spark 4.1+: inputs become temporary views, the task's
+  `transform()` runs unchanged, outputs become materialized views. What does not
+  carry over (merge modes, output paths, expectations) is reported; `secret://`
+  references are refused. The run-anywhere example exported this way wrote the
+  same row hashes on Spark 4.2 as on every other platform.
 - **`ubunye export airflow` writes a DAG that runs, on Airflow 2.4+ and Airflow 3.**
   The generated DAG used `schedule_interval` (removed in Airflow 3), imported
   `BashOperator` only from its Airflow 2 home, and passed `env=` without
