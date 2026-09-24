@@ -156,6 +156,13 @@ class TestLineage:
         assert doc["outputs"]["out"]["data_hash"]["state"] == "unchanged"
         assert doc["outputs"]["out"]["row_count"] == {"a": 2, "b": 2, "changed": False}
 
+    def test_list_text_does_not_turn_an_unknown_count_into_zero(self, two_runs):
+        # Inputs are not counted (only outputs are, ADR 006): "in:0" claimed an
+        # empty input. Unknown is shown as unknown.
+        result = runner.invoke(app, ["lineage", "list", *_where(two_runs, "-t", "copy")])
+        rows = [line for line in result.output.splitlines() if "success" in line]
+        assert rows and all("in:-" in r and "out:2" in r for r in rows), rows
+
     def test_compare_text_lines_up_every_output_field(self, two_runs):
         a, b = _json(
             runner.invoke(app, ["lineage", "list", *_where(two_runs, "-t", "copy", "--json")])

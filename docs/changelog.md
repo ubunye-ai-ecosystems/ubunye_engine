@@ -71,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`ubunye lineage list` no longer reports an input of 0 rows it never
+  counted.** A run record counts and hashes its outputs (ADR 006), not its
+  inputs, and the list added the missing counts up as `in:0`, which read as an
+  empty input. An uncounted total now shows as `in:-`.
 - **The Spark backend stops only a session it started.** `start()` attaches to
   a session that is already running (`getOrCreate`), and `stop()` then stopped
   it anyway, as did the garbage collector through `__del__`. So
