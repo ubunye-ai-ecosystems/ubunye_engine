@@ -16,14 +16,14 @@
         <link rel="prev" href="../cli/">
       
       
-        <link rel="next" href="../interfaces/">
+        <link rel="next" href="../backends/">
       
       
         
       
       
       <link rel="icon" href="../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -566,6 +566,62 @@
     
   
     Transform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/expectations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expectations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Secrets
   
 
     
@@ -1446,6 +1502,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../deployment/serverless/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    One command to the cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../deployment/anywhere/" class="md-nav__link">
         
   
@@ -1676,6 +1760,146 @@
     
   
     Observability Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/openlineage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenLineage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/opentelemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenTelemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gate Pull Requests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/llm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Language Model Steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../patterns/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents over MCP
   
 
     
@@ -2112,6 +2336,17 @@
   
     <nav class="md-nav" aria-label="Engine">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.runtime.Engine.backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        backend
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#ubunye.core.runtime.Engine.__init__" class="md-nav__link">
@@ -2905,6 +3140,117 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#ubunye.core.backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        backends
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="backends">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.DEFAULT_BACKEND" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DEFAULT_BACKEND
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.resolve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.create" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.load_class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        available
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.capabilities.Capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capabilities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Capabilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.capabilities.Capabilities.describe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        describe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.capabilities.Capabilities.unknown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sparkbackend" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3090,6 +3436,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend.create" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend.from_platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_platform
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ubunye.backends.databricks_backend.DatabricksBackend.start" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3105,6 +3473,106 @@
     <span class="md-ellipsis">
       
         stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pandasbackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PandasBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PandasBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PandasBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PandasBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.timezone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        timezone
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.check_io" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check_io
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.to_native" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to_native
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.to_port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to_port
       
     </span>
   </a>
@@ -3321,6 +3789,17 @@
     <span class="md-ellipsis">
       
         promote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.models.registry.ModelRegistry.promotion_gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        promotion_gates
       
     </span>
   </a>
@@ -3955,6 +4434,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../interfaces/" class="md-nav__link">
         
   
@@ -4109,6 +4616,257 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2" id="__nav_10_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/adr-001-backends-are-plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 001 Backends Are Plugins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/adr-002-backend-capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 002 Backend Capabilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/adr-003-backend-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 003 Choosing a Backend
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/adr-004-native-frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 004 Native Frames
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/adr-005-portable-transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 005 Portable Transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/adr-006-run-record/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 006 The Run Record
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -4448,6 +5206,17 @@
   
     <nav class="md-nav" aria-label="Engine">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.runtime.Engine.backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        backend
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#ubunye.core.runtime.Engine.__init__" class="md-nav__link">
@@ -5241,6 +6010,117 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#ubunye.core.backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        backends
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="backends">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.DEFAULT_BACKEND" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DEFAULT_BACKEND
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.resolve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.create" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.load_class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.backends.available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        available
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.capabilities.Capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capabilities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Capabilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.capabilities.Capabilities.describe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        describe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.core.capabilities.Capabilities.unknown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unknown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sparkbackend" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5426,6 +6306,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend.create" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.databricks_backend.DatabricksBackend.from_platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_platform
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ubunye.backends.databricks_backend.DatabricksBackend.start" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5441,6 +6343,106 @@
     <span class="md-ellipsis">
       
         stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pandasbackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PandasBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PandasBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PandasBackend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PandasBackend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.timezone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        timezone
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.check_io" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check_io
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.to_native" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to_native
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.backends.pandas_backend.PandasBackend.to_port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to_port
       
     </span>
   </a>
@@ -5657,6 +6659,17 @@
     <span class="md-ellipsis">
       
         promote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye.models.registry.ModelRegistry.promotion_gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        promotion_gates
       
     </span>
   </a>
@@ -6310,20 +7323,23 @@ Primary use case: Databricks notebooks and jobs where a SparkSession already exi
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Run a single task</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">task_dir</span><span class="o">=</span><span class="s2">&quot;pipelines/fraud_detection/ingestion/claim_etl&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;nonprod&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">&quot;202510&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">task_dir</span><span class="o">=</span><span class="s2">"pipelines/fraud_detection/ingestion/claim_etl"</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">"nonprod"</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">"202510"</span><span class="p">,</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># Run multiple tasks sequentially</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">results</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_pipeline</span><span class="p">(</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">usecase_dir</span><span class="o">=</span><span class="s2">&quot;pipelines&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">usecase</span><span class="o">=</span><span class="s2">&quot;fraud_detection&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">package</span><span class="o">=</span><span class="s2">&quot;ingestion&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">tasks</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;claim_etl&quot;</span><span class="p">,</span> <span class="s2">&quot;feature_engineering&quot;</span><span class="p">],</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;nonprod&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">&quot;202510&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="p">)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># The same task with no Spark and no Java</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span><span class="s2">"pipelines/sales/etl/daily"</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">"pandas"</span><span class="p">)</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># Run multiple tasks sequentially</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="n">results</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_pipeline</span><span class="p">(</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">usecase_dir</span><span class="o">=</span><span class="s2">"pipelines"</span><span class="p">,</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">usecase</span><span class="o">=</span><span class="s2">"fraud_detection"</span><span class="p">,</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">package</span><span class="o">=</span><span class="s2">"ingestion"</span><span class="p">,</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">tasks</span><span class="o">=</span><span class="p">[</span><span class="s2">"claim_etl"</span><span class="p">,</span> <span class="s2">"feature_engineering"</span><span class="p">],</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">"nonprod"</span><span class="p">,</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">"202510"</span><span class="p">,</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="p">)</span>
 </code></pre></div>
 
 
@@ -6335,7 +7351,7 @@ Primary use case: Databricks notebooks and jobs where a SparkSession already exi
 
 
 <a href="#ubunye.api.run_task" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_task</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DEV&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">&#39;.ubunye/lineage&#39;</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_task</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">'DEV'</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">'.ubunye/lineage'</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
@@ -6354,6 +7370,15 @@ dtf : str, optional
 spark : SparkSession, optional
     Explicit SparkSession to reuse. If <em>None</em>, auto-detects an active
     session (Databricks) or creates a new one.
+backend : Backend or str, optional
+    The backend to run on: a registered name (<code>"pandas"</code> for a run with no
+    Spark and no Java, <code>"spark"</code>, or any installed plugin) or an instance.
+    If <em>None</em>: the <code>spark</code> session if given, else the platform's active
+    session, else a new Spark session.
+variables : dict, optional
+    Extra template variables for the config (<code>{"region": "gauteng"}</code>
+    makes <code>{{ region }}</code> available), as <code>--var</code> does on the command
+    line. May set <code>dt</code> or <code>dtf</code>; the same name with two values is refused.
 lineage : bool
     Record lineage for this run.
 lineage_dir : str
@@ -6380,7 +7405,7 @@ hooks : iterable of Hook, optional
 
 
 <a href="#ubunye.api.run_pipeline" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_pipeline</span><span class="p">(</span><span class="n">usecase_dir</span><span class="p">,</span> <span class="n">usecase</span><span class="p">,</span> <span class="n">package</span><span class="p">,</span> <span class="n">tasks</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DEV&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">&#39;.ubunye/lineage&#39;</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_pipeline</span><span class="p">(</span><span class="n">usecase_dir</span><span class="p">,</span> <span class="n">usecase</span><span class="p">,</span> <span class="n">package</span><span class="p">,</span> <span class="n">tasks</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">'DEV'</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">'.ubunye/lineage'</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
@@ -6395,8 +7420,8 @@ package : str
     Package/pipeline name.
 tasks : List[str]
     Task names to run in order.
-mode, dt, dtf, spark, lineage, lineage_dir, profile, hooks
-    Same as :func:<code>run_task</code>.</p>
+mode, dt, dtf, spark, backend, variables, lineage, lineage_dir, profile, hooks
+    Same as :func:<code>run_task</code>. One backend runs every task.</p>
 <h5 id="ubunye.api.run_pipeline--returns">Returns<a class="headerlink" href="#ubunye.api.run_pipeline--returns" title="Permanent link">&para;</a></h5>
 <p>Dict[str, Dict[str, Any]]
     Mapping of task name → outputs map.</p>
@@ -6412,16 +7437,16 @@ auto-resolved from widgets and secrets — no manual <code>os.environ</code> set
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ubunye</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">notebook</span><span class="p">(</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">&quot;/Workspace/pipelines/claims/claim_etl&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;PROD&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">&quot;2026-01-01&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">"/Workspace/pipelines/claims/claim_etl"</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">"PROD"</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">"2026-01-01"</span><span class="p">,</span>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">)</span>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">sources</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">sources</span><span class="p">[</span><span class="s2">&quot;raw_claims&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">display</span><span class="p">()</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">sources</span><span class="p">[</span><span class="s2">"raw_claims"</span><span class="p">]</span><span class="o">.</span><span class="n">display</span><span class="p">()</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
 <a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">sources</span><span class="p">)</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">outputs</span><span class="p">[</span><span class="s2">&quot;bronze_claims&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">outputs</span><span class="p">[</span><span class="s2">"bronze_claims"</span><span class="p">]</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 <a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">ctx</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span>
 </code></pre></div>
@@ -6435,7 +7460,7 @@ auto-resolved from widgets and secrets — no manual <code>os.environ</code> set
 
 
 <a href="#ubunye.notebook.notebook" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">notebook</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DEV&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">secrets_scope</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">secrets_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">&#39;.ubunye/lineage&#39;</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auto_env</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">notebook</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">'DEV'</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">secrets_scope</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">secrets_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">'.ubunye/lineage'</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auto_env</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
@@ -6444,6 +7469,8 @@ auto-resolved from widgets and secrets — no manual <code>os.environ</code> set
 <p>All <code>{{ env.VAR }}</code> references in the task's <code>config.yaml</code> are
 auto-resolved from Databricks widgets and secrets — no manual
 <code>os.environ</code> setup needed.</p>
+<p><code>backend</code> picks the engine as in :func:<code>ubunye.run_task</code>: a registered
+name (<code>"pandas"</code>) or an instance; by default the notebook's session.</p>
 
 
     </div>
@@ -6663,9 +7690,10 @@ auto-resolved from Databricks widgets and secrets — no manual
 
     <div class="doc doc-contents ">
 
-        <p>Write outputs to configured sinks.</p>
+        <p>Write outputs to configured sinks, and record the run.</p>
 <p>If <em>outputs</em> is <code>None</code>, uses the result of the last :meth:<code>transform</code>
-call.</p>
+call. With <code>lineage=True</code> every write leaves a run record, exactly as
+<code>ubunye.run_task</code> does (before 0.7.0 a notebook recorded nothing).</p>
 
 
     </div>
@@ -6768,6 +7796,31 @@ default set.</p>
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="ubunye.core.runtime.Engine.backend" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">backend</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+      <small class="doc doc-label doc-label-writable"><code>writable</code></small>
+  </span>
+
+<a href="#ubunye.core.runtime.Engine.backend" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">backend</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The backend running this engine's tasks, resolved on first use.</p>
+
+    </div>
+
+</div>
+
 
 
 
@@ -6814,7 +7867,7 @@ manage_backend : bool, default True
     <div class="doc doc-contents ">
 
         <p>Apply configured transforms to <em>sources</em>.</p>
-<p>Returns a dict mapping output name to DataFrame.</p>
+<p>Returns a dict mapping output name to the backend's own frame type.</p>
 
 
     </div>
@@ -6835,8 +7888,9 @@ manage_backend : bool, default True
     <div class="doc doc-contents ">
 
         <p>Read all inputs defined in <code>CONFIG.inputs</code>.</p>
-<p>Returns a dict mapping input name to DataFrame — suitable for
-interactive inspection before calling :meth:<code>apply_transforms</code>.</p>
+<p>Returns a dict mapping input name to the backend's own frame type (a
+<code>pandas.DataFrame</code> on pandas) — suitable for interactive inspection
+before calling :meth:<code>apply_transforms</code>.</p>
 
 
     </div>
@@ -6879,12 +7933,16 @@ dry_run : bool, default False
 
 
 <a href="#ubunye.core.runtime.Engine.write_outputs" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">write_outputs</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">write_outputs</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_run</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Write <em>outputs</em> to the sinks defined in <code>CONFIG.outputs</code>.</p>
+<p>With <code>as_run=True</code> the write is wrapped as a whole task for the hooks,
+so lineage and monitors record it exactly as they record <code>run()</code>. This
+is how a notebook that reads, transforms and writes step by step still
+leaves a run record.</p>
 
 
     </div>
@@ -8196,7 +9254,270 @@ unchanged via <code>model_dump()</code>.</p>
 
 </div><hr />
 <h2 id="backends">Backends<a class="headerlink" href="#backends" title="Permanent link">&para;</a></h2>
-<h3 id="sparkbackend">SparkBackend<a class="headerlink" href="#sparkbackend" title="Permanent link">&para;</a></h3>
+<p>Backends are plugins, chosen by name. See <a href="../backends/">Execution backends</a> for
+how to choose one and write your own.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="ubunye.core.backends" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">ubunye.core.backends</span>
+
+
+<a href="#ubunye.core.backends" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents first">
+
+        <p>Backends are plugins, found by name (ADR 001) and resolved in one order (ADR 003).</p>
+<p>Every backend, the shipped ones included, registers in the <code>ubunye.backends</code>
+entry point group::</p>
+<div class="highlight"><pre><span></span><code>[project.entry-points."ubunye.backends"]
+spark = "ubunye.backends.spark_backend:SparkBackend"
+pandas = "ubunye.backends.pandas_backend:PandasBackend"
+</code></pre></div>
+<p>so a third party engine plugs in the same way, with no edit here. This module
+never imports an engine: it loads the class a name points at, only when asked.</p>
+<p>Which backend runs a task, in order:</p>
+<ol>
+<li>the one asked for by name (<code>--backend</code> on the CLI, <code>backend=</code> in the API);</li>
+<li>the platform's: a backend that finds an active session it should attach to
+   (on Databricks, the notebook's SparkSession);</li>
+<li>:data:<code>DEFAULT_BACKEND</code>.</li>
+</ol>
+<p>The task's <code>config.yaml</code> never names its engine; the same folder runs on any
+backend that can do what it asks.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="ubunye.core.backends.DEFAULT_BACKEND" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">DEFAULT_BACKEND</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#ubunye.core.backends.DEFAULT_BACKEND" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">DEFAULT_BACKEND</span> <span class="o">=</span> <span class="s1">'spark'</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.core.backends.resolve" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">resolve</span>
+
+
+<a href="#ubunye.core.backends.resolve" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">resolve</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">app_name</span><span class="o">=</span><span class="s1">'ubunye'</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The backend a run should use: the named one, else the platform's, else the default.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.core.backends.create" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">create</span>
+
+
+<a href="#ubunye.core.backends.create" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">create</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">app_name</span><span class="o">=</span><span class="s1">'ubunye'</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Build the backend registered as <code>name</code>, if what it needs is installed.</p>
+<p>Looking a backend up (:func:<code>load_class</code>) needs nothing installed, so it can
+be listed and inspected anywhere. Using one does: a missing package is named
+here, with the install that fixes it, not on the first frame.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.core.backends.load_class" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">load_class</span>
+
+
+<a href="#ubunye.core.backends.load_class" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">load_class</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The Backend class registered as <code>name</code> (case blind), or a clear error.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.core.backends.available" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">available</span>
+
+
+<a href="#ubunye.core.backends.available" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">available</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Registered backend names, sorted. Loads nothing.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ubunye.core.capabilities.Capabilities" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ubunye.core.capabilities.Capabilities</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ubunye.core.capabilities.Capabilities" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>A backend's declaration of what it can do.</p>
+<p><code>file_formats</code> and <code>write_modes</code> of <code>None</code> mean "any": the backend
+passes them through to an engine that knows its own formats (Spark reads
+<code>orc</code>, <code>avro</code>, <code>xml</code>... with the right packages).</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.core.capabilities.Capabilities.describe" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">describe</span>
+
+
+<a href="#ubunye.core.capabilities.Capabilities.describe" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">describe</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A plain, JSON ready description (<code>ubunye backends</code>).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.core.capabilities.Capabilities.unknown" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">unknown</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#ubunye.core.capabilities.Capabilities.unknown" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">unknown</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>For a backend that has not declared anything.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="sparkbackend">SparkBackend<a class="headerlink" href="#sparkbackend" title="Permanent link">&para;</a></h3>
 <p>Creates and manages a new SparkSession. Use for local development, CI, and non-Databricks environments.</p>
 
 
@@ -8408,7 +9729,9 @@ conf : Optional[Dict[str, str]]
 
     <div class="doc doc-contents ">
 
-        <p>Stop the SparkSession if running.</p>
+        <p>Stop the SparkSession if this backend started it.</p>
+<p>A session that was already running when :meth:<code>start</code> attached to it (the
+user's own, or a notebook's) is left running.</p>
 
 
     </div>
@@ -8472,6 +9795,56 @@ conf : Optional[Dict[str, str]]
 <div class="doc doc-object doc-function">
 
 
+<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.create" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">create</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.create" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">create</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">app_name</span><span class="o">=</span><span class="s1">'ubunye'</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Attach to the active session when started (there is no app name to set).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.from_platform" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">from_platform</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.from_platform" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_platform</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">app_name</span><span class="o">=</span><span class="s1">'ubunye'</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Claim the run when a SparkSession is already active (a Databricks notebook).</p>
+<p>Attaching, rather than creating, means the run uses the cluster the
+platform set up, and never stops a session it did not start.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h5 id="ubunye.backends.databricks_backend.DatabricksBackend.start" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">start</span>
 
@@ -8503,6 +9876,191 @@ conf : Optional[Dict[str, str]]
     <div class="doc doc-contents ">
 
         <p>No-op — we don't own the session, so we never stop it.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="pandasbackend">PandasBackend<a class="headerlink" href="#pandasbackend" title="Permanent link">&para;</a></h3>
+<p>Runs a task with pandas and pyarrow: no Spark and no Java. Reads and writes local
+csv, json and parquet exactly as Spark does.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="ubunye.backends.pandas_backend.PandasBackend" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ubunye.backends.pandas_backend.PandasBackend</span>
+
+
+<a href="#ubunye.backends.pandas_backend.PandasBackend" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="ubunye.core.interfaces.Backend">Backend</span></code></p>
+
+
+
+        <p>Execute a Ubunye task with pandas, no Spark and no JVM.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="ubunye.backends.pandas_backend.PandasBackend.timezone" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">timezone</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#ubunye.backends.pandas_backend.PandasBackend.timezone" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">timezone</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The zone timestamp text is read in (<code>UTC</code> unless set).</p>
+
+    </div>
+
+</div>
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="ubunye.backends.pandas_backend.PandasBackend.check_io" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">check_io</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#ubunye.backends.pandas_backend.PandasBackend.check_io" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">check_io</span><span class="p">(</span><span class="n">direction</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Options and schemas this backend cannot honour, found before a run.</p>
+<p>A file format it does not handle is left to the capability check, which
+already reports it.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="ubunye.backends.pandas_backend.PandasBackend.start" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">start</span>
+
+
+<a href="#ubunye.backends.pandas_backend.PandasBackend.start" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">start</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>No session to create; check pyarrow can handle timezones here.</p>
+<p>pyarrow before 24 cannot find a timezone database on Windows, so every
+timestamp read or written fails deep inside it. Say so now, with the fix.
+The <code>pandas</code> extra already asks for 24 on Windows; this catches an
+environment that was assembled by hand.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="ubunye.backends.pandas_backend.PandasBackend.stop" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">stop</span>
+
+
+<a href="#ubunye.backends.pandas_backend.PandasBackend.stop" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">stop</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>No session to stop.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="ubunye.backends.pandas_backend.PandasBackend.to_native" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">to_native</span>
+
+
+<a href="#ubunye.backends.pandas_backend.PandasBackend.to_native" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">to_native</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A transform gets the plain <code>pandas.DataFrame</code> (ADR 004).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="ubunye.backends.pandas_backend.PandasBackend.to_port" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">to_port</span>
+
+
+<a href="#ubunye.backends.pandas_backend.PandasBackend.to_port" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">to_port</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The engine gets the port, where <code>count()</code> means rows (ADR 004).</p>
 
 
     </div>
@@ -8552,34 +10110,34 @@ class FraudRiskModel(UbunyeModel):
         import pandas as pd
         from sklearn.ensemble import GradientBoostingClassifier
         pdf = df.toPandas()
-        X, y = pdf.drop(&quot;label&quot;, axis=1), pdf[&quot;label&quot;]
+        X, y = pdf.drop("label", axis=1), pdf["label"]
         self._clf = GradientBoostingClassifier().fit(X, y)
-        return {&quot;accuracy&quot;: self._clf.score(X, y)}
+        return {"accuracy": self._clf.score(X, y)}
 
     def predict(self, df):
         pdf = df.toPandas()
-        pdf[&quot;score&quot;] = self._clf.predict_proba(pdf)[:, 1]
+        pdf["score"] = self._clf.predict_proba(pdf)[:, 1]
         return spark.createDataFrame(pdf)
 
     def save(self, path):
         import pathlib, joblib
         pathlib.Path(path).mkdir(parents=True, exist_ok=True)
-        joblib.dump(self._clf, f&quot;{path}/clf.joblib&quot;)
+        joblib.dump(self._clf, f"{path}/clf.joblib")
 
     @classmethod
     def load(cls, path):
         import joblib
         m = cls()
-        m._clf = joblib.load(f&quot;{path}/clf.joblib&quot;)
+        m._clf = joblib.load(f"{path}/clf.joblib")
         return m
 
     def metadata(self):
         import sklearn
         return {
-            &quot;library&quot;: &quot;sklearn&quot;,
-            &quot;library_version&quot;: sklearn.__version__,
-            &quot;features&quot;: list(self._clf.feature_names_in_),
-            &quot;params&quot;: self._clf.get_params(),
+            "library": "sklearn",
+            "library_version": sklearn.__version__,
+            "features": list(self._clf.feature_names_in_),
+            "params": self._clf.get_params(),
         }
 </code></pre></div>
 
@@ -9645,13 +11203,15 @@ file (e.g. the pipeline task directory). Pass <code>None</code> to rely on
 
 
 <a href="#ubunye.models.registry.ModelRegistry.promote" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">promote</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">to_stage</span><span class="p">,</span> <span class="n">promoted_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gates</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">promote</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">to_stage</span><span class="p">,</span> <span class="n">promoted_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gates</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Promote a model version to a higher stage.</p>
-<p>If <code>gates</code> are provided, all gate checks must pass before promotion.
+<p>Every gate must pass first: <code>gates</code> if given, else the gates stored with
+the model when it was registered. <code>force=True</code> skips them, and the
+version records that it was forced and which gates it skipped.
 If promoting to production, the current production version is automatically
 archived.</p>
 
@@ -9825,12 +11385,32 @@ archived.</p>
 <div class="doc doc-object doc-function">
 
 
+<h4 id="ubunye.models.registry.ModelRegistry.promotion_gates" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">promotion_gates</span>
+
+
+<a href="#ubunye.models.registry.ModelRegistry.promotion_gates" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">promotion_gates</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The gates stored with a model (empty if none were set).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h4 id="ubunye.models.registry.ModelRegistry.register" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">register</span>
 
 
 <a href="#ubunye.models.registry.ModelRegistry.register" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">register</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">lineage_run_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">registered_by</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">register</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">lineage_run_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">registered_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">promotion_gates</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -9960,6 +11540,23 @@ archived.</p>
             <td>
               <div class="doc-md-description">
                 <p>Optional username for the audit trail.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>promotion_gates</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The gates every later promotion of this model must
+pass. Given, they replace the model's stored gates.</p>
               </div>
             </td>
             <td>
@@ -10143,7 +11740,7 @@ archived.</p>
 
 
 <a href="#ubunye.models.registry.ModelVersion.to_info" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">to_info</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">artifact_path</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">to_info</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">''</span><span class="p">,</span> <span class="n">artifact_path</span><span class="o">=</span><span class="s1">''</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -10562,7 +12159,8 @@ archived.</p>
 base_dir:
     Root directory for the <code>FileSystemLineageStore</code>.
 sample_fraction:
-    Fraction of rows sampled when hashing DataFrames (0 &lt; value ≤ 1).</p>
+    Ignored since 0.7.0 and kept so existing configs still load: every row is
+    hashed now (the <code>rows-v1</code> content hash), so there is nothing to sample.</p>
 
 
 
@@ -10593,7 +12191,7 @@ sample_fraction:
 
 
 <a href="#ubunye.lineage.recorder.LineageRecorder.task_end" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">task_end</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">duration_sec</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">task_end</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">duration_sec</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">expectations</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">llm_calls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">llm_budget</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -11478,7 +13076,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="May 20, 2026 16:16:04 UTC">May 20, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 25, 2026 01:23:53 UTC">September 25, 2026</span>
   </span>
 
     
@@ -11568,7 +13166,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
