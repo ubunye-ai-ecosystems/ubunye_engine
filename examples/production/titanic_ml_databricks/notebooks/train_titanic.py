@@ -29,7 +29,7 @@ assert task_dir, "task_dir must be supplied by the job (see databricks.yml)"
 
 # COMMAND ----------
 
-# MAGIC %pip install "ubunye-engine[spark,ml]==0.1.7"
+# MAGIC %pip install "ubunye-engine[ml]==0.7.0"
 
 # COMMAND ----------
 
@@ -73,9 +73,7 @@ else:
 os.environ["TITANIC_INPUT_PATH"] = csv_path
 os.environ["TITANIC_CATALOG"] = titanic_catalog
 os.environ["TITANIC_SCHEMA"] = titanic_schema
-os.environ["TITANIC_MODEL_STORE"] = (
-    f"/Volumes/{titanic_catalog}/{titanic_schema}/model_store"
-)
+os.environ["TITANIC_MODEL_STORE"] = f"/Volumes/{titanic_catalog}/{titanic_schema}/model_store"
 os.environ["TITANIC_MIN_AUC"] = min_auc
 os.environ["MLFLOW_EXPERIMENT_NAME"] = "/Shared/titanic_ml"
 
