@@ -23,6 +23,10 @@ on:
 
 permissions:
   contents: write
+  # Starting publish_pypip.yml is a workflow dispatch, which needs actions: write.
+  # Without it the tag and release were made but the dispatch got HTTP 403
+  # (v0.7.0), and the publish had to be started by hand.
+  actions: write
 
 jobs:
   release:
