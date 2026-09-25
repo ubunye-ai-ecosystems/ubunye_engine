@@ -15,12 +15,12 @@ Commands::
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import typer
 
+from ubunye.cli.output import emit, fail, json_option
 from ubunye.models.registry import ModelRegistry, ModelStage, ModelVersion
 
 models_app = typer.Typer(
@@ -49,15 +49,18 @@ def list_versions(
     use_case: str = _use_case_opt,
     model: str = _model_opt,
     store: str = _store_opt,
+    as_json: bool = json_option(),
 ):
     """List all registered versions for a model (newest first)."""
     registry = ModelRegistry(store)
     try:
         versions = registry.list_versions(use_case, model)
     except FileNotFoundError as e:
-        typer.secho(f"[ERROR] {e}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        fail(str(e), as_json=as_json)
 
+    if as_json:
+        emit([_version_dict(mv) for mv in versions])
+        return
     if not versions:
         typer.echo(f"No versions registered for {use_case}/{model}.")
         return
@@ -94,9 +97,7 @@ def info(
         )
         raise typer.Exit(code=1)
 
-    d = asdict(mv)
-    d["stage"] = mv.stage.value  # asdict keeps enum, convert for display
-    typer.echo(json.dumps(d, indent=2, default=str))
+    emit(_version_dict(mv))
 
 
 # ---------------------------------------------------------------------------
@@ -112,8 +113,18 @@ def promote(
     version: str = _version_opt,
     to: str = typer.Option(..., "--to", help="Target stage: staging | production."),
     promoted_by: Optional[str] = typer.Option(None, "--promoted-by", help="Username."),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Promote without checking the model's promotion gates. The version "
+        "records that it was forced.",
+    ),
 ):
-    """Promote a model version to a higher lifecycle stage."""
+    """Promote a model version to a higher lifecycle stage.
+
+    The version must pass the promotion gates stored with the model (set by
+    the training run's promotion_gates); --force skips them, with a warning.
+    """
     try:
         target_stage = ModelStage(to)
     except ValueError:
@@ -126,9 +137,19 @@ def promote(
 
     registry = ModelRegistry(store)
     try:
-        mv = registry.promote(use_case, model, version, target_stage, promoted_by=promoted_by)
+        gates = registry.promotion_gates(use_case, model)
+        if force and gates:
+            typer.secho(
+                f"[WARN] Promoting without checking its {len(gates)} gate(s): "
+                + ", ".join(f"{k}={v}" for k, v in sorted(gates.items())),
+                fg=typer.colors.YELLOW,
+            )
+        mv = registry.promote(
+            use_case, model, version, target_stage, promoted_by=promoted_by, force=force
+        )
+        checked = f"  ({len(gates)} gate(s) passed)" if gates and not force else ""
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}",
+            f"[OK] {use_case}/{model} v{mv.version} -> {mv.stage.value}{checked}",
             fg=typer.colors.GREEN,
         )
     except (FileNotFoundError, ValueError) as e:
@@ -164,7 +185,7 @@ def demote(
     try:
         mv = registry.demote(use_case, model, version, target_stage)
         typer.secho(
-            f"[OK] {use_case}/{model} v{mv.version} → {mv.stage.value}",
+            f"[OK] {use_case}/{model} v{mv.version} -> {mv.stage.value}",
             fg=typer.colors.GREEN,
         )
     except (FileNotFoundError, ValueError) as e:
@@ -233,24 +254,22 @@ def compare(
     model: str = _model_opt,
     store: str = _store_opt,
     versions: List[str] = typer.Option(..., "--versions", help="Two version strings to compare."),
+    as_json: bool = json_option(),
 ):
     """Compare metrics between two model versions."""
     if len(versions) != 2:
-        typer.secho(
-            "[ERROR] Provide exactly two --versions values.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
+        fail("Provide exactly two --versions values.", as_json=as_json)
 
     version_a, version_b = versions[0], versions[1]
     registry = ModelRegistry(store)
     try:
         diff = registry.compare_versions(use_case, model, version_a, version_b)
     except (FileNotFoundError, ValueError) as e:
-        typer.secho(f"[ERROR] {e}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
+        fail(str(e), as_json=as_json)
 
+    if as_json:
+        emit(diff)
+        return
     if not diff:
         typer.echo("No metrics to compare.")
         return
@@ -284,6 +303,12 @@ _STAGE_COLORS = {
     "development": typer.colors.BLUE,
     "archived": typer.colors.WHITE,
 }
+
+
+def _version_dict(mv: ModelVersion) -> Dict[str, Any]:
+    d = asdict(mv)
+    d["stage"] = mv.stage.value  # asdict keeps the enum
+    return d
 
 
 def _print_versions_table(versions: List[ModelVersion]) -> None:

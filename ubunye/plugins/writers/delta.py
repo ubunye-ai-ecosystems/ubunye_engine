@@ -26,7 +26,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from ubunye.adapters.spark import write_exec
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core import write_modes
+from ubunye.core.capabilities import SPARK
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
@@ -57,6 +60,12 @@ def _target(cfg: Dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
 class DeltaWriter(Writer):
     """Write a Spark DataFrame to a Delta table, by path or by name."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"path", "table", "db_name", "tbl_name", "partitionBy"})
+
+    # Needs a live SparkSession; checked before a run (ADR 002).
+    REQUIRES = frozenset({SPARK})
+
     SUPPORTS_MERGE = True
     MERGE_FILE_FORMATS = frozenset({"delta"})
 
@@ -67,6 +76,7 @@ class DeltaWriter(Writer):
         return ["format 'delta' requires 'path', 'table', or ('db_name' + 'tbl_name')"]
 
     def write(self, df: Any, cfg: dict, backend) -> None:
+        spark = spark_of(backend, "delta", error=SinkWriteError)
         table, path = _target(cfg)
 
         resolved = write_modes.resolve(
@@ -78,9 +88,9 @@ class DeltaWriter(Writer):
             file_format=FILE_FORMAT,
         )
 
-        write_modes.apply(
+        write_exec.apply(
             df,
-            backend.spark,
+            spark,
             resolved,
             connector="delta",
             file_format=FILE_FORMAT,

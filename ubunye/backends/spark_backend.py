@@ -9,10 +9,32 @@ Spark backend implementation for Ubunye.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence
 
+from ubunye.adapters.spark import frame_io
+from ubunye.core.capabilities import (
+    CATALOG,
+    PARTITIONED_WRITES,
+    PATH_IO,
+    REMOTE_PATHS,
+    SPARK,
+    Capabilities,
+)
 from ubunye.core.errors import SparkSessionError
 from ubunye.core.interfaces import Backend
+
+#: What any Spark backend can do. File formats and write modes are "any": Spark
+#: knows its own sources, and each connector declares the modes it supports.
+SPARK_CAPABILITIES = Capabilities(
+    features=frozenset({SPARK, PATH_IO, PARTITIONED_WRITES, REMOTE_PATHS, CATALOG}),
+    distributed=True,
+    lazy=True,
+    needs_jvm=True,
+)
+
+if TYPE_CHECKING:
+    from ubunye.core.ports import DataFramePort
+    from ubunye.core.write_modes import ResolvedWriteMode
 
 if TYPE_CHECKING:  # only for type checkers; no runtime dependency on pyspark
     from pyspark.sql import SparkSession
@@ -34,8 +56,15 @@ class SparkBackend(Backend):
     - `spark` property is only valid after `start()` (or inside the context manager).
     """
 
+    name = "spark"
+    REQUIRES_PACKAGES = ("pyspark",)
+    CAPABILITIES = SPARK_CAPABILITIES
+
     def __init__(self, app_name: str = "ubunye", conf: Optional[Dict[str, str]] = None) -> None:
         self._spark: Optional["SparkSession"] = None
+        # Whether start() created the session. One that was already running
+        # belongs to whoever started it, and is never stopped here.
+        self._owns_session = False
         self._app_name = app_name
         self._conf = dict(conf or {})
 
@@ -58,10 +87,12 @@ class SparkBackend(Backend):
         # Lazy import to avoid hard dependency during pip install
         from pyspark.sql import SparkSession
 
+        running = SparkSession.getActiveSession()
         builder = SparkSession.builder.appName(self._app_name)
         for k, v in self._conf.items():
             builder = builder.config(k, v)
         self._spark = builder.getOrCreate()
+        self._owns_session = running is None
 
     def _check_master_not_hijacked(self) -> None:
         """Refuse to let a config override a master the platform already chose.
@@ -115,12 +146,18 @@ class SparkBackend(Backend):
             return None
 
     def stop(self) -> None:
-        """Stop the SparkSession if running."""
+        """Stop the SparkSession if this backend started it.
+
+        A session that was already running when :meth:`start` attached to it (the
+        user's own, or a notebook's) is left running.
+        """
         if self._spark is not None:
             try:
-                self._spark.stop()
+                if self._owns_session:
+                    self._spark.stop()
             finally:
                 self._spark = None
+                self._owns_session = False
 
     # Context manager support
     def __enter__(self) -> "SparkBackend":
@@ -162,6 +199,43 @@ class SparkBackend(Backend):
     def is_spark(self) -> bool:
         """Whether this backend is Spark-based (always True here)."""
         return True
+
+    # -------------------------
+    # Data-plane IO seam (#38)
+    # -------------------------
+    def read_frame(
+        self,
+        file_format: str,
+        path: str,
+        *,
+        options: Optional[Dict[str, Any]] = None,
+        schema: Optional[str] = None,
+    ) -> "DataFramePort":
+        return frame_io.read_frame(self.spark, file_format, path, options=options, schema=schema)
+
+    def execute_write(
+        self,
+        df: "DataFramePort",
+        resolved: "ResolvedWriteMode",
+        *,
+        connector: str,
+        file_format: str,
+        table: Optional[str] = None,
+        path: Optional[str] = None,
+        partition_by: Optional[Sequence[str]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        frame_io.execute_write(
+            self.spark,
+            df,
+            resolved,
+            connector=connector,
+            file_format=file_format,
+            table=table,
+            path=path,
+            partition_by=partition_by,
+            options=options,
+        )
 
     @property
     def app_name(self) -> str:

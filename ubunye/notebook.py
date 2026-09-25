@@ -23,13 +23,15 @@ import os
 import sys
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Set
+from typing import Any, Dict, Iterable, Mapping, Optional, Set
 
-from ubunye.api import _detect_backend
+from ubunye.adapters.spark.catalog import set_catalog_and_schema
+from ubunye.api import BackendChoice, _detect_backend, _task_identity
 from ubunye.config import load_config
+from ubunye.config.hashing import config_hash
 from ubunye.config.resolver import extract_env_references
 from ubunye.config.schema import UbunyeConfig
-from ubunye.core.catalog import set_catalog_and_schema
+from ubunye.config.variables import build_variables
 from ubunye.core.hooks import Hook
 from ubunye.core.runtime import Engine, EngineContext, Registry
 from ubunye.core.task_runner import (
@@ -117,6 +119,8 @@ class NotebookContext:
         dt: Optional[str] = None,
         dtf: Optional[str] = None,
         spark: Optional[Any] = None,
+        backend: BackendChoice = None,
+        variables: Optional[Mapping[str, Any]] = None,
         env: Optional[Dict[str, str]] = None,
         secrets_scope: Optional[str] = None,
         secrets_map: Optional[Dict[str, str]] = None,
@@ -142,7 +146,7 @@ class NotebookContext:
                 self._inject_env(self._resolved_env)
 
         # --- Phase B: load config ---
-        variables = {"dt": dt, "dtf": dtf, "mode": mode}
+        variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
         self._cfg = load_config(str(self._task_path), variables=variables, profile=profile)
 
         # --- Phase C: start backend ---
@@ -154,7 +158,9 @@ class NotebookContext:
         app_parts = [p for p in (usecase_name, package_name, task_name) if p]
         app_name = f"ubunye:{'.'.join(app_parts)}" if app_parts else "ubunye"
 
-        self._backend = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name)
+        self._backend = _detect_backend(
+            spark=spark, spark_conf=spark_conf, app_name=app_name, backend=backend
+        )
         self._backend.start()
         set_catalog_and_schema(
             self._backend,
@@ -164,6 +170,7 @@ class NotebookContext:
 
         # --- Phase D: load Task class and register as transform ---
         self._cfg_dict = self._cfg.model_dump(mode="json")
+        loaded_config_hash = config_hash(self._cfg_dict)  # before the transform swap
         self._task_dir_str = str(self._task_path)
         self._added_to_path = self._task_dir_str not in sys.path
         if self._added_to_path:
@@ -191,8 +198,15 @@ class NotebookContext:
 
         # --- Phase E: build engine ---
         run_id = str(uuid.uuid4())
+        self._usecase_dir, task_identity = _task_identity(self._task_path)
         lineage_hooks = self._build_lineage_hooks(lineage, lineage_dir)
-        self._context = EngineContext(run_id=run_id, profile=mode, task_name=self._task_path.name)
+        self._context = EngineContext(
+            run_id=run_id,
+            profile=mode,
+            task_name=task_identity,
+            variables=variables,
+            config_hash=loaded_config_hash,
+        )
         self._engine = Engine(
             backend=self._backend,
             registry=reg,
@@ -228,10 +242,11 @@ class NotebookContext:
         return outputs
 
     def write(self, outputs: Optional[Dict[str, Any]] = None) -> None:
-        """Write outputs to configured sinks.
+        """Write outputs to configured sinks, and record the run.
 
         If *outputs* is ``None``, uses the result of the last :meth:`transform`
-        call.
+        call. With ``lineage=True`` every write leaves a run record, exactly as
+        ``ubunye.run_task`` does (before 0.7.0 a notebook recorded nothing).
         """
         if outputs is None:
             outputs = self._last_outputs
@@ -239,7 +254,7 @@ class NotebookContext:
                 raise ValueError(
                     "No outputs to write. Call transform() first or pass outputs explicitly."
                 )
-        self._engine.write_outputs(outputs, self._cfg_dict)
+        self._engine.write_outputs(outputs, self._cfg_dict, as_run=True)
 
     def run(self) -> Dict[str, Any]:
         """Read, transform, and write in one call (same as ``ubunye.run_task``)."""
@@ -307,7 +322,7 @@ class NotebookContext:
 
         recorder = LineageRecorder(
             store="filesystem",
-            base_dir=str(self._task_path.parent / lineage_dir),
+            base_dir=str(self._usecase_dir / lineage_dir),
         )
         return [MonitorHook(recorder)]
 
@@ -319,6 +334,8 @@ def notebook(
     dt: Optional[str] = None,
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
+    backend: BackendChoice = None,
+    variables: Optional[Mapping[str, Any]] = None,
     env: Optional[Dict[str, str]] = None,
     secrets_scope: Optional[str] = None,
     secrets_map: Optional[Dict[str, str]] = None,
@@ -333,6 +350,9 @@ def notebook(
     All ``{{ env.VAR }}`` references in the task's ``config.yaml`` are
     auto-resolved from Databricks widgets and secrets — no manual
     ``os.environ`` setup needed.
+
+    ``backend`` picks the engine as in :func:`ubunye.run_task`: a registered
+    name (``"pandas"``) or an instance; by default the notebook's session.
     """
     return NotebookContext(
         task_dir,
@@ -340,6 +360,8 @@ def notebook(
         dt=dt,
         dtf=dtf,
         spark=spark,
+        backend=backend,
+        variables=variables,
         env=env,
         secrets_scope=secrets_scope,
         secrets_map=secrets_map,

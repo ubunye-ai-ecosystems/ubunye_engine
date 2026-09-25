@@ -352,3 +352,24 @@ class TestTransformConfig:
             },
         )
         assert cfg.CONFIG.transform.type is None
+
+
+def test_the_model_transform_params_load_on_every_supported_pydantic():
+    """``model_class`` starts with pydantic's reserved ``model_`` prefix.
+
+    pydantic 2.0 refused such a field (NameError at import) and later versions
+    warned, so `import ubunye` failed on the oldest pydantic the package accepted.
+    Imported fresh in a child process with pydantic's warnings as errors; CI's
+    minimum-versions job runs this on pydantic 2.0.
+    """
+    import subprocess
+    import sys
+
+    code = (
+        "from ubunye.config.schema import ModelTransformParams as P; "
+        "assert P(action='train', model_class='m.Model').model_class == 'm.Model'"
+    )
+    result = subprocess.run(
+        [sys.executable, "-W", "error::UserWarning", "-c", code], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr

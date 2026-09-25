@@ -111,6 +111,10 @@ class ModelRecord:
     model_name: str
     use_case: str
     versions: Dict[str, ModelVersion] = field(default_factory=dict)
+    #: The gates every promotion of this model must pass (min_<metric>,
+    #: max_<metric>, require_drift_check), set when a training run registers it.
+    #: Kept here so a promotion from the CLI or any other caller checks them too.
+    promotion_gates: Dict[str, Any] = field(default_factory=dict)
 
     def get_active_version(self, stage: ModelStage) -> Optional[ModelVersion]:
         """Return the version currently in the given stage, or None."""
@@ -159,6 +163,7 @@ class ModelRegistry:
         metrics: Dict[str, Any],
         lineage_run_id: Optional[str] = None,
         registered_by: Optional[str] = None,
+        promotion_gates: Optional[Dict[str, Any]] = None,
     ) -> ModelVersion:
         """Register a trained model as a new version (stage=development).
 
@@ -174,11 +179,15 @@ class ModelRegistry:
             metrics: Metrics dict returned by :meth:`UbunyeModel.train`.
             lineage_run_id: Optional lineage ``run_id`` from the training run.
             registered_by: Optional username for the audit trail.
+            promotion_gates: The gates every later promotion of this model must
+                pass. Given, they replace the model's stored gates.
 
         Returns:
             The newly created :class:`ModelVersion`.
         """
         record = self._load_or_create_record(use_case, model_name)
+        if promotion_gates is not None:
+            record.promotion_gates = dict(promotion_gates)
 
         if version is None:
             version = self._next_version(record)
@@ -229,10 +238,13 @@ class ModelRegistry:
         to_stage: ModelStage,
         promoted_by: Optional[str] = None,
         gates: Optional[Dict[str, Any]] = None,
+        force: bool = False,
     ) -> ModelVersion:
         """Promote a model version to a higher stage.
 
-        If ``gates`` are provided, all gate checks must pass before promotion.
+        Every gate must pass first: ``gates`` if given, else the gates stored with
+        the model when it was registered. ``force=True`` skips them, and the
+        version records that it was forced and which gates it skipped.
         If promoting to production, the current production version is automatically
         archived.
 
@@ -254,7 +266,15 @@ class ModelRegistry:
         mv = self._get_version_or_raise(record, version)
 
         # Evaluate promotion gates if provided
-        if gates:
+        if gates is None:
+            gates = record.promotion_gates
+        if gates and force:
+            mv.metadata = {
+                **(mv.metadata or {}),
+                "promotion_forced": True,
+                "promotion_gates_skipped": dict(gates),
+            }
+        elif gates:
             gate = PromotionGate(gates)
             failed = gate.failed_gates(mv.metrics, mv.metadata)
             if failed:
@@ -452,6 +472,10 @@ class ModelRegistry:
     def _registry_path(self, use_case: str, model_name: str) -> str:
         return self._store.join(self.store_path, use_case, model_name, "registry.json")
 
+    def promotion_gates(self, use_case: str, model_name: str) -> Dict[str, Any]:
+        """The gates stored with a model (empty if none were set)."""
+        return dict(self._load_record(use_case, model_name).promotion_gates)
+
     def _load_or_create_record(self, use_case: str, model_name: str) -> ModelRecord:
         path = self._registry_path(use_case, model_name)
         if self._store.exists(path):
@@ -472,6 +496,7 @@ class ModelRegistry:
             model_name=data["model_name"],
             use_case=data["use_case"],
             versions=versions,
+            promotion_gates=dict(data.get("promotion_gates") or {}),
         )
 
     def _save_record(self, record: ModelRecord) -> None:
@@ -480,6 +505,7 @@ class ModelRegistry:
             "model_name": record.model_name,
             "use_case": record.use_case,
             "versions": {k: asdict(v) for k, v in record.versions.items()},
+            "promotion_gates": record.promotion_gates,
         }
         # Convert ModelStage enum values to strings for JSON serialisation
         for v_dict in data["versions"].values():
@@ -622,6 +648,7 @@ class FilesystemRegistryBackend:
         to_stage: str,
         gates: Optional[Dict[str, Any]] = None,
         promoted_by: Optional[str] = None,
+        force: bool = False,
     ) -> ModelVersionInfo:
         mv = self._registry.promote(
             use_case=use_case,
@@ -630,6 +657,7 @@ class FilesystemRegistryBackend:
             to_stage=ModelStage(to_stage),
             promoted_by=promoted_by,
             gates=gates,
+            force=force,
         )
         return mv.to_info(name=model_name)
 

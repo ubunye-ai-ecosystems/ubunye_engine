@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ubunye-ai-ecosystems/ubunye_engine/main/docs/schemas/ubunye_evidence.json",
+  "description": "Ubunye's run receipt on an OpenLineage run (run record v2).",
+  "allOf": [
+    {
+      "$ref": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunFacet"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "recordVersion": {
+          "type": "integer"
+        },
+        "backend": {
+          "type": "string"
+        },
+        "configHash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "codeHash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "environmentHash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "environment": {
+          "type": "object"
+        },
+        "variables": {
+          "type": "object"
+        },
+        "profile": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "durationSec": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "timings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "expectations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  ]
+}

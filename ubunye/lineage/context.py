@@ -59,6 +59,10 @@ def _location_from_io_cfg(io_cfg: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
+#: The run record layout this engine writes (``RunContext.record_version``).
+RECORD_VERSION = 2
+
+
 @dataclass
 class StepRecord:
     """Captures lineage metadata for a single input or output step."""
@@ -68,8 +72,14 @@ class StepRecord:
     format: str  # "hive", "s3", "jdbc", ...
     location: str  # human-readable pointer to the data (db.tbl, path, url)
     row_count: Optional[int] = None
-    schema_hash: Optional[str] = None  # "sha256:<hex>" of JSON-serialised schema
-    data_hash: Optional[str] = None  # "sha256:<hex>" of sampled rows
+    schema_hash: Optional[str] = None  # "sha256:<hex>" of the canonical schema
+    data_hash: Optional[str] = None  # "sha256:<hex>" of every row (see hash_method)
+    #: How data_hash was computed ("rows-v1": every row, order independent, the
+    #: same on every engine). Records from before 0.7.0 have none: their hash was
+    #: a sample and is not comparable.
+    hash_method: Optional[str] = None
+    #: Why there is no data_hash, when the rows could not be read.
+    hash_error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -84,6 +94,8 @@ class StepRecord:
             row_count=d.get("row_count"),
             schema_hash=d.get("schema_hash"),
             data_hash=d.get("data_hash"),
+            hash_method=d.get("hash_method"),
+            hash_error=d.get("hash_error"),
         )
 
     @staticmethod
@@ -124,6 +136,29 @@ class RunContext:
     inputs: List[StepRecord] = field(default_factory=list)
     outputs: List[StepRecord] = field(default_factory=list)
     error: Optional[str] = None
+    #: The Ubunye version that made this record.
+    engine_version: str = ""
+    #: The backend that ran the task ("spark", "pandas", ...).
+    backend: str = ""
+    #: The template variables the run was given (dt, dtf, mode, ...).
+    variables: Dict[str, Any] = field(default_factory=dict)
+    #: 2 since 0.7.0 (code, environment, input hashes, timings, expectations);
+    #: a record without it is 1.
+    record_version: int = RECORD_VERSION
+    #: ``sha256:`` of the task's Python files (ubunye.lineage.evidence.code_hash).
+    code_hash: Optional[str] = None
+    #: Python, platform and the versions of the packages that can change a result.
+    environment: Dict[str, Any] = field(default_factory=dict)
+    environment_hash: Optional[str] = None
+    #: One entry per read, transform and write: {"step", "input"|"output", "seconds"}.
+    timings: List[Dict[str, Any]] = field(default_factory=list)
+    #: Every expectation checked, passed or not (ubunye.core.expectations).
+    expectations: List[Dict[str, Any]] = field(default_factory=list)
+    #: Every language model call the task made (ubunye.llm): backend, model,
+    #: tokens, seconds, status and the request's hash; never the prompt or answer.
+    llm_calls: List[Dict[str, Any]] = field(default_factory=list)
+    #: The run's limits and what was spent (ubunye.llm.budget); empty with no limits.
+    llm_budget: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -151,4 +186,15 @@ class RunContext:
             inputs=inputs,
             outputs=outputs,
             error=d.get("error"),
+            engine_version=d.get("engine_version", ""),
+            backend=d.get("backend", ""),
+            variables=dict(d.get("variables") or {}),
+            record_version=int(d.get("record_version") or 1),
+            code_hash=d.get("code_hash"),
+            environment=dict(d.get("environment") or {}),
+            environment_hash=d.get("environment_hash"),
+            timings=list(d.get("timings") or []),
+            expectations=list(d.get("expectations") or []),
+            llm_calls=list(d.get("llm_calls") or []),
+            llm_budget=dict(d.get("llm_budget") or {}),
         )

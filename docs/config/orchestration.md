@@ -108,3 +108,32 @@ ORCHESTRATION:
     - daily
     - etl
 ```
+
+
+## Spark Declarative Pipelines (Spark 4.1+)
+
+Spark 4.1 ships its own pipeline format. `ubunye export spark-pipeline` writes a
+task in it, so the task can run where only Spark is installed, or be handed to a
+team that standardised on it:
+
+```bash
+ubunye export spark-pipeline -c pipelines/shop/orders/clean/config.yaml -o clean-pipeline -dt 2026-07-13
+cd clean-pipeline && spark-pipelines run      # needs pyspark[connect] 4.1+
+```
+
+It writes `spark-pipeline.yml`, a `transformations/` module and a copy of the task
+in `task/`. Every input becomes a temporary view that reads what the config says,
+the task's `transform()` runs unchanged, and every output becomes a materialized
+view of the same name. The config is rendered at export time (`-dt`, `--var`, the
+environment).
+
+What does not carry over is reported when you export: a `merge` (or any
+non-overwrite) mode becomes a full recompute, outputs go to the pipeline's catalog
+rather than their paths, and `CONFIG.expectations` are not applied. A task that
+uses `secret://` references is refused (the pipeline would hold them in plain
+text). Supported readers: `s3` and `delta` paths, `binary` files, `hive` and
+`unity` tables.
+
+The run-anywhere example exported this way and run by `spark-pipelines` on Spark
+4.2 wrote the same data, row hash for row hash, as Glue, Dataproc, Kubernetes and
+Azure Container Apps.

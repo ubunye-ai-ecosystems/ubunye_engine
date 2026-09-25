@@ -7,6 +7,565 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+## [0.7.0] (2026-09-25)
+
+One release where three were planned (0.6, 0.7 and 0.8). The same task folder
+runs on Spark or on pandas (no Java) and leaves the same run record hash for the
+same data; that record is now proof: code, environment, input hashes, timings and
+expectations, sent as OpenLineage and OpenTelemetry, checked in CI by `ubunye gate`,
+and deployable in one command to AWS Glue, GCP Dataproc Serverless, Kubernetes,
+Azure Container Apps and EMR Serverless, or exported to Airflow 2 and 3 and Spark
+Declarative Pipelines. The same data hashes were written on Glue, Dataproc,
+Kubernetes (kind), Azure Container Apps and Spark Declarative Pipelines; EMR
+Serverless is built but not yet run (the AWS free plan blocks EMR). A
+task can call a language model through one port that the engine sees: every call
+in the record, the bill capped before it is sent and priced before the run, the
+whole run replayable for nothing, and the cost exported as FOCUS 1.4 rows. Agents
+drive it all through `ubunye mcp`. Python 3.10 to 3.13 on Linux, Windows and macOS.
+
+Not in this release, on purpose: a positional `ubunye run ./task` (four flags stay
+the interface), a DuckDB backend (it failed SQL parity with Spark), a tool port and
+divergence ledger for agents, Dagster and Prefect exporters, and a benchmark suite
+(a separate project, later).
+
+### Added
+
+- **`ubunye mcp`: the engine as an MCP server for agents.** Tools `tasks`, `doctor`,
+  `plan`, `runs`, `record`, `gate` and `focus` only read; `run` exists only with
+  `--allow-run`. Tasks are named, never paths, and must sit under `-d`. An agent's
+  run replays its model calls unless the server starts with `--allow-live-llm`, and
+  the run's limits apply. A task's prints go to stderr, so stdout stays the
+  protocol's. A failed run is reported with its record, not raised. New `mcp`
+  extra (the MCP Python SDK 2.x).
+- **The gate covers model calls; a model step replays in CI.** `ubunye gate` reports
+  a run's model calls (count, replayed, tokens, list-price cost) and gains
+  `--require-replay` (fail if a call went live) and `--max-llm-cost-increase` (fail
+  if the list price of the tokens, or the tokens for an unpriced model, grew by more
+  than a share; measured on replayed runs too). The gate Action's new `llm-mode`
+  input defaults to `replay`. A new example, `examples/production/llm_replay`,
+  labels reviews through `ubunye.llm` with answers recorded from a stub model, and a
+  CI job replays it on Linux, Windows and macOS against a golden hash with nothing
+  listening at the model's address.
+- **`ubunye lineage focus`: the model bill as FOCUS 1.4 cost rows.** A run's model
+  calls become rows a FinOps tool loads next to the cloud bill: every mandatory
+  FOCUS 1.4 column, one row per provider, model and token direction, cost equal to
+  quantity times unit price, times in UTC, custom columns prefixed `x_` (run, task,
+  model, direction, price date, cost basis). Costs are tokens times the list price
+  the run used; the provider's invoice is the authority and every row says so.
+  Replayed calls make no rows; unpriced calls are left out and counted. CSV or JSON
+  lines. Each logged call now carries its provider, service, unit prices and their
+  date.
+- **`ubunye plan` shows the bill before the run.** For a task that calls a model,
+  the plan prices its recorded calls (the replay file) at today's prices and sets
+  them against `UBUNYE_LLM_MAX_USD`, with no data read and no model called. It fails
+  on what would stop the run (replay with nothing recorded, a limit that is not a
+  number, a dollar ceiling on an unpriced model) and warns on an estimate over the
+  ceiling or live calls with no ceiling. `--json` adds an `llm` section per task.
+- **The bill is capped before the run.** `UBUNYE_LLM_MAX_USD`, `UBUNYE_LLM_MAX_CALLS`
+  and `UBUNYE_LLM_MAX_SECONDS` set one budget per run, shared by every port (and by
+  calls running at the same time); `llm.port(max_usd=, max_calls=, max_seconds=)`
+  adds a port's own. Before each call the port reserves its worst case (prompt
+  tokens counted high, plus the whole `max_tokens`); a call that could pass a limit
+  raises `LLMBudgetError` and is never sent, and the task writes nothing. After the
+  call the reservation becomes the real cost. Prices come from a dated table of
+  Anthropic's current models taken from its pricing page, or from `price=` or a
+  `UBUNYE_LLM_PRICES` file; an unpriced model has an unknown cost, not zero, and a
+  dollar ceiling on it fails closed. Each call records `cost_usd` and
+  `estimated_usd`; the run record's new `llm_budget` keeps the limits and the spend,
+  and `ubunye lineage trace` prints them. No new config field: limits are
+  environment variables and port arguments.
+- **Record once, replay anywhere: model calls answered from a file, for nothing.**
+  `UBUNYE_LLM_MODE=record` calls the model and keeps each answer in the task
+  folder's `llm-replay.jsonl`, next to `config.yaml`, to be committed with the task
+  (or in `UBUNYE_LLM_STORE`), keyed by the request's hash;
+  prompts are never stored. `UBUNYE_LLM_MODE=replay` answers from that file with no
+  key, no network and no cost, and fails closed: a request with no recorded answer
+  stops the run with its key, and never falls through to a live call. Every call in
+  the run record now says its `source` (`live`, `record` or `replay`). A recorded
+  run replays to the same data and row hashes on any machine.
+- **`ubunye.llm`: one port for language model calls, seen by the engine.** A task
+  calls `llm.port("anthropic" | "openai_compatible" | "databricks_serving",
+  model=...)` and then `complete()` or `complete_many()` (answers in prompt order,
+  a few calls at a time). The three backends use the standard library only;
+  `openai_compatible` covers OpenAI, Azure OpenAI, vLLM, Ollama and LiteLLM. Keys
+  come from the provider's usual variable or `api_key=`, which can be a `secret://`
+  reference; a missing key fails before any call. Rate limits and server errors are
+  retried, honouring `retry-after`; other refusals fail at once with the provider's
+  reason and never the key. Every call made during a run is in the run record's new
+  `llm_calls` (backend, model, tokens, seconds, attempts, status and a `sha256:` key
+  of the request; never the prompt or the answer), and `ubunye lineage trace` sums
+  them per model. More backends are plugins in the `ubunye.llm_backends` group.
+- **`ubunye doctor`: what will fail, and why, before a run.** One command
+  checks the Python version, every backend (usable, or what it needs and the
+  install command), whether a run without `--backend` would work, that Java
+  suits the installed Spark, that `delta-spark` is built for the same Spark
+  major (a mismatch installs cleanly and fails at run time), `winutils.exe` on
+  Windows, and that every plugin loads. Given tasks (`-d -u -p -t`), it names the
+  environment variables they use without a default that are not set, and checks
+  their configs load. Warnings are environment problems that matter only for
+  what you use; failures are what makes a run fail, and set exit code 1.
+  `--json` prints one document. The config resolver gains
+  `required_env_references()` for the variable check.
+- **`ubunye export spark-pipeline`: a task as a Spark Declarative Pipeline.** Writes
+  `spark-pipeline.yml`, a definitions module and a copy of the task, for
+  `spark-pipelines run` on Spark 4.1+: inputs become temporary views, the task's
+  `transform()` runs unchanged, outputs become materialized views. What does not
+  carry over (merge modes, output paths, expectations) is reported; `secret://`
+  references are refused. The run-anywhere example exported this way wrote the
+  same row hashes on Spark 4.2 as on every other platform.
+- **`ubunye export airflow` writes a DAG that runs, on Airflow 2.4+ and Airflow 3.**
+  The generated DAG used `schedule_interval` (removed in Airflow 3), imported
+  `BashOperator` only from its Airflow 2 home, and passed `env=` without
+  `append_env=True`, which replaces the whole environment, so `ubunye` was not on
+  `PATH` and every run failed. It now uses `schedule=`, imports from the standard
+  provider on Airflow 3 and falls back on Airflow 2, keeps the environment, passes
+  Airflow's logical date as `-dt {{ ds }}`, quotes the command, and is compiled
+  before it is written. New options: `--usecase-dir` (where the pipelines are on
+  the Airflow workers), `--backend`, `--lineage`.
+- **One command to Kubernetes, Azure Container Apps and EMR Serverless.**
+  `ubunye deploy k8s` runs a task as a Kubernetes Job (kubectl's context, no
+  retries, cleaned up after a day); `ubunye deploy container-apps` as an Azure
+  Container Apps job pulling with a managed identity, reading the run record back
+  from Log Analytics; `ubunye deploy emr-serverless` starts a run in an EMR
+  Serverless application (tested as a plan: the free plan blocks EMR).
+  `ubunye deploy dockerfile container` writes a self-contained image (Java, Spark
+  in local mode, Delta, engine, pipelines). The entry script also reads its
+  arguments from `UBUNYE_ENTRY_ARGS`, for runtimes whose CLI cannot pass them.
+- **One command to AWS Glue and GCP Dataproc Serverless.** `ubunye deploy glue`
+  and `ubunye deploy dataproc` run a task unchanged on either service, through the
+  cloud's own CLI and login: the task goes up as a zip with a small entry script
+  that runs it with a run record and prints the record back, so `--record-out`
+  saves it and `ubunye gate` can compare runs across clouds. Glue pip-installs
+  the engine (or an uploaded wheel) and supplies Delta; Dataproc runs in an image
+  whose Dockerfile `ubunye deploy dockerfile dataproc` writes, following
+  Dataproc's rules. `--env`, `--var`, `--dry-run`, `--wait/--no-wait`. See
+  [Glue and Dataproc](deployment/serverless.md).
+- **`ubunye gate` and a GitHub Action: the receipt gates pull requests.** The
+  gate compares a run record with a baseline and fails when the run failed, a
+  `fail` expectation broke, an output's data or schema changed without a
+  `VERSION` bump, an output went missing, or a limit was passed
+  (`--max-slowdown`, `--max-seconds`, `--max-row-change`). Each changed output
+  says what else changed (config, code, environment, which inputs), and a change
+  with none of them is reported as nondeterminism. Runs are named by record file,
+  run id, `previous` or `latest`; `--json` and `--summary` (Markdown for the job
+  summary). The composite action `.github/actions/gate` runs a task on a pull
+  request's base and head and gates them. See [Gate](patterns/gate.md).
+- **OpenTelemetry done properly.** The OTel hook now follows OpenTelemetry's own
+  configuration (`OTEL_EXPORTER_OTLP_ENDPOINT`, protocol, headers,
+  `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER`, `OTEL_SERVICE_NAME`), exports
+  over OTLP (http/protobuf or grpc) with the new `otel` extra, reuses a host
+  application's providers, and flushes when a task ends so short CLI runs export.
+  It used to print every span to the console and ignore the endpoint. Spans now
+  nest steps under the task, carry the run id, backend and config hash, and mark
+  failures as errors with the exception recorded. New metrics:
+  `ubunye.task.runs`, `ubunye.task.duration`, `ubunye.step.duration`,
+  `ubunye.rows.read`, `ubunye.rows.written` (rows counted where free, on Spark
+  only with `UBUNYE_OTEL_COUNT_ROWS=1`). `UBUNYE_TELEMETRY` is read when a run
+  starts, not at import, so setting it in a notebook works. The Prometheus hook is
+  unchanged; its row and byte counters are fed only by callers of
+  `observe_step()`, never by the engine, as before. See
+  [OpenTelemetry](patterns/opentelemetry.md).
+- **OpenLineage events: the receipt lands in your catalogue.** A recorded run
+  sends START and COMPLETE or FAIL (OpenLineage 2-0-2) to any OpenLineage server
+  (Marquez, DataHub, OpenMetadata, Google Dataplex) when `OPENLINEAGE_URL` is set,
+  and/or to a JSON-lines file (`UBUNYE_OPENLINEAGE_FILE`). Datasets are named by
+  the OpenLineage conventions with credentials removed; events carry the standard
+  `outputStatistics`, `dataQualityMetrics`, `dataQualityAssertions` and
+  `errorMessage` facets plus `ubunye_evidence` and `ubunye_hash` (schemas in
+  `docs/schemas`). No new dependency; a server that is down never fails a run.
+  `ubunye lineage openlineage` exports (and with `--send`, backfills) stored
+  runs. Every event in the tests is validated against the vendored OpenLineage
+  spec. See [OpenLineage](patterns/openlineage.md).
+- **Run record v2: the receipt says why two runs differ.** Each record now
+  carries a hash of the task's code, the environment (Python, platform and the
+  versions of the packages that can change a result, plus one hash of them),
+  every input's row hash and count (like the outputs), per-step timings, and
+  every expectation's result; timings and expectation results are kept when a
+  run fails. `ubunye lineage compare` reports code, environment and inputs as
+  changed or unchanged and names the packages whose versions moved; `trace`
+  prints them. Input hashing costs one more scan per input and can be turned off
+  (`LineageRecorder(hash_inputs=False)`). Monitors get the new evidence only if
+  their `task_end` accepts it, so existing monitors are unaffected; v1 records
+  still load. See the addendum to ADR 006.
+- **The pandas content hash is 2.4 times faster** (60,000 rows: 828 ms to 350 ms,
+  the same hash). Each column's text is now built once, with the column name
+  encoded once instead of on every row; a property test holds the fast path to
+  the row-at-a-time reference byte for byte. It pays for hashing inputs in run
+  record v2: a recorded run now hashes its input and its output in less time than
+  it used to hash its output alone.
+- **Secrets by reference: `secret://<provider>/<reference>`.** A config names a
+  secret (`password: "secret://aws-sm/prod/db#password"`) and the engine fetches
+  it only into the copy of the config a connector receives, at the moment it
+  reads or writes. The config hash, `plan`, `config`, run records and logs keep
+  the reference, so a secret cannot leak through them, and rotating it does not
+  change the config hash (tested). Providers are plugins (`ubunye.secrets`):
+  `env`, `file`, `databricks`, `aws-sm`, `gcp-sm`, `azure-kv`, with `#field` for
+  JSON secrets and new `aws`, `gcp`, `azure` extras for the cloud SDKs. `validate`
+  refuses an unknown provider with the closest name; `doctor` names the package a
+  task's provider is missing; neither fetches anything. See
+  [Secrets](config/secrets.md).
+- **`CONFIG.expectations`: what an output must look like, checked before anything
+  is written.** Declared rules per output (`not_null`, `unique`, `between`,
+  `one_of`, `matches`, `row_count`), each with a severity: `fail` stops the run
+  with nothing written, `quarantine` moves the breaking rows to a named output
+  with a `_ubunye_failed_rules` column listing every rule each row broke, `warn`
+  logs. `max_quarantine_rate` fails a run when too much is set aside. A missing
+  value passes every rule but `not_null`, as in SQL. The rules run through
+  Narwhals, so the same config gives the same verdicts on Spark and pandas
+  (tested on both, and at the oldest supported versions, where pandas 2.2 and
+  pandas 3 disagree about a missing value in a pattern match). Narwhals becomes a
+  dependency (`narwhals>=2.0`, pure Python, no dependencies of its own). Every
+  rule's result, passed or not, is on the error and in the run state for the run
+  record. See [Expectations](config/expectations.md).
+- **A typo inside a connector block fails validation, with a suggestion.**
+  Input and output blocks accept keys the engine does not know, because each
+  connector reads its own settings, so `paht: data/in.csv` validated and was
+  ignored. Connectors can now declare `CONFIG_KEYS`; for one that does, any other
+  key is an error that names the closest real key (`inputs.src: 'paht' is not a
+  setting of 's3'; did you mean 'path'?`), reported before the "requires" error
+  it usually causes. Every built-in reader and writer declares its keys; `format`
+  and `options` are allowed everywhere, and `mode`, `merge_keys` and
+  `replace_where` on every output. A connector that declares nothing (most
+  third-party ones) accepts any key, as before. The s3 and unity writers each
+  accept the other's key (`table`, `path`) so one output block can serve both,
+  as the run-anywhere example does. All 53 task configs in the engine and
+  examples repos and two downstream projects still validate.
+
+- **A conformance suite every backend must pass, shipped for yours.**
+  `ubunye.testing.backend_conformance` is the set of tests that says a backend
+  keeps the engine's promises: it is registered under its name and declares
+  what it can do, gives transforms its own frames and the engine a port,
+  reads a CSV file exactly as Spark does and so leaves the same run record hash
+  as every other engine (checked against a reference built from plain Python
+  values), reads back what it writes, and honours the write modes it claims.
+  Subclass it in a backend's tests. The pandas backend passes it in the unit
+  tier, and both Spark backends in the integration tier. ADR 006 now lists the
+  type names the hash uses, which a port that is not Spark or pandas must
+  report.
+- **One transform for every engine, written with Narwhals (ADR 005).** A
+  transform written with the Spark API runs only on Spark, and one written with
+  pandas only on pandas. Two ways to write it once were tested on the Titanic
+  example's own logic against Spark: Narwhals gave the same data hash on both
+  engines (with a sum cast to a 64 bit integer, which Spark does and pandas
+  does not), and SQL did not (DuckDB and Spark type the same aggregate
+  differently), so Narwhals ships and SQL waits for a DuckDB backend, not in this release. A
+  transform may return a Narwhals frame; the engine unwraps it without
+  importing Narwhals. There is no config field for portability: `ubunye plan`
+  reads the imports in `transformations.py` and says what it is written for
+  (`pyspark`, `narwhals`, `pandas`), in text and in `--json`, and warns when
+  that is not what `--backend` gives it. The example in the docs is run on both
+  engines by the test suite.
+- **`--json` for scripts and agents.** `plan`, `validate`, `backends`, every
+  `lineage` command and `models list/info/compare` print exactly one JSON
+  document on stdout with `--json`, errors included (`{"ok": false, "error":
+  ...}`), and keep their exit codes. `lineage compare --json` reports each data
+  hash as `unchanged`, `changed`, `unknown` or `not comparable`, the same
+  verdict the text form prints.
+- **The pandas backend understands Spark's `mode` option, and backends check
+  their IO details before a run.** Every Titanic example reads its CSV with
+  `mode: "FAILFAST"`, which the pandas backend refused, so none of them could
+  run there. `mode` now works for CSV and JSON exactly as Spark 4.2 does it
+  (checked against Spark): FAILFAST stops at a bad row, DROPMALFORMED skips it,
+  and PERMISSIVE, Spark's default, cuts a row with too many fields and pads one
+  with too few with null. A backend can also check an input's or output's
+  details (options, schema) before anything runs (`Backend.check_io`); the
+  pandas backend uses it, so `plan`, `validate --backend` and the run's own
+  preflight report an option it cannot honour instead of failing on open.
+- **`--var key=value`, documented for years, now works.** It was in the README
+  and three docs pages and was never implemented, so every example that used it
+  failed. It now works on every command that renders a config (`run`,
+  `validate`, `plan`, `config`, `test run`), and the Python API takes the same
+  thing as `variables=` on `run_task`, `run_pipeline` and `notebook`. Names must
+  be valid template names, `env` is reserved and `mode` has its own flag;
+  `--var dt=...` works like `-dt`, and the same name with two values is refused
+  instead of one silently winning. The variables a run used are kept in its run
+  record. On the way, `validate` stopped setting `dtf` to the timestamp's value
+  (it now has `-dtf`), and `test run` now renders with `mode` (its profile), as
+  `run` does.
+- **The run record's data hash now means "these exact rows" (ADR 006).** It
+  read a 1 percent sample, changed with row order on Spark, and on pandas
+  quietly recorded the schema hash as the data hash. The new `rows-v1` hash
+  reads every row in the same pass as the count, ignores row and column order,
+  changes when any cell changes, tells null from NaN, does not depend on the
+  timezone, and is the same on Spark and pandas for the same data (Spark
+  computes it in one aggregation on the cluster). When rows cannot be read the
+  record says why instead of inventing a hash. Records also carry the Ubunye
+  version, the backend, the run variables and each output's `hash_method`, and
+  runs from `run_task` and `run_pipeline` are stored under the same folder and
+  name as CLI runs, so `ubunye lineage list` finds them. `lineage compare` calls
+  two missing hashes "unknown" (it said "unchanged") and a pre-0.7 hash "not
+  comparable". `sample_fraction` is ignored and kept so old configs load.
+- **A pandas transform gets a plain pandas DataFrame (ADR 004).** It used to get
+  an adapter and had to write `sources["x"].native` to reach the DataFrame. The
+  `Backend` port gains `to_native` and `to_port`, and the engine converts at the
+  edges: transforms get and may return native frames; writers, hooks and
+  lineage get the port, where `count()` means rows (a raw pandas `count()`
+  counts non-nulls per column). `run_task`, `run_pipeline` and the notebook's
+  `read()` and `transform()` return native frames, so on pandas use
+  `len(frame)` for rows. Both methods default to doing nothing, so Spark tasks
+  and older backends are unchanged.
+- **Backends are plugins, and say what they can do (ADR 001, 002).** Spark,
+  Databricks and pandas now register in a new `ubunye.backends` entry point
+  group, exactly as a third party engine would, so adding an engine is a package
+  with one entry point and no edit to Ubunye. Each backend declares its
+  capabilities (features such as a SparkSession or path IO, file formats, write
+  modes, distributed, needs Java) and each connector declares what it requires.
+  Before anything starts, the engine checks every input and output against the
+  backend and lists every problem at once, so a task that cannot run stops in
+  the first second instead of halfway through. The core no longer imports
+  `SparkBackend` (a test now reads every import in `ubunye/core` and fails on
+  any engine). `Backend.is_spark` still works, read from the capabilities, and
+  is deprecated. Backends and connectors written before 0.7.0 declare nothing
+  and behave exactly as before.
+- **Choose a backend by name everywhere, with one resolution order (ADR 003).**
+  `--backend NAME` on `ubunye run`, `ubunye test run` and `ubunye validate`;
+  `backend="pandas"` (or an instance) on `run_task`, `run_pipeline` and
+  `notebook`. With no choice: the platform's session if there is one (on
+  Databricks, the notebook's), else Spark. The CLI now follows that order too:
+  run inside a process that already has a SparkSession, it attaches to it
+  instead of stopping it at the end. New `ubunye backends` (and `--json`) lists
+  what is installed and what each backend can do; `ubunye validate --backend
+  pandas` checks a task can run there without starting anything. An unknown or
+  broken backend gives a clear error with the installed names or the `pip
+  install` that fixes it. New page: Execution Backends; new section:
+  Architecture Decisions.
+- **A pandas backend, so `ubunye run --backend pandas` runs a task on a laptop
+  with no Spark and no JVM (issue #38).** `Backend` was a port with a single kind
+  of adapter (Spark), and a port with one adapter has never really been tested as
+  a port. It has a second one now. `PandasBackend` reads and writes the generic
+  path formats (csv, parquet, json) with pandas; lakehouse formats and managed
+  tables stay Spark's job, and their connectors say so, so an unsupported pairing
+  fails with a clear message instead of a stray `AttributeError`. This works
+  because the data plane gained a small read/write seam on `Backend`
+  (`read_frame` / `execute_write`): a path connector like `s3` asks the backend to
+  do the IO instead of naming Spark, so the same task and the same `config.yaml`
+  run on either backend. The proof is an integration test that runs one passthrough
+  task through the engine on Spark and on pandas and asserts the output is
+  identical. Install the extra with `pip install 'ubunye-engine[pandas]'`.
+- **The pandas backend reads data exactly as Spark does.** The first version
+  used pandas' own defaults, so the same CSV gave different columns and types on
+  the two backends: pandas assumed a header Spark does not, guessed types Spark
+  leaves as text, read JSON as one array where Spark reads one object per line,
+  and could not read a folder Spark had written. Reads now follow Spark: no
+  header by default (`_c0`, `_c1`), text unless `inferSchema`, Spark's inferred
+  types (`int` when every value fits, else `bigint`; an all empty column is
+  text), JSON Lines with columns sorted by name, folders of part files, globs,
+  explicit `schema:` strings, and timestamps read in
+  `spark.sql.session.timeZone` (UTC when unset). Columns are Arrow backed, so a
+  whole number column with nulls stays whole numbers. Options it cannot honour,
+  nested schema types and remote paths are refused by name instead of ignored.
+  Needs pandas 2.2 and pyarrow 14 or newer.
+- **The pandas backend writes data exactly as Spark does, so each can read the
+  other's output.** It used to write one file where Spark writes a folder, so
+  Spark could not read pandas output as a table, and `append` re-read and
+  rewrote the whole file every run. It now writes Spark's layout (a folder of
+  `part-*` files and `_SUCCESS`); `append` adds a part file; `overwrite` is
+  staged and swapped in only when complete, so a failed write keeps the old
+  data. The text formats match Spark byte for byte on the cases tested: CSV
+  without a header by default, minimal quoting with a backslash escape, text
+  trimmed, Java style numbers, Spark's timestamp text; JSON Lines without null
+  fields. Parquet timestamps are written as UTC microseconds (Spark cannot read
+  nanoseconds). A named index (what `groupby` leaves) is kept as columns.
+  `partition_by`, unknown write options, nested values in CSV and non pandas
+  frames are refused by name.
+- **Connectors that need Spark say so on the pandas backend.** hive, jdbc,
+  delta, unity, binary and rest_api build on a SparkSession. On the pandas
+  backend they used to fail with `AttributeError: 'PandasBackend' object has no
+  attribute 'spark'`, and rest_api only after fetching every page. They now stop
+  first, before any network call, with a message naming the connector and the
+  way out (`--backend spark`, or csv/parquet/json paths with `format: s3`).
+- **Proof that the two backends agree, run against real Spark.** The old parity
+  test compared one passthrough task as strings. The new suite runs Spark 4.2
+  beside the pandas backend and compares Arrow types and Python values, never
+  strings: eight reader cases (CSV with and without header, inferSchema,
+  explicit schema, separators and null values; JSON Lines, multiLine and
+  schema), a folder Spark wrote, each engine reading what the other wrote for
+  parquet, CSV and JSON, CSV and JSON files byte for byte, and one task end to
+  end on both backends. It runs in a timezone other than UTC so a timezone slip
+  cannot hide. It found two gaps, now fixed: explicit `TIMESTAMP` schemas could
+  not read text without an offset, and JSON was not written the way Spark
+  writes it.
+
+---
+
+### Changed
+
+- **The Titanic examples run on Spark and on pandas, with the same receipt.**
+  Their three transforms (survival by class; clean, then aggregate) are
+  written once with Narwhals, identically in the local and Databricks examples.
+  CI runs each local example on Spark, then on the pandas backend into the same
+  output, checks the golden output again, and requires the two run records to
+  carry the same config hash and data hash (`scripts/same_receipt.sh`, which
+  uses only `ubunye lineage list` and `lineage compare`). On the real 891-row
+  file the pandas run takes 0.4 s against Spark's 4 s. The example tests run
+  every transform on both engines. The Databricks notebooks install Narwhals.
+  The docs now name the two known Spark and pandas differences under Narwhals:
+  the type of a sum (cast first) and rounding exactly halfway.
+
+- **Python 3.10 to 3.13, tested on Linux, Windows and macOS.** Python 3.9 is
+  no longer supported (it reached end of life in October 2025). CI now runs the
+  unit tier on every supported Python on all three systems (Windows and macOS
+  ran none of it before), the Spark tier on Spark 4 with Python 3.10 and Java
+  17 and with Python 3.13 and Java 21, and on Spark 3.5 with Java 11.
+- **The oldest versions the package accepts are tested, and two were raised.**
+  A new CI job installs exactly the declared minimum of every dependency and
+  runs the unit tier, and a test keeps that job and `pyproject.toml` in step.
+  It found that `typer>=0.12` could not work with today's click (the CLI
+  could not start), so the minimum is now `typer>=0.15.4`, the first that
+  works. The `spark` extra now asks for `pyspark>=3.5` (it said 3.3, which was
+  never tested); the whole Spark tier passes on Spark 3.5.
+
+- **`ubunye plan` is a real dry run, and exits 1 when it finds a problem.** It
+  printed the config's names back and always exited 0. Built on the September
+  work, it now checks each local input exists or is written by an earlier task
+  in the same plan (the September version failed every multi task pipeline on
+  that), loads the transform class, resolves every write mode (so `merge`
+  without `merge_keys` is caught before a cluster runs the transform), asks the
+  `--backend` what it can do instead of keeping a list of names, and warns about
+  environment variables the config uses that are not set. It starts no engine
+  and moves no data. Its config hash is now the one the run record keeps: the
+  record used to hash the config after the engine had rewritten its transform,
+  so the two never matched. A config error in `plan` shows the whole message.
+- **The package says what it is.** `LICENSE` is the full MIT text (it was the
+  single word "MIT"), declared the modern way (`license = "MIT"` with
+  `license-files`, which needs setuptools 77). PyPI now shows classifiers for
+  the Python versions CI tests, a description that matches what the engine does
+  now that it is not Spark only, and pandas and lineage among the keywords.
+  Thabang Mashinini-Sekgoto stays the author and Ubunye AI Ecosystems the
+  maintainer and copyright holder.
+- **Spark moved out of the engine core, so the hexagon is real rather than
+  aspirational.** The founding rule is "the core never depends on the outside
+  world," but `core/write_modes.py` and `core/catalog.py` called Spark directly
+  (`df.write`, `spark.sql("MERGE INTO ...")`, `USE CATALOG`), so the one place the
+  pattern was meant to hold was the one place it leaked. The Spark *mechanism* now
+  lives in a new Spark adapter (`ubunye.adapters.spark.write_exec` and
+  `ubunye.adapters.spark.catalog`); the backend-agnostic *decision* (validating a
+  write mode against what a connector supports) stays in `ubunye.core.write_modes`.
+  Behaviour is unchanged and every existing test passes. The old names
+  (`write_modes.apply`, `merge_into`, `target_exists`, `dynamic_partition_overwrite`,
+  and `core.catalog.set_catalog_and_schema`) still resolve through a deprecation shim,
+  so third-party connectors keep working; they will be removed in a future major. This
+  is the groundwork for a non-Spark backend (issue #38): the core can be
+  backend-agnostic now because it no longer imports one backend's API.
+
+### Fixed
+
+- **A deploy never reports success without the run record it was asked for.**
+  Azure's Log Analytics returns lines printed in the same instant in any order,
+  so the record could come back after its end marker: `ubunye deploy
+  container-apps` stopped waiting at the marker, found nothing between the
+  markers, and still exited 0 without writing `--record-out`. The record is now
+  found wherever it lands, Container Apps waits for the record itself, and a
+  missing record fails the command when `--record-out` was given. Found by the
+  final release-candidate run.
+
+- **A model provider's error reads as its message when it comes in a list.**
+  Gemini's OpenAI-compatible endpoint answers errors as `[{"error": {...}}]`; the
+  port printed the whole list. Found on the first live call to Gemini.
+
+- **`ubunye deploy container-apps` runs a second time.** The job is created on the
+  first deploy and updated after that, and `az containerapp job update` refuses
+  `--env-vars` (it takes `--replace-env-vars`), so every deploy after the first
+  failed. Found by running the release candidate on Azure Container Apps again.
+
+- **`ubunye lineage list` no longer reports an input of 0 rows it never
+  counted.** A run record counts and hashes its outputs (ADR 006), not its
+  inputs, and the list added the missing counts up as `in:0`, which read as an
+  empty input. An uncounted total now shows as `in:-`.
+- **The Spark backend stops only a session it started.** `start()` attaches to
+  a session that is already running (`getOrCreate`), and `stop()` then stopped
+  it anyway, as did the garbage collector through `__del__`. So
+  `run_task(..., backend="spark")` in a process that already had a Spark
+  session, a user's own or a notebook's, ended that session when the run
+  finished. A session the backend did not start is now left running. Found by
+  the new backend conformance suite.
+- **`ubunye deploy databricks` installs what the transform needs.** The
+  generated notebook installed the engine alone, so a task written with
+  Narwhals failed on Databricks at its first line. The deploy now reads the
+  transform's imports (the same detection `plan` uses, ADR 005) and installs
+  Narwhals next to the engine when the transform imports it.
+- **`import ubunye` works on every pydantic the package accepts.** The model
+  transform's `model_class` field starts with pydantic's reserved `model_`
+  prefix: pydantic 2.0 refused it at import, so the package failed to load on
+  the oldest version its requirements allowed, and pydantic 2.1 to 2.9 warned
+  about it. The prefix is switched off for that one config model. Found by
+  CI's new minimum-versions job.
+- **No DeprecationWarning on every plugin lookup.** Readers, writers, backends,
+  hooks and artifact stores were found through the dict interface of
+  `entry_points()`, kept for Python 3.9 and deprecated on 3.10 and 3.11, so
+  every lookup warned there. They now ask `entry_points(group=...)`.
+- **The pandas backend reads quoted CSV values exactly as Spark does.** Spark's
+  escape character is a backslash, so a doubled quote inside a quoted value is
+  not an escape: Spark keeps `"McGowan, Miss. Anna ""Annie"""` as written.
+  pyarrow unescaped it, so 53 of the 891 Titanic names came out different on
+  pandas, with nothing to say so. Files with such quotes (or a stray quote, a
+  backslash, or a line of only spaces, which Spark skips) are now split by a
+  port of Spark's own CSV parser, univocity 2.9.1, and only the lines that need
+  it; every other file is read by pyarrow as before. The port is fuzzed
+  against live Spark for each escape setting, line ending and `multiLine`.
+  `escape: '"'` now reads doubled quotes as quotes, as in Spark.
+- **The quickstart works, and a test keeps it working.** It used flags that do not
+  exist (`run --profile`), a `lineage list` with no task, and a Hive to Delta
+  config no laptop could run. It is rewritten around the `ubunye init` scaffold,
+  and its commands, in the README and on the Quickstart page, are run by the
+  test suite exactly as written. `CONTRIBUTING.md`, which the README linked to,
+  now exists (the docs page shows the same file), and stale claims are gone:
+  "Spark native", "288 tests", and `run --profile` in the engine docs.
+- **The first command in the README works, and what it makes runs.** The README
+  and quickstart said `ubunye init -d ... -t ...`, but the command was
+  `ubunye init pipeline ...`, so the first thing a new person typed failed. Both
+  forms work now. The default scaffold (`--template local`) has a small sample
+  CSV next to the task, a config that reads it and writes Parquet into `output/`
+  next to it, and a transform (`people[people["age"] >= 18]`) that means the
+  same in pandas and in Spark: it runs with no Java and on Spark unchanged, and
+  the two runs leave the same data hash (checked against Spark). `--template
+  databricks` writes the old Unity Catalog scaffold. Configs get a built in
+  `{{ task_dir }}` variable, the task's own folder, so a path next to the task
+  works from any folder and on either engine (Spark resolves a relative path
+  from where its JVM started, pandas from the current folder).
+- **`ubunye models promote` honours the model's promotion gates.** Gates were
+  read from the training task's config and applied only when that run promoted
+  the model itself; the CLI never saw them, so a model failing every gate could
+  be promoted by hand. The registry now keeps a model's gates (set when the
+  training run registers it), every promotion checks them by default, and a
+  failing gate is named. `--force` (and `force=True` in Python) skips them with
+  a warning and marks the version `promotion_forced`, with the gates it skipped.
+- **A typo in `config.yaml` says where it is.** A YAML syntax error escaped as a
+  raw `yaml.ParserError`, so `run`, `validate` and `plan` crashed with a
+  traceback. It is now a config error naming the file, the line and the column,
+  and a file whose top level is not a mapping is refused clearly too.
+- **`ubunye --help` no longer crashes on Windows.** A legacy Windows console
+  prints in cp1252, which has no arrow, and a help text and a few messages
+  used one, so `ubunye --help` died with `UnicodeEncodeError` on a fresh
+  install. The CLI's text is now plain ASCII where it prints, a test keeps every
+  help text printable on cp1252, and the `ubunye` command sets its output to
+  replace any character the console cannot show (a file path with an accent,
+  say) instead of crashing. The CI Package job runs `--help` on windows-latest.
+- **A backend whose packages are missing says so, with the install.** After
+  `pip install ubunye-engine` alone, `ubunye backends` listed spark and pandas
+  as ready, and choosing one failed deep inside on the first frame. Each
+  backend now declares the packages it needs; choosing it names what is missing
+  and the extra that installs it (`pip install 'ubunye-engine[pandas]'`), and
+  `ubunye backends` marks it "not usable here". Listing and inspecting a
+  backend still work anywhere, and `Engine()` with no backend resolves one only
+  when it first needs it.
+- **The pandas backend works on Windows.** pyarrow before 24 cannot find a
+  timezone database on Windows (checked: 19 to 23 fail, even with the `tzdata`
+  package), so every timestamp read or written failed there. The `pandas`
+  extra now asks for pyarrow 24 or newer on Windows, and the backend checks at
+  start and says how to fix an older one instead of failing on the first
+  timestamp.
+- **A notebook with `lineage=True` now leaves a run record.** Lineage is
+  recorded around a whole task, and the notebook runs read, transform and write
+  as separate steps, so `ubunye.notebook(..., lineage=True)` recorded nothing
+  at all. A notebook write now counts as a run: `nb.write(...)` and `nb.run()`
+  each leave one record, in the same place and with the same hash as
+  `run_task`.
+
+---
+
 ## [0.5.0] — 2026-07-14
 
 ### Fixed

@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 from ubunye.core import write_modes
+from ubunye.core.capabilities import PATH_IO
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
@@ -29,6 +30,14 @@ DEFAULT_MODE = "append"
 
 class S3Writer(Writer):
     """Write a Spark DataFrame to S3 (or any filesystem path Spark understands)."""
+
+    # The settings this connector reads (typos in any other key fail validation).
+    # `table` is read by the unity writer, not this one; it is accepted so one
+    # output block can serve both (UBUNYE_SINK picks which is real).
+    CONFIG_KEYS = frozenset({"path", "file_format", "partitionBy", "table"})
+
+    # Reads and writes paths through the backend's path IO (ADR 002).
+    REQUIRES = frozenset({PATH_IO})
 
     SUPPORTS_MERGE = True
     MERGE_FILE_FORMATS = frozenset({"delta"})
@@ -56,9 +65,11 @@ class S3Writer(Writer):
             file_format=fmt,
         )
 
-        write_modes.apply(
+        # The data-plane write seam (#38): hand the resolved mode to the backend
+        # to execute. SparkBackend runs it through Spark (MERGE, dynamic overwrite,
+        # save); PandasBackend writes the file with pandas.
+        backend.execute_write(
             df,
-            backend.spark,
             resolved,
             connector="s3",
             file_format=fmt,

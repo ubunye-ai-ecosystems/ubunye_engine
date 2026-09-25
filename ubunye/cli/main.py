@@ -4,6 +4,8 @@ Commands:
 - init:     scaffold a new usecase/package/tasks
 - validate: validate config file(s) before execution
 - run:      run task(s) in a package
+- doctor:   check this machine (and optionally tasks) before a run
+- gate:     fail a pull request when a run receipt regresses
 - plugins:  list discovered plugins
 - config:   show/validate config
 - plan:     show resolved IO graph
@@ -15,22 +17,28 @@ Commands:
 
 from __future__ import annotations
 
+import sys
 import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import typer
 
-from ubunye.backends.spark_backend import SparkBackend
+from ubunye.adapters.spark.catalog import set_catalog_and_schema
+from ubunye.cli.backend_choice import backends_command
+from ubunye.cli.backend_choice import resolve_or_exit as _resolve_backend_or_exit
 from ubunye.cli.deploy import deploy_app
+from ubunye.cli.doctor import doctor_command
 from ubunye.cli.export import export_app
+from ubunye.cli.gate import gate_command
 from ubunye.cli.init import init_app
 from ubunye.cli.lineage import lineage_app
 from ubunye.cli.models import models_app
+from ubunye.cli.output import emit, fail, json_option
 from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
+from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
-from ubunye.core.catalog import set_catalog_and_schema
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
@@ -45,8 +53,68 @@ app.add_typer(sync_app)
 app.add_typer(test_app)
 
 
+def _safe_console_streams() -> None:
+    """Replace, rather than crash on, characters the console cannot print.
+
+    A legacy Windows console encodes output as cp1252. Any character it lacks
+    (an arrow in help, an accent in a file path) raised UnicodeEncodeError and
+    killed the command. Output now shows ``?`` for such a character instead.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        encoding = (getattr(stream, "encoding", "") or "").lower().replace("-", "")
+        reconfigure = getattr(stream, "reconfigure", None)
+        if encoding != "utf8" and callable(reconfigure):
+            try:
+                reconfigure(errors="replace")
+            except (ValueError, OSError):
+                pass  # a stream that cannot be reconfigured is left as it is
+
+
+def main() -> None:
+    """The ``ubunye`` console script: make the console safe, then run the CLI."""
+    _safe_console_streams()
+    app()
+
+
 def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path:
     return usecase_dir / usecase / package / task
+
+
+app.command("backends")(backends_command)
+app.command("doctor")(doctor_command)
+app.command("gate")(gate_command)
+
+
+@app.command("mcp")
+def mcp_command(
+    usecase_dir: Path = typer.Option(
+        Path("."), "-d", "--usecase-dir", help="The pipelines folder the server works in."
+    ),
+    allow_run: bool = typer.Option(
+        False, "--allow-run", help="Offer the `run` tool (every other tool only reads)."
+    ),
+    allow_live_llm: bool = typer.Option(
+        False,
+        "--allow-live-llm",
+        help="Let `run` call models live (default: replay, no key, no spend).",
+    ),
+    lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+):
+    """Serve the engine to agents over MCP (stdio): tasks, doctor, plan, runs, gate, focus."""
+    from ubunye.core.errors import UbunyeError
+    from ubunye.mcp_server import build_server
+
+    try:
+        server = build_server(
+            usecase_dir,
+            allow_run=allow_run,
+            allow_live_llm=allow_live_llm,
+            lineage_dir=lineage_dir,
+        )
+    except UbunyeError as exc:
+        typer.secho(f"[ERROR] {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    server.run("stdio")
 
 
 @app.command()
@@ -67,9 +135,10 @@ def config(
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
     mode: str = typer.Option("DEV", "-m", "--mode"),
+    var: Optional[List[str]] = var_option(),
 ):
     """Show and validate config files."""
-    variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
+    variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
     for task in task_list:
         config_path = _task_path(usecase_dir, usecase, package, task) / "config.yaml"
         try:
@@ -101,11 +170,21 @@ def validate(
         "words for the same idea, which made them feel like different systems.",
     ),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
+    data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
+    var: Optional[List[str]] = var_option(),
+    backend_kind: Optional[str] = typer.Option(
+        None,
+        "--backend",
+        help="Also check the task can run on this backend (its connectors, file "
+        "formats, write modes and paths), without starting it.",
+    ),
+    as_json: bool = json_option(),
 ):
     """Validate config file(s) without executing the pipeline.
 
     Runs Pydantic schema validation and Jinja template resolution so errors
-    are caught before Spark starts. Exits non-zero if any task fails.
+    are caught before Spark starts. With --backend, also checks that every input
+    and output is something that backend can do. Exits non-zero if any task fails.
 
     Examples
     --------
@@ -154,20 +233,57 @@ def validate(
     # dt, so a config using {{ mode }} or {{ dtf }} ran fine and failed validation —
     # the one command whose whole job is to catch problems BEFORE the run invented
     # one the run did not have.
-    variables = {"dt": data_timestamp, "dtf": data_timestamp, "mode": profile or "DEV"}
+    variables = cli_variables(
+        dt=data_timestamp, dtf=data_timestamp_format, mode=profile or "DEV", var=var
+    )
     failed = 0
 
+    caps = None
+    registry = Registry.from_entrypoints() if backend_kind else None
+    if backend_kind:
+        from ubunye.cli.backend_choice import class_or_exit
+
+        backend_cls = class_or_exit(backend_kind)
+        caps = backend_cls.CAPABILITIES
+
+    results: List[Dict[str, Any]] = []
     for task in tasks_to_check:
         task_dir = _task_path(usecase_dir, usecase, package, task)
+        problems: List[str] = []
         try:
-            load_config(str(task_dir), variables=variables, profile=profile)
-            typer.secho(f"  [OK]   {task}", fg=typer.colors.GREEN)
+            cfg = load_config(str(task_dir), variables=variables, profile=profile)
+            if caps is not None and registry is not None:
+                from ubunye.core.capabilities import check_task
+
+                problems = check_task(
+                    caps,
+                    cfg.model_dump(mode="json"),
+                    registry,
+                    backend_name=str(backend_kind).lower(),
+                    io_check=backend_cls.check_io,
+                )
         except (ValueError, FileNotFoundError) as e:
-            typer.secho(f"  [FAIL] {task}", fg=typer.colors.RED)
-            # Indent error details for readability
-            for line in str(e).splitlines():
-                typer.echo(f"         {line}")
-            failed += 1
+            problems = [str(e)]
+        results.append({"task": task, "ok": not problems, "problems": problems})
+        failed += bool(problems)
+
+    if as_json:
+        emit({"ok": not failed, "tasks": results})
+        if failed:
+            raise typer.Exit(code=1)
+        return
+
+    for result in results:
+        if result["ok"]:
+            typer.secho(f"  [OK]   {result['task']}", fg=typer.colors.GREEN)
+            continue
+        on = f" (on the {backend_kind} backend)" if backend_kind else ""
+        typer.secho(f"  [FAIL] {result['task']}{on}", fg=typer.colors.RED)
+        for problem in result["problems"]:
+            lines = str(problem).splitlines() or [""]
+            typer.echo(f"         - {lines[0]}")
+            for line in lines[1:]:
+                typer.echo(f"           {line}")
 
     typer.echo()
     if failed:
@@ -188,22 +304,113 @@ def plan(
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
     mode: str = typer.Option("DEV", "-m", "--mode"),
+    var: Optional[List[str]] = var_option(),
+    backend_kind: Optional[str] = typer.Option(
+        None,
+        "--backend",
+        help="Also check each input and output against what this backend can do.",
+    ),
+    as_json: bool = json_option(),
 ):
-    """Print the planned inputs → transform → outputs for task(s)."""
-    variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
-    for task in task_list:
-        config_path = _task_path(usecase_dir, usecase, package, task) / "config.yaml"
-        cfg = load_config(str(config_path), variables)
+    """Dry run: what each task will read and write, and what will stop it.
 
-        typer.echo(f"--- Task: {task} ---")
-        typer.echo("Inputs (Extract):")
-        for name, icfg in cfg.CONFIG.inputs.items():
-            typer.echo(f"  - {name}: {icfg.format}")
-        typer.echo(f"Transform (transformations.py): {cfg.CONFIG.transform.type}")
-        typer.echo("Outputs (Load):")
-        for name, ocfg in cfg.CONFIG.outputs.items():
-            typer.echo(f"  - {name}: {ocfg.format}")
-        typer.echo()
+    Checks local inputs exist (or are written by an earlier task in the list),
+    resolves the transform class, resolves every write mode, and, with
+    --backend, asks the backend if it can do what the task needs. Starts no
+    engine and moves no data. Exits 1 if it finds a problem.
+    """
+    from ubunye.core.planning import build_plans
+
+    variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
+    tasks = []
+    raw_yaml = {}
+    for task in task_list:
+        task_dir = _task_path(usecase_dir, usecase, package, task)
+        name = f"{usecase}/{package}/{task}"
+        try:
+            cfg = load_config(str(task_dir), variables)
+        except (ValueError, FileNotFoundError) as exc:
+            if as_json:
+                fail(str(exc), as_json=True, task=name)
+            typer.secho(f"[ERROR] {name}", fg=typer.colors.RED, err=True)
+            for line in str(exc).splitlines():
+                typer.echo(f"  {line}", err=True)
+            raise typer.Exit(code=1)
+        raw_yaml[name] = (task_dir / "config.yaml").read_text(encoding="utf-8")
+        tasks.append((name, cfg, task_dir))
+
+    plans = build_plans(tasks, backend=backend_kind, variables=variables, raw_yaml=raw_yaml)
+    if as_json:
+        ok = not any(p["problems"] for p in plans)
+        emit({"ok": ok, "tasks": plans})
+        if not ok:
+            raise typer.Exit(code=1)
+        return
+    for report in plans:
+        _print_plan(report)
+    failing = [p for p in plans if p["problems"]]
+    if failing:
+        count = sum(len(p["problems"]) for p in failing)
+        typer.secho(
+            f"Plan would fail: {count} problem(s) in {len(failing)} task(s).", fg=typer.colors.RED
+        )
+        raise typer.Exit(code=1)
+    typer.secho(f"Plan OK: {len(plans)} task(s) can run.", fg=typer.colors.GREEN)
+
+
+def _size(entry: Dict[str, Any]) -> str:
+    if entry.get("produced_by"):
+        return f"written by task '{entry['produced_by']}' earlier in this plan"
+    if not entry.get("checked"):
+        return "not checked (not a local path)"
+    if not entry.get("exists"):
+        return "missing"
+    return f"found: {entry['files']} file(s), {entry['bytes']:,} bytes"
+
+
+def _print_plan(report: Dict[str, Any]) -> None:
+    backend = f"   (backend: {report['backend']})" if report["backend"] else ""
+    typer.secho(f"Task {report['task']}{backend}", bold=True)
+    typer.echo("  Inputs")
+    for entry in report["inputs"]:
+        fmt = " ".join(x for x in (entry["format"], entry.get("file_format") or "") if x)
+        typer.echo(f"    {entry['name']:<12} {fmt:<14} {entry['location']}")
+        typer.echo(f"    {'':<12} {_size(entry)}")
+    t = report["transform"]
+    what = t["class"] or t["type"] or "-"
+    source = f"  ({Path(t['source']).name})" if t["source"] else ""
+    api = f", written for {t['frame_api']}" if t.get("frame_api") else ""
+    typer.echo(f"  Transform  {what}{source}{api}")
+    typer.echo("  Outputs")
+    for entry in report["outputs"]:
+        fmt = " ".join(x for x in (entry["format"], entry.get("file_format") or "") if x)
+        mode = entry["resolved_mode"] or entry["requested_mode"] or "-"
+        typer.echo(f"    {entry['name']:<12} {fmt:<14} {entry['location']}")
+        typer.echo(f"    {'':<12} mode {mode}")
+    llm = report.get("llm")
+    if llm:
+        limits = ", ".join(f"{k}={v:g}" for k, v in llm["limits"].items() if v is not None)
+        typer.echo(f"  Model calls  mode {llm['mode']}" + (f", {limits}" if limits else ""))
+        for g in llm["recorded"]:
+            money = "no price" if g["cost_usd"] is None else f"${g['cost_usd']:.6f}"
+            typer.echo(
+                f"    {g['backend']}/{g['model']}: {g['calls']} recorded calls, "
+                f"{g['input_tokens']} tokens in, {g['output_tokens']} out, {money}"
+            )
+        if llm["estimated_usd"] is not None:
+            ceiling = llm["limits"].get("max_usd")
+            of = f" of ${ceiling:g}" if ceiling is not None else ""
+            typer.echo(
+                f"    estimated ${llm['estimated_usd']:.6f}{of} "
+                f"(prices as of {llm['prices_as_of']})"
+            )
+        elif not llm["recorded"]:
+            typer.echo("    no recorded calls to estimate from (UBUNYE_LLM_MODE=record once)")
+    for warning in report["warnings"]:
+        typer.secho(f"  warning: {warning}", fg=typer.colors.YELLOW)
+    for problem in report["problems"]:
+        typer.secho(f"  problem: {problem}", fg=typer.colors.RED)
+    typer.echo()
 
 
 @app.command()
@@ -242,9 +449,17 @@ def run(
     lineage_dir: str = typer.Option(
         ".ubunye/lineage", "--lineage-dir", help="Root directory for lineage records."
     ),
+    backend_kind: Optional[str] = typer.Option(
+        None,
+        "--backend",
+        help="Execution backend by name: 'spark', 'databricks', 'pandas' (a laptop "
+        "run with no Spark and no JVM), or any installed plugin. See `ubunye backends`. "
+        "Default: the platform's session if there is one, else spark.",
+    ),
+    var: Optional[List[str]] = var_option(),
 ):
     """Run one or more tasks within a package sequentially."""
-    variables = {"dt": data_timestamp, "dtf": data_timestamp_format, "mode": mode}
+    variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
 
     # Resolve which tasks to run, the same way `validate` resolves them. The two
     # commands answered the same question differently for years: validate had
@@ -299,7 +514,7 @@ def run(
     spark_conf["spark.submit.deployMode"] = deploy_mode
 
     run_id = str(uuid.uuid4())
-    backend = SparkBackend(app_name=f"ubunye:{package}", conf=spark_conf)
+    backend = _resolve_backend_or_exit(backend_kind, app_name=f"ubunye:{package}", conf=spark_conf)
 
     # Build a lineage recorder if --lineage was requested
     lineage_recorder = None
@@ -324,7 +539,10 @@ def run(
             cfg = configs[task]
             task_dir = _task_path(usecase_dir, usecase, package, task)
             context = EngineContext(
-                run_id=run_id, profile=mode, task_name=f"{usecase}/{package}/{task}"
+                run_id=run_id,
+                profile=mode,
+                task_name=f"{usecase}/{package}/{task}",
+                variables=variables,
             )
             try:
                 execute_user_task(backend, task_dir, cfg, context, extra_hooks=extra_hooks)

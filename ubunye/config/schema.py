@@ -10,6 +10,7 @@ are a conscious tradeoff documented in the PR that introduced strict mode.
 
 from __future__ import annotations
 
+import difflib
 import re
 from enum import Enum
 from functools import lru_cache
@@ -115,9 +116,7 @@ def _connectors(group: str) -> Dict[str, Any]:
 
     found: Dict[str, Any] = {}
     try:
-        eps: Any = md.entry_points()
-        group_eps = eps.get(group, []) if hasattr(eps, "get") else eps.select(group=group)
-        for ep in group_eps:
+        for ep in md.entry_points(group=group):
             try:
                 found[ep.name] = ep.load()
             except Exception:  # noqa: BLE001 — one broken plugin must not break validation
@@ -125,6 +124,14 @@ def _connectors(group: str) -> Dict[str, Any]:
     except Exception:  # noqa: BLE001
         pass
     return found
+
+
+#: Keys any input or output block may carry, whatever its connector.
+COMMON_IO_KEYS = frozenset({"format", "options"})
+
+#: Keys any output block may carry: the engine's own write-mode settings, read by
+#: ``core/write_modes.py`` for every writer.
+OUTPUT_IO_KEYS = frozenset({"mode", "merge_keys", "replace_where"})
 
 
 def _registered_formats() -> frozenset:
@@ -219,7 +226,9 @@ class RegistryConfig(BaseModel):
 class ModelTransformParams(BaseModel):
     """Typed params for ``transform.type: model`` — for documentation and validation."""
 
-    model_config = ConfigDict(extra="forbid")
+    # ``model_class`` is the config's own name, so pydantic's reserved ``model_``
+    # prefix is switched off here (pydantic 2.0 refused the field; later ones warn).
+    model_config = ConfigDict(extra="forbid", protected_namespaces=())
 
     action: Literal["train", "predict"]
     model_class: str
@@ -227,6 +236,150 @@ class ModelTransformParams(BaseModel):
     model_path: Optional[str] = None
     input_name: Optional[str] = None
     registry: Optional[RegistryConfig] = None
+
+
+class BetweenSpec(BaseModel):
+    """``between``: a column's values lie within [min, max] (either may be left out)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    min: Optional[float] = None
+    max: Optional[float] = None
+
+    @model_validator(mode="after")
+    def _one_bound(self) -> "BetweenSpec":
+        if self.min is None and self.max is None:
+            raise ValueError("'between' needs 'min', 'max' or both")
+        return self
+
+
+class OneOfSpec(BaseModel):
+    """``one_of``: a column's values come from a fixed list."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    values: List[Any]
+
+
+class MatchesSpec(BaseModel):
+    """``matches``: a string column matches a regular expression."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    pattern: str
+
+    @field_validator("pattern")
+    @classmethod
+    def _compiles(cls, v: str) -> str:
+        try:
+            re.compile(v)
+        except re.error as exc:
+            raise ValueError(f"'matches' pattern {v!r} is not a valid regular expression: {exc}")
+        return v
+
+
+class RowCountSpec(BaseModel):
+    """``row_count``: the number of rows lies within [min, max]."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min: Optional[int] = None
+    max: Optional[int] = None
+
+
+EXPECTATION_KINDS = ("not_null", "unique", "between", "one_of", "matches", "row_count")
+#: Kinds judged per row; only these can quarantine rows.
+ROW_KINDS = ("not_null", "between", "one_of", "matches")
+
+
+class ExpectationRule(BaseModel):
+    """One check on an output, before it is written.
+
+    Exactly one kind is set. ``severity`` decides what a breach does: ``fail``
+    stops the run before anything is written, ``quarantine`` moves the breaking
+    rows to the set's quarantine output, ``warn`` only reports. A null passes
+    every kind except ``not_null``, as in SQL: pair a rule with ``not_null``
+    when a value must be present.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: Defaults to "<column>_<kind>" (or the kind alone) when left empty.
+    name: str = ""
+    severity: Literal["fail", "quarantine", "warn"] = "fail"
+    description: Optional[str] = None
+    not_null: Optional[str] = None
+    unique: Optional[List[str]] = None
+    between: Optional[BetweenSpec] = None
+    one_of: Optional[OneOfSpec] = None
+    matches: Optional[MatchesSpec] = None
+    row_count: Optional[RowCountSpec] = None
+
+    @field_validator("unique", mode="before")
+    @classmethod
+    def _unique_as_list(cls, v: Any) -> Any:
+        return [v] if isinstance(v, str) else v
+
+    @property
+    def kind(self) -> str:
+        return next(k for k in EXPECTATION_KINDS if getattr(self, k) is not None)
+
+    @property
+    def column(self) -> Optional[str]:
+        spec = getattr(self, self.kind)
+        if isinstance(spec, str):
+            return spec
+        if isinstance(spec, list):
+            return ", ".join(spec)
+        return getattr(spec, "column", None)
+
+    @model_validator(mode="after")
+    def _exactly_one_kind(self) -> "ExpectationRule":
+        kinds = [k for k in EXPECTATION_KINDS if getattr(self, k) is not None]
+        if len(kinds) != 1:
+            raise ValueError(
+                f"an expectation needs exactly one of {', '.join(EXPECTATION_KINDS)}; "
+                f"got {', '.join(kinds) or 'none'}"
+            )
+        if self.severity == "quarantine" and kinds[0] not in ROW_KINDS:
+            raise ValueError(
+                f"'{kinds[0]}' is about the whole output, not a row, so it cannot "
+                "quarantine rows; use severity fail or warn"
+            )
+        if not self.name:
+            column = (self.column or "").replace(", ", "_")
+            self.name = f"{column}_{kinds[0]}" if column else kinds[0]
+        return self
+
+
+class ExpectationSet(BaseModel):
+    """The expectations on one output, and where its quarantined rows go."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rules: List[ExpectationRule]
+    #: The output that receives rows breaking a ``quarantine`` rule, with a
+    #: ``_ubunye_failed_rules`` column naming the rules each row broke.
+    quarantine: Optional[str] = None
+    #: More than this share of rows quarantined fails the run: a source that has
+    #: changed under you is not fixed by quietly setting aside a third of the data.
+    max_quarantine_rate: Optional[float] = Field(default=None, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _quarantine_has_a_target(self) -> "ExpectationSet":
+        names = [r.name for r in self.rules]
+        dupes = sorted({n for n in names if names.count(n) > 1})
+        if dupes:
+            raise ValueError(f"expectation names must be unique; repeated: {', '.join(dupes)}")
+        wants = any(r.severity == "quarantine" for r in self.rules)
+        if wants and not self.quarantine:
+            raise ValueError("a rule with severity quarantine needs 'quarantine: <output name>'")
+        if self.max_quarantine_rate is not None and not wants:
+            raise ValueError("'max_quarantine_rate' needs at least one quarantine rule")
+        return self
 
 
 class TaskConfig(BaseModel):
@@ -237,6 +390,52 @@ class TaskConfig(BaseModel):
     inputs: Dict[str, IOConfig]
     transform: TransformConfig = Field(default_factory=TransformConfig)
     outputs: Dict[str, IOConfig]
+    #: Checks on outputs, by output name, run after the transform and before any
+    #: output is written. See ``ubunye.core.expectations``.
+    expectations: Dict[str, ExpectationSet] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _check_secret_references(self) -> "TaskConfig":
+        """Every ``secret://`` reference names an installed provider. Nothing is fetched."""
+        from ubunye.core import secrets
+
+        errors: List[str] = []
+        for role, blocks in (("inputs", self.inputs), ("outputs", self.outputs)):
+            for name, io in blocks.items():
+                errors += secrets.problems(io.model_dump(exclude_none=True), f"{role}.{name}")
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
+
+    @model_validator(mode="after")
+    def _check_expectations_name_outputs(self) -> "TaskConfig":
+        errors: List[str] = []
+        quarantines = [s.quarantine for s in self.expectations.values() if s.quarantine]
+        targets = set(quarantines)
+        shared = sorted({q for q in quarantines if quarantines.count(q) > 1})
+        if shared:
+            errors.append(
+                f"expectations: two outputs quarantine into '{', '.join(shared)}'; "
+                "give each its own quarantine output"
+            )
+        for name, spec in self.expectations.items():
+            if name not in self.outputs:
+                errors.append(f"expectations.{name}: there is no output named '{name}'")
+            if spec.quarantine and spec.quarantine not in self.outputs:
+                errors.append(
+                    f"expectations.{name}.quarantine: there is no output named "
+                    f"'{spec.quarantine}'"
+                )
+            if spec.quarantine == name:
+                errors.append(f"expectations.{name}: an output cannot quarantine into itself")
+            if name in targets:
+                errors.append(
+                    f"expectations.{name}: '{name}' receives quarantined rows, so it "
+                    "cannot have expectations of its own"
+                )
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
 
     @model_validator(mode="after")
     def _check_non_empty(self) -> "TaskConfig":
@@ -259,7 +458,8 @@ class TaskConfig(BaseModel):
         declare any, it gets none: `Connector.validate_config` returns `[]` by default,
         so a simple connector stays simple.
         """
-        errors: List[str] = []
+        # A misspelt key explains a "requires" error below it, so it is reported first.
+        errors: List[str] = self._unknown_key_errors()
 
         for role, group, blocks in (
             ("inputs", "ubunye.readers", self.inputs),
@@ -293,6 +493,47 @@ class TaskConfig(BaseModel):
         if errors:
             raise ValueError("; ".join(errors))
         return self
+
+    def _unknown_key_errors(self) -> List[str]:
+        """A key the connector does not read is a typo until proven otherwise.
+
+        ``IOConfig`` accepts any key, because connectors read their own settings, so
+        ``paht:`` used to validate and be ignored. A connector that declares
+        ``CONFIG_KEYS`` gets every other key reported, with the closest real one. A
+        connector that declares nothing keeps accepting anything: the check is the
+        plugin's to opt into, like ``validate_config``.
+        """
+        errors: List[str] = []
+        for role, group, blocks in (
+            ("inputs", "ubunye.readers", self.inputs),
+            ("outputs", "ubunye.writers", self.outputs),
+        ):
+            plugins = _connectors(group)
+            for name, io in blocks.items():
+                declared = getattr(plugins.get(io.format), "CONFIG_KEYS", None)
+                if declared is None:
+                    continue
+                allowed = set(declared) | COMMON_IO_KEYS
+                if role == "outputs":
+                    allowed |= OUTPUT_IO_KEYS
+                # An explicit null is "not set": a parsed config dumped and read back
+                # carries every common field, most of them None.
+                given = {k for k in io.model_fields_set if getattr(io, k) is not None}
+                given |= {k for k, v in (io.model_extra or {}).items() if v is not None}
+                for key in sorted(given - allowed):
+                    near = difflib.get_close_matches(key, sorted(allowed), n=1, cutoff=0.6)
+                    if near:
+                        errors.append(
+                            f"{role}.{name}: '{key}' is not a setting of '{io.format}'; "
+                            f"did you mean '{near[0]}'?"
+                        )
+                    else:
+                        errors.append(
+                            f"{role}.{name}: '{key}' is not a setting of '{io.format}', "
+                            f"which reads: {', '.join(sorted(allowed))}. Options for the "
+                            "underlying engine go under 'options'."
+                        )
+        return errors
 
     @model_validator(mode="after")
     def _check_writable_outputs(self) -> "TaskConfig":

@@ -15,7 +15,6 @@ monitor chain. It can be:
              params:
                store: filesystem
                base_dir: .ubunye/lineage
-               sample_fraction: 0.01
 
 3. **Enabled as entry-point** — registered under ``ubunye.monitors`` so users
    can reference it by name without importing.
@@ -26,11 +25,10 @@ with final status, duration, and per-step hashes at ``task_end``.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
+from ubunye.lineage import evidence
 from ubunye.lineage.context import RunContext, StepRecord
 from ubunye.lineage.storage import FileSystemLineageStore, LineageStore, S3LineageStore
 
@@ -41,15 +39,41 @@ def _utcnow() -> str:
 
 
 def _hash_config(config: dict) -> str:
-    """Return a sha256 of the JSON-serialised config dict."""
-    payload = json.dumps(config, sort_keys=True, default=str).encode()
-    return "sha256:" + hashlib.sha256(payload).hexdigest()
+    """The config hash, computed as ``ubunye plan`` computes it."""
+    from ubunye.config.hashing import config_hash
+
+    return config_hash(config)
+
+
+def _engine_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("ubunye-engine")
+    except Exception:
+        return "unknown"
 
 
 def _make_store(store: str, base_dir: str) -> LineageStore:
     if store == "s3":
         return S3LineageStore(base_dir)
     return FileSystemLineageStore(base_dir)
+
+
+def _fingerprint_into(step: StepRecord, frame: Any) -> None:
+    """Every row, one pass, the same method on every engine (ADR 006).
+
+    A failure is recorded as a failure: no data_hash and the reason, never the
+    schema hash standing in for the data.
+    """
+    from ubunye.lineage.content_hash import fingerprint
+
+    print_ = fingerprint(frame)
+    step.schema_hash = print_.schema_hash
+    step.data_hash = print_.data_hash
+    step.row_count = print_.row_count
+    step.hash_method = print_.method
+    step.hash_error = print_.error
 
 
 class LineageRecorder:
@@ -62,7 +86,8 @@ class LineageRecorder:
     base_dir:
         Root directory for the ``FileSystemLineageStore``.
     sample_fraction:
-        Fraction of rows sampled when hashing DataFrames (0 < value ≤ 1).
+        Ignored since 0.7.0 and kept so existing configs still load: every row is
+        hashed now (the ``rows-v1`` content hash), so there is nothing to sample.
     """
 
     def __init__(
@@ -70,8 +95,16 @@ class LineageRecorder:
         store: str = "filesystem",
         base_dir: str = ".ubunye/lineage",
         sample_fraction: float = 0.01,
+        hash_inputs: bool = True,
     ) -> None:
         self._store: LineageStore = _make_store(store, base_dir)
+        # Inputs are hashed like outputs (every row). It costs a pass over each
+        # input; turn it off for inputs too large to read twice.
+        self._hash_inputs = hash_inputs
+        # OpenLineage events, when OPENLINEAGE_URL or UBUNYE_OPENLINEAGE_FILE is set.
+        from ubunye.lineage.openlineage import Emitter
+
+        self._openlineage = Emitter.from_env()
         self._sample_fraction = sample_fraction
         # In-flight run contexts keyed by run_id (supports concurrent tasks)
         self._runs: Dict[str, RunContext] = {}
@@ -102,6 +135,7 @@ class LineageRecorder:
         model = top_cfg.get("MODEL", "")
         version = top_cfg.get("VERSION", "")
 
+        env = evidence.environment()
         ctx = RunContext(
             run_id=run_id,
             task_path=task_path,
@@ -111,14 +145,28 @@ class LineageRecorder:
             profile=profile,
             model=model,
             version=version,
-            config_hash=_hash_config(top_cfg),
+            # The hash of the config as loaded, set by the entry point before the
+            # engine rewrites it; hashing what arrives here would not match the plan.
+            config_hash=getattr(context, "config_hash", None) or _hash_config(top_cfg),
             started_at=_utcnow(),
+            engine_version=_engine_version(),
+            backend=getattr(context, "backend", None) or "",
+            code_hash=evidence.code_hash(getattr(context, "task_dir", None)),
+            environment=env,
+            environment_hash=evidence.environment_hash(env),
+            variables={
+                k: v
+                for k, v in dict(getattr(context, "variables", {}) or {}).items()
+                if v is not None
+            },
         )
         self._runs[run_id] = ctx
         try:
             self._store.save(ctx)
         except Exception:
             pass  # Never break the task due to lineage recording failure
+        if self._openlineage is not None:
+            self._openlineage.emit(ctx, "START")
 
     def task_end(
         self,
@@ -128,6 +176,11 @@ class LineageRecorder:
         outputs: Optional[Dict[str, Any]],
         status: str,
         duration_sec: float,
+        inputs: Optional[Dict[str, Any]] = None,
+        expectations: Optional[List[Dict[str, Any]]] = None,
+        timings: Optional[List[Dict[str, Any]]] = None,
+        llm_calls: Optional[List[Dict[str, Any]]] = None,
+        llm_budget: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Update the run record with final status, duration, and step hashes."""
         run_id = context.run_id
@@ -143,32 +196,25 @@ class LineageRecorder:
         inputs_cfg: Dict[str, Any] = cfg_section.get("inputs", {}) or {}
         outputs_cfg: Dict[str, Any] = cfg_section.get("outputs", {}) or {}
 
-        # --- Build input StepRecords (no DataFrame hashing — inputs were read) ---
-        ctx.inputs = [
-            StepRecord.from_io_cfg(name, "input", io_cfg) for name, io_cfg in inputs_cfg.items()
-        ]
+        ctx.timings = list(timings or [])
+        ctx.expectations = list(expectations or [])
+        ctx.llm_calls = list(llm_calls or [])
+        ctx.llm_budget = dict(llm_budget or {})
+
+        # --- Input StepRecords, hashed like outputs when the frames are given ---
+        ctx.inputs = []
+        for name, io_cfg in inputs_cfg.items():
+            step = StepRecord.from_io_cfg(name, "input", io_cfg)
+            if self._hash_inputs and inputs and inputs.get(name) is not None:
+                _fingerprint_into(step, inputs[name])
+            ctx.inputs.append(step)
 
         # --- Build output StepRecords with optional DataFrame hashes ---
         step_outputs: list[StepRecord] = []
         for name, io_cfg in outputs_cfg.items():
             step = StepRecord.from_io_cfg(name, "output", io_cfg)
-            if outputs and name in outputs:
-                df = outputs[name]
-                if df is not None:
-                    try:
-                        from ubunye.lineage.hasher import fingerprint_dataframe
-
-                        # ONE pass. This used to be three: hash_dataframe counted the
-                        # DataFrame, then sampled and collected it, and then this loop
-                        # counted the SAME uncached DataFrame again — so lineage
-                        # re-executed the whole pipeline two to three times per output,
-                        # purely to describe a run that had already finished.
-                        print_ = fingerprint_dataframe(df, sample_fraction=self._sample_fraction)
-                        step.schema_hash = print_.schema_hash
-                        step.data_hash = print_.data_hash
-                        step.row_count = print_.row_count if print_.row_count >= 0 else None
-                    except Exception:
-                        pass  # Hashing is best-effort
+            if outputs and name in outputs and outputs[name] is not None:
+                _fingerprint_into(step, outputs[name])
             step_outputs.append(step)
         ctx.outputs = step_outputs
 
@@ -176,6 +222,8 @@ class LineageRecorder:
             self._store.save(ctx)
         except Exception:
             pass
+        if self._openlineage is not None:
+            self._openlineage.emit(ctx, "COMPLETE" if status == "success" else "FAIL")
 
         # Clean up in-flight state
         self._runs.pop(run_id, None)

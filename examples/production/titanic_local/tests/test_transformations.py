@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from transformations import (  # noqa: E402 (conftest mutates sys.path)
     OUTPUT_COLUMNS,
     compute_survival_by_class,
@@ -83,3 +82,22 @@ def test_golden_matches_canonical_titanic_stats(spark):
         assert row["passenger_count"] == pcount
         assert row["survivors_count"] == survivors
         assert row["survival_rate"] == pytest.approx(rate, abs=1e-4)
+
+
+def _records(native):
+    """Rows of a Spark or pandas frame as plain dicts, in order."""
+    if hasattr(native, "collect"):
+        return [row.asDict() for row in native.collect()]
+    return native.to_dict("records")
+
+
+def test_pandas_gives_the_same_rows_as_spark(spark):
+    """One implementation for both engines (ADR 005): same rows, same order."""
+    import pandas as pd
+
+    rows = [(1, 3, 0), (2, 1, 1), (3, 2, 0), (4, 1, 1), (5, 3, 1), (6, 3, 0)]
+    columns = ["PassengerId", "Pclass", "Survived"]
+    on_spark = compute_survival_by_class(spark.createDataFrame(rows, columns))
+    on_pandas = compute_survival_by_class(pd.DataFrame(rows, columns=columns))
+    assert type(on_pandas) is pd.DataFrame  # the engine's own frame comes back
+    assert _records(on_pandas) == _records(on_spark)

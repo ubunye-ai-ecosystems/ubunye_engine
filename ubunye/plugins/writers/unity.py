@@ -35,7 +35,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List
 
+from ubunye.adapters.spark import write_exec
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core import write_modes
+from ubunye.core.capabilities import SPARK
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
 
@@ -100,6 +103,26 @@ def _attempt(spark: Any, statement: str, what: str, table: str) -> None:
 class UnityTableWriter(Writer):
     """Write DataFrame to a Unity Catalog table (Delta by default)."""
 
+    # The settings this connector reads (typos in any other key fail validation).
+    # `path` is read by the s3 writer, not this one; it is accepted so one
+    # output block can serve both (UBUNYE_SINK picks which is real).
+    CONFIG_KEYS = frozenset(
+        {
+            "catalog",
+            "schema",
+            "table",
+            "tbl_name",
+            "file_format",
+            "partitionBy",
+            "optimize",
+            "vacuum",
+            "path",
+        }
+    )
+
+    # Needs a live SparkSession; checked before a run (ADR 002).
+    REQUIRES = frozenset({SPARK})
+
     SUPPORTS_MERGE = True
     MERGE_FILE_FORMATS = frozenset({"delta"})
 
@@ -112,7 +135,7 @@ class UnityTableWriter(Writer):
         return ["format 'unity' as an output requires 'table' or (catalog + schema + tbl_name)"]
 
     def write(self, df: Any, cfg: Dict[str, Any], backend) -> None:
-        spark = backend.spark
+        spark = spark_of(backend, "unity", error=SinkWriteError)
         full_name = _qualify(cfg)
 
         # The top-level cfg["format"] is the Ubunye plugin dispatch key
@@ -134,7 +157,7 @@ class UnityTableWriter(Writer):
         comment: str | None = options.pop("comment", None)  # we'll set via SQL after creation
         tblprops: Dict[str, str] = dict(options.pop("tblproperties", {}) or {})
 
-        write_modes.apply(
+        write_exec.apply(
             df,
             spark,
             resolved,

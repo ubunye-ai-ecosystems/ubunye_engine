@@ -21,7 +21,10 @@ intermediate dataset is a filesystem path both configs agree on.
 ## What this example exercises
 
 - **`ubunye run -t task1 -t task2`**: sequential multi-task execution through a
-  single Spark backend.
+  single backend, Spark or pandas.
+- **One transform for every engine**: both tasks are written with Narwhals, so
+  the pipeline runs on Spark and on the pandas backend (no Java) and each task
+  leaves the same data hash on both (checked in CI).
 - **Sibling-module isolation**: each task has its own `transformations.py`. The
   engine's `_with_task_dir_on_path` context manager evicts task-local modules
   from `sys.modules` between tasks so the second task doesn't accidentally import
@@ -45,6 +48,15 @@ ubunye validate -d pipelines -u titanic -p pipeline -t clean_data -t aggregate
 
 # 4. Run the pipeline
 ubunye run -d pipelines -u titanic -p pipeline -t clean_data -t aggregate -m DEV --lineage
+
+# 5. The same pipeline on pandas, no Java, into the same outputs
+ubunye run -d pipelines -u titanic -p pipeline -t clean_data -t aggregate -m DEV --lineage \
+  --backend pandas
+
+# 6. Each task's Spark and pandas run records agree, hash for hash
+for task in clean_data aggregate; do
+  bash scripts/same_receipt.sh pipelines titanic pipeline "$task"
+done
 ```
 
 ## Running tests

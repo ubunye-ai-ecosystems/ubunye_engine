@@ -1,0 +1,105 @@
+name: Ubunye gate
+description: >
+  Run an Ubunye task on the pull request's base and on its head, then fail the
+  check if the head's run receipt regresses (output changed without a VERSION
+  bump, a failed expectation, a missing output, or a limit you set).
+author: Ubunye AI Ecosystems
+
+inputs:
+  usecase-dir:
+    description: The pipelines folder (-d).
+    required: true
+  usecase:
+    description: The use case (-u).
+    required: true
+  package:
+    description: The package (-p).
+    required: true
+  task:
+    description: The task (-t).
+    required: true
+  backend:
+    description: The backend to run on. pandas needs no Java.
+    default: pandas
+  engine:
+    description: The engine to install, as a pip requirement.
+    default: "ubunye-engine[pandas]"
+  extra-packages:
+    description: Anything else the task needs, as pip requirements.
+    default: ""
+  baseline-ref:
+    description: The commit to compare against. Default, the pull request's base.
+    default: ""
+  gate-args:
+    description: Extra `ubunye gate` flags, e.g. "--max-slowdown 0.5 --allow-data-change".
+    default: ""
+  llm-mode:
+    description: >
+      UBUNYE_LLM_MODE for both runs. "replay" (the default) answers model calls from
+      the task's committed replay file: no key, no spend, and a changed prompt fails
+      closed. "live" calls the model on both runs and spends money.
+    default: replay
+  python-version:
+    description: Python to run on.
+    default: "3.12"
+
+outputs:
+  passed:
+    description: "'true' when the gate passed."
+    value: ${{ steps.gate.outputs.passed }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install the engine
+      shell: bash
+      env:
+        ENGINE: ${{ inputs.engine }}
+        EXTRA: ${{ inputs.extra-packages }}
+      run: |
+        pip install -q "$ENGINE" $EXTRA
+        ubunye version
+
+    - name: Check out the baseline
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.baseline-ref || github.event.pull_request.base.sha }}
+        path: _ubunye_baseline
+
+    - name: Run the task on the baseline and on the head
+      shell: bash
+      env:
+        DIR: ${{ inputs.usecase-dir }}
+        UC: ${{ inputs.usecase }}
+        PKG: ${{ inputs.package }}
+        TASK: ${{ inputs.task }}
+        BACKEND: ${{ inputs.backend }}
+        UBUNYE_LLM_MODE: ${{ inputs.llm-mode }}
+      run: |
+        set -euo pipefail
+        run_and_export() {
+          local root="$1" out="$2"
+          ( cd "$root" && ubunye run -d "$DIR" -u "$UC" -p "$PKG" -t "$TASK" --backend "$BACKEND" --lineage ) || true
+          ( cd "$root" && ubunye lineage show -d "$DIR" -u "$UC" -p "$PKG" -t "$TASK" --json ) > "$out"
+        }
+        run_and_export _ubunye_baseline "$RUNNER_TEMP/ubunye-baseline.json"
+        run_and_export . "$RUNNER_TEMP/ubunye-candidate.json"
+
+    - name: Gate
+      id: gate
+      shell: bash
+      env:
+        GATE_ARGS: ${{ inputs.gate-args }}
+      run: |
+        set +e
+        ubunye gate \
+          --baseline "$RUNNER_TEMP/ubunye-baseline.json" \
+          --candidate "$RUNNER_TEMP/ubunye-candidate.json" \
+          --summary "$GITHUB_STEP_SUMMARY" $GATE_ARGS
+        status=$?
+        echo "passed=$([ $status -eq 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        exit $status

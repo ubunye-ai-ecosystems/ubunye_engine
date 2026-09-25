@@ -5,12 +5,15 @@ from __future__ import annotations
 import importlib.metadata as md
 import logging
 import os
+import time
 import uuid
-from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 
-from ubunye.backends.spark_backend import SparkBackend  # default backend
+from ubunye.core.capabilities import Capabilities, check_task
 from ubunye.core.errors import (
+    BackendCapabilityError,
     ReaderNotFoundError,
     TransformNotFoundError,
     TransformOutputError,
@@ -18,6 +21,7 @@ from ubunye.core.errors import (
 )
 from ubunye.core.hooks import Hook, HookChain
 from ubunye.core.interfaces import Backend, Reader, Transform, Writer
+from ubunye.core.secrets import SecretResolver
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +33,15 @@ class EngineContext:
     run_id: str
     profile: Optional[str] = None
     task_name: Optional[str] = None  # e.g., "fraud_detection/claims/claim_etl"
+    #: The backend running the task ("spark", "pandas", ...); filled in by the engine.
+    backend: Optional[str] = None
+    #: The template variables the run was given (dt, dtf, mode, ...).
+    variables: Dict[str, Any] = field(default_factory=dict)
+    #: The hash of the resolved config as loaded (ubunye.config.hashing), the
+    #: same one ``ubunye plan`` shows; set before the engine rewrites the config.
+    config_hash: Optional[str] = None
+    #: The task folder, so the run record can hash the task's code.
+    task_dir: Optional[str] = None
 
 
 class Registry:
@@ -41,10 +54,7 @@ class Registry:
 
     @staticmethod
     def _load(group: str) -> Dict[str, Any]:
-        eps: Any = md.entry_points()
-        # Handle dict (Python <3.10) or SelectableGroups (Python >=3.10)
-        group_eps = eps.get(group, []) if hasattr(eps, "get") else eps.select(group=group)
-        return {ep.name: ep.load() for ep in group_eps}
+        return {ep.name: ep.load() for ep in md.entry_points(group=group)}
 
     @classmethod
     def from_entrypoints(cls) -> "Registry":
@@ -66,17 +76,19 @@ class Registry:
 
 
 # ---------------- Default hook assembly ----------------
-_TELEMETRY_ENABLED = os.getenv("UBUNYE_TELEMETRY", "0") not in ("0", "", "false", "False")
+def _telemetry_enabled() -> bool:
+    """``UBUNYE_TELEMETRY``, read when a run starts.
+
+    It was read once at import, so setting it in a notebook (or anywhere after
+    ``import ubunye``) did nothing.
+    """
+    return os.getenv("UBUNYE_TELEMETRY", "0").strip().lower() not in ("0", "", "false", "no", "off")
 
 
 def _discover_hooks() -> List[type[Hook]]:
     """Load Hook classes from the ``ubunye.hooks`` entry point group."""
-    eps: Any = md.entry_points()
-    group_eps = (
-        eps.get("ubunye.hooks", []) if hasattr(eps, "get") else eps.select(group="ubunye.hooks")
-    )
     classes: List[type[Hook]] = []
-    for ep in group_eps:
+    for ep in md.entry_points(group="ubunye.hooks"):
         try:
             classes.append(ep.load())
         except Exception:
@@ -104,7 +116,7 @@ def _default_hooks(cfg: Dict[str, Any]) -> List[Hook]:
     from ubunye.telemetry.hooks import LegacyMonitorsHook
 
     hooks: List[Hook] = []
-    if _TELEMETRY_ENABLED:
+    if _telemetry_enabled():
         for hook_cls in _discover_hooks():
             try:
                 hooks.append(hook_cls())
@@ -113,6 +125,17 @@ def _default_hooks(cfg: Dict[str, Any]) -> List[Hook]:
                 pass
     hooks.append(LegacyMonitorsHook(cfg))
     return hooks
+
+
+def _unwrap(frame: Any) -> Any:
+    """A frame wrapper as the frame it wraps (ADR 005).
+
+    A transform written with Narwhals may return the Narwhals frame; it offers
+    ``to_native()``, and so does any wrapper that follows the same protocol. The
+    engine unwraps by that method alone and never imports the wrapper's library.
+    """
+    to_native = getattr(type(frame), "to_native", None)
+    return frame.to_native() if callable(to_native) else frame
 
 
 class Engine:
@@ -152,12 +175,33 @@ class Engine:
             ``backend.stop()``. Set to False when the caller owns the backend
             lifecycle (e.g. Python API running multiple tasks on one session).
         """
-        self.backend = backend or SparkBackend(app_name="ubunye")
+        # With no backend given, one is resolved like any run (the platform's
+        # session, else the default) when it is first needed, so an Engine can be
+        # built, and a config checked, where no engine is installed. The core
+        # names no engine (ADR 001 and 003).
+        self._backend: Optional[Backend] = backend
         self.registry = registry or Registry.from_entrypoints()
         self.context = context or EngineContext(run_id=str(uuid.uuid4()))
         self._hooks_override = list(hooks) if hooks is not None else None
         self._extra_hooks = list(extra_hooks) if extra_hooks else []
+        # One per engine, so each secret is fetched once per run.
+        self._secrets = SecretResolver()
+        # Per-step timings of the current run, for the run record.
+        self._timings: List[Dict[str, Any]] = []
         self._manage_backend = manage_backend
+
+    @property
+    def backend(self) -> Any:
+        """The backend running this engine's tasks, resolved on first use."""
+        if self._backend is None:
+            from ubunye.core import backends
+
+            self._backend = backends.resolve(None, app_name="ubunye")
+        return self._backend
+
+    @backend.setter
+    def backend(self, value: Any) -> None:
+        self._backend = value
 
     # ---------- public API ----------
 
@@ -186,6 +230,7 @@ class Engine:
         transforms = self._normalize_transforms(transform_cfg)
         self._warn_deprecated_noop(transforms)
         self._validate_transforms_exist(transforms)
+        self._check_backend_can_run(cfg)
 
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
@@ -196,14 +241,28 @@ class Engine:
                 pass
             return None
 
+        self._timings = []
+        state["timings"] = self._timings
+        state["llm_calls"] = []
         with chain.task(ctx, cfg, state):
             if self._manage_backend:
                 self.backend.start()
             try:
                 sources = self._read_inputs(ctx, chain, inputs_cfg)
-                outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
-                self._write_outputs(ctx, chain, outputs_cfg, outputs_map)
-                state["outputs"] = outputs_map
+                state["inputs"] = self._to_ports(sources)
+                from ubunye import llm
+
+                budget = llm.budget.Budget.from_env()
+                try:
+                    with llm.recording(state["llm_calls"], task_dir=ctx.task_dir, budget=budget):
+                        outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
+                finally:
+                    state["llm_budget"] = budget.summary() if budget.limited else {}
+                outputs_map = self._check_expectations(cfg, outputs_map, state)
+                ports = self._to_ports(outputs_map)
+                self._write_outputs(ctx, chain, outputs_cfg, ports)
+                # Hooks (lineage, monitors) get the port; the caller gets native frames.
+                state["outputs"] = ports
                 return outputs_map
             finally:
                 if self._manage_backend:
@@ -212,20 +271,21 @@ class Engine:
     def read_inputs(self, cfg: dict) -> Dict[str, Any]:
         """Read all inputs defined in ``CONFIG.inputs``.
 
-        Returns a dict mapping input name to DataFrame — suitable for
-        interactive inspection before calling :meth:`apply_transforms`.
+        Returns a dict mapping input name to the backend's own frame type (a
+        ``pandas.DataFrame`` on pandas) — suitable for interactive inspection
+        before calling :meth:`apply_transforms`.
         """
         inputs_cfg = cfg.get("CONFIG", {}).get("inputs", {}) or {}
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         self._validate_io_configs(inputs_cfg, outputs_cfg)
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        return self._read_inputs(ctx, chain, inputs_cfg)
+        return self._to_natives(self._read_inputs(ctx, chain, inputs_cfg))
 
     def apply_transforms(self, sources: Dict[str, Any], cfg: dict) -> Dict[str, Any]:
         """Apply configured transforms to *sources*.
 
-        Returns a dict mapping output name to DataFrame.
+        Returns a dict mapping output name to the backend's own frame type.
         """
         transform_cfg = cfg.get("CONFIG", {}).get("transform") or {}
         transforms = self._normalize_transforms(transform_cfg)
@@ -234,19 +294,99 @@ class Engine:
         chain = self._build_hook_chain(cfg)
         return self._apply_transforms(ctx, chain, sources, transforms)
 
-    def write_outputs(self, outputs: Dict[str, Any], cfg: dict) -> None:
-        """Write *outputs* to the sinks defined in ``CONFIG.outputs``."""
+    def write_outputs(self, outputs: Dict[str, Any], cfg: dict, *, as_run: bool = False) -> None:
+        """Write *outputs* to the sinks defined in ``CONFIG.outputs``.
+
+        With ``as_run=True`` the write is wrapped as a whole task for the hooks,
+        so lineage and monitors record it exactly as they record ``run()``. This
+        is how a notebook that reads, transforms and writes step by step still
+        leaves a run record.
+        """
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        self._write_outputs(ctx, chain, outputs_cfg, outputs)
+        state: Dict[str, Any] = {"outputs": None}
+        if not as_run:
+            outputs = self._check_expectations(cfg, outputs, state)
+            self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
+            return
+        with chain.task(ctx, cfg, state):
+            outputs = self._check_expectations(cfg, outputs, state)
+            ports = self._to_ports(outputs)
+            self._write_outputs(ctx, chain, outputs_cfg, ports)
+            state["outputs"] = ports
+
+    def _check_expectations(
+        self, cfg: dict, outputs: Dict[str, Any], state: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """``CONFIG.expectations``: check every output before any is written.
+
+        Returns the frames to write: clean rows, plus the quarantined rows under
+        their quarantine output. Raises ``ExpectationError`` (nothing written)
+        when a ``fail`` rule is broken. Every rule's result goes into
+        ``state["expectations"]`` for the hooks.
+        """
+        raw = (cfg.get("CONFIG") or {}).get("expectations") or {}
+        if not raw:
+            return outputs
+        from ubunye.config.schema import ExpectationSet
+        from ubunye.core import expectations
+
+        specs = {name: ExpectationSet.model_validate(spec) for name, spec in raw.items()}
+        from ubunye.core.errors import ExpectationError
+
+        try:
+            checked, results = expectations.apply(self._to_natives(outputs), specs)
+        except ExpectationError as exc:
+            state["expectations"] = list(exc.results)
+            raise
+        state["expectations"] = [r.as_dict() for r in results]
+        return checked
+
+    @contextmanager
+    def _step(
+        self, chain: HookChain, ctx: EngineContext, label: str, meta: Optional[Dict[str, Any]]
+    ) -> Iterator[None]:
+        """A hook step that is also timed, for the run record."""
+        t0 = time.perf_counter()
+        with chain.step(ctx, label, meta):
+            yield
+        entry: Dict[str, Any] = {"step": label}
+        entry.update(meta or {})
+        entry["seconds"] = round(time.perf_counter() - t0, 6)
+        self._timings.append(entry)
+
+    # ---------- the frame boundary (ADR 004) ----------
+
+    def _to_natives(self, frames: Dict[str, Any]) -> Dict[str, Any]:
+        """Frames as a transform sees them: the backend's own type."""
+        frames = {name: _unwrap(frame) for name, frame in frames.items()}
+        if not isinstance(self.backend, Backend):
+            return frames  # a test double or pre-0.7 object: pass through
+        return {name: self.backend.to_native(frame) for name, frame in frames.items()}
+
+    def _to_ports(self, frames: Dict[str, Any]) -> Dict[str, Any]:
+        """Frames as the engine sees them: behind the DataFramePort."""
+        frames = {name: _unwrap(frame) for name, frame in frames.items()}
+        if not isinstance(self.backend, Backend):
+            return frames
+        return {name: self.backend.to_port(frame) for name, frame in frames.items()}
 
     # ---------- shared helpers ----------
 
     def _resolve_context(self, cfg: dict) -> EngineContext:
         task_name = self.context.task_name or cfg.get("TASK_NAME") or "unknown_task"
         profile = self.context.profile or cfg.get("ENGINE", {}).get("active_profile") or "default"
-        return EngineContext(run_id=self.context.run_id, profile=profile, task_name=task_name)
+        backend = self.context.backend or getattr(self.backend, "name", "") or None
+        return EngineContext(
+            run_id=self.context.run_id,
+            profile=profile,
+            task_name=task_name,
+            backend=backend if isinstance(backend, str) else None,
+            variables=dict(self.context.variables),
+            config_hash=self.context.config_hash,
+            task_dir=self.context.task_dir,
+        )
 
     def _build_hook_chain(self, cfg: dict) -> HookChain:
         if self._hooks_override is not None:
@@ -277,8 +417,9 @@ class Engine:
                     hint=f"Check the 'format' field in CONFIG.inputs.{name}. "
                     f"Installed reader plugins: {', '.join(sorted(self.registry.readers))}",
                 )
-            with chain.step(ctx, f"Reader:{rtype}", {"input": name}):
-                sources[name] = reader_cls().read(icfg, self.backend)
+            with self._step(chain, ctx, f"Reader:{rtype}", {"input": name}):
+                # Secrets are swapped in only here, in the connector's copy.
+                sources[name] = reader_cls().read(self._secrets.resolve(icfg), self.backend)
         return sources
 
     def _apply_transforms(
@@ -288,13 +429,15 @@ class Engine:
         sources: Dict[str, Any],
         transforms: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        outputs_map: Dict[str, Any] = dict(sources)
+        # Transforms see native frames (ADR 004); between transforms too, so one
+        # that hands back a port still gives the next a native frame.
+        outputs_map: Dict[str, Any] = self._to_natives(sources)
         for tcfg in transforms:
             ttype = tcfg.get("type")
             if ttype is None:
                 continue
             tcls = self.registry.transforms[ttype]
-            with chain.step(ctx, f"Transform:{ttype}", None):
+            with self._step(chain, ctx, f"Transform:{ttype}", None):
                 outputs_map = tcls().apply(outputs_map, tcfg, self.backend)
             if not isinstance(outputs_map, dict):
                 raise TransformOutputError(
@@ -302,6 +445,7 @@ class Engine:
                     context={"Transform": ttype, "Actual type": type(outputs_map).__name__},
                     hint="The apply() method must return a dict mapping output names to DataFrames.",
                 )
+            outputs_map = self._to_natives(outputs_map)
         return outputs_map
 
     def _write_outputs(
@@ -335,10 +479,27 @@ class Engine:
                     },
                     hint="Ensure your transform returns a dict with keys matching CONFIG.outputs.",
                 )
-            with chain.step(ctx, f"Writer:{wtype}", {"output": name}):
-                writer_cls().write(outputs_map[name], ocfg, self.backend)
+            with self._step(chain, ctx, f"Writer:{wtype}", {"output": name}):
+                writer_cls().write(outputs_map[name], self._secrets.resolve(ocfg), self.backend)
 
     # ---------- internal helpers ----------
+
+    def _check_backend_can_run(self, cfg: dict) -> None:
+        """Refuse, before anything starts, a task the backend has said it cannot run."""
+        caps = getattr(self.backend, "capabilities", None)
+        if not isinstance(caps, Capabilities):
+            return  # a backend (or test double) that declares nothing is not pre-checked
+        name = getattr(self.backend, "name", "") or type(self.backend).__name__
+        io_check = self.backend.check_io if isinstance(self.backend, Backend) else None
+        problems = check_task(caps, cfg, self.registry, backend_name=name, io_check=io_check)
+        if problems:
+            raise BackendCapabilityError(
+                f"This task cannot run on the {name} backend:\n"
+                + "\n".join(f"  - {p}" for p in problems),
+                context={"Backend": name},
+                hint="Run it on a backend that can (--backend spark), or change the "
+                "inputs and outputs listed above.",
+            )
 
     def _validate_io_configs(self, inputs: Dict[str, Any], outputs: Dict[str, Any]) -> None:
         missing_in = [k for k, v in inputs.items() if not v.get("format")]

@@ -29,10 +29,12 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
+from ubunye.adapters.spark.catalog import set_catalog_and_schema
 from ubunye.config import load_config
-from ubunye.core.catalog import set_catalog_and_schema
+from ubunye.config.variables import build_variables
+from ubunye.core import backends
 from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend
 from ubunye.core.runtime import EngineContext
@@ -48,41 +50,58 @@ def _make_app_name(
     return f"ubunye:{'.'.join(parts)}" if parts else "ubunye"
 
 
+def _task_identity(task_path: Path) -> Tuple[Path, str]:
+    """``(usecase_dir, "usecase/package/task")`` for a task folder.
+
+    The one identity every entry point records lineage under, so a run started
+    from Python is found by ``ubunye lineage list -d <usecase_dir> -u -p -t``
+    exactly like a CLI run. Before 0.7.0 ``run_task`` and ``notebook`` keyed
+    lineage by the folder name alone, under the package folder, so their records
+    were invisible to the CLI.
+    """
+    parts = task_path.parts
+    if len(parts) >= 4:
+        return task_path.parents[2], "/".join(parts[-3:])
+    return task_path.parent, task_path.name
+
+
+#: A backend as the API accepts it: an instance, a registered name, or ``None``.
+BackendChoice = Union[Backend, str, None]
+
+
 def _detect_backend(
     spark: Optional[Any] = None,
     spark_conf: Optional[Dict[str, str]] = None,
     app_name: str = "ubunye",
+    backend: BackendChoice = None,
 ) -> Backend:
-    """Pick the right backend: reuse an active session or create a new one.
+    """Pick the backend for a run (ADR 003).
 
     Resolution order:
-    1. If *spark* is an explicit SparkSession, wrap it in DatabricksBackend.
-    2. If an active SparkSession exists (Databricks), use DatabricksBackend.
-    3. Otherwise fall back to SparkBackend with the given conf.
+    1. *backend*: an instance is used as given; a name (``"pandas"``) is looked
+       up in the ``ubunye.backends`` registry.
+    2. *spark*: an explicit SparkSession, attached to (not owned).
+    3. The platform's session: an active SparkSession (Databricks) is attached to.
+    4. The default backend (``spark``), created with the given conf.
+
+    The conf is always passed on. Before 0.4.0 it was computed at the call site
+    and then dropped here whenever a session already existed.
     """
+    if backend is not None and spark is not None:
+        raise ValueError("Pass backend= or spark=, not both: spark= already picks the backend.")
+    if isinstance(backend, Backend):
+        return backend
+    if backend is not None and not isinstance(backend, str):
+        raise TypeError(
+            f"backend= takes a Backend or a registered name, not {type(backend).__name__}."
+        )
+    if backend:
+        return backends.create(backend, app_name=app_name, conf=spark_conf or {})
     if spark is not None:
-        from ubunye.backends.databricks_backend import DatabricksBackend
-
-        return DatabricksBackend(spark=spark, conf=spark_conf or {})
-
-    # Probe for an active session without importing pyspark at module level
-    try:
-        from pyspark.sql import SparkSession
-
-        active = SparkSession.getActiveSession()
-        if active is not None:
-            from ubunye.backends.databricks_backend import DatabricksBackend
-
-            # The conf is now PASSED, not dropped. Before 0.4.0 it was computed at the
-            # call site and then quietly discarded here, so ENGINE.spark_conf did
-            # nothing at all whenever a session already existed.
-            return DatabricksBackend(spark=active, conf=spark_conf or {})
-    except ImportError:
-        pass
-
-    from ubunye.backends.spark_backend import SparkBackend
-
-    return SparkBackend(app_name=app_name, conf=spark_conf or {})
+        # Attaching to a given session is the Databricks backend's own constructor.
+        attach: Any = backends.load_class("databricks")
+        return attach(spark=spark, conf=spark_conf or {})
+    return backends.resolve(None, app_name=app_name, conf=spark_conf or {})
 
 
 def _build_extra_hooks(lineage_recorder: Optional[Any]) -> List[Hook]:
@@ -99,6 +118,8 @@ def run_task(
     dt: Optional[str] = None,
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
+    backend: BackendChoice = None,
+    variables: Optional[Mapping[str, Any]] = None,
     lineage: bool = False,
     lineage_dir: str = ".ubunye/lineage",
     profile: Optional[str] = None,
@@ -120,6 +141,15 @@ def run_task(
     spark : SparkSession, optional
         Explicit SparkSession to reuse. If *None*, auto-detects an active
         session (Databricks) or creates a new one.
+    backend : Backend or str, optional
+        The backend to run on: a registered name (``"pandas"`` for a run with no
+        Spark and no Java, ``"spark"``, or any installed plugin) or an instance.
+        If *None*: the ``spark`` session if given, else the platform's active
+        session, else a new Spark session.
+    variables : dict, optional
+        Extra template variables for the config (``{"region": "gauteng"}``
+        makes ``{{ region }}`` available), as ``--var`` does on the command
+        line. May set ``dt`` or ``dtf``; the same name with two values is refused.
     lineage : bool
         Record lineage for this run.
     lineage_dir : str
@@ -136,7 +166,8 @@ def run_task(
         Mapping of output name → DataFrame.
     """
     task_path = Path(task_dir).resolve()
-    variables = {"dt": dt, "dtf": dtf, "mode": mode}
+    usecase_dir, task_identity = _task_identity(task_path)
+    variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
 
     cfg = load_config(str(task_path), variables=variables, profile=profile)
     spark_conf = cfg.merged_spark_conf(mode)
@@ -149,7 +180,9 @@ def run_task(
     usecase_name = parts[-3] if len(parts) >= 3 else None
     app_name = _make_app_name(usecase_name, package_name, task_name)
 
-    backend = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name)
+    backend = _detect_backend(
+        spark=spark, spark_conf=spark_conf, app_name=app_name, backend=backend
+    )
 
     lineage_recorder = None
     if lineage:
@@ -157,11 +190,13 @@ def run_task(
 
         lineage_recorder = LineageRecorder(
             store="filesystem",
-            base_dir=str(task_path.parent / lineage_dir),
+            base_dir=str(usecase_dir / lineage_dir),
         )
 
     run_id = str(uuid.uuid4())
-    context = EngineContext(run_id=run_id, profile=mode, task_name=task_path.name)
+    context = EngineContext(
+        run_id=run_id, profile=mode, task_name=task_identity, variables=variables
+    )
 
     backend.start()
     set_catalog_and_schema(
@@ -192,6 +227,8 @@ def run_pipeline(
     dt: Optional[str] = None,
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
+    backend: BackendChoice = None,
+    variables: Optional[Mapping[str, Any]] = None,
     lineage: bool = False,
     lineage_dir: str = ".ubunye/lineage",
     profile: Optional[str] = None,
@@ -209,8 +246,8 @@ def run_pipeline(
         Package/pipeline name.
     tasks : List[str]
         Task names to run in order.
-    mode, dt, dtf, spark, lineage, lineage_dir, profile, hooks
-        Same as :func:`run_task`.
+    mode, dt, dtf, spark, backend, variables, lineage, lineage_dir, profile, hooks
+        Same as :func:`run_task`. One backend runs every task.
 
     Returns
     -------
@@ -218,7 +255,7 @@ def run_pipeline(
         Mapping of task name → outputs map.
     """
     base = Path(usecase_dir).resolve()
-    variables = {"dt": dt, "dtf": dtf, "mode": mode}
+    variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
     run_id = str(uuid.uuid4())
 
     # Validate all configs before starting backend
@@ -232,7 +269,7 @@ def run_pipeline(
     spark_conf = first_cfg.merged_spark_conf(mode)
     app_name = _make_app_name(usecase, package, tasks[0])
 
-    backend = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name)
+    chosen = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name, backend=backend)
 
     lineage_recorder = None
     if lineage:
@@ -243,9 +280,9 @@ def run_pipeline(
             base_dir=str(base / lineage_dir),
         )
 
-    backend.start()
+    chosen.start()
     set_catalog_and_schema(
-        backend,
+        chosen,
         catalog=first_cfg.resolved_catalog(mode),
         schema=first_cfg.resolved_schema(mode),
     )
@@ -259,9 +296,10 @@ def run_pipeline(
                 run_id=run_id,
                 profile=mode,
                 task_name=f"{usecase}/{package}/{task}",
+                variables=variables,
             )
             results[task] = execute_user_task(
-                backend,
+                chosen,
                 task_path,
                 cfg,
                 context,
@@ -270,4 +308,4 @@ def run_pipeline(
             )
         return results
     finally:
-        backend.stop()
+        chosen.stop()

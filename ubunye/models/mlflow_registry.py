@@ -136,6 +136,7 @@ class MLflowRegistryBackend:
         to_stage: str,
         gates: Optional[Dict[str, Any]] = None,
         promoted_by: Optional[str] = None,
+        force: bool = False,
     ) -> ModelVersionInfo:
         info = self._fs.promote(
             use_case=use_case,
@@ -143,6 +144,7 @@ class MLflowRegistryBackend:
             version=version,
             to_stage=to_stage,
             gates=gates,
+            force=force,
             promoted_by=promoted_by,
         )
         _try_log_to_mlflow(

@@ -15,13 +15,18 @@ Usage
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence
 
+from ubunye.adapters.spark import frame_io
+from ubunye.backends.spark_backend import SPARK_CAPABILITIES
 from ubunye.core.errors import SparkSessionError
 from ubunye.core.interfaces import Backend
 
 if TYPE_CHECKING:
     from pyspark.sql import SparkSession
+
+    from ubunye.core.ports import DataFramePort
+    from ubunye.core.write_modes import ResolvedWriteMode
 
 
 class DatabricksBackend(Backend):
@@ -34,6 +39,10 @@ class DatabricksBackend(Backend):
         session is retrieved via ``SparkSession.getActiveSession()``.
     """
 
+    name = "databricks"
+    REQUIRES_PACKAGES = ("pyspark",)
+    CAPABILITIES = SPARK_CAPABILITIES
+
     def __init__(
         self,
         spark: Optional["SparkSession"] = None,
@@ -41,6 +50,29 @@ class DatabricksBackend(Backend):
     ) -> None:
         self._spark: Optional["SparkSession"] = spark
         self._conf: Dict[str, str] = dict(conf or {})
+
+    @classmethod
+    def create(cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None) -> Any:
+        """Attach to the active session when started (there is no app name to set)."""
+        return cls(conf=dict(conf or {}))
+
+    @classmethod
+    def from_platform(
+        cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None
+    ) -> Optional[Any]:
+        """Claim the run when a SparkSession is already active (a Databricks notebook).
+
+        Attaching, rather than creating, means the run uses the cluster the
+        platform set up, and never stops a session it did not start.
+        """
+        try:
+            from pyspark.sql import SparkSession
+        except ImportError:
+            return None
+        active = SparkSession.getActiveSession()
+        if active is None:
+            return None
+        return cls(spark=active, conf=dict(conf or {}))
 
     def start(self) -> None:
         """Attach to the active SparkSession, and apply ``ENGINE.spark_conf`` to it."""
@@ -134,6 +166,40 @@ class DatabricksBackend(Backend):
     @property
     def is_spark(self) -> bool:
         return True
+
+    def read_frame(
+        self,
+        file_format: str,
+        path: str,
+        *,
+        options: Optional[Dict[str, Any]] = None,
+        schema: Optional[str] = None,
+    ) -> "DataFramePort":
+        return frame_io.read_frame(self.spark, file_format, path, options=options, schema=schema)
+
+    def execute_write(
+        self,
+        df: "DataFramePort",
+        resolved: "ResolvedWriteMode",
+        *,
+        connector: str,
+        file_format: str,
+        table: Optional[str] = None,
+        path: Optional[str] = None,
+        partition_by: Optional[Sequence[str]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        frame_io.execute_write(
+            self.spark,
+            df,
+            resolved,
+            connector=connector,
+            file_format=file_format,
+            table=table,
+            path=path,
+            partition_by=partition_by,
+            options=options,
+        )
 
     @property
     def app_name(self) -> str:

@@ -123,9 +123,43 @@ class TransformOutputError(UbunyeError, TypeError):
     """Raised when a transform returns an unexpected type or missing output."""
 
 
+class SecretError(UbunyeError, KeyError):
+    """Raised when a ``secret://`` reference cannot be read. Never carries the value."""
+
+    def __str__(self) -> str:  # KeyError would quote the whole message
+        return UbunyeError.__str__(self)
+
+
+class LLMError(UbunyeError, RuntimeError):
+    """Raised when a language model call fails, or cannot be made. Never carries the key."""
+
+
+class LLMBudgetError(LLMError):
+    """Raised when a model call is refused before sending: it could pass a limit."""
+
+
+class ExpectationError(UbunyeError, ValueError):
+    """Raised when an output breaks a ``fail`` expectation; nothing has been written.
+
+    ``results`` holds one entry per rule checked, passed or not.
+    """
+
+    def __init__(self, message: str, *, results: Any = None, **kwargs: Any) -> None:
+        super().__init__(message, **kwargs)
+        self.results = results or []
+
+
 # ---------------------------------------------------------------------------
 # Backend errors
 # ---------------------------------------------------------------------------
+
+
+class BackendNotFoundError(PluginNotFoundError):
+    """Raised when no backend is registered under a name, or it failed to load."""
+
+
+class BackendCapabilityError(UbunyeError, ValueError):
+    """Raised before a run when the task needs something the backend cannot do."""
 
 
 class SparkSessionError(UbunyeError, RuntimeError):

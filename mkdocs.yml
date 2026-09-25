@@ -48,6 +48,8 @@ nav:
       - Inputs and Outputs: config/io.md
       - Engine and Profiles: config/engine.md
       - Transform: config/transform.md
+      - Expectations: config/expectations.md
+      - Secrets: config/secrets.md
       - Jinja Templating: config/jinja.md
       - Orchestration: config/orchestration.md
   - Connectors:
@@ -78,6 +80,7 @@ nav:
       - Kubernetes: deployment/kubernetes.md
       - AWS: deployment/aws.md
       - GCP: deployment/gcp.md
+      - One command to the cloud: deployment/serverless.md
       - Anywhere with spark-submit: deployment/anywhere.md
   - How-to Guides:
       - Notebook Prototyping: patterns/notebook.md
@@ -86,14 +89,28 @@ nav:
       - Drift Detection: patterns/drift.md
       - REST API Ingestion: patterns/rest_api.md
       - Observability Hooks: patterns/hooks.md
+      - OpenLineage: patterns/openlineage.md
+      - OpenTelemetry: patterns/opentelemetry.md
+      - Gate Pull Requests: patterns/gate.md
+      - Language Model Steps: patterns/llm.md
+      - Agents over MCP: patterns/mcp.md
   - Reference:
       - CLI: cli.md
       - Python API: api.md
+      - Execution Backends: backends.md
       - Interfaces: interfaces.md
       - Errors: errors.md
       - Changelog: changelog.md
   - Project:
       - Developer Guide: dev_guide.md
+      - Architecture Decisions:
+          - Overview: architecture/index.md
+          - ADR 001 Backends Are Plugins: architecture/adr-001-backends-are-plugins.md
+          - ADR 002 Backend Capabilities: architecture/adr-002-backend-capabilities.md
+          - ADR 003 Choosing a Backend: architecture/adr-003-backend-resolution.md
+          - ADR 004 Native Frames: architecture/adr-004-native-frames.md
+          - ADR 005 Portable Transforms: architecture/adr-005-portable-transforms.md
+          - ADR 006 The Run Record: architecture/adr-006-run-record.md
       - Contributing: contributing.md
 
 markdown_extensions:

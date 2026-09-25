@@ -1,107 +1,249 @@
-"""
-OpenTelemetry helpers for Ubunye.
+"""OpenTelemetry for Ubunye: traces and metrics, configured the standard way.
 
-- Optional dependency: if `opentelemetry-sdk` is not installed, functions no-op.
-- Provides `get_tracer()` and a `span()` context manager to time steps.
-- Adds attributes like task name, step type, and run_id to spans.
+Needs ``opentelemetry-sdk`` (``pip install 'ubunye-engine[otel]'``); without it
+every function here does nothing. Configuration is OpenTelemetry's own
+environment variables, so the engine fits whatever collector a platform runs:
 
-Usage:
-    from ubunye.telemetry.otel import span, init_tracer
+``OTEL_EXPORTER_OTLP_ENDPOINT``            where to send (``..._TRACES_`` / ``..._METRICS_``
+                                          variants win for one signal)
+``OTEL_EXPORTER_OTLP_PROTOCOL``            ``http/protobuf`` (default) or ``grpc``
+``OTEL_EXPORTER_OTLP_HEADERS``             e.g. an API key, read by the exporter
+``OTEL_TRACES_EXPORTER``, ``OTEL_METRICS_EXPORTER``  ``otlp``, ``console`` or ``none``
+``OTEL_SERVICE_NAME``, ``OTEL_RESOURCE_ATTRIBUTES``   the resource
 
-    init_tracer(service_name="ubunye")   # safe if called multiple times
-    with span("Reader:hive", attrs={"task": "fraud/claims/claim_etl", "run_id": rid}):
-        df = reader.read(cfg, backend)
+With no endpoint and no exporter named, nothing is sent and nothing is printed.
+If the host application already set up OpenTelemetry, its providers are used.
+
+Traces: a span per task and per read, transform and write, with the run id,
+backend and config hash as attributes; a failure is recorded on the span and
+marks it as an error. Metrics:
+
+====================================  ==========  ===============================
+``ubunye.task.runs``                  counter     task, backend, status
+``ubunye.task.duration``              histogram   task, backend, status (seconds)
+``ubunye.step.duration``              histogram   task, step, status (seconds)
+``ubunye.rows.read``                  counter     task, dataset
+``ubunye.rows.written``               counter     task, dataset
+====================================  ==========  ===============================
+
+Everything is flushed when a task ends, so a short CLI run still exports.
 """
 
 from __future__ import annotations
 
 import contextlib
-from typing import Dict, Optional
+import logging
+import os
+from typing import Any, Dict, Iterator, List, Optional
 
-_TRACING_ENABLED = False
-_tracer = None
+log = logging.getLogger(__name__)
+
+_state: Dict[str, Any] = {"ready": False, "tracer": None, "instruments": None, "owned": []}
 
 
-def init_tracer(service_name: str = "ubunye") -> None:
-    """
-    Initialize OpenTelemetry tracing if the SDK is available.
+def _exporter_name(signal: str) -> str:
+    named = os.environ.get(f"OTEL_{signal.upper()}_EXPORTER")
+    if named:
+        return named.split(",")[0].strip().lower()
+    endpoint = os.environ.get(f"OTEL_EXPORTER_OTLP_{signal.upper()}_ENDPOINT") or os.environ.get(
+        "OTEL_EXPORTER_OTLP_ENDPOINT"
+    )
+    return "otlp" if endpoint else "none"
 
-    Parameters
-    ----------
-    service_name : str
-        Logical service name for traces (shown in your tracing backend).
-    """
-    global _TRACING_ENABLED, _tracer
+
+def _protocol(signal: str) -> str:
+    return (
+        os.environ.get(f"OTEL_EXPORTER_OTLP_{signal.upper()}_PROTOCOL")
+        or os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL")
+        or "http/protobuf"
+    )
+
+
+def _span_exporter() -> Any:
+    name = _exporter_name("traces")
+    if name == "console":
+        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+
+        return ConsoleSpanExporter()
+    if name != "otlp":
+        return None
     try:
-        from opentelemetry import trace
+        if _protocol("traces") == "grpc":
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        else:
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    except ImportError:
+        log.warning(
+            "OTLP export needs opentelemetry-exporter-otlp: pip install 'ubunye-engine[otel]'"
+        )
+        return None
+    return OTLPSpanExporter()
+
+
+def _metric_exporter() -> Any:
+    name = _exporter_name("metrics")
+    if name == "console":
+        from opentelemetry.sdk.metrics.export import ConsoleMetricExporter
+
+        return ConsoleMetricExporter()
+    if name != "otlp":
+        return None
+    try:
+        if _protocol("metrics") == "grpc":
+            from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+        else:
+            from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+    except ImportError:
+        log.warning(
+            "OTLP export needs opentelemetry-exporter-otlp: pip install 'ubunye-engine[otel]'"
+        )
+        return None
+    return OTLPMetricExporter()
+
+
+def _is_proxy(provider: Any) -> bool:
+    return type(provider).__name__.startswith(("Proxy", "NoOp", "_Proxy"))
+
+
+def setup(
+    service_name: Optional[str] = None,
+    *,
+    tracer_provider: Any = None,
+    meter_provider: Any = None,
+) -> bool:
+    """Make the tracer and the instruments; safe to call more than once.
+
+    ``tracer_provider`` / ``meter_provider`` are for callers (and tests) that bring
+    their own; otherwise the host's global providers are used if it set any, and
+    else providers are built from the ``OTEL_*`` environment variables.
+    """
+    if _state["ready"] and tracer_provider is None and meter_provider is None:
+        return _state["tracer"] is not None
+    try:
+        from opentelemetry import metrics, trace
         from opentelemetry.sdk.resources import Resource
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+    except ImportError:
+        return False
 
-        if trace.get_tracer_provider().__class__.__name__ != "ProxyTracerProvider":
-            # Already configured by host application; reuse it.
-            _TRACING_ENABLED = True
-            _tracer = trace.get_tracer(service_name)
-            return
+    name = os.environ.get("OTEL_SERVICE_NAME") or service_name or "ubunye"
+    resource = Resource.create({"service.name": name})
+    owned: List[Any] = []
 
-        resource = Resource.create({"service.name": service_name})
-        provider = TracerProvider(resource=resource)
-        # Default to console exporter; users can replace/augment outside
-        processor = BatchSpanProcessor(ConsoleSpanExporter())
-        provider.add_span_processor(processor)
+    if tracer_provider is None:
+        tracer_provider = trace.get_tracer_provider()
+        if _is_proxy(tracer_provider):
+            exporter = _span_exporter()
+            if exporter is not None:
+                from opentelemetry.sdk.trace import TracerProvider
+                from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-        trace.set_tracer_provider(provider)
-        _tracer = trace.get_tracer(service_name)
-        _TRACING_ENABLED = True
-    except Exception:
-        # Missing SDK or configuration error — keep tracing disabled.
-        _TRACING_ENABLED = False
-        _tracer = None
+                tracer_provider = TracerProvider(resource=resource)
+                tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
+                trace.set_tracer_provider(tracer_provider)
+                owned.append(tracer_provider)
+    if meter_provider is None:
+        meter_provider = metrics.get_meter_provider()
+        if _is_proxy(meter_provider):
+            exporter = _metric_exporter()
+            if exporter is not None:
+                from opentelemetry.sdk.metrics import MeterProvider
+                from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+
+                reader = PeriodicExportingMetricReader(exporter)
+                meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
+                metrics.set_meter_provider(meter_provider)
+                owned.append(meter_provider)
+
+    from ubunye import __version__ as version
+
+    tracer = tracer_provider.get_tracer("ubunye", version)
+    meter = meter_provider.get_meter("ubunye", version)
+    _state.update(
+        ready=True,
+        tracer=tracer,
+        owned=owned or [tracer_provider, meter_provider],
+        instruments={
+            "runs": meter.create_counter("ubunye.task.runs", unit="{run}", description="Task runs"),
+            "task_s": meter.create_histogram(
+                "ubunye.task.duration", unit="s", description="Task duration"
+            ),
+            "step_s": meter.create_histogram(
+                "ubunye.step.duration", unit="s", description="Read, transform and write duration"
+            ),
+            "read": meter.create_counter("ubunye.rows.read", unit="{row}", description="Rows read"),
+            "written": meter.create_counter(
+                "ubunye.rows.written", unit="{row}", description="Rows written"
+            ),
+        },
+    )
+    return True
 
 
-def get_tracer():
-    """Return the OTel tracer if initialized; otherwise None."""
-    return _tracer
+def reset() -> None:
+    """Forget the tracer and instruments (tests)."""
+    _state.update(ready=False, tracer=None, instruments=None, owned=[])
+
+
+def _clean(attrs: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    for key, value in (attrs or {}).items():
+        if value is None:
+            continue
+        out[key] = value if isinstance(value, (str, bool, int, float)) else str(value)
+    return out
 
 
 @contextlib.contextmanager
-def span(name: str, attrs: Optional[Dict[str, object]] = None):
-    """
-    Context manager that creates an OpenTelemetry span if tracing is enabled.
-
-    Parameters
-    ----------
-    name : str
-        Span name (e.g., "Reader:hive", "Transform:dedupe", "Writer:s3").
-    attrs : dict
-        Optional attributes to set on the span (task, run_id, profile, step, …).
-    """
-    if not _TRACING_ENABLED or _tracer is None:
-        yield
+def span(name: str, attrs: Optional[Dict[str, Any]] = None) -> Iterator[Any]:
+    """A span around the block; an exception is recorded and marks it as an error."""
+    tracer = _state["tracer"]
+    if tracer is None:
+        yield None
         return
+    from opentelemetry.trace import Status, StatusCode
 
-    from opentelemetry import trace
-
-    current_span = None
-    try:
-        current_span = _tracer.start_span(name)
-        if attrs:
-            for k, v in attrs.items():
-                try:
-                    value = v if isinstance(v, (str, bool, int, float)) else str(v)
-                    current_span.set_attribute(k, value)
-                except Exception:
-                    pass
-        token = trace.use_span(current_span, end_on_exit=True)
-        token.__enter__()
-        yield
-    finally:
+    with tracer.start_as_current_span(
+        name, attributes=_clean(attrs), record_exception=False, set_status_on_exception=False
+    ) as current:
         try:
-            if current_span is not None:
-                # end handled by end_on_exit True, but be defensive
-                current_span.end()
-        finally:
+            yield current
+        except BaseException as exc:
+            current.record_exception(exc)
+            current.set_status(Status(StatusCode.ERROR, f"{type(exc).__name__}: {exc}"[:500]))
+            raise
+
+
+def record(instrument: str, value: float, attrs: Dict[str, Any]) -> None:
+    """Add to a counter or a histogram; nothing without the SDK."""
+    instruments = _state["instruments"]
+    if not instruments:
+        return
+    metric = instruments[instrument]
+    try:
+        if hasattr(metric, "add"):
+            metric.add(value, _clean(attrs))
+        else:
+            metric.record(value, _clean(attrs))
+    except Exception:  # a metrics error must never fail a run
+        log.debug("otel: could not record %s", instrument, exc_info=True)
+
+
+def flush(timeout_millis: int = 5000) -> None:
+    """Export what is buffered now; a short CLI run ends before the next batch."""
+    for provider in _state["owned"]:
+        force = getattr(provider, "force_flush", None)
+        if callable(force):
             try:
-                token.__exit__(None, None, None)
+                force(timeout_millis)
             except Exception:
-                pass
+                log.debug("otel: flush failed", exc_info=True)
+
+
+def init_tracer(service_name: str = "ubunye") -> None:
+    """Kept for code written against 0.5 and earlier; same as :func:`setup`."""
+    setup(service_name)
+
+
+def get_tracer() -> Any:
+    """The tracer, or None without the SDK."""
+    return _state["tracer"]

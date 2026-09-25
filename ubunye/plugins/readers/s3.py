@@ -17,12 +17,19 @@ from __future__ import annotations
 
 from typing import Any
 
+from ubunye.core.capabilities import PATH_IO
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
 
 
 class S3Reader(Reader):
     """Read a Spark DataFrame from S3 (or any filesystem path Spark understands)."""
+
+    # The settings this connector reads (typos in any other key fail validation).
+    CONFIG_KEYS = frozenset({"path", "file_format", "schema"})
+
+    # Reads and writes paths through the backend's path IO (ADR 002).
+    REQUIRES = frozenset({PATH_IO})
 
     @classmethod
     def validate_config(cls, cfg):
@@ -41,12 +48,6 @@ class S3Reader(Reader):
         options: dict = cfg.get("options") or {}
         schema: str | None = cfg.get("schema")
 
-        reader = backend.spark.read.format(fmt)
-
-        if options:
-            reader = reader.options(**options)
-
-        if schema:
-            reader = reader.schema(schema)
-
-        return reader.load(path)
+        # The data-plane read seam (#38): ask the backend to read, rather than
+        # naming Spark. SparkBackend uses spark.read; PandasBackend uses pandas.
+        return backend.read_frame(fmt, path, options=options, schema=schema)

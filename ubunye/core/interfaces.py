@@ -7,14 +7,34 @@ transforms, and user-defined tasks.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, FrozenSet, List, Optional, Sequence, Tuple
+
+from ubunye.core.capabilities import SPARK, Capabilities
 
 if TYPE_CHECKING:
     from ubunye.core.ports import DataFramePort
+    from ubunye.core.write_modes import ResolvedWriteMode
 
 
 class Backend(ABC):
-    """Abstract execution backend (e.g., Spark or Pandas)."""
+    """Abstract execution backend (e.g., Spark or Pandas).
+
+    A backend is a plugin: it registers in the ``ubunye.backends`` entry point
+    group under :attr:`name` and says what it can do in :attr:`CAPABILITIES`,
+    so the engine can check a task before running it (ADR 001 and 002).
+    """
+
+    #: The name the backend is registered under (``--backend <name>``).
+    name: ClassVar[str] = ""
+
+    #: The packages the backend cannot run without ("pyspark", "pandas"...).
+    #: Checked when it is chosen by name, so a missing one is named with the
+    #: install that fixes it, instead of failing on the first frame.
+    REQUIRES_PACKAGES: ClassVar[Tuple[str, ...]] = ()
+
+    #: What this backend can do. Undeclared by default, so a backend written
+    #: before capabilities existed is never pre-checked and behaves as before.
+    CAPABILITIES: ClassVar[Capabilities] = Capabilities.unknown()
 
     @abstractmethod
     def start(self) -> None:
@@ -25,10 +45,111 @@ class Backend(ABC):
         """Stop the backend session and release resources."""
 
     @property
-    @abstractmethod
+    def capabilities(self) -> Capabilities:
+        """What this backend can do (the class's :attr:`CAPABILITIES` by default)."""
+        return self.CAPABILITIES
+
+    @property
     def is_spark(self) -> bool:
-        """Whether this backend is Spark-based."""
-        ...
+        """Whether this backend provides a SparkSession.
+
+        Deprecated: ask ``"spark" in backend.capabilities.features`` instead.
+        Kept so existing code and backends keep working.
+        """
+        return SPARK in self.capabilities.features
+
+    def to_native(self, frame: Any) -> Any:
+        """The frame as a transform should see it: the engine's own type (ADR 004).
+
+        A pandas transform gets a ``pandas.DataFrame``, not a wrapper. The
+        default is the identity: a Spark DataFrame is already both.
+        """
+        return frame
+
+    def to_port(self, frame: Any) -> Any:
+        """The frame as the engine should see it: a :class:`DataFramePort` (ADR 004).
+
+        Writers, hooks and lineage ask frames about themselves (``count()`` means
+        rows). A raw pandas frame answers ``count()`` per column, so the pandas
+        backend wraps it here. The default is the identity.
+        """
+        return frame
+
+    @classmethod
+    def create(cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None) -> Any:
+        """Build this backend for a run: how the registry constructs it by name.
+
+        The default passes ``app_name`` and ``conf`` to the constructor; a
+        backend with a different constructor overrides this.
+        """
+        return cls(app_name=app_name, conf=dict(conf or {}))  # type: ignore[call-arg]
+
+    @classmethod
+    def check_io(cls, direction: str, cfg: Dict[str, Any]) -> List[str]:
+        """Problems with one path input or output's details, before a run.
+
+        ``direction`` is ``"input"`` or ``"output"``; ``cfg`` is that input's or
+        output's config. The capability check (ADR 002) covers what a backend can
+        do in general; this catches the details it cannot honour (an option, a
+        schema) that would otherwise fail only when the file is opened. The
+        default finds nothing.
+        """
+        return []
+
+    @classmethod
+    def from_platform(
+        cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None
+    ) -> Optional[Any]:
+        """A backend attached to a session the platform already started, or ``None``.
+
+        The Databricks backend returns one when a notebook's SparkSession is
+        active. Most backends never attach to anything and keep this default.
+        """
+        return None
+
+    # ---------------------------------------------------------------- #
+    # Data-plane IO seam (issue #38).
+    #
+    # A generic path connector (``s3``) asks the backend to read and write,
+    # instead of naming Spark. This is what lets the same task run on Spark or
+    # on pandas: the connector owns the backend-agnostic *decision* (the file
+    # format, the resolved write mode); the backend owns the *mechanism*.
+    #
+    # Concrete-and-raising rather than @abstractmethod so existing/third-party
+    # Backend subclasses that predate the seam still instantiate. The three
+    # shipped backends override both.
+    # ---------------------------------------------------------------- #
+    def read_frame(
+        self,
+        file_format: str,
+        path: str,
+        *,
+        options: Optional[Dict[str, Any]] = None,
+        schema: Optional[str] = None,
+    ) -> "DataFramePort":
+        """Read ``path`` in ``file_format`` into a :class:`DataFramePort`."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement read_frame(); it cannot "
+            "serve a path-based reader like 's3'."
+        )
+
+    def execute_write(
+        self,
+        df: "DataFramePort",
+        resolved: "ResolvedWriteMode",
+        *,
+        connector: str,
+        file_format: str,
+        table: Optional[str] = None,
+        path: Optional[str] = None,
+        partition_by: Optional[Sequence[str]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Execute an already-resolved write mode against ``table`` or ``path``."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement execute_write(); it cannot "
+            "serve a path-based writer like 's3'."
+        )
 
 
 class Connector(ABC):
@@ -48,6 +169,19 @@ class Connector(ABC):
     capabilities, and the core validates by asking whichever plugin the config named. It
     holds no list of implementations, so adding one requires no edit to it.
     """
+
+    #: What this connector needs from a backend, as capability feature names
+    #: (``"spark"`` for a SparkSession, ``"path_io"`` for path reads and writes).
+    #: Checked before a run against the backend's capabilities. Empty means the
+    #: connector has not said, and nothing is pre-checked.
+    REQUIRES: ClassVar[FrozenSet[str]] = frozenset()
+
+    #: The settings this connector reads from its config block, besides ``format``
+    #: and ``options`` (and, for a writer, the engine's write-mode keys every output
+    #: may carry). Declared, it turns a typo like ``paht`` into a validation error
+    #: that names the closest real key, instead of a setting silently ignored.
+    #: ``None`` means the connector has not said, and any key is accepted.
+    CONFIG_KEYS: ClassVar[Optional[FrozenSet[str]]] = None
 
     @classmethod
     def validate_config(cls, cfg: Dict[str, Any]) -> List[str]:

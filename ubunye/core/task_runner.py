@@ -11,12 +11,14 @@ the same Engine can execute it. The Python API and CLI both go through
 
 from __future__ import annotations
 
+import dataclasses
 import importlib.util
 import sys
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, Optional
 
+from ubunye.config.hashing import config_hash
 from ubunye.core.errors import TaskClassMissingError, TaskNotFoundError
 from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend, Task
@@ -142,6 +144,12 @@ def execute_user_task(
         Mapping of output name → DataFrame.
     """
     cfg_dict = cfg.model_dump(mode="json")
+    if context.task_dir is None:
+        context = dataclasses.replace(context, task_dir=str(task_dir))
+    if context.config_hash is None:
+        # Hash the config as loaded, before the transform is swapped for the task
+        # wrapper below, so the run record and `ubunye plan` agree.
+        context = dataclasses.replace(context, config_hash=config_hash(cfg_dict))
 
     # The task_dir must be on sys.path *before* loading transformations.py,
     # not only during engine.run. Otherwise a top-level ``from model import

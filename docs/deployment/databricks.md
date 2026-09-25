@@ -100,7 +100,10 @@ This:
 2. Authenticates to the Databricks workspace
 3. Uploads `config.yaml`, `transformations.py`, and helpers to
    `/Workspace/ubunye/fraud_detection/ingestion/claim_etl/`
-4. Generates a wrapper notebook that calls `ubunye.run_task()`
+4. Generates a wrapper notebook that installs the engine and calls
+   `ubunye.run_task()`. If `transformations.py` imports Narwhals (one transform
+   for every engine, see [Execution backends](../backends.md)), the notebook
+   installs it too: the runtime brings Spark and pandas, not Narwhals.
 5. Creates (or updates) a Databricks job named
    `ubunye-fraud_detection-ingestion-claim_etl-dev`
 
