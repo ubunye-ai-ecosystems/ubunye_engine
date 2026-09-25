@@ -97,12 +97,30 @@ def _best(fn: Callable[[], object], repeat: int) -> float:
     return best
 
 
+#: What is timed. A base too old to have them all is reported, not failed.
+OPERATIONS = (
+    "config_load",
+    "csv_read_plain_60k",
+    "csv_read_spark_quotes_20k",
+    "run_record_hash_60k",
+    "run_task_pandas_lineage",
+)
+
+
+def cannot_run(why: str) -> Dict[str, object]:
+    """Every operation, as one the code under test cannot run."""
+    return {"timings": {name: f"cannot run: {why}"[:200] for name in OPERATIONS}}
+
+
 def measure(repeat: int) -> Dict[str, object]:
     """Time every operation with whichever ``ubunye`` is on the path."""
-    import ubunye
-    from ubunye.backends.pandas_backend import PandasBackend
-    from ubunye.config import load_config
-    from ubunye.lineage.content_hash import fingerprint
+    try:
+        import ubunye
+        from ubunye.backends.pandas_backend import PandasBackend
+        from ubunye.config import load_config
+        from ubunye.lineage.content_hash import fingerprint
+    except ImportError as exc:  # a base older than what is timed (0.5.0 has no pandas backend)
+        return cannot_run(f"{type(exc).__name__}: {exc}")
 
     options = {"header": "true", "inferSchema": "true"}
     results: Dict[str, object] = {"source": str(Path(ubunye.__file__).parent)}
@@ -155,7 +173,12 @@ def compare(base: Path, head: Path, rounds: int, repeat: int) -> int:
     notes: Dict[str, str] = {}
     for _ in range(rounds):
         for label, source in (("base", base), ("head", head)):
-            result = _time_copy(source, repeat)
+            try:
+                result = _time_copy(source, repeat)
+            except SystemExit as exc:
+                if label == "head":
+                    raise  # the change itself must run
+                result = cannot_run(str(exc).splitlines()[-1] if str(exc) else "failed")
             for name, value in result["timings"].items():  # type: ignore[union-attr]
                 if isinstance(value, str):
                     notes[f"{label}:{name}"] = value
