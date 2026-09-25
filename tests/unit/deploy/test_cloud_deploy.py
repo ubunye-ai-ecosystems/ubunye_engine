@@ -191,3 +191,31 @@ def test_the_dockerfile_follows_each_platforms_rules(tmp_path, platform, must_ha
     text = out.read_text(encoding="utf-8")
     assert all(piece in text for piece in must_have), text
     assert (tmp_path / "ubunye_entry.py").read_text(encoding="utf-8") == package.ENTRY_SCRIPT
+
+
+def test_a_record_is_found_when_log_lines_come_back_out_of_order():
+    """Log Analytics returns lines with the same timestamp in any order.
+
+    The entry prints begin, the record and end in the same instant; Azure gave them
+    back as begin, end, record, and the record was lost.
+    """
+    log = (
+        package.RECORD_BEGIN + "\n" + package.RECORD_END + "\n"
+        '{"run_id": "r1", "status": "success", "outputs": []}\n'
+    )
+    assert package.read_record(log) == {"run_id": "r1", "status": "success", "outputs": []}
+
+
+def test_a_run_whose_record_is_missing_fails_when_one_was_asked_for(tmp_path, monkeypatch):
+    def ran(plan):
+        plan.log = package.RECORD_BEGIN + "\n" + package.RECORD_END + "\n"
+
+    monkeypatch.setattr(cloud, "execute", ran)
+    out = tmp_path / "rec.json"
+    args = ["deploy", "dataproc", "-d", str(_task(tmp_path)), "-u", "uc", "-p", "pkg", "-t", "t",
+            "--project", "p", "--region", "r", "--bucket", "b", "--image", "i",
+            "--record-out", str(out)]  # fmt: skip
+    result = runner.invoke(app, args)
+    assert result.exit_code == 1
+    assert "run record" in result.output and "not found" in result.output
+    assert not out.exists()

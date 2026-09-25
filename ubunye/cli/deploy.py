@@ -104,6 +104,14 @@ def _finish(plan: Any, dry_run: bool, record_out: Optional[Path]) -> None:
         return
     cloud.execute(plan)
     record = package.read_record(plan.log)
+    if record is None and record_out is not None:
+        # Asked for the record and did not get it: never report that as success.
+        typer.secho(
+            f"[FAIL] {plan.platform}: '{plan.job}' ran, but its run record was not found "
+            "in the job's log, so --record-out has nothing to write.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
     if record is None:
         typer.secho(f"[OK] {plan.platform}: '{plan.job}' submitted.", fg=typer.colors.GREEN)
         return

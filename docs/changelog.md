@@ -452,6 +452,15 @@ divergence ledger for agents, Dagster and Prefect exporters, and a benchmark sui
 
 ### Fixed
 
+- **A deploy never reports success without the run record it was asked for.**
+  Azure's Log Analytics returns lines printed in the same instant in any order,
+  so the record could come back after its end marker: `ubunye deploy
+  container-apps` stopped waiting at the marker, found nothing between the
+  markers, and still exited 0 without writing `--record-out`. The record is now
+  found wherever it lands, Container Apps waits for the record itself, and a
+  missing record fails the command when `--record-out` was given. Found by the
+  final release-candidate run.
+
 - **A model provider's error reads as its message when it comes in a list.**
   Gemini's OpenAI-compatible endpoint answers errors as `[{"error": {...}}]`; the
   port printed the whole list. Found on the first live call to Gemini.

@@ -150,6 +150,15 @@ def read_record(log: str) -> Optional[Dict[str, Any]]:
         start = line.find("{")
         if start >= 0:
             return json.loads(line[start:])
+    # Nothing between the markers: a log store (Azure's Log Analytics) can return
+    # lines printed in the same instant in any order. Take the record from anywhere.
+    for line in log.splitlines():
+        start = line.find("{")
+        if start >= 0 and '"run_id"' in line:
+            try:
+                return json.loads(line[start:])
+            except ValueError:
+                continue
     return None
 
 
