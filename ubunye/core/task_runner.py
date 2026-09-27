@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import dataclasses
 import importlib.util
+import logging
 import sys
+import warnings
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, Optional
@@ -23,6 +25,8 @@ from ubunye.core.errors import TaskClassMissingError, TaskNotFoundError
 from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend, Task
 from ubunye.core.runtime import Engine, EngineContext, Registry
+
+logger = logging.getLogger(__name__)
 
 
 def _load_task_class(task_dir: Path) -> type:
@@ -102,6 +106,24 @@ def _with_task_dir_on_path(task_dir: Path) -> Iterator[None]:
 _USER_TASK_TRANSFORM_KEY = "_ubunye_user_task"
 
 
+def ignored_transform_message(transform: Any) -> Optional[str]:
+    """Why a task run will not run the config's ``transform.type``, or None.
+
+    A task folder always runs its ``transformations.py``; a ``type`` other than
+    ``noop`` in ``config.yaml`` never ran, and until 0.7.1 it was dropped with
+    no word. ``ubunye run`` and ``ubunye plan`` both say so, in these words.
+    """
+    ttype = transform.get("type") if isinstance(transform, dict) else None
+    if ttype in (None, "noop"):
+        return None
+    return (
+        f"CONFIG.transform.type '{ttype}' is not run: a task runs its "
+        "transformations.py. Call it from there (a model registered inside a run "
+        "is linked to it) and remove the type from config.yaml. From 0.8.0 this "
+        "is an error."
+    )
+
+
 def execute_user_task(
     backend: Backend,
     task_dir: Path,
@@ -155,6 +177,11 @@ def execute_user_task(
     # not only during engine.run. Otherwise a top-level ``from model import
     # MyModel`` (adjacent helper modules) raises ModuleNotFoundError at
     # import time, before the engine even gets the chance to extend the path.
+    ignored = ignored_transform_message(cfg_dict["CONFIG"].get("transform"))
+    if ignored:
+        logger.warning(ignored)
+        warnings.warn(ignored, FutureWarning, stacklevel=2)
+
     with _with_task_dir_on_path(task_dir):
         task_cls = _load_task_class(task_dir)
         task_obj = task_cls(config=cfg_dict)

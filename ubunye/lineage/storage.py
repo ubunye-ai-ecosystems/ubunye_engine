@@ -223,8 +223,9 @@ class FileSystemLineageStore(LineageStore):
             self._run_index[run_id] = path
 
     def _load_file(self, p: Path) -> RunContext:
-        run_id = p.stem
-        cached = self._ctx_cache.get(run_id)
+        # Keyed by file, not run id: two tasks may hold records with one id.
+        key = str(p)
+        cached = self._ctx_cache.get(key)
         if cached is not None:
             return cached
         with p.open(encoding="utf-8") as fh:
@@ -233,7 +234,7 @@ class FileSystemLineageStore(LineageStore):
         extras = data.get("_extra_metadata")
         if extras:
             ctx._extra_metadata = extras  # type: ignore[attr-defined]
-        self._ctx_cache[run_id] = ctx
+        self._ctx_cache[key] = ctx
         return ctx
 
     # ------------------------------------------------------------------
@@ -247,7 +248,7 @@ class FileSystemLineageStore(LineageStore):
             json.dumps(ctx.to_dict(), indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-        self._ctx_cache[ctx.run_id] = ctx
+        self._ctx_cache[str(record_path)] = ctx
 
     def load(self, task_path: str, run_id: str) -> RunContext:
         task_dir = self._task_dir_from_path(task_path)
@@ -318,7 +319,7 @@ class FileSystemLineageStore(LineageStore):
             json.dumps(data, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-        self._ctx_cache[ctx.run_id] = ctx
+        self._ctx_cache[str(record_path)] = ctx
         self._index_record(ctx.run_id, record_path)
 
     def record(self, record: LineageRecord) -> None:

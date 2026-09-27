@@ -100,7 +100,10 @@ class TestValidate:
         result = runner.invoke(app, ["validate", *_where(tmp_path, "-t", "copy", "--json")])
         doc = _json(result)
         assert result.exit_code == 0
-        assert doc == {"ok": True, "tasks": [{"task": "copy", "ok": True, "problems": []}]}
+        assert doc == {
+            "ok": True,
+            "tasks": [{"task": "copy", "ok": True, "problems": [], "warnings": []}],
+        }
 
     def test_a_backend_problem(self, tmp_path):
         task = _task(tmp_path)

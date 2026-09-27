@@ -256,7 +256,6 @@ def run_pipeline(
     """
     base = Path(usecase_dir).resolve()
     variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
-    run_id = str(uuid.uuid4())
 
     # Validate all configs before starting backend
     configs = {}
@@ -292,8 +291,9 @@ def run_pipeline(
         for task in tasks:
             task_path = base / usecase / package / task
             cfg = configs[task]
+            # Each task is its own run: one run id, one run record.
             context = EngineContext(
-                run_id=run_id,
+                run_id=str(uuid.uuid4()),
                 profile=mode,
                 task_name=f"{usecase}/{package}/{task}",
                 variables=variables,

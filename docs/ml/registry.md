@@ -159,28 +159,22 @@ Gates block promotion unless all thresholds are satisfied.
 | `max_<metric>` | Metric value must be `<=` threshold |
 | `require_drift_check` | `metadata["drift_check_passed"]` must be `True` |
 
-### Config example
+### Example
 
-```yaml
-transform:
-  type: model
-  params:
-    action: train
-    model_class: "model.FraudRiskModel"
-    registry:
-      store: ".ubunye/model_store"
-      use_case: fraud_detection
-      auto_version: true
-      promote_to: staging
-      promotion_gates:
-        min_auc: 0.85
-        min_f1: 0.80
-        max_loss: 0.20
-        require_drift_check: true
+```python
+registry.promote(
+    "fraud_detection",
+    "FraudRiskModel",
+    mv.version,
+    ModelStage.STAGING,
+    gates={"min_auc": 0.85, "min_f1": 0.80, "max_loss": 0.20, "require_drift_check": True},
+)
 ```
 
-When a gate fails the engine logs each failing gate with its actual value and threshold,
-and does **not** promote. The version remains in `development`.
+When a gate fails, `promote` raises `PromotionBlockedError` naming each failing gate with
+its actual value and threshold, and does **not** promote. The version remains in
+`development`. Gates passed to `register(..., promotion_gates=...)` are stored with the
+model and checked again by every later promotion, including `ubunye models promote`.
 
 ### CLI promote with gates
 

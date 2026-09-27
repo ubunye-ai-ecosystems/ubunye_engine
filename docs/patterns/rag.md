@@ -157,18 +157,28 @@ CONFIG:
       format: delta
       path: s3://datalake/rag/chunks/
 
-  transform:
-    type: model
-    params:
-      action: predict
-      model_class: "model.EmbeddingModel"
-      model_path: ".ubunye/model_store/rag/EmbeddingModel/versions/1.0.0/model"
+  transform: {}
 
   outputs:
     embedded_chunks:
       format: delta
       path: s3://datalake/rag/embedded_chunks/
       mode: overwrite
+```
+
+```python
+# pipelines/rag/embed/chunks/transformations.py
+from ubunye.core.interfaces import Task
+
+from model import EmbeddingModel
+
+MODEL_PATH = ".ubunye/model_store/rag/EmbeddingModel/versions/1.0.0/model"
+
+
+class EmbedChunks(Task):
+    def transform(self, sources):
+        model = EmbeddingModel.load(MODEL_PATH)
+        return {"embedded_chunks": model.predict(sources["chunks"])}
 ```
 
 ---

@@ -113,23 +113,18 @@ class FraudRiskModel(UbunyeModel):
     ...
 ```
 
-In `config.yaml` for the training task:
+In the training task's `transformations.py`, after training:
 
-```yaml
-  transform:
-    type: model
-    params:
-      action: train
-      model_class: "model.FraudRiskModel"
-      registry:
-        store: ".ubunye/model_store"
-        use_case: fraud
-        auto_version: true
-        promote_to: staging
-        promotion_gates:
-          min_auc: 0.85
-          min_f1: 0.80
-          require_drift_check: true     # blocks promotion if drift_check_passed=false
+```python
+mv = registry.register("fraud", "FraudRiskModel", None, model, metrics)
+registry.promote(
+    "fraud",
+    "FraudRiskModel",
+    mv.version,
+    ModelStage.STAGING,
+    # Blocks promotion if drift_check_passed is false.
+    gates={"min_auc": 0.85, "min_f1": 0.80, "require_drift_check": True},
+)
 ```
 
 Or pass `drift_check_passed` via metadata at registration time (from the CLI or

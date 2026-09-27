@@ -8,6 +8,7 @@ import os
 import time
 import uuid
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 
@@ -24,6 +25,18 @@ from ubunye.core.interfaces import Backend, Reader, Transform, Writer
 from ubunye.core.secrets import SecretResolver
 
 logger = logging.getLogger(__name__)
+
+# The run a transform is part of. Transforms are called as
+# apply(inputs, cfg, backend), so this is how one learns its run id.
+_CURRENT_CONTEXT: ContextVar[Optional["EngineContext"]] = ContextVar(
+    "ubunye_current_context", default=None
+)
+
+
+def current_run_id() -> Optional[str]:
+    """The run id of the task running now, or None outside a run."""
+    ctx = _CURRENT_CONTEXT.get()
+    return ctx.run_id if ctx is not None else None
 
 
 @dataclass(frozen=True)
@@ -432,6 +445,19 @@ class Engine:
         # Transforms see native frames (ADR 004); between transforms too, so one
         # that hands back a port still gives the next a native frame.
         outputs_map: Dict[str, Any] = self._to_natives(sources)
+        token = _CURRENT_CONTEXT.set(ctx)
+        try:
+            return self._apply_each(ctx, chain, outputs_map, transforms)
+        finally:
+            _CURRENT_CONTEXT.reset(token)
+
+    def _apply_each(
+        self,
+        ctx: EngineContext,
+        chain: HookChain,
+        outputs_map: Dict[str, Any],
+        transforms: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
         for tcfg in transforms:
             ttype = tcfg.get("type")
             if ttype is None:
