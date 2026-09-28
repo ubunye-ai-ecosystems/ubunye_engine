@@ -11,8 +11,10 @@ and gated against any other run (``ubunye gate``).
 
 from __future__ import annotations
 
+import base64
 import io
 import json
+import re
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -20,8 +22,15 @@ from typing import Any, Dict, Optional
 #: Printed around the run record at the end of a cloud run.
 RECORD_BEGIN = "=====UBUNYE-RUN-RECORD-BEGIN====="
 RECORD_END = "=====UBUNYE-RUN-RECORD-END====="
+#: Each part of the record: ``UBUNYE-RECORD-PART <n>/<total> <base64>``.
+RECORD_PART = "UBUNYE-RECORD-PART"
+#: Characters of base64 per part: well under the ~1,000 at which CloudWatch split a
+#: Glue job's log line (finding F-023).
+PART_SIZE = 600
+_PART = re.compile(re.escape(RECORD_PART) + r" (\d+)/(\d+) ([A-Za-z0-9+/=]*)")
 
-ENTRY_SCRIPT = '''\
+ENTRY_SCRIPT = (
+    '''\
 """Run one Ubunye task in a cloud job, and print its run record.
 
 Written by `ubunye deploy`. Arguments: --task PATH (usecase/package/task inside
@@ -31,6 +40,7 @@ next to this script: a local path or an s3:// URI), --backend, and any number of
 """
 
 import argparse
+import base64
 import json
 import os
 import sys
@@ -108,8 +118,14 @@ def main():
         newest = max(records, key=os.path.getmtime)
         with open(newest, encoding="utf-8") as fh:
             record = json.load(fh)
+        # In short numbered base64 parts: a log store splits a long line (CloudWatch
+        # cut a record at about 1,000 characters) and can reorder lines printed in the
+        # same instant (Log Analytics); the reader puts the parts back by number.
+        text = base64.b64encode(json.dumps(record, default=str).encode("utf-8")).decode()
+        parts = [text[i:i + PART_SIZE] for i in range(0, len(text), PART_SIZE)] or [""]
         print("RECORD_BEGIN", flush=True)
-        print(json.dumps(record, default=str), flush=True)
+        for n, part in enumerate(parts, 1):
+            print("RECORD_PART", "%d/%d" % (n, len(parts)), part, flush=True)
         print("RECORD_END", flush=True)
     if error is not None:
         raise error
@@ -117,7 +133,11 @@ def main():
 
 if __name__ == "__main__":
     main()
-'''.replace('"RECORD_BEGIN"', repr(RECORD_BEGIN)).replace('"RECORD_END"', repr(RECORD_END))
+'''.replace('"RECORD_BEGIN"', repr(RECORD_BEGIN))
+    .replace('"RECORD_END"', repr(RECORD_END))
+    .replace('"RECORD_PART"', repr(RECORD_PART))
+    .replace("PART_SIZE", str(PART_SIZE))
+)
 
 
 def task_path(usecase: str, package: str, task: str) -> str:
@@ -140,8 +160,40 @@ def bundle(usecase_dir: Path, usecase: str, package: str, task: str) -> bytes:
     return buffer.getvalue()
 
 
+class RecordIncomplete(ValueError):
+    """The log holds some of the record's parts, not all: never a partial record."""
+
+
+def record_parts(log: str) -> Dict[int, str]:
+    """The record parts found anywhere in ``log``, by number (any order, any prefix)."""
+    found: Dict[int, str] = {}
+    totals = set()
+    for n, total, part in _PART.findall(log):
+        found[int(n)] = part
+        totals.add(int(total))
+    if found and len(totals) != 1:
+        raise RecordIncomplete(f"record parts disagree on their count: {sorted(totals)}")
+    return found if not found else {**found, 0: str(totals.pop())}
+
+
 def read_record(log: str) -> Optional[Dict[str, Any]]:
-    """The run record a cloud run printed, from its log text; None if absent."""
+    """The run record a cloud run printed, from its log text; None if absent.
+
+    Reads the numbered parts the entry script prints (any order, anywhere in the
+    log). A log with some parts but not all raises :class:`RecordIncomplete`. Logs
+    from engines before the parts existed hold the record as one JSON line.
+    """
+    parts = record_parts(log)
+    if parts:
+        total = int(parts.pop(0))
+        missing = [n for n in range(1, total + 1) if n not in parts]
+        if missing:
+            raise RecordIncomplete(
+                f"the log holds {total - len(missing)} of the record's {total} parts; "
+                f"missing {missing[:10]}"
+            )
+        text = "".join(parts[n] for n in range(1, total + 1))
+        return json.loads(base64.b64decode(text).decode("utf-8"))
     if RECORD_BEGIN not in log:
         return None
     body = log.split(RECORD_BEGIN, 1)[1].split(RECORD_END, 1)[0].strip()

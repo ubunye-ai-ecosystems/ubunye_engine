@@ -159,7 +159,7 @@ def plan_container_apps(
 
 
 _ACA_RUN = r"""
-import json, subprocess, sys, time
+import json, re, subprocess, sys, time
 s = json.loads(sys.argv[1])
 rg = ["-g", s["resource_group"]]
 def az(*args, capture=True):
@@ -204,8 +204,11 @@ for attempt in range(40):  # Log Analytics lags a few minutes behind the job
     out = subprocess.run(["az", "monitor", "log-analytics", "query", "-w", workspace,
                           "--analytics-query", query, "--query", "[].Log_s", "-o", "tsv",
                           "--only-show-errors"], capture_output=True, text=True).stdout
-    # Wait for the record itself: the end marker can arrive before the record line.
-    if '"run_id"' in out or (state != "Succeeded" and out.strip()):
+    # Wait for the record itself, every numbered part of it: lines printed in the same
+    # instant arrive in any order, and the end marker can come before the record.
+    parts = re.findall(r"UBUNYE-RECORD-PART (\d+)/(\d+) ", out)
+    whole = bool(parts) and len({n for n, _ in parts}) == int(parts[0][1])
+    if whole or '"run_id"' in out or (state != "Succeeded" and out.strip()):
         break
     time.sleep(20)
 print(out)
