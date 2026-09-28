@@ -103,6 +103,7 @@ nav:
       - Changelog: changelog.md
   - Proving Ground:
       - Overview: proving-ground/index.md
+      - "Tutorial 1: pandas and Spark": tutorials/01-local-parity.md
       - Where it starts from: research/proving-ground/current-state.md
   - Project:
       - Developer Guide: dev_guide.md
