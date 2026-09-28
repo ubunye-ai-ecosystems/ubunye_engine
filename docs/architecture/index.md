@@ -11,6 +11,7 @@ purpose: the code and its tests are the detail.
 | [004](adr-004-native-frames.md) | Your transform gets native frames; the engine gets the port | 0.7.0 |
 | [005](adr-005-portable-transforms.md) | One transform for every engine: Narwhals, detected not declared | 0.7.0 |
 | [006](adr-006-run-record.md) | The run record is correct before it is sold: every row, any order, same on every engine | 0.7.0 |
+| [007](adr-007-one-time-zone.md) | One time zone for every backend, UTC unless the task says | unreleased |
 
 ## The rule behind all of them
 

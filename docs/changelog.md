@@ -13,6 +13,15 @@ The first fixes from real use. Two newcomers were given only `pip install`, the
 public docs and a Kaggle dataset each (Olist e-commerce, 9 tables; Amazon Fine Food
 Reviews with a local LLM labelling step), and logged every place they got stuck.
 
+### Changed
+
+- **A Spark session the engine creates works in UTC** (`spark.sql.session.timeZone`),
+  like the pandas backend, unless the task sets the key (ADR 007). Before, it took the
+  machine's zone: on a laptop in Johannesburg, truncating `2024-01-02 10:15 UTC` to a day
+  gave `2024-01-01 22:00 UTC` on Spark and `2024-01-02 00:00 UTC` on pandas and on a UTC
+  cloud. Found by the proving ground's first workload (F-021). Tasks that mean local
+  days set the key; a session the engine did not start is never changed.
+
 ### Fixed
 
 - **Replay is the recorded run, call for call.** A run that sent the same request

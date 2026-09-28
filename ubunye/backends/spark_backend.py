@@ -32,6 +32,11 @@ SPARK_CAPABILITIES = Capabilities(
     needs_jvm=True,
 )
 
+#: The session time zone every backend reads and cuts time in, unless a task sets
+#: ``spark.sql.session.timeZone`` (the pandas backend reads the same key). ADR 007.
+TIME_ZONE_KEY = "spark.sql.session.timeZone"
+DEFAULT_TIME_ZONE = "UTC"
+
 if TYPE_CHECKING:
     from ubunye.core.ports import DataFramePort
     from ubunye.core.write_modes import ResolvedWriteMode
@@ -91,6 +96,13 @@ class SparkBackend(Backend):
         builder = SparkSession.builder.appName(self._app_name)
         for k, v in self._conf.items():
             builder = builder.config(k, v)
+        if running is None and TIME_ZONE_KEY not in self._conf:
+            # A session this backend creates reads and cuts time in UTC, as the pandas
+            # backend does, unless the task says otherwise (ADR 007). Left to the
+            # JVM, a laptop in Johannesburg truncated a timestamp to its own midnight
+            # and disagreed with pandas, and with the same task on a UTC cloud.
+            # A session someone else started is never changed.
+            builder = builder.config(TIME_ZONE_KEY, DEFAULT_TIME_ZONE)
         self._spark = builder.getOrCreate()
         self._owns_session = running is None
 
