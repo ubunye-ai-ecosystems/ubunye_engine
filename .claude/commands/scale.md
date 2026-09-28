@@ -1,6 +1,6 @@
 ---
 description: Run one step of the scale ladder next to a plain baseline
-argument-hint: <pipeline> <data size> [where: actions|kaggle|databricks]
+argument-hint: "<pipeline> <data size> [where: actions|kaggle|databricks]"
 ---
 
 Use the `scale-runner` agent for: $ARGUMENTS

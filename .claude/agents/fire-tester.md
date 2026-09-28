@@ -1,6 +1,6 @@
 ---
 name: fire-tester
-description: Use when the user wants to exercise an example end-to-end on a real environment (local, Databricks, or the clouds through the ubunye-infra *-live workflows) and triage any failures. Proactively use for prompts like "run the titanic example", "fire the weather pipeline", or "does the ML lifecycle still work". Handles: triggering the right GitHub Actions workflow, watching it to completion, inspecting logs when steps fail, and recording findings to tasks/todo/.
+description: "Use when the user wants to exercise an example end-to-end on a real environment (local, Databricks, or the clouds through the ubunye-infra *-live workflows) and triage any failures. Proactively use for prompts like \"run the titanic example\", \"fire the weather pipeline\", or \"does the ML lifecycle still work\". Handles: triggering the right GitHub Actions workflow, watching it to completion, inspecting logs when steps fail, and recording findings to tasks/todo/."
 tools: Bash, Read, Grep, Glob, Write, Edit
 model: opus
 ---
