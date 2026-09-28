@@ -67,6 +67,10 @@ class ModelTransform(Transform):
             Dict of named outputs. For ``train``: ``{"model_metrics": dict}``.
             For ``predict``: ``{"predictions": DataFrame}``.
         """
+        # The engine hands over the whole transform block ({type, params});
+        # a direct call may pass the params alone. Both mean the same.
+        if "action" not in cfg and isinstance(cfg.get("params"), dict):
+            cfg = cfg["params"]
         action = cfg.get("action")
         if action == "train":
             return self._train(inputs, cfg, backend)

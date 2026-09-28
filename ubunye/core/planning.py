@@ -199,7 +199,13 @@ def build_plan(
         "frame_imports": [],
     }
     ttype = cfg.CONFIG.transform.type
-    if ttype in (None, "noop") and task_dir is not None:
+    from ubunye.core.task_runner import ignored_transform_message
+
+    ignored = ignored_transform_message({"type": ttype})
+    if ignored:
+        warnings.append(f"transform: {ignored}")
+    # A task runs its transformations.py whatever the type says.
+    if task_dir is not None:
         module_path = task_dir / "transformations.py"
         if not module_path.exists():
             problems.append("transform: no transformations.py in the task folder")

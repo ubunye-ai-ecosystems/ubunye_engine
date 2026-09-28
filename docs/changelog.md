@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] (2026-09-27)
+
+Run records you can trust when a run has more than one task, and a registered model
+that points at the run that trained it.
+
+### Fixed
+
+- **Each task in a run has its own run id.** `ubunye run -t a -t b` (and `--all`) and
+  `run_pipeline` gave every task the same run id. Each task now gets its own, so each
+  has one run record and one OpenLineage run.
+- **The lineage store never hands back another task's record.** It cached records by
+  run id alone, so with two records under one id (as 0.7.0 multi-task runs wrote) it
+  could return task A's record when asked for task B's. It now caches by file.
+- **A model registered inside a run records that run's id.** `ModelRegistry.register`
+  fills in `lineage_run_id` from the running task when it is not given, so a model
+  trained in `transformations.py` links to its run record. Before, it was always empty.
+- **`ModelTransform` reads its settings as `config.yaml` writes them**, under `params:`,
+  as well as flat.
+
+### Deprecated
+
+- **`CONFIG.transform.type` in a task's config.yaml.** A task always runs its
+  `transformations.py`; any other `type` (`model`, or a plugin) was dropped without a
+  word. `ubunye run` now warns (`FutureWarning`), and `ubunye plan` and
+  `ubunye validate` report it. It becomes an error in 0.8.0. `type: noop` is unchanged.
+  The docs showed `type: model` as working; they now show training in
+  `transformations.py`.
+
+### Changed
+
+- `ubunye validate --json` gives each task a `warnings` list.
+- `ubunye plan` checks for `transformations.py` whatever the transform type says.
+
 ## [0.7.0] (2026-09-25)
 
 One release where three were planned (0.6, 0.7 and 0.8). The same task folder

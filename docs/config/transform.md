@@ -8,30 +8,23 @@
 
 ```yaml
 CONFIG:
-  transform: {}           # type is optional — defaults to Task class
+  transform: {}
 ```
 
-When `type` is omitted (or the section is `{}`), the engine uses the `Task` subclass
-from `transformations.py` in the task directory. This is the recommended form for all
-standard pipelines.
+A task folder always runs the `Task` subclass in its `transformations.py`. That holds for
+`ubunye run`, `run_task`, `run_pipeline` and notebooks. Leave `transform` as `{}`.
 
-If you need a specific transform plugin, set `type` explicitly:
-
-```yaml
-CONFIG:
-  transform:
-    type: model           # explicit plugin name
-    params: {}            # optional — passed to the transform plugin
-```
+!!! warning "`type:` in a task's config.yaml is not run"
+    Before 0.7.1 a task's config could name a transform plugin (`type: model`, or your
+    own) and the engine dropped it without a word: `transformations.py` ran instead.
+    Since 0.7.1, `ubunye run`, `ubunye plan` and `ubunye validate` say so. From 0.8.0
+    it is an error. Move the logic into `transformations.py` (see
+    [Training a model](#training-a-model)) and remove the `type` line. `type: noop` is
+    still accepted, and still does nothing.
 
 ---
 
-## Built-in transform types
-
-### Default — Task class (recommended)
-
-When `transform` has no `type`, the engine loads `transformations.py` and calls the
-user's `Task` subclass. This is the standard pattern for ETL and ML pipelines.
+## The Task class
 
 ```yaml
 transform: {}
@@ -54,70 +47,89 @@ under `CONFIG.inputs` and `CONFIG.outputs`.
 
 ---
 
-### `model` — ML model train/predict
+## Training a model
 
-Runs a `UbunyeModel` subclass for training or inference.
-See [Model Contract](../ml/model_contract.md) and [Model Registry](../ml/registry.md).
+Train and register the model in `transformations.py`. A model registered inside a run
+records that run's id (`lineage_run_id`), so `ubunye lineage show` finds the data it was
+trained on. See [Model Contract](../ml/model_contract.md) and
+[Model Registry](../ml/registry.md).
 
-```yaml
-transform:
-  type: model
-  params:
-    action: train                          # train | predict
-    model_class: "model.FraudRiskModel"    # module.ClassName (model.py in task dir)
-    registry:
-      store: ".ubunye/model_store"
-      use_case: fraud_detection
-      auto_version: true
-      promote_to: staging
-      promotion_gates:
-        min_auc: 0.85
-        min_f1: 0.80
+```python
+# transformations.py
+from ubunye.core.interfaces import Task
+from ubunye.models.registry import ModelRegistry, ModelStage
+
+from model import FraudRiskModel  # model.py in the task folder
+
+
+class TrainFraudModel(Task):
+    def transform(self, sources: dict) -> dict:
+        features = sources["features"]
+        model = FraudRiskModel()
+        metrics = model.train(features)
+
+        registry = ModelRegistry(".ubunye/model_store")
+        mv = registry.register("fraud_detection", "FraudRiskModel", None, model, metrics)
+        registry.promote(
+            "fraud_detection",
+            "FraudRiskModel",
+            mv.version,
+            ModelStage.STAGING,
+            gates={"min_auc": 0.85, "min_f1": 0.80},
+        )
+        # Write what the model was trained on, so the run record hashes it.
+        return {"training_set": features}
 ```
 
-#### `ModelTransformParams` fields
+A gate that fails raises `PromotionBlockedError`, which fails the run. The version stays
+registered in `development`. Catch the error if the run should still succeed.
+
+---
+
+## `ModelTransform` from Python
+
+`ubunye.plugins.transforms.model_transform.ModelTransform` trains or scores a model from a
+settings dict. Call it yourself, for example from a notebook. It takes the settings flat or
+under `params:`.
+
+```python
+from ubunye.plugins.transforms.model_transform import ModelTransform
+
+ModelTransform().apply(
+    {"features": df},
+    {
+        "action": "train",
+        "model_class": "model.FraudRiskModel",
+        "registry": {"store": ".ubunye/model_store", "use_case": "fraud_detection"},
+    },
+    backend,
+)
+```
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `action` | `train` \| `predict` | required | Whether to train or score |
 | `model_class` | string | required | `module.ClassName` of the `UbunyeModel` subclass |
-| `model_dir` | string | `null` | Directory containing the model file; defaults to task dir |
-| `model_path` | string | `null` | Path to saved artifact (used for predict without registry) |
-| `input_name` | string | `null` | Key in `inputs` dict to use as training/scoring data |
-| `registry` | [RegistryConfig](#registryconfig-fields) | `null` | Model registry settings |
+| `model_dir` | string | `null` | Folder holding the model file; defaults to `sys.path` |
+| `model_path` | string | `null` | Path to a saved artifact (predict without a registry) |
+| `input_name` | string | `null` | Key in `inputs` to train or score on |
+| `registry` | [registry settings](#registry-settings) | `null` | Model registry settings |
 
-#### `RegistryConfig` fields
+### Registry settings
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `store` | string | required | Filesystem path for the model store |
+| `store` | string | required | Path or URI of the model store |
 | `use_case` | string | `"default"` | Logical grouping for the model |
 | `version` | string | `null` | Explicit version; auto-generated if `null` |
-| `auto_version` | bool | `true` | Bump patch version automatically |
 | `promote_to` | `development` \| `staging` \| `production` | `null` | Promote after registration |
 | `use_stage` | `development` \| `staging` \| `production` | `"production"` | Stage to load from (predict only) |
 | `promotion_gates` | dict | `null` | Metric thresholds that must pass before promotion |
 
 ---
 
-### Custom transforms
+## Transform plugins
 
-Any class registered under the `ubunye.transforms` entry point can be used as a `type`.
-See [Writing a Plugin](../connectors/plugin_guide.md).
-
----
-
-## Transform params and extra fields
-
-`TransformConfig.params` is a `Dict[str, Any]`, so you can pass arbitrary keys:
-
-```yaml
-transform:
-  type: my_custom_transform
-  params:
-    window_days: 30
-    feature_cols: [f1, f2, f3]
-    threshold: 0.5
-```
-
-These are passed directly to your plugin's `apply(inputs, cfg, backend)` call as `cfg`.
+Classes registered under the `ubunye.transforms` entry point run when you build an
+`Engine` yourself and pass it a config; a task folder does not run them. See
+[Writing a Plugin](../connectors/plugin_guide.md).

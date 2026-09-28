@@ -177,7 +177,9 @@ class ModelRegistry:
             version: Semver string. Pass ``None`` to auto-generate.
             model: A trained :class:`UbunyeModel` instance.
             metrics: Metrics dict returned by :meth:`UbunyeModel.train`.
-            lineage_run_id: Optional lineage ``run_id`` from the training run.
+            lineage_run_id: The ``run_id`` of the training run. When omitted
+                inside a run (a task's ``transformations.py``), it is that run's
+                id, so the model points at its run record.
             registered_by: Optional username for the audit trail.
             promotion_gates: The gates every later promotion of this model must
                 pass. Given, they replace the model's stored gates.
@@ -185,6 +187,11 @@ class ModelRegistry:
         Returns:
             The newly created :class:`ModelVersion`.
         """
+        if lineage_run_id is None:
+            from ubunye.core.runtime import current_run_id
+
+            lineage_run_id = current_run_id()
+
         record = self._load_or_create_record(use_case, model_name)
         if promotion_gates is not None:
             record.promotion_gates = dict(promotion_gates)

@@ -34,7 +34,7 @@ my_project/
 |---|---|
 | `config.yaml` | Declares inputs, transform, outputs, engine, orchestration |
 | `transformations.py` | Python transform (`Task` subclass) |
-| `model.py` | Optional ML model (`UbunyeModel` subclass) for `type: model` transforms |
+| `model.py` | Optional ML model (`UbunyeModel` subclass), imported by `transformations.py` |
 | `notebooks/<task>_dev.ipynb` | Interactive dev notebook (Databricks-ready) |
 
 Every task is **self-contained**. The config is the single source of truth for what runs and where.

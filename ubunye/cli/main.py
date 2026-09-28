@@ -250,8 +250,14 @@ def validate(
     for task in tasks_to_check:
         task_dir = _task_path(usecase_dir, usecase, package, task)
         problems: List[str] = []
+        task_warnings: List[str] = []
         try:
             cfg = load_config(str(task_dir), variables=variables, profile=profile)
+            from ubunye.core.task_runner import ignored_transform_message
+
+            ignored = ignored_transform_message({"type": cfg.CONFIG.transform.type})
+            if ignored:
+                task_warnings.append(ignored)
             if caps is not None and registry is not None:
                 from ubunye.core.capabilities import check_task
 
@@ -264,7 +270,9 @@ def validate(
                 )
         except (ValueError, FileNotFoundError) as e:
             problems = [str(e)]
-        results.append({"task": task, "ok": not problems, "problems": problems})
+        results.append(
+            {"task": task, "ok": not problems, "problems": problems, "warnings": task_warnings}
+        )
         failed += bool(problems)
 
     if as_json:
@@ -276,6 +284,8 @@ def validate(
     for result in results:
         if result["ok"]:
             typer.secho(f"  [OK]   {result['task']}", fg=typer.colors.GREEN)
+            for warning in result["warnings"]:
+                typer.secho(f"         [WARN] {warning}", fg=typer.colors.YELLOW)
             continue
         on = f" (on the {backend_kind} backend)" if backend_kind else ""
         typer.secho(f"  [FAIL] {result['task']}{on}", fg=typer.colors.RED)
@@ -513,7 +523,6 @@ def run(
     spark_conf = first_cfg.merged_spark_conf(mode)
     spark_conf["spark.submit.deployMode"] = deploy_mode
 
-    run_id = str(uuid.uuid4())
     backend = _resolve_backend_or_exit(backend_kind, app_name=f"ubunye:{package}", conf=spark_conf)
 
     # Build a lineage recorder if --lineage was requested
@@ -538,8 +547,9 @@ def run(
             typer.echo(f"Starting task: {task} (Mode: {mode}, Deploy: {deploy_mode})")
             cfg = configs[task]
             task_dir = _task_path(usecase_dir, usecase, package, task)
+            # Each task is its own run: one run id, one run record.
             context = EngineContext(
-                run_id=run_id,
+                run_id=str(uuid.uuid4()),
                 profile=mode,
                 task_name=f"{usecase}/{package}/{task}",
                 variables=variables,

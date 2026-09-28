@@ -180,26 +180,15 @@ def test_train_returns_metrics(tmp_path):
 
 ---
 
-## Using with the `model` transform
+## Training in a task
 
-Reference your class in `config.yaml`:
+Train and register the model from the task's `transformations.py`; `model.py` sits next
+to it and imports as `from model import FraudRiskModel`. A model registered inside a run
+records that run's id. The full example is in
+[Transform: Training a model](../config/transform.md#training-a-model).
 
-```yaml
-CONFIG:
-  transform:
-    type: model
-    params:
-      action: train
-      model_class: "model.FraudRiskModel"   # model.py is in the task directory
-      registry:
-        store: ".ubunye/model_store"
-        use_case: fraud_detection
-        auto_version: true
-        promote_to: staging
-        promotion_gates:
-          min_auc: 0.85
-          min_f1: 0.80
-```
+A task's `config.yaml` cannot run the model by naming `type: model`: a task always runs
+its `transformations.py` (since 0.7.1 the engine warns, from 0.8.0 it is an error).
 
 See [Model Registry](registry.md) for the full registry reference.
 
@@ -218,4 +207,4 @@ class IncompleteModel(UbunyeModel):
 IncompleteModel()   # TypeError: Can't instantiate abstract class IncompleteModel
 ```
 
-This is checked by unit tests and by the `model_transform` plugin before invoking `train()`.
+This is checked by unit tests and when the model class is instantiated.
