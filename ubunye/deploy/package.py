@@ -12,22 +12,27 @@ and gated against any other run (``ubunye gate``).
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import json
 import re
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 #: Printed around the run record at the end of a cloud run.
 RECORD_BEGIN = "=====UBUNYE-RUN-RECORD-BEGIN====="
 RECORD_END = "=====UBUNYE-RUN-RECORD-END====="
 #: Each part of the record: ``UBUNYE-RECORD-PART <n>/<total> <base64>``.
 RECORD_PART = "UBUNYE-RECORD-PART"
-#: Characters of base64 per part: well under the ~1,000 at which CloudWatch split a
-#: Glue job's log line (finding F-023).
+#: The whole record's SHA-256, printed before its parts.
+RECORD_DIGEST = "UBUNYE-RECORD-SHA256"
+#: Characters of base64 per part. Log stores cut lines both at a width (CloudWatch at
+#: about 1,000) and wherever their buffer flushes, so each part says its own length.
 PART_SIZE = 600
-_PART = re.compile(re.escape(RECORD_PART) + r" (\d+)/(\d+) ([A-Za-z0-9+/=]*)")
+_PART = re.compile(re.escape(RECORD_PART) + r" (\d+)/(\d+) (\d+) ([A-Za-z0-9+/=]*)")
+_DIGEST = re.compile(re.escape(RECORD_DIGEST) + r" ([0-9a-f]{64})")
+_B64 = re.compile(r"[A-Za-z0-9+/=]+")
 
 ENTRY_SCRIPT = (
     '''\
@@ -41,6 +46,7 @@ next to this script: a local path or an s3:// URI), --backend, and any number of
 
 import argparse
 import base64
+import hashlib
 import json
 import os
 import sys
@@ -121,11 +127,16 @@ def main():
         # In short numbered base64 parts: a log store splits a long line (CloudWatch
         # cut a record at about 1,000 characters) and can reorder lines printed in the
         # same instant (Log Analytics); the reader puts the parts back by number.
-        text = base64.b64encode(json.dumps(record, default=str).encode("utf-8")).decode()
+        # Each part says its length, and the whole record its SHA-256, because a log
+        # store also cuts a line wherever its buffer flushes (Glue's CloudWatch cut
+        # part 7 of 8 at 295 of 600 characters) and sends the rest as the next line.
+        raw = json.dumps(record, default=str).encode("utf-8")
+        text = base64.b64encode(raw).decode()
         parts = [text[i:i + PART_SIZE] for i in range(0, len(text), PART_SIZE)] or [""]
         print("RECORD_BEGIN", flush=True)
+        print("RECORD_DIGEST", hashlib.sha256(raw).hexdigest(), flush=True)
         for n, part in enumerate(parts, 1):
-            print("RECORD_PART", "%d/%d" % (n, len(parts)), part, flush=True)
+            print("RECORD_PART", "%d/%d" % (n, len(parts)), len(part), part, flush=True)
         print("RECORD_END", flush=True)
     if error is not None:
         raise error
@@ -136,6 +147,7 @@ if __name__ == "__main__":
 '''.replace('"RECORD_BEGIN"', repr(RECORD_BEGIN))
     .replace('"RECORD_END"', repr(RECORD_END))
     .replace('"RECORD_PART"', repr(RECORD_PART))
+    .replace('"RECORD_DIGEST"', repr(RECORD_DIGEST))
     .replace("PART_SIZE", str(PART_SIZE))
 )
 
@@ -161,39 +173,73 @@ def bundle(usecase_dir: Path, usecase: str, package: str, task: str) -> bytes:
 
 
 class RecordIncomplete(ValueError):
-    """The log holds some of the record's parts, not all: never a partial record."""
+    """The log does not hold the whole record, provably intact: never a partial record."""
 
 
-def record_parts(log: str) -> Dict[int, str]:
-    """The record parts found anywhere in ``log``, by number (any order, any prefix)."""
-    found: Dict[int, str] = {}
+def _parts_from(log: str) -> Tuple[Dict[int, str], int, Optional[str]]:
+    """The parts in ``log`` by number, their count, and the record's SHA-256.
+
+    A part a log store cut short (it says its own length) is completed from the lines
+    that follow it, which is where the store puts the rest: the last token of each,
+    while it is plain base64 and not the start of another part or a marker.
+    """
+    lines = log.splitlines()
+    digest = _DIGEST.search(log)
+    parts: Dict[int, str] = {}
+    damaged: Dict[int, str] = {}
     totals = set()
-    for n, total, part in _PART.findall(log):
-        found[int(n)] = part
-        totals.add(int(total))
-    if found and len(totals) != 1:
+    for i, line in enumerate(lines):
+        m = _PART.search(line)
+        if not m:
+            continue
+        n, total, length, payload = int(m[1]), int(m[2]), int(m[3]), m[4]
+        totals.add(total)
+        j = i + 1
+        while len(payload) < length and j < len(lines):
+            nxt = lines[j].strip()
+            j += 1
+            if not nxt:
+                continue
+            if _PART.search(nxt) or _DIGEST.search(nxt) or RECORD_END in nxt:
+                break
+            token = nxt.split()[-1]
+            if not _B64.fullmatch(token):
+                break
+            payload += token
+        if len(payload) == length:
+            parts.setdefault(n, payload)
+        else:
+            damaged[n] = f"part {n} arrived with {len(payload)} of {length} characters"
+    if len(totals) > 1:
         raise RecordIncomplete(f"record parts disagree on their count: {sorted(totals)}")
-    return found if not found else {**found, 0: str(totals.pop())}
+    total = totals.pop() if totals else 0
+    for n, why in damaged.items():
+        if n not in parts:
+            raise RecordIncomplete(why + " and could not be completed from the log")
+    return parts, total, digest[1] if digest else None
 
 
 def read_record(log: str) -> Optional[Dict[str, Any]]:
     """The run record a cloud run printed, from its log text; None if absent.
 
-    Reads the numbered parts the entry script prints (any order, anywhere in the
-    log). A log with some parts but not all raises :class:`RecordIncomplete`. Logs
-    from engines before the parts existed hold the record as one JSON line.
+    Reads the numbered parts the entry script prints, from anywhere in the log and in
+    any order, completing a part a log store cut short, then checks the whole record
+    against its SHA-256. A record that is not provably whole raises
+    :class:`RecordIncomplete`. Logs from engines before the parts existed hold the
+    record as one JSON line.
     """
-    parts = record_parts(log)
-    if parts:
-        total = int(parts.pop(0))
+    parts, total, digest = _parts_from(log)
+    if total:
         missing = [n for n in range(1, total + 1) if n not in parts]
         if missing:
             raise RecordIncomplete(
                 f"the log holds {total - len(missing)} of the record's {total} parts; "
                 f"missing {missing[:10]}"
             )
-        text = "".join(parts[n] for n in range(1, total + 1))
-        return json.loads(base64.b64decode(text).decode("utf-8"))
+        raw = base64.b64decode("".join(parts[n] for n in range(1, total + 1)))
+        if digest is not None and hashlib.sha256(raw).hexdigest() != digest:
+            raise RecordIncomplete("the record read from the log does not match its SHA-256")
+        return json.loads(raw.decode("utf-8"))
     if RECORD_BEGIN not in log:
         return None
     body = log.split(RECORD_BEGIN, 1)[1].split(RECORD_END, 1)[0].strip()

@@ -29,11 +29,13 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 - **A cloud run's record survives the log store.** `ubunye deploy glue --record-out`
   failed after a successful Glue run because CloudWatch returned the record's one long
-  JSON line cut at about 1,000 characters. The entry script now prints the record as
-  short numbered base64 parts, read back by number from anywhere in the log (split,
-  reordered or prefixed lines), and a record with a missing part is refused, never
-  read in part. Records printed by older engines still read. Found by the proving
-  ground (F-023).
+  JSON line cut at about 1,000 characters (and cut again wherever Glue's output buffer
+  flushed). The entry script now prints the record's SHA-256 and the record as short
+  numbered base64 parts that say their length; the reader puts them back by number
+  from anywhere in the log, completes a part cut short from the lines after it, and
+  checks the SHA-256. A record that is not provably whole is refused, never read in
+  part. Records printed by older engines still read. Found by the proving ground
+  (F-023).
 
 - **Replay is the recorded run, call for call.** A run that sent the same request
   twice (two identical reviews) to a model that answered each differently replayed

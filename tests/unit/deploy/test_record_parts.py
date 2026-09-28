@@ -1,10 +1,13 @@
-"""A cloud run's record survives the log store: split lines, reordered lines, prefixes.
+"""A cloud run's record survives the log store: cut lines, reordered lines, prefixes.
 
 Found by the proving ground (finding F-023): C01 ran to success on AWS Glue, but its
 record, printed as one JSON line of a few thousand characters, came back from
 CloudWatch cut at about 1,000 characters, and `ubunye deploy glue` failed with
-`JSONDecodeError: Unterminated string`. The record is now printed in short numbered
-base64 parts that the reader puts back by number from anywhere in the log.
+`JSONDecodeError: Unterminated string`. Printed next as numbered base64 parts, one part
+still came back cut (295 of 600 characters) where Glue's output buffer flushed, the
+rest as the next line. So each part says its length, a cut part is completed from the
+lines after it, and the whole record is checked against its SHA-256: a record is read
+whole and provably intact, or refused.
 """
 
 from __future__ import annotations
@@ -23,12 +26,14 @@ from ubunye.deploy import package
 def _entry_log(tmp_path, record: dict) -> str:
     """What the real entry script prints for ``record`` (its printing code, run)."""
     src = package.ENTRY_SCRIPT
-    start = src.index("        text = base64.b64encode")
+    start = src.index("        raw = json.dumps(record")
     end = src.index("        print(" + repr(package.RECORD_END))
     body = src[start:end] + "        print(" + repr(package.RECORD_END) + ", flush=True)\n"
     script = tmp_path / "printer.py"
     script.write_text(
-        "import base64, json, sys\n" "record = json.loads(sys.stdin.read())\n" "if True:\n" + body,
+        "import base64, hashlib, json, sys\n"
+        "record = json.loads(sys.stdin.read())\n"
+        "if True:\n" + body,
         encoding="utf-8",
     )
     done = subprocess.run(
@@ -59,12 +64,25 @@ def _cloudwatch(log: str, width: int = 1000) -> str:
     return "\n".join(events)
 
 
-def test_a_long_record_survives_lines_cut_at_1000_characters(tmp_path):
+def test_a_long_record_survives_lines_cut_at_a_width(tmp_path):
     record = _big_record()
     assert len(json.dumps(record)) > 3000
     log = _entry_log(tmp_path, record)
     assert all(len(line) < 700 for line in log.splitlines())
     assert package.read_record(_cloudwatch(log)) == record
+
+
+def test_a_part_cut_where_the_buffer_flushed_is_completed(tmp_path):
+    # What Glue's CloudWatch did: a part arrived short, the rest as the next line,
+    # with no prefix.
+    record = _big_record()
+    out = []
+    for line in _entry_log(tmp_path, record).splitlines():
+        if f"{package.RECORD_PART} 3/" in line:
+            out += ["INFO " + line[:120], line[120:]]
+        else:
+            out.append("INFO " + line)
+    assert package.read_record("\n".join(out)) == record
 
 
 def test_parts_reordered_by_the_log_store_are_put_back(tmp_path):
@@ -74,6 +92,16 @@ def test_parts_reordered_by_the_log_store_are_put_back(tmp_path):
     assert package.read_record("\n".join(lines)) == record
 
 
+def test_a_cut_part_whose_rest_is_elsewhere_is_refused(tmp_path):
+    lines = _entry_log(tmp_path, _big_record()).splitlines()
+    i = next(k for k, ln in enumerate(lines) if f"{package.RECORD_PART} 3/" in ln)
+    head, rest = lines[i][:120], lines[i][120:]
+    lines[i] = head
+    lines.insert(0, rest)  # a log store that reordered lines
+    with pytest.raises(package.RecordIncomplete, match="part 3 arrived with"):
+        package.read_record("\n".join(lines))
+
+
 def test_a_missing_part_is_an_error_never_a_partial_record(tmp_path):
     lines = _entry_log(tmp_path, _big_record()).splitlines()
     kept = [ln for ln in lines if f"{package.RECORD_PART} 2/" not in ln]
@@ -81,12 +109,20 @@ def test_a_missing_part_is_an_error_never_a_partial_record(tmp_path):
         package.read_record("\n".join(kept))
 
 
+def test_a_record_that_does_not_match_its_digest_is_refused(tmp_path):
+    lines = _entry_log(tmp_path, _big_record()).splitlines()
+    k = next(i for i, ln in enumerate(lines) if package.RECORD_DIGEST in ln)
+    lines[k] = f"{package.RECORD_DIGEST} {'0' * 64}"
+    with pytest.raises(package.RecordIncomplete, match="SHA-256"):
+        package.read_record("\n".join(lines))
+
+
 def test_a_record_printed_by_an_older_engine_still_reads():
     old = f'{package.RECORD_BEGIN}\nINFO {{"run_id": "r1", "status": "success"}}\n{package.RECORD_END}\n'
     assert package.read_record(old) == {"run_id": "r1", "status": "success"}
 
 
-def test_the_parts_are_plain_base64():
+def test_a_small_record_is_one_part():
     text = base64.b64encode(json.dumps({"a": 1}).encode()).decode()
-    log = f"x {package.RECORD_PART} 1/1 {text}\n"
+    log = f"x {package.RECORD_PART} 1/1 {len(text)} {text}\n"
     assert package.read_record(log) == {"a": 1}

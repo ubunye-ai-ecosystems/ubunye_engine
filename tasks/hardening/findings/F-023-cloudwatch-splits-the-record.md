@@ -19,12 +19,23 @@ One long log line assumed to survive the log store. Log Analytics had already sh
 other failure mode (lines reordered, #90).
 
 ## Fix
-The entry script prints the record as numbered base64 parts of 600 characters
-(`UBUNYE-RECORD-PART n/total ...`); `read_record` collects them by number from anywhere
-in the log, refuses a record with a missing part (`RecordIncomplete`), and still reads
-the old one-line form. The Container Apps reader waits for every part.
+The entry script prints the record's SHA-256, then the record as numbered base64 parts
+that say their own length (`UBUNYE-RECORD-PART n/total length payload`). `read_record`
+collects the parts by number from anywhere in the log, completes a part the store cut
+short from the lines that follow it, and checks the whole against the SHA-256; a record
+with a missing, uncompletable or mismatched part is refused (`RecordIncomplete`), never
+read in part. The old one-line form still reads; the Container Apps reader waits for
+every part.
+
+A first fix (parts without lengths) failed on the Glue rerun, infra run 36452872273:
+part 7 of 8 arrived with 295 of its 600 characters. CloudWatch also cuts where Glue's
+output buffer flushes, not only at a width.
+
+## Follow-up
+Where the platform has a bucket (Glue, Dataproc), write the record to it as well; logs
+are a lossy transport.
 
 ## Evidence
 tests/unit/deploy/test_record_parts.py: a 3,000+ character record through lines cut at
-1,000 characters, shuffled lines, a missing part (4 fail before the fix). Glue rerun:
-see the proving report.
+a width and cut mid-line where a buffer flushed, shuffled lines, a missing part, a cut
+part whose rest is elsewhere, a wrong digest (7 of 8 fail on the first fix).
