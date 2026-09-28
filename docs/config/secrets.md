@@ -59,6 +59,28 @@ SecretError: Could not read secret secret://aws-sm/prod/shop-db: ClientError: Ac
   Hint: pip install 'ubunye-engine[aws]'; the login is the AWS SDK's (profile, role, env).
 ```
 
+## What is recorded
+
+A resolved secret never reaches the run record, the lineage record, an OpenLineage
+event or `ubunye plan` output: only the `secret://` reference is kept. This is
+checked by experiment E-04 (`tests/experiments/e04_secrets.py`), which puts a marker
+in every place a secret can go and searches everything a run leaves behind.
+
+`--var` is not for secrets: variables are recorded, because the record says what the
+run was given. As a safety net, a variable whose name says it is a secret (`token`,
+`db_password`, `api_key`, `client_secret` and the like) is recorded as `***`, and its
+value is masked wherever it was templated in (a JDBC URL, a REST query). Names about
+a secret rather than holding one (`max_token`, `auth_mode`, `secret_scope`) are kept.
+Pass a secret through `secret://` instead.
+
+A password written into a URL (`jdbc:postgresql://user:password@host/db`,
+`;password=...`, `?token=...`) is masked in every recorded location, as Spline learned
+to do after lineage leaked JDBC passwords.
+
+The config hash is taken over the config as rendered, so a templated secret is part
+of it. The hash cannot be reversed for a long token, but a short password could be
+guessed against it: another reason to use `secret://`, which is hashed as the reference.
+
 ## Writing a provider
 
 A provider is a class with `get(ref) -> str`, registered under the

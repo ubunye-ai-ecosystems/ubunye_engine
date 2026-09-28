@@ -28,6 +28,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from ubunye.core.secrets import redact_variables, scrub, secret_values
 from ubunye.lineage import evidence
 from ubunye.lineage.context import RunContext, StepRecord
 from ubunye.lineage.storage import FileSystemLineageStore, LineageStore, S3LineageStore
@@ -108,6 +109,9 @@ class LineageRecorder:
         self._sample_fraction = sample_fraction
         # In-flight run contexts keyed by run_id (supports concurrent tasks)
         self._runs: Dict[str, RunContext] = {}
+        # Real values of the run's secret-looking variables, to mask wherever they
+        # were templated in (a JDBC URL, a REST query).
+        self._secret_values: Dict[str, List[str]] = {}
 
     # ------------------------------------------------------------------
     # Monitor protocol
@@ -154,13 +158,12 @@ class LineageRecorder:
             code_hash=evidence.code_hash(getattr(context, "task_dir", None)),
             environment=env,
             environment_hash=evidence.environment_hash(env),
-            variables={
-                k: v
-                for k, v in dict(getattr(context, "variables", {}) or {}).items()
-                if v is not None
-            },
+            # Secret-looking values (a token passed as --var) are masked here, so
+            # they reach neither the record nor OpenLineage.
+            variables=redact_variables(dict(getattr(context, "variables", {}) or {})),
         )
         self._runs[run_id] = ctx
+        self._secret_values[run_id] = secret_values(dict(getattr(context, "variables", {}) or {}))
         try:
             self._store.save(ctx)
         except Exception:
@@ -217,6 +220,9 @@ class LineageRecorder:
                 _fingerprint_into(step, outputs[name])
             step_outputs.append(step)
         ctx.outputs = step_outputs
+        values = self._secret_values.pop(run_id, [])
+        for step in ctx.inputs + ctx.outputs:
+            step.location = scrub(step.location, values)
 
         try:
             self._store.save(ctx)

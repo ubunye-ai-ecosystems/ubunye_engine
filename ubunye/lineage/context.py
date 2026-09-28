@@ -29,6 +29,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
+from ubunye.core.secrets import redact_url
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -44,14 +46,16 @@ def _location_from_io_cfg(io_cfg: Dict[str, Any]) -> str:
             return f"{db}.{tbl}"
         return io_cfg.get("table") or io_cfg.get("sql", "")[:80] or fmt
     if fmt == "jdbc":
-        url = io_cfg.get("url", "")
+        # A password in the URL (user:password@, ;password=) is masked: a location
+        # is recorded, sent to lineage servers and printed.
+        url = redact_url(io_cfg.get("url", ""))
         table = io_cfg.get("table", "")
         return f"{url}/{table}" if table else url
     if fmt in ("s3", "binary", "delta"):
         return io_cfg.get("path", "") or io_cfg.get("table", fmt)
     if fmt == "rest_api":
-        return io_cfg.get("url", "")
-    return io_cfg.get("path") or io_cfg.get("url") or fmt
+        return redact_url(io_cfg.get("url", ""))
+    return redact_url(io_cfg.get("path") or io_cfg.get("url") or fmt)
 
 
 # ---------------------------------------------------------------------------

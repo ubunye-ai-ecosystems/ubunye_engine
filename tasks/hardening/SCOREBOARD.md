@@ -16,7 +16,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 13 (F-008 to F-020) | 7 (F-001 to F-007, in PR #98) | 0 |
+| 12 (F-008 to F-015, F-017 to F-020) | 8 (F-001 to F-007 in PR #98, F-016) | 0 |
 
 ## Experiments
 

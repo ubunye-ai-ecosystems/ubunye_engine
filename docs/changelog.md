@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.2] (2026-09-28)
-
 The first fixes from real use. Two newcomers were given only `pip install`, the
 public docs and a Kaggle dataset each (Olist e-commerce, 9 tables; Amazon Fine Food
 Reviews with a local LLM labelling step), and logged every place they got stuck.
@@ -29,6 +27,17 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 - **An expectation on a missing column, or on a column of the wrong type,** is one
   `ExpectationError` naming the output, rule, column and type, not a pyarrow
   traceback of thousands of characters.
+- **A variable whose name says it is a secret is masked where it is recorded.** A
+  token passed as `--var token=...` was written to the lineage record, sent in every
+  OpenLineage event and printed by `ubunye plan`. Names made of words such as
+  `password`, `secret`, `token`, `auth`, `credential`, or pairs such as `api_key`,
+  are now recorded as `***`; the run still uses the real value. `tokenizer`,
+  `author`, `max_token` and `secret_scope` are not masked. The value is also masked
+  wherever it was templated in, and a password written into a URL
+  (`user:password@`, `;password=`, `?token=`) is masked in every recorded location.
+  Found by experiment E-04, which also showed `secret://` references and
+  `{{ env.X }}` values never reach any record; an adversarial review found the URL
+  path.
 - **`lineage compare` and `lineage show` take the short run id** that `lineage list`
   prints. A prefix that fits more than one run is refused; `gate` used to take the
   first match silently.

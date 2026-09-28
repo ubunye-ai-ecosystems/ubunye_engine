@@ -38,6 +38,8 @@ from ubunye.core.capabilities import SPARK, check_task
 from ubunye.core.errors import UbunyeError
 from ubunye.core.portability import frame_api, mismatch
 from ubunye.core.runtime import Registry
+from ubunye.core.secrets import redact_variables, secret_values
+from ubunye.core.secrets import scrub as scrub_secrets
 
 
 def _is_csv(io_cfg: Dict[str, Any], path: str) -> bool:
@@ -295,14 +297,16 @@ def build_plan(
                 problems.append(f"outputs.{name}: {path} already exists and the mode refuses that")
         outputs.append(entry)
 
-    return {
+    # A secret-looking variable's value, templated into a URL, path or message, is
+    # masked everywhere in the report (it is printed, and served over `ubunye mcp`).
+    report = {
         "task": task_name,
         "engine_version": _engine_version(),
         "backend": backend,
         "model": getattr(cfg.MODEL, "value", str(cfg.MODEL)),
         "config_version": cfg.VERSION,
         "config_hash": config_hash(cfg_dict),
-        "variables": {k: v for k, v in (variables or {}).items() if v is not None},
+        "variables": redact_variables(variables),
         "env": {"referenced": env_referenced, "missing": env_missing},
         "inputs": inputs,
         "transform": transform,
@@ -312,6 +316,7 @@ def build_plan(
         "warnings": warnings,
         "ok": not problems,
     }
+    return scrub_secrets(report, secret_values(variables))
 
 
 def build_plans(
