@@ -16,13 +16,13 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 3 (F-008, F-009, F-010) | 7 (F-001 to F-007, in PR #98) | 0 |
+| 7 (F-008 to F-014) | 7 (F-001 to F-007, in PR #98) | 0 |
 
 ## Experiments
 
 | E | Question | Status |
 |---|---|---|
-| E-01 | Crash mid-write | planned |
+| E-01 | Crash mid-write | answered: append doubles the batch 16/16; F-011 to F-014 |
 | E-02 | Two runs at once | planned |
 | E-03 | Silent row loss | planned |
 | E-04 | Secrets in records | planned |
