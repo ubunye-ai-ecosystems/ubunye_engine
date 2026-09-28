@@ -53,6 +53,15 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Added
 
+- **`ubunye prove`: the proving ground.** Collect one workload's run records from many
+  environments (`observe`, from a stored run or a record file such as a cloud run's
+  artifact), record the ones that did not run and why (`skip`), and compare them all with
+  a reference (`report`): execute, identity (`code_hash`), inputs, data (`rows-v1`),
+  schema and rows, each PASS, FAIL, PARTIAL, NOT RECORDED, NOT RUN or UNSUPPORTED, as
+  JSON and a generated table. An expected environment without evidence is NOT RUN, never
+  a pass; a cost says whether it is billed, a provider's estimate or Ubunye's.
+  `ubunye.proving` has the same in Python. See docs/proving-ground.
+
 - **A warning for CSV files that double their quotes** (as pandas and Excel write
   them) read with Spark's default backslash escape. Such files split into wrong rows
   on Spark and so on pandas too; both newcomers hit it. `ubunye plan` and the pandas
