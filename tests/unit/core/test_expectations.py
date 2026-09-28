@@ -306,3 +306,45 @@ def test_a_quarantining_run_writes_clean_and_quarantined_rows(tmp_path):
     assert sorted(clean["id"]) == [1, 3]
     assert list(bad["id"]) == [2]
     assert list(bad[expectations.FAILED_RULES_COLUMN]) == ["qty_between"]
+
+
+# --- a rule that cannot apply to its column says so, in one line ----------------
+
+
+class TestAColumnARuleCannotCheck:
+    def test_between_on_a_text_column_names_rule_column_and_type(self):
+        frame = pd.DataFrame({"score": ["5", "4", "2019-01-01 10:00:00"]})
+        spec = ExpectationSet(rules=[rule(between={"column": "score", "min": 1, "max": 5})])
+        with pytest.raises(ExpectationError) as info:
+            expectations.check_output("reviews", frame, spec)
+        message = str(info.value)
+        assert "reviews: rule" in message and "'score'" in message
+        assert "needs a numeric column" in message
+        assert "escape" in message  # the CSV hint
+        assert len(message) < 2000  # one clear error, not an engine traceback
+
+    def test_a_missing_column_lists_the_columns_there_are(self):
+        spec = ExpectationSet(rules=[rule(not_null="order_idd")])
+        with pytest.raises(ExpectationError, match="does not have") as info:
+            expectations.check_output("out", ROWS, spec)
+        assert "method" in str(info.value)
+
+    def test_a_missing_unique_column_is_caught_too(self):
+        spec = ExpectationSet(rules=[rule(unique=["id", "nope"])])
+        with pytest.raises(ExpectationError, match="'nope'"):
+            expectations.check_output("out", ROWS, spec)
+
+    def test_matches_on_a_number_column_says_so(self):
+        spec = ExpectationSet(rules=[rule(matches={"column": "qty", "pattern": "^[0-9]+$"})])
+        with pytest.raises(ExpectationError, match="needs a text column"):
+            expectations.check_output("out", ROWS, spec)
+
+    def test_numeric_and_text_columns_of_the_right_type_still_pass(self):
+        spec = ExpectationSet(
+            rules=[
+                rule(between={"column": "qty", "min": 0}),
+                rule(matches={"column": "card", "pattern": "^4"}),
+            ]
+        )
+        _, _, results = expectations.check_output("out", ROWS, spec)
+        assert all(r.passed for r in results)

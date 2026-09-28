@@ -361,6 +361,11 @@ def _csv_source(path: str, encoding: str, dialect: _CsvDialect, opts: Dict[str, 
 
     with pa.input_stream(path, compression="detect") as stream:
         data = stream.read()
+    if _text_encoding(encoding) == "utf-8" and data.startswith(b"\xef\xbb\xbf"):
+        # Spark drops a UTF-8 byte order mark at the start of each file (header
+        # or data, quoted or not) and keeps one anywhere else. Left in, it became
+        # part of the first column's name.
+        data = data[3:]
     text = data.decode(_text_encoding(encoding), errors="replace")
     d = dialect
     plain = not spark_csv.needs_spark_split(text, d.delimiter, d.quote, d.escape, d.multiline)
