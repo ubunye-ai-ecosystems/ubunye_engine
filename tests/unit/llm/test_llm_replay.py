@@ -262,7 +262,8 @@ def test_a_file_recorded_before_occurrences_still_replays(provider, tmp_path):
 def test_calls_record_their_occurrence(provider, tmp_path):
     with llm.recording() as calls:
         _port(provider, tmp_path / "r.jsonl", "record").complete_many(["x", "y", "x"])
-    assert [c["occurrence"] for c in sorted(calls, key=lambda c: c["request_key"])] in (
-        [0, 1, 0],
-        [0, 0, 1],
-    )
+    # Calls are logged as they finish, so compare which occurrences each prompt got.
+    by_key = {}
+    for c in calls:
+        by_key.setdefault(c["request_key"], set()).add(c["occurrence"])
+    assert sorted(by_key.values(), key=len) == [{0}, {0, 1}]

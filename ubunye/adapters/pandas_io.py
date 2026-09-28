@@ -372,6 +372,10 @@ def escape_hint(path: str, options: Optional[Dict[str, Any]] = None) -> Optional
             sample = handle.read(_ESCAPE_SAMPLE_BYTES)
     except OSError:
         return None
+    # Most files hold no doubled quote at all: rule them out at byte speed, before
+    # any decoding or regex (the performance guard caught a +120% plain CSV read).
+    if b'""' not in sample:
+        return None
     text = sample.decode("utf-8", errors="replace")
     delimiter = re.escape(str(opts.get("sep") or opts.get("delimiter") or ","))
     # A doubled quote with ordinary text on both sides: `said ""great""`, never an
