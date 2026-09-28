@@ -135,6 +135,7 @@ def _hint(reason: str) -> str:
     if "no price" in reason:
         return (
             "Give it a price: llm.port(..., price=(input, output)) in USD per million "
-            "tokens, or a UBUNYE_LLM_PRICES file."
+            "tokens, or a UBUNYE_LLM_PRICES file. A free local model (Ollama, vLLM): "
+            "price=(0, 0)."
         )
     return "Raise the limit (UBUNYE_LLM_MAX_USD, _MAX_CALLS, _MAX_SECONDS), or send fewer calls."

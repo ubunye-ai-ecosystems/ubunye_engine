@@ -103,9 +103,17 @@ the request's key; it never holds the prompt. Commit it with the task and CI, a
 colleague's laptop or another cloud replays the same answers, so the run writes the
 same data and the same row hashes.
 
+Replay gives back the recorded run call for call. A run may send the same request
+more than once (two identical reviews), and a model can answer each differently; the
+nth identical request is replayed the nth recorded answer, so the replayed output is
+the recorded output, row for row. Recording again replaces a request's answers.
+`complete_many` numbers repeats by their position in the list, so parallel calls
+replay the same way.
+
 Replay fails closed. A request with no recorded answer (a new prompt, another
 model, another `temperature`) stops the run with the request's key and the hint to
-record again; it never falls back to a live call. Each call in the run record says
+record again; it never falls back to a live call. So does a run that sends a
+request more times than the recording holds answers for it. Each call in the run record says
 where its answer came from: `"source": "live"`, `"record"` or `"replay"`.
 
 ## Cap the bill before the run
