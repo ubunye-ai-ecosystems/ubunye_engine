@@ -323,3 +323,42 @@ def test_a_pandas_run_records_its_time_zone(tmp_path):
     old = rec.to_dict()
     del old["time_zone"]  # a record written before the field existed still loads
     assert RunContext.from_dict(old).time_zone is None
+
+
+# --- F-025: one zone, two names --------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "a, b",
+    [("UTC", "Etc/UTC"), ("UTC", "GMT"), ("utc", "Zulu"), ("Etc/UTC", "Etc/Universal")],
+)
+def test_utc_spellings_are_the_same_zone(a, b):
+    from ubunye.proving.matrix import same_zone
+
+    assert same_zone(a, b) and same_zone(b, a)
+
+
+def test_different_zones_stay_different():
+    from ubunye.proving.matrix import same_zone
+
+    assert not same_zone("UTC", "Africa/Johannesburg")
+    assert not same_zone("UTC", "Europe/London")  # summer time differs
+    assert not same_zone("UTC", "Not/AZone")  # unknown: not provably the same
+
+
+def test_databricks_etc_utc_is_the_same_run_as_utc():
+    # Found live (F-025): Databricks records Etc/UTC, Spark and pandas UTC; the data
+    # was identical and the proving report still said identity FAIL.
+    spark = record(run_id="spark")
+    spark["time_zone"] = "UTC"
+    dbx = record(run_id="databricks")
+    dbx["time_zone"] = "Etc/UTC"
+    m = compare(
+        [
+            observe_record(spark, workload=W, environment="spark"),
+            observe_record(dbx, workload=W, environment="databricks"),
+        ],
+        reference="spark",
+    )
+    assert m["environments"]["databricks"]["verdict"] == PASS
+    assert m["environments"]["databricks"]["reason"] == ""

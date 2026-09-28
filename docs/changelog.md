@@ -27,6 +27,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **`ubunye prove report` treats two names of one time zone as one** (`UTC`,
+  `Etc/UTC`, `GMT`, `Zulu`; other zones by their offsets over time). Databricks records
+  `Etc/UTC` and was reported as a different run while its data matched exactly (F-025).
+
 - **A cloud run's record survives the log store.** `ubunye deploy glue --record-out`
   failed after a successful Glue run because CloudWatch returned the record's one long
   JSON line cut at about 1,000 characters (and cut again wherever Glue's output buffer

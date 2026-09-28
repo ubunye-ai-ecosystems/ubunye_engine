@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from ubunye.proving.evidence import Observation
@@ -70,7 +70,7 @@ def _dimensions(ref: Observation, obs: Observation) -> Dict[str, str]:
     zone_r, zone_c = rrec.get("time_zone"), rec.get("time_zone")
     if not same_outputs or (code_r and code_c and code_r != code_c):
         identity = FAIL
-    elif zone_r and zone_c and zone_r != zone_c:
+    elif zone_r and zone_c and not same_zone(zone_r, zone_c):
         identity = FAIL  # the same code, set to cut time differently (ADR 007)
     elif code_r and code_c:
         identity = PASS
@@ -86,11 +86,68 @@ def _dimensions(ref: Observation, obs: Observation) -> Dict[str, str]:
     }
 
 
+_UTC_NAMES = frozenset(
+    {
+        "utc",
+        "etc/utc",
+        "uct",
+        "etc/uct",
+        "universal",
+        "etc/universal",
+        "zulu",
+        "etc/zulu",
+        "gmt",
+        "etc/gmt",
+        "gmt0",
+        "gmt+0",
+        "gmt-0",
+        "etc/gmt0",
+        "etc/gmt+0",
+        "etc/gmt-0",
+        "greenwich",
+        "etc/greenwich",
+        "z",
+        "+00:00",
+        "-00:00",
+        "00:00",
+    }
+)
+
+
+def same_zone(a: str, b: str) -> bool:
+    """Whether two time zone names cut time the same way.
+
+    Platforms spell one zone differently (Databricks says ``Etc/UTC``, Spark and the
+    pandas backend ``UTC``; finding F-025). Names are equal after the UTC spellings are
+    folded together, or both zones give the same UTC offset at every 15 days from 1990
+    to 2040. A zone that cannot be resolved counts as different: when in doubt, not the
+    same run.
+    """
+    fold_a, fold_b = str(a).strip().casefold(), str(b).strip().casefold()
+    fold_a = "utc" if fold_a in _UTC_NAMES else fold_a
+    fold_b = "utc" if fold_b in _UTC_NAMES else fold_b
+    if fold_a == fold_b:
+        return True
+    try:
+        from zoneinfo import ZoneInfo
+
+        za = ZoneInfo("UTC" if fold_a == "utc" else str(a).strip())
+        zb = ZoneInfo("UTC" if fold_b == "utc" else str(b).strip())
+    except Exception:  # noqa: BLE001 (an unknown name: not provably the same)
+        return False
+    start = datetime(1990, 1, 1, tzinfo=timezone.utc)
+    return all(
+        (start + timedelta(days=15 * i)).astimezone(za).utcoffset()
+        == (start + timedelta(days=15 * i)).astimezone(zb).utcoffset()
+        for i in range(1218)
+    )
+
+
 def _setting_note(ref: Observation, obs: Observation) -> str:
     """Why an otherwise identical run is not the same run: its settings differ."""
     zr = (ref.record or {}).get("time_zone")
     zc = (obs.record or {}).get("time_zone")
-    if zr and zc and zr != zc:
+    if zr and zc and not same_zone(zr, zc):
         return f"session time zone {zc}, reference {zr}: day and hour values can differ"
     return ""
 
