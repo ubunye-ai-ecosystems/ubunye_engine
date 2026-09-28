@@ -1,0 +1,160 @@
+spring-cloud-stream-binder-jms	1	false	2017-04-13	Java
+spring-cloud-stream-binder-ibm-mq	1	false	2017-04-13	Java
+spline	667	false	2026-09-18	Scala	Data Lineage Tracking And Visualization Solution
+spark	0	false	2019-04-14	Scala	Mirror of Apache Spark
+ABRiS	242	false	2026-09-02	Scala	Avro SerDe for Apache Spark structured APIs.
+cobrix	170	false	2026-09-17	Scala	A COBOL parser and Mainframe/EBCDIC data source for Apache Spark
+atum	30	false	2026-05-13	Scala	A dynamic data completeness and accuracy library at enterprise scale for Apache Spark
+gitbook	0	false	2018-10-16	-
+enceladus	33	false	2026-03-26	Scala	Dynamic Conformance Engine
+spark-hofs	15	false	2023-08-04	Scala	Scala API for Apache Spark SQL high-order functions
+hyperdrive	47	false	2025-07-17	Scala	Extensible streaming ingestion pipeline on top of Apache Spark
+commons	9	false	2026-09-22	Scala	Selection of useful reusable components
+hyperdrive-trigger	8	false	2025-11-27	TypeScript	Event based workflow manager.
+hermes	9	true	2023-05-05	Scala	A E2E test tool for Enceladus. Also general dataframe comparison tool
+absaoss.github.io	4	false	2026-01-28	CSS
+gh-pages-skeleton	5	false	2023-03-09	Ruby	Serve as a starter of github pages for any project of AbsaOSS
+spark-hats	38	false	2023-08-04	Scala	Nested array transformation helper extensions for Apache Spark
+spline-spark-agent	209	false	2026-09-07	Scala	Spline agent for Apache Spark
+rn-indy-sdk	11	true	2021-07-20	Java	This code was starting point of https://github.com/hyperledger/indy-sdk-react-native where
+Jdbc2S	10	false	2024-02-19	Scala	A JDBC streaming source for Spark
+spline-ui	12	false	2026-09-10	TypeScript
+vcxagencynode	23	false	2023-11-28	JavaScript	NodeJS implementation of Hyperledger Indy LibVCX Agency
+setup-terraform	0	false	2020-05-21	-	Sets up Terraform CLI in your GitHub Actions workflow.
+spot	5	false	2024-07-31	Python	Aggregate and analyze Spark history, export to elasticsearch, visualize and monitor with K
+terraform-controller	4	false	2023-03-07	Go	Use K8s to Run Terraform
+indy-sdk	0	false	2020-07-20	Rust	Everything needed to build applications that interact with an Indy distributed identity le
+fixed-width	4	false	2023-05-05	Scala
+gh-action-upload-release-asset-composite	0	false	2021-08-13	-	Composite github action for asset upload to a target release
+CertMe	2	false	2021-03-04	JavaScript	A NodeJS tool to generate and sign TLS certificates blazing fast with HashiCorp Vault and
+rest-api-doc-generator	3	false	2025-06-21	Scala
+aries-framework-rs	0	false	2020-10-15	-	Absa LibVCX fork
+terraform-provider-artifactory	0	false	2020-10-24	Go	Terraform provider to manage Artifactory
+gopkg	0	false	2022-02-04	Go	Absa Go package library
+samlet	18	false	2022-07-19	Go	saml2aws k8s operator
+spline-getting-started	26	false	2026-06-24	Scala
+manabu-ui	2	false	2024-01-26	TypeScript	Front-end application for the Manabu Learning Portal
+manabu-backend	1	false	2021-03-08	JavaScript
+k3d-action	203	false	2023-12-05	Shell	A GitHub Action to run lightweight ephemeral Kubernetes clusters during workflow.  Fundame
+py2k	13	false	2023-02-27	Python	A Python to Kafka Serialization Tool
+golic	106	false	2021-12-20	Go	GoLic, injects license into source code files
+react-native-keychain	0	false	2023-06-21	-	:key: Keychain Access for React Native
+spline-root-pom	0	false	2021-05-06	-
+ang-tools	0	false	2021-07-28	TypeScript
+root-pom	1	false	2026-09-07	-
+spline-misc	0	false	2021-08-03	JavaScript
+spark-functions-ex	0	false	2021-08-31	-	Some general useful functions for Spark.
+inception	3	false	2022-02-28	Java
+pit-junit-cucumber-upstream	1	false	2021-08-31	Java
+spark-metadata-tool	6	false	2023-11-06	Scala	Tool to fix _spark_metadata from Structured Streaming queries
+ghaction-import-gpg	0	false	2021-09-09	-	GitHub action to import GPG private key
+ghpages-to-tf-provider-registry	5	false	2021-09-10	-
+tf-provider-registry-generator	2	false	2021-09-23	Go
+olm-bundle	0	false	2022-11-08	Go	A utility to build an OLM bundle from a stream of YAMLs
+env-binder	10	false	2023-02-19	Makefile	Binding environment variables to GO structures
+spark-partition-sizing	9	false	2026-06-07	Scala	Sizing partitions in Spark
+spark-data-standardization	7	false	2026-09-21	Scala	A library for Spark that helps to standardize any input data (DataFrame) to adhere to the
+reusable-workflows	1	false	2021-11-19	-	A collection of AbsaOSS reusable workflows for GitHub action
+react-native-facetec-zoom	0	false	2022-10-31	Java
+spark-commons	7	false	2026-09-21	Scala
+atum-service	6	false	2026-09-25	Scala	A dynamic data completeness and accuracy service and libraries to easily integrate into ap
+log4j-jndi-be-gone	1	false	2022-01-18	Java	A Byte Buddy Java agent-based fix for CVE-2021-44228, the log4j 2.x "JNDI LDAP" vulnerabil
+provider-jet-rancher	1	false	2022-02-03	Makefile	Crossplane terrajet based rancher provider
+fa-db	2	false	2026-09-07	Scala	Functional Access to Database
+coredns-delegate	0	false	2022-03-14	Go
+dlt-cocoapods-specs	0	false	2022-11-09	Ruby
+spline-openlineage	6	false	2022-09-25	Scala	Open Lineage Integration for Spline
+cert-manager-webhook-externaldns	7	false	2022-11-02	Go	A cert-manager webhook completing DNS01 challenge by using External DNS
+sbt-git-hooks	1	false	2022-07-28	Scala	SBT plugin to sync git hooks as part of the project
+pramen	31	false	2026-09-24	Scala	Resilient data pipeline framework running on Apache Spark
+aries-oob-shortener	2	false	2023-10-19	Rust	Shortener for URL-formatted Aries OOB messages.
+sovrin-networks	0	false	2024-03-20	JavaScript	Registry of genesis files to connect to Sovrin Indy blockchains
+homebrew-tap	0	false	2022-09-12	Ruby	AbsaOss's Homebrew Tap
+aws-get-token	0	false	2022-12-06	Go	EKS exec credential generator written in GO
+jacoco	0	true	2023-06-08	Java	:microscope: Java Code Coverage Library
+hyperdrive-hive-jobs	0	false	2026-03-19	Scala	Hyperdrive hive jobs
+k8gb	1	false	2026-08-20	Go	A cloud native Kubernetes Global Balancer
+login-service	5	false	2026-09-03	Scala	AbsaOSS Common Login gateway using JWT Public key signatures
+ca-injector	0	false	2023-02-20	Go	Painlessly use off-the-shelf images (and your own) in your k8s cluster, with custom root C
+go-k8s-operator-binder	0	false	2025-05-29	Go	Binds Environment variables and Kubernetes maps (such as annotations and labels) to GO str
+microfrontends-poc	0	true	2023-03-09	TypeScript
+sbt-jacoco	0	true	2023-06-08	Scala	an sbt plugin for JaCoCo Code Coverage extended for Scala method filtering
+cps-shared-ui	9	false	2026-09-22	TypeScript	Angular shared components library
+absa-shaded	0	false	2023-05-26	-	Absa OSS shaded artifacts repository
+driver-did-sov	1	false	2023-04-28	Rust	DID resolver HTTP(s) binding for Sovrin DID method.
+spark-launcher-supervisor	0	false	2023-05-21	Java	A Java agent that oversees a Spark launcher and check/enforce settings
+absa-shaded-jackson-module-scala	0	false	2023-06-08	Scala
+ScAPI	0	true	2024-02-16	Scala
+spline-python-agent	1	false	2024-09-27	Python
+scalatest-extras	0	false	2025-06-21	Scala	ScalaTest extensions
+artifactory-registry-meta-generator	1	false	2023-10-06	Go	Builds a metadata for serving Docker registry with checksum-based storage
+docker-distribution-artifactory	0	false	2023-09-26	Go
+DuckHunt-JS	0	false	2023-10-25	-	DuckHunt ported to JS and HTML5 - Confluent Demo
+spline-producer-proxy	0	false	2023-09-26	TypeScript
+hackathon-turbo	1	false	2023-11-02	Jupyter Notebook	Team Turbo Hackathon Repo
+ultet	3	false	2026-07-27	Scala	Database deployment tool.  Instead of migrations, it uses a state-based approach.
+balta	3	false	2026-09-07	Scala	Scala library to write Postgres DB code tests with
+springdoc-openapi-scala	2	false	2025-11-07	Scala	Enhancement of springdoc-openapi for Scala
+generate-release-notes	13	false	2026-09-20	Python	Efficiently automate your release note generation with 'generate-release-notes'. This GH a
+aries-vcx	0	false	2024-03-25	-	aries-vcx is set of crates to work with DIDs, DID Documents, DIDComm, Verifiable Credentia
+simba-athena-login-service-support	3	false	2026-01-08	Scala	Credentials provider for Simba Athena driver using Absa Login Service
+datasets-similarity	3	true	2026-04-23	Jupyter Notebook	Computes the similarity between tabular datasets.
+cps-mdoc-viewer	1	false	2026-05-20	TypeScript	Angular library utilized in constructing websites that host tutorials and documentation, p
+living-doc-generator-mdoc	3	false	2026-09-16	Python	"living-doc-generator: A GitHub Action designed to data-mine GitHub repositories for issue
+filename-inspector	1	false	2026-09-20	Python	The Test File Suffix Inspector GitHub Action scans test files in src/test directories to e
+external-dns-infoblox-webhook	28	false	2026-08-12	Go	Infoblox provider based on in-tree provider for ExternalDNS
+external-dns	0	false	2025-07-07	Go	Configure external DNS servers (AWS Route53, Google CloudDNS and others) for Kubernetes In
+rialto	4	false	2026-08-25	Python	An open source data science framework for feature and model deployment
+cert-manager	0	false	2025-12-05	-	Automatically provision and manage TLS certificates in Kubernetes
+certmanager_website	0	false	2026-01-06	-	Source code for the cert-manager.io website, including project documentation
+py-composite-action-lib	0	false	2024-07-09	-	PyCompositeActionLib is a Python library that streamlines creating and managing composite
+rancher-charts	0	false	2024-07-06	-	Github based Helm Chart Index Repository providing charts crafted for Rancher Manager
+fleet	0	false	2026-01-16	Go	Deploy workloads from Git to large fleets of Kubernetes clusters
+KafkaCase	0	false	2025-01-28	Scala	Adapter for communicating from Scala to Kafka via case classes
+EventGate	4	false	2026-09-22	Python
+cluster-api-operator	0	false	2024-09-01	-	Home for Cluster API Operator, a subproject of sig-cluster-lifecycle
+cap-infra-dns	2	false	2026-06-04	Go	CAPI Cluster controlplaneEndpoint DNS registrator
+rancher	0	false	2024-10-17	-	Complete container management platform
+pgdump-lambda	1	false	2025-07-22	HCL
+version-tag-check	0	false	2026-09-13	Python	GitHub Action for validating version tag order and enforcing consistent versioning rules.
+release-notes-presence-check	0	false	2026-09-13	Python	A GH action for validating presence of release notes.
+cluster-api-provider-aws	0	false	2026-06-02	Go	Kubernetes Cluster API Provider AWS provides consistent deployment and day 2 operations of
+OTEL-example	0	false	2025-02-25	Scala
+cluster-api-addon-provider-fleet	0	false	2025-07-31	-	Documentation: https://rancher-sandbox.github.io/cluster-api-addon-provider-fleet/ Cluster
+living-doc-utilities	0	false	2026-09-25	Python	Core utility functions and data models shared across the living-doc ecosystem. Provides st
+living-doc-collector-gh	0	false	2026-09-20	Python	A GitHub Action that collects project-related information by mining repositories for issue
+living-doc-generator-pdf	0	false	2026-09-20	Python	A GitHub Action that compiles structured documentation into professional-looking PDF files
+cluster-api-provider-rke2	0	false	2026-03-13	Go	RKE2 bootstrap and control-plane Cluster API providers.
+openpubkey	0	false	2025-05-02	-	Reference implementation of OpenPubkey
+opkssh	1	false	2025-05-07	-	opkssh (OpenPubkey SSH)
+StatusBoard	0	false	2026-09-17	Scala
+coredns-crd-plugin	0	false	2025-05-21	-	CoreDNS plugin to use DNSEndpoint custom resource.
+dataset-comparison	2	false	2026-05-07	Scala	A tool for comparing two datasets and finding their differences
+karpenter-provider-vsphere	9	false	2026-09-24	Go
+krr	0	false	2025-06-28	-	Prometheus-based Kubernetes Resource Recommendations
+modules	0	false	2025-09-18	Roff	KCL Community Modules. View on Artifact Hub: https://artifacthub.io/packages/search?org=kc
+GH-automation	0	false	2026-03-29	-	An action to be used in GitHub workflows to automate the work with issues, particularly wi
+traefik	0	false	2025-12-19	-	The Cloud Native Application Proxy
+aquasec-scan-results	0	true	2026-09-13	Python	GitHub Action to fetch AquaSec security scan results. Modular design supports JSON to SARI
+living-doc-toolkit	0	false	2026-09-20	Python	A tool belt of CLI services for building, transforming, and validating structured data for
+mag	1	false	2026-05-17	Scala	Common relational database utilities and abstractions in Scala provided as a library for A
+daggerpool	3	false	2026-02-20	Go	DAG-driven worker pool orchestrator for Go: execute job graphs with concurrency limits, ti
+organizational-workflows	0	false	2026-09-25	Python	Public repository standards toolkit: templates, labels, policy examples, and optional auto
+chaos-mesh	0	false	2026-02-11	-	A Chaos Engineering Platform for Kubernetes.
+terraform-aws-eks	0	false	2026-02-13	-	Terraform module to create Amazon Elastic Kubernetes (EKS) resources 🇺🇦
+rolesanywhere-credential-helper	0	false	2026-02-11	-
+elemental-toolkit	0	false	2026-03-18	Go	:snowflake: The toolkit to build, ship and maintain cloud-init driven Linux derivatives ba
+renovate	0	false	2026-04-09	-	Home of the Renovate CLI: Cross-platform Dependency Automation by Mend.io
+living-doc-collector-ad	0	false	2026-09-20	Python	A Python tool that collects project-related information by mining Azure DevOps organizatio
+validate-certificates	2	false	2026-09-11	Shell	Certificate validation check working as GitHub action
+agentic-toolkit	1	false	2026-09-24	Python
+knowledge-base	0	false	2026-09-24	JavaScript	Platform for aggregating user documentation sites
+knowledge-base-docs-example	0	false	2026-09-23	CSS	Example repository for the knowledge base application
+check-pr-requirements	0	false	2026-08-14	Shell	Action to check required parameters of the PR
+elemental	0	false	2026-06-29	Go	Elemental is a tool for installing, configuring and updating operating system images from
+karpenter	0	false	2026-09-04	-	Karpenter is a Kubernetes Node Autoscaler built for flexibility, performance, and simplici
+spark-hadoop2	0	false	2026-06-18	-	Apache Spark - A unified analytics engine for large-scale data processing
+tau-pi	0	false	2026-08-17	-	AI agent toolkit: unified LLM API, agent loop, TUI, coding agent CLI
+living-doc-generator-markdown	0	false	2026-09-08	-
+living-doc	0	false	2026-09-20	Python
+cloud-provider-vsphere	0	false	2026-09-17	Go	Kubernetes Cloud Provider for vSphere https://cloud-provider-vsphere.sigs.k8s.io
