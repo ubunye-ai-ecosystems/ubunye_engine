@@ -1,6 +1,6 @@
 # F-024: the Databricks workspace refuses to start new runs
 
-**Status:** blocked (external: the Databricks account)
+**Status:** resolved (2026-09-28, 23:02 UTC onwards)
 **Severity:** major (blocks the Databricks column of the proving ground)
 **Source:** proving ground, prove-c01 runs 36456300650 and 36457556308 (2026-09-28)
 **Environment:** the sandbox Databricks workspace (serverless only: no clusters, one SQL warehouse)
@@ -22,3 +22,12 @@ The account owner checks the workspace's state (quota, trial, billing hold). Rer
 `prove-c01` when runs are allowed again. Separately: the workflow authenticates with a
 personal access token of the owner's user; the migration path is a service principal
 with GitHub OIDC federation (keyless, scoped), like the AWS, GCP and Azure sandboxes.
+
+## Resolution
+From 2026-09-28 23:02 UTC runs start again, submitted by the new service principal
+`ubunye-test` (OAuth machine-to-machine, secrets DATABRICKS_CLIENT_ID and
+DATABRICKS_SECRET in the infra `databricks` environment). Which change lifted the
+refusal is not separable from the evidence: the switch from the owner's token to the
+service principal, or the Free Edition daily quota resetting. The service principal
+needed its own schema (`workspace.ubunye_sp`, which it owns) because it had no rights on
+`workspace.ubunye_prove`. C01 then passed on Databricks, run 36497932069.

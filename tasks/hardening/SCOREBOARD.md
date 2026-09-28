@@ -47,7 +47,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Workload | pandas-local | spark-local | kubernetes-kind | aws-glue | gcp-dataproc | azure (Container Apps) | databricks |
 |---|---|---|---|---|---|---|---|
-| c01-portable-etl | PASS | PASS | PASS | PASS | PASS | PASS | FAIL: workspace refuses new runs (F-024) |
+| c01-portable-etl | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 
-Digest bb08a7d7a9fd in every environment that ran; infra runs 36456300650 and
-36457556308, engine 544f268, 2026-09-28. Teardown verified on AWS, GCP and Azure.
+Digest bb08a7d7a9fd in all seven; infra run 36497932069, engine eba4922, 2026-09-28.
+Teardown verified on AWS, GCP and Azure in earlier runs of the same workflow.
