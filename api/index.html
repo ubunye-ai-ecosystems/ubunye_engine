@@ -11523,7 +11523,9 @@ archived.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Optional lineage <code>run_id</code> from the training run.</p>
+                <p>The <code>run_id</code> of the training run. When omitted
+inside a run (a task's <code>transformations.py</code>), it is that run's
+id, so the model points at its run record.</p>
               </div>
             </td>
             <td>
