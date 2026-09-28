@@ -16,7 +16,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 9 (F-008 to F-016) | 7 (F-001 to F-007, in PR #98) | 0 |
+| 11 (F-008 to F-018) | 7 (F-001 to F-007, in PR #98) | 0 |
 
 ## Experiments
 
@@ -24,9 +24,9 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 |---|---|---|
 | E-01 | Crash mid-write | answered: append doubles the batch 16/16; F-011 to F-014 |
 | E-02 | Two runs at once | planned |
-| E-03 | Silent row loss | planned |
+| E-03 | Silent row loss | answered: visible in the record, not enforceable (F-017) |
 | E-04 | Secrets in records | answered: secret:// and env safe; --var leaks (F-016); REST needs Spark (F-015) |
-| E-05 | Schema drift | planned |
+| E-05 | Schema drift | answered: gate catches all; a retype writes wrong data at run time (F-018) |
 | E-06 | Scale ladder | planned |
 | E-07 | Laptop to cluster | planned |
 | E-08 | Stranger rerun | planned |
