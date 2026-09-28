@@ -45,9 +45,9 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 ## Proving ground (generated evidence: docs/proving-ground/latest.md)
 
-| Workload | pandas-local | spark-local | aws-glue | gcp-dataproc | databricks | azure |
-|---|---|---|---|---|---|---|
-| c01-portable-etl | PASS | PASS | PASS | PASS | NOT RUN | NOT RUN |
+| Workload | pandas-local | spark-local | kubernetes-kind | aws-glue | gcp-dataproc | azure (Container Apps) | databricks |
+|---|---|---|---|---|---|---|---|
+| c01-portable-etl | PASS | PASS | PASS | PASS | PASS | PASS | FAIL: workspace refuses new runs (F-024) |
 
-Digest bb08a7d7a9fd everywhere; infra run 36454227691, engine 258e690, 2026-09-28.
-Teardown verified: Glue job gone, no staged S3 or GCS objects, no pushed image left.
+Digest bb08a7d7a9fd in every environment that ran; infra runs 36456300650 and
+36457556308, engine 544f268, 2026-09-28. Teardown verified on AWS, GCP and Azure.

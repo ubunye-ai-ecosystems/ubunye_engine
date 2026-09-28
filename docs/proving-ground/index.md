@@ -59,7 +59,7 @@ as a bill), and a link to the run.
 
 | Id | What it protects | Where |
 |---|---|---|
-| `c01-portable-etl` | a portable (Narwhals) join, filter, null group keys, integer money, timestamps cut to a day | `examples/proving/c01_portable_etl`; PASS on pandas, local Spark, AWS Glue 5.0 and GCP Dataproc Serverless, one digest ([latest](latest.md)) |
+| `c01-portable-etl` | a portable (Narwhals) join, filter, null group keys, integer money, timestamps cut to a day | `examples/proving/c01_portable_etl`; PASS on pandas, local Spark, Kubernetes (kind), AWS Glue 5.0, GCP Dataproc Serverless and Azure Container Apps, one digest; Databricks blocked by the platform ([latest](latest.md)) |
 
 What the proving ground has found is recorded as findings in `tasks/hardening/`: F-021
 (a Spark session's day depended on the machine's time zone, ADR 007) and F-023 (a cloud
