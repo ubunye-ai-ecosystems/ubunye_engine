@@ -40,6 +40,12 @@ from ubunye.core.portability import frame_api, mismatch
 from ubunye.core.runtime import Registry
 
 
+def _is_csv(io_cfg: Dict[str, Any], path: str) -> bool:
+    options = io_cfg.get("options") or {}
+    named = io_cfg.get("file_format") or options.get("format") or ""
+    return str(named).lower() == "csv" or path.lower().endswith(".csv")
+
+
 def _is_local(path: str) -> bool:
     return (
         bool(path)
@@ -188,6 +194,12 @@ def build_plan(
                     problems.append(f"inputs.{name}: nothing at {path}")
                 elif entry["files"] == 0:
                     warnings.append(f"inputs.{name}: {path} exists but holds no data files")
+                elif _is_csv(io_cfg, path):
+                    from ubunye.adapters.pandas_io import escape_hint
+
+                    hint = escape_hint(path, io_cfg.get("options") or {})
+                    if hint:
+                        warnings.append(f"inputs.{name}: {hint}")
         inputs.append(entry)
 
     # --- transform -----------------------------------------------------------

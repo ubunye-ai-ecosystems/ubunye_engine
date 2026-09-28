@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] (2026-09-28)
+
+The first fixes from real use. Two newcomers were given only `pip install`, the
+public docs and a Kaggle dataset each (Olist e-commerce, 9 tables; Amazon Fine Food
+Reviews with a local LLM labelling step), and logged every place they got stuck.
+
+### Fixed
+
+- **Replay is the recorded run, call for call.** A run that sent the same request
+  twice (two identical reviews) to a model that answered each differently replayed
+  one answer for both, so a "free, identical rerun" changed 2 of 300 rows. The nth
+  identical request now replays the nth recorded answer, including across
+  `complete_many`'s parallel calls; a run that asks more often than was recorded
+  fails closed. Replay files from 0.7.1 still replay as before.
+- **A UTF-8 byte order mark at the start of a CSV file is dropped, as Spark does.**
+  The pandas backend kept it in the first column's name, so a join on that column
+  failed. Checked against Spark 4.2 on 16 cases.
+- **An expectation on a missing column, or on a column of the wrong type,** is one
+  `ExpectationError` naming the output, rule, column and type, not a pyarrow
+  traceback of thousands of characters.
+- **`lineage compare` and `lineage show` take the short run id** that `lineage list`
+  prints. A prefix that fits more than one run is refused; `gate` used to take the
+  first match silently.
+
+### Added
+
+- **A warning for CSV files that double their quotes** (as pandas and Excel write
+  them) read with Spark's default backslash escape. Such files split into wrong rows
+  on Spark and so on pandas too; both newcomers hit it. `ubunye plan` and the pandas
+  reader now say to set `escape: '"'`. What is read is unchanged.
+- Docs: `transform.params` (dropped by mistake in 0.7.1), CSV quotes and line breaks
+  on the connector page, replay call for call, and gating on a number (an
+  expectation on a metrics output).
+
+### Changed
+
+- The budget hint for a model with no price says how to declare a free local model:
+  `price=(0, 0)`.
+
 ## [0.7.1] (2026-09-27)
 
 Run records you can trust when a run has more than one task, and a registered model

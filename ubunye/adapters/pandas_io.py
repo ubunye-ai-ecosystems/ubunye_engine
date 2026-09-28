@@ -29,13 +29,17 @@ from __future__ import annotations
 
 import glob
 import json
+import logging
 import os
+import re
 from typing import Any, Dict, List, Optional, Sequence
 
 from ubunye.adapters import ddl
 from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
 from ubunye.core.errors import SinkWriteError, SourceReadError
 from ubunye.core.write_modes import ResolvedWriteMode
+
+logger = logging.getLogger(__name__)
 
 SUPPORTED_FORMATS = frozenset({"csv", "parquet", "json"})
 
@@ -269,6 +273,9 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
     header = _truthy(opts.get("header", "false"))
     infer = _truthy(opts.get("inferschema", "false")) and schema is None
     dialect = _CsvDialect(opts)
+    hint = escape_hint(files[0], opts) if files else None
+    if hint:
+        logger.warning(hint)
 
     tables = []
     for f in files:
@@ -332,6 +339,57 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
     return _instants(table, timezone)
 
 
+# How far into a CSV file the escape check looks.
+_ESCAPE_SAMPLE_BYTES = 4 << 20
+
+
+def escape_hint(path: str, options: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    """Why a CSV input is likely to be split wrongly with Spark's escape, or None.
+
+    Spark's default escape is a backslash; files written by pandas, Excel and most
+    databases escape a quote by doubling it. Read that way, some rows split in the
+    wrong place and a number column silently becomes text, on Spark and so on the
+    pandas backend too (it reads as Spark does). This looks for a doubled quote
+    inside text in the first few MB, only when the escape was left at Spark's
+    default. It never changes what is read.
+    """
+    opts = {str(k).lower(): v for k, v in (options or {}).items()}
+    if "escape" in opts or str(opts.get("quote", '"')) != '"':
+        return None
+    target = path
+    if os.path.isdir(path):
+        found = sorted(
+            os.path.join(root, name)
+            for root, _, names in os.walk(path)
+            for name in names
+            if not name.startswith((".", "_"))
+        )
+        if not found:
+            return None
+        target = found[0]
+    try:
+        with open(target, "rb") as handle:
+            sample = handle.read(_ESCAPE_SAMPLE_BYTES)
+    except OSError:
+        return None
+    # Most files hold no doubled quote at all: rule them out at byte speed, before
+    # any decoding or regex (the performance guard caught a +120% plain CSV read).
+    if b'""' not in sample:
+        return None
+    text = sample.decode("utf-8", errors="replace")
+    delimiter = re.escape(str(opts.get("sep") or opts.get("delimiter") or ","))
+    # A doubled quote with ordinary text on both sides: `said ""great""`, never an
+    # empty quoted field (`,"",`).
+    if not re.search(rf'[^{delimiter}\r\n"]""[^{delimiter}\r\n"]', text):
+        return None
+    return (
+        f'{path} doubles quotes inside quoted text (""), as pandas and Excel write '
+        "CSV, but escape is Spark's default (a backslash), so some rows will be split "
+        "in the wrong place. Set options.escape: '\"' on this input (and multiLine: "
+        '"true" if text spans lines).'
+    )
+
+
 class _CsvDialect:
     """How Spark is told to split a CSV file: the delimiter, quote and escape."""
 
@@ -361,6 +419,11 @@ def _csv_source(path: str, encoding: str, dialect: _CsvDialect, opts: Dict[str, 
 
     with pa.input_stream(path, compression="detect") as stream:
         data = stream.read()
+    if _text_encoding(encoding) == "utf-8" and data.startswith(b"\xef\xbb\xbf"):
+        # Spark drops a UTF-8 byte order mark at the start of each file (header
+        # or data, quoted or not) and keeps one anywhere else. Left in, it became
+        # part of the first column's name.
+        data = data[3:]
     text = data.decode(_text_encoding(encoding), errors="replace")
     d = dialect
     plain = not spark_csv.needs_spark_split(text, d.delimiter, d.quote, d.escape, d.multiline)

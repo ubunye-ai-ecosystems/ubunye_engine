@@ -62,6 +62,30 @@ table to the job summary. Inputs: `backend`, `engine` (a pip requirement),
 `extra-packages`, `baseline-ref` (default: the pull request's base), `gate-args`,
 `python-version`. Output: `passed`.
 
+## Gate on a number: accuracy, agreement, error rate
+
+`ubunye gate` compares two runs' outputs. To fail a run when a number crosses a line
+(a model's accuracy, an LLM's agreement with a label), write the number as an output
+and put an expectation on it. The run fails, and writes nothing, before the gate is
+even asked:
+
+```yaml
+CONFIG:
+  outputs:
+    metrics:
+      format: s3
+      path: "{{ task_dir }}/output/metrics"
+      file_format: parquet
+  expectations:
+    metrics:
+      rules:
+        - between: {column: agreement, min: 0.7}
+```
+
+```python
+return {"labelled": labelled, "metrics": pd.DataFrame({"agreement": [agreement]})}
+```
+
 ## Tasks that call a model
 
 For a task that calls a language model (`ubunye.llm`), the gate reports the calls:

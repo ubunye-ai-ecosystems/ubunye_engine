@@ -92,7 +92,7 @@ def plan_section(
                     problems.append(
                         f"llm: UBUNYE_LLM_MAX_USD is set but {g['backend']}/{g['model']} has "
                         "no price, so its calls will be refused; give it price= or a "
-                        "UBUNYE_LLM_PRICES file"
+                        "UBUNYE_LLM_PRICES file (a free local model: price=(0, 0))"
                     )
             if estimate is not None and estimate > max_usd:
                 warnings.append(

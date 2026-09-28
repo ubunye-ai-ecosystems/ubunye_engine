@@ -88,6 +88,60 @@ def _breaks(nw: Any, rule: ExpectationRule) -> Any:
     raise ValueError(f"'{rule.kind}' is not a row-level rule")  # pragma: no cover
 
 
+def _columns_of(rule: ExpectationRule) -> List[str]:
+    spec = getattr(rule, rule.kind)
+    if isinstance(spec, str):
+        return [spec]
+    if isinstance(spec, list):
+        return list(spec)
+    column = getattr(spec, "column", None)
+    return [column] if column else []
+
+
+# A numeric column read as text is most often a CSV parse problem, so say so.
+_TEXT_NUMBER_HINT = (
+    "If '{column}' should be a number and comes from a CSV file: a value somewhere "
+    "did not parse, so the whole column stayed text. For a CSV written by pandas, "
+    "Excel or most databases (quotes doubled inside quoted text), set "
+    "options.escape: '\"' on the input; Spark's default escape is a backslash. "
+    "Or cast the column in transformations.py."
+)
+
+
+def _check_columns(nw: Any, name: str, df: Any, spec: ExpectationSet) -> None:
+    """Every rule names a column the output has, of a type the rule can check.
+
+    Checked before any counting, so a wrong column gives one clear error, not an
+    engine traceback from deep inside the comparison.
+    """
+    schema = df.collect_schema() if hasattr(df, "collect_schema") else df.schema
+    available = list(schema.names())
+    for rule in spec.rules:
+        for column in _columns_of(rule):
+            if column not in available:
+                raise ExpectationError(
+                    f"{name}: rule '{rule.name}' ({rule.kind}) names column '{column}', "
+                    "which the output does not have.",
+                    context={"Output": name, "Rule": rule.name, "Columns": ", ".join(available)},
+                    hint="Check the column name in CONFIG.expectations, or the transform's output.",
+                )
+            dtype = schema[column]
+            if rule.kind == "between" and not dtype.is_numeric():
+                raise ExpectationError(
+                    f"{name}: rule '{rule.name}' (between) needs a numeric column, but "
+                    f"'{column}' is {dtype}.",
+                    context={"Output": name, "Rule": rule.name, "Column": column},
+                    hint=_TEXT_NUMBER_HINT.format(column=column),
+                )
+            if rule.kind == "matches" and dtype not in (nw.String, nw.Categorical):
+                raise ExpectationError(
+                    f"{name}: rule '{rule.name}' (matches) needs a text column, but "
+                    f"'{column}' is {dtype}.",
+                    context={"Output": name, "Rule": rule.name, "Column": column},
+                    hint="Cast the column to text in transformations.py, or drop the rule.",
+                )
+
+
 def _collect(frame: Any) -> Any:
     return frame.collect() if hasattr(frame, "collect") else frame
 
@@ -104,6 +158,7 @@ def check_output(
     """Check one output: (clean frame, quarantined frame or None, results)."""
     nw = _nw()
     df = nw.from_native(frame)
+    _check_columns(nw, name, df, spec)
 
     row_rules = [r for r in spec.rules if r.kind in ("not_null", "between", "one_of", "matches")]
     counts = _scalars(

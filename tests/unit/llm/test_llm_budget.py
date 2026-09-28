@@ -176,3 +176,17 @@ def test_the_run_record_keeps_the_budget_and_the_spend(provider, tmp_path, monke
     assert record.llm_budget["max_usd"] == 1.0
     assert record.llm_budget["calls"] == 2
     assert record.llm_budget["spent_usd"] == pytest.approx(2 * (11 * 1 + 4 * 5) / 1_000_000)
+
+
+def test_a_free_local_model_passes_a_dollar_ceiling_at_price_zero(provider):
+    # Found by a stranger test on a local Ollama model: the hint says how.
+    port = llm.port("openai_compatible", model="qwen", base_url=provider.url, max_usd=1)
+    with pytest.raises(LLMBudgetError) as info:
+        port.complete("hi")
+    assert "price=(0, 0)" in str(info.value)
+    free = llm.port(
+        "openai_compatible", model="qwen", base_url=provider.url, max_usd=1, price=(0, 0)
+    )
+    with llm.recording() as calls:
+        free.complete("hi")
+    assert calls[0]["cost_usd"] == 0.0
