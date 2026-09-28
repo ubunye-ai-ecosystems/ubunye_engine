@@ -29,7 +29,7 @@ Same pipeline runs on your laptop today and on a production cluster tomorrow, wi
 
 ## What the engine gives you today
 
-- **Proven portability.** The same task runs on a laptop, in Docker, on Kubernetes, against object storage, through the cloud submit path, and on Databricks. One output hash across all of them, checked on every change.
+- **Proven portability.** One task, unchanged, gives the same rows on pandas (no Java), local Spark, Kubernetes, AWS Glue, GCP Dataproc, Azure Container Apps and Databricks: the same data hash in all seven, from run records compared by `ubunye prove` (see [Run Anywhere](#run-anywhere)).
 - **Models saved anywhere.** The model registry writes to a local folder, a Databricks volume, S3 or GCS, chosen purely by the path. New storage kinds are one class and one entry point.
 - **A truly open plugin system.** Connectors, storage backends and registries are all added from the outside, with no engine edits and no inheritance required. A test proves it with a connector the engine has never seen.
 - **Types that ship.** The package carries its type information, and a type checker guards every merge.
@@ -179,11 +179,12 @@ Only environment variables change.
 | RAG and fine-tuning on open models | the same pipelines with local open source models instead of hosted endpoints |
 | The three-framework race | the same model in scikit-learn, PyTorch and TensorFlow behind identical configs |
 
-**AWS and GCP**
+**AWS, GCP and Azure**
 
-Submit scripts and CI jobs exist for EMR Serverless and Dataproc Serverless.
-They are written and documented but need a cloud account to run, and the CI
-jobs say plainly when they were skipped rather than run.
+`ubunye deploy glue`, `dataproc` and `container-apps` run a task on AWS Glue, GCP Dataproc
+Serverless and Azure Container Apps; each has run the proving workload with the same
+result as a laptop (see [Run Anywhere](#run-anywhere)). EMR Serverless is built but not
+yet run.
 
 ## Connectors
 
@@ -203,31 +204,35 @@ Want to add one? See the [plugin guide](https://ubunye-ai-ecosystems.github.io/u
 
 ## Run Anywhere
 
-The same task folder runs on every environment below. This is tested, not claimed:
-a CI job runs one task on each and fails the build if the output hashes differ.
+The same task folder, unchanged, runs in every environment below and writes the same
+rows. This is measured, not claimed: the proving ground (`ubunye prove`) compares each
+run's record (every input and output row hashed, the schema, the row counts, the task
+code) with a local Spark run, and an environment without evidence is reported NOT RUN.
 
-| Environment | How you launch it |
-|---|---|
-| Your laptop | `ubunye run ...` with local Spark |
-| Docker | one container image, same entry point |
-| Kubernetes | the same image as a Job |
-| Databricks | `ubunye.run_task()` from a notebook or a bundle job |
-| AWS EMR Serverless, GCP Dataproc | `spark-submit` with `python -m ubunye` |
+Workload C01 (a portable join, filter, null group keys, money and timestamps cut to a
+day), 2026-09-28, [generated report](docs/proving-ground/latest.md):
 
-One rule makes this work: the task never chooses its own cluster. Which Spark
-master to use belongs to whoever launches the job, so leave `spark.master` out
-of your config. On a laptop the runner sets `local[*]`. On a cloud the platform
-sets it, and the engine refuses a config that tries to override it, because a
-silent single-node run on paid compute is worse than an error.
+| Environment | How it was launched | Result |
+|---|---|---|
+| Your laptop, pandas (no Java) | `ubunye run ... --backend pandas` | PASS, digest `bb08a7d7a9fd` |
+| Your laptop, Spark | `ubunye run ... --backend spark` | PASS, `bb08a7d7a9fd` |
+| Kubernetes (kind) | `ubunye deploy k8s` | PASS, `bb08a7d7a9fd` |
+| AWS Glue 5.0 | `ubunye deploy glue` | PASS, `bb08a7d7a9fd` |
+| GCP Dataproc Serverless 2.2 | `ubunye deploy dataproc` | PASS, `bb08a7d7a9fd` |
+| Azure Container Apps | `ubunye deploy container-apps` | PASS, `bb08a7d7a9fd` |
+| Databricks serverless | `ubunye.run_task()` in a notebook job | PASS, `bb08a7d7a9fd` |
 
----------------------------------------|-----------------------------------------------|
-| **Your laptop**                       | `spark.master: "local[*]"`                    |
-| **Hadoop / YARN cluster**             | `spark.master: "yarn"`                        |
-| **Kubernetes**                        | `spark.master: "k8s://..."`                   |
-| **Databricks notebooks or jobs**      | Call `ubunye.run_task()` from Python — Ubunye picks up the active session |
-| **AWS EMR**                           | Runs as an EMR Step                           |
+Try the first two rows yourself in ten minutes: [Tutorial 1](docs/tutorials/01-local-parity.md).
 
-Don't recognise some of these? That's fine — you only need one. If you're starting out, `local[*]` runs Spark on your own machine with no setup.
+**Built, not yet run:** AWS EMR Serverless (`ubunye deploy emr-serverless`; the AWS free
+plan blocks EMR). **Not tested:** Hadoop/YARN. Neither is claimed until a run says so.
+
+One rule makes this work: the task never chooses its own cluster. Which Spark master to
+use belongs to whoever launches the job, so leave `spark.master` out of your config. On
+a laptop the runner sets `local[*]`. On a cloud the platform sets it, and the engine
+refuses a config that tries to override it, because a silent single-node run on paid
+compute is worse than an error. Time is cut in UTC on every backend unless the task says
+otherwise (ADR 007).
 
 ---
 
