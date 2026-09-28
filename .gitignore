@@ -117,7 +117,12 @@ site/
 # =========================
 # Claude Code
 # =========================
-.claude/
+# The team harness is shared; personal settings and session state are not.
+.claude/*
+!.claude/agents/
+!.claude/commands/
+!.claude/hooks/
+!.claude/settings.json
 .mcp.json
 
 # Papers - thesis PDFs are copyrighted, don't commit

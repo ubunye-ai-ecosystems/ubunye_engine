@@ -9,3 +9,6 @@ changelog are.
 
 When a todo flips to done, move the file (don't copy), keep its number,
 and append a **Status:** done (date) line at the top.
+
+The hardening programme (from 2026-09-28) keeps its own ledger in
+`hardening/`: findings, experiments and the scoreboard.
