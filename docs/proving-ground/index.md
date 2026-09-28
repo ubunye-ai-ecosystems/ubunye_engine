@@ -59,7 +59,8 @@ as a bill), and a link to the run.
 
 | Id | What it protects | Where |
 |---|---|---|
-| `c01-portable-etl` | a portable (Narwhals) join, filter, null group keys, integer money, timestamps cut to a day | `examples/proving/c01_portable_etl` |
+| `c01-portable-etl` | a portable (Narwhals) join, filter, null group keys, integer money, timestamps cut to a day | `examples/proving/c01_portable_etl`; PASS on pandas, local Spark, AWS Glue 5.0 and GCP Dataproc Serverless, one digest ([latest](latest.md)) |
 
-What the proving ground has found is recorded as findings in `tasks/hardening/`; the
-first was F-021 (a Spark session's day depended on the machine's time zone, ADR 007).
+What the proving ground has found is recorded as findings in `tasks/hardening/`: F-021
+(a Spark session's day depended on the machine's time zone, ADR 007) and F-023 (a cloud
+run's record was lost when the log store cut its line).

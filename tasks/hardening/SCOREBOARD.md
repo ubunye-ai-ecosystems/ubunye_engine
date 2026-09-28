@@ -42,3 +42,12 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 |---|---|
 | Unit tier, Linux/Windows/macOS, Python 3.10 to 3.13 | PR #98 checks |
 | Live Spark parity (dev box, Spark 4.2) | 2026-09-28, 49 passed |
+
+## Proving ground (generated evidence: docs/proving-ground/latest.md)
+
+| Workload | pandas-local | spark-local | aws-glue | gcp-dataproc | databricks | azure |
+|---|---|---|---|---|---|---|
+| c01-portable-etl | PASS | PASS | PASS | PASS | NOT RUN | NOT RUN |
+
+Digest bb08a7d7a9fd everywhere; infra run 36454227691, engine 258e690, 2026-09-28.
+Teardown verified: Glue job gone, no staged S3 or GCS objects, no pushed image left.
