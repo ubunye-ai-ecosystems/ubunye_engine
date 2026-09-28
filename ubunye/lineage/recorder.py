@@ -158,6 +158,7 @@ class LineageRecorder:
             code_hash=evidence.code_hash(getattr(context, "task_dir", None)),
             environment=env,
             environment_hash=evidence.environment_hash(env),
+            time_zone=getattr(context, "time_zone", None),
             # Secret-looking values (a token passed as --var) are masked here, so
             # they reach neither the record nor OpenLineage.
             variables=redact_variables(dict(getattr(context, "variables", {}) or {})),

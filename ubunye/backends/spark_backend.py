@@ -45,6 +45,23 @@ if TYPE_CHECKING:  # only for type checkers; no runtime dependency on pyspark
     from pyspark.sql import SparkSession
 
 
+def _session_time_zone(session: Any, conf: Dict[str, str]) -> Optional[str]:
+    """The zone a Spark session works in, or will: its own setting once it runs."""
+    try:
+        if session is not None:
+            return str(session.conf.get(TIME_ZONE_KEY))
+        if TIME_ZONE_KEY in conf:
+            return str(conf[TIME_ZONE_KEY])
+        from pyspark.sql import SparkSession
+
+        running = SparkSession.getActiveSession()
+        if running is not None:
+            return str(running.conf.get(TIME_ZONE_KEY))
+        return DEFAULT_TIME_ZONE
+    except Exception:  # noqa: BLE001 (no pyspark, no JVM: unknown, never a failed run)
+        return None
+
+
 class SparkBackend(Backend):
     """Creates and manages a SparkSession for a Ubunye run.
 
@@ -211,6 +228,15 @@ class SparkBackend(Backend):
     def is_spark(self) -> bool:
         """Whether this backend is Spark-based (always True here)."""
         return True
+
+    @property
+    def timezone(self) -> Optional[str]:
+        """The session time zone this backend works in, for the run record (ADR 007).
+
+        Known before the session starts: the task's setting, else a running
+        session's (which this backend would reuse, unchanged), else UTC.
+        """
+        return _session_time_zone(self._spark, self._conf)
 
     # -------------------------
     # Data-plane IO seam (#38)

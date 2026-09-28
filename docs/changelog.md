@@ -21,6 +21,9 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   gave `2024-01-01 22:00 UTC` on Spark and `2024-01-02 00:00 UTC` on pandas and on a UTC
   cloud. Found by the proving ground's first workload (F-021). Tasks that mean local
   days set the key; a session the engine did not start is never changed.
+- **The run record says which time zone the run cut time in** (`time_zone`), from the
+  backend. `ubunye prove report` treats the same code in two zones as two different runs
+  and names the zones as the reason.
 
 ### Fixed
 

@@ -35,5 +35,7 @@ itself, which is why none had.
   machine's zone: date truncation, `date()` of a timestamp and hour-of-day now follow
   UTC. Such tasks set the key explicitly. Instants themselves (and the `rows-v1` hash,
   which writes timestamps in UTC) are unaffected.
-- Not yet done: the effective zone is not written in the run record; an ambient session
-  in another zone is not reported. Both are follow-ups (see F-021).
+- Every run record carries `time_zone`, the zone the run cut time in (the backend's
+  `timezone`). The proving ground treats two runs of the same code in different zones as
+  different runs (identity FAIL) and says so, so a session the engine does not own, left
+  in another zone, is reported rather than silently diverging.

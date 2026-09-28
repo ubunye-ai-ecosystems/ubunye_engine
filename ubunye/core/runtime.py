@@ -39,6 +39,15 @@ def current_run_id() -> Optional[str]:
     return ctx.run_id if ctx is not None else None
 
 
+def _backend_time_zone(backend: Any) -> Optional[str]:
+    """The zone a backend cuts time in, if it says (``timezone``); never raises."""
+    try:
+        zone = getattr(backend, "timezone", None)
+        return zone if isinstance(zone, str) else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 @dataclass(frozen=True)
 class EngineContext:
     """Lightweight context passed around for observability and debugging."""
@@ -55,6 +64,8 @@ class EngineContext:
     config_hash: Optional[str] = None
     #: The task folder, so the run record can hash the task's code.
     task_dir: Optional[str] = None
+    #: The session time zone the backend cuts time in (ADR 007).
+    time_zone: Optional[str] = None
 
 
 class Registry:
@@ -399,6 +410,7 @@ class Engine:
             variables=dict(self.context.variables),
             config_hash=self.context.config_hash,
             task_dir=self.context.task_dir,
+            time_zone=self.context.time_zone or _backend_time_zone(self._backend),
         )
 
     def _build_hook_chain(self, cfg: dict) -> HookChain:

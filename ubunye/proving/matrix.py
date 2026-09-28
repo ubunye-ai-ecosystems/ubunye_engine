@@ -67,8 +67,11 @@ def _dimensions(ref: Observation, obs: Observation) -> Dict[str, str]:
     rrec = ref.record or {}
     same_outputs = set(_steps(rrec, "outputs")) == set(_steps(rec, "outputs"))
     code_r, code_c = rrec.get("code_hash"), rec.get("code_hash")
+    zone_r, zone_c = rrec.get("time_zone"), rec.get("time_zone")
     if not same_outputs or (code_r and code_c and code_r != code_c):
         identity = FAIL
+    elif zone_r and zone_c and zone_r != zone_c:
+        identity = FAIL  # the same code, set to cut time differently (ADR 007)
     elif code_r and code_c:
         identity = PASS
     else:
@@ -81,6 +84,15 @@ def _dimensions(ref: Observation, obs: Observation) -> Dict[str, str]:
         "schema": _compare_steps(rrec, rec, "outputs", "schema_hash"),
         "rows": _compare_steps(rrec, rec, "outputs", "row_count"),
     }
+
+
+def _setting_note(ref: Observation, obs: Observation) -> str:
+    """Why an otherwise identical run is not the same run: its settings differ."""
+    zr = (ref.record or {}).get("time_zone")
+    zc = (obs.record or {}).get("time_zone")
+    if zr and zc and zr != zc:
+        return f"session time zone {zc}, reference {zr}: day and hour values can differ"
+    return ""
 
 
 def _overall(dims: Dict[str, str]) -> str:
@@ -137,7 +149,7 @@ def compare(
             "verdict": _overall(dims),
             "dimensions": dims,
             "status": o.status,
-            "reason": o.reason or (rec.get("error") or ""),
+            "reason": o.reason or (rec.get("error") or "") or _setting_note(ref, o),
             "digest": _digest(rec) if o.status == "executed" else None,
             "outputs": {
                 n: {k: s.get(k) for k in ("data_hash", "schema_hash", "row_count", "hash_method")}

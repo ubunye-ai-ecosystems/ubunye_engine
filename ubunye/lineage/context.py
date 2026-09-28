@@ -163,6 +163,8 @@ class RunContext:
     llm_calls: List[Dict[str, Any]] = field(default_factory=list)
     #: The run's limits and what was spent (ubunye.llm.budget); empty with no limits.
     llm_budget: Dict[str, Any] = field(default_factory=dict)
+    #: The session time zone the run cut time in (ADR 007), when the backend knows it.
+    time_zone: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -201,4 +203,5 @@ class RunContext:
             expectations=list(d.get("expectations") or []),
             llm_calls=list(d.get("llm_calls") or []),
             llm_budget=dict(d.get("llm_budget") or {}),
+            time_zone=d.get("time_zone"),
         )

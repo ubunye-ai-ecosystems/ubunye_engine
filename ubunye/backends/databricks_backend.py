@@ -167,6 +167,13 @@ class DatabricksBackend(Backend):
     def is_spark(self) -> bool:
         return True
 
+    @property
+    def timezone(self) -> Optional[str]:
+        """The attached session's time zone, for the run record (ADR 007)."""
+        from ubunye.backends.spark_backend import _session_time_zone
+
+        return _session_time_zone(self._spark, {})
+
     def read_frame(
         self,
         file_format: str,

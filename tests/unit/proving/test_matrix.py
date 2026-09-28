@@ -273,3 +273,53 @@ def test_the_cli_observes_skips_and_reports(tmp_path):
         "pandas": PASS,
     }
     assert "no credentials" in (tmp_path / "m.md").read_text(encoding="utf-8")
+
+
+def test_the_same_code_in_different_time_zones_is_not_the_same_run():
+    utc = record(run_id="spark")
+    utc["time_zone"] = "UTC"
+    local = record(run_id="laptop", data="d-shifted")
+    local["time_zone"] = "Africa/Johannesburg"
+    m = compare(
+        [
+            observe_record(utc, workload=W, environment="spark"),
+            observe_record(local, workload=W, environment="laptop"),
+        ],
+        reference="spark",
+    )
+    laptop = m["environments"]["laptop"]
+    assert laptop["dimensions"]["identity"] == FAIL
+    assert "time zone Africa/Johannesburg, reference UTC" in laptop["reason"]
+
+
+def test_a_pandas_run_records_its_time_zone(tmp_path):
+    pytest.importorskip("pandas")
+    pytest.importorskip("pyarrow")
+    import ubunye
+    from ubunye.lineage.context import RunContext
+    from ubunye.lineage.storage import FileSystemLineageStore
+
+    task = tmp_path / "uc" / "pkg" / "t"
+    task.mkdir(parents=True)
+    (tmp_path / "in.csv").write_text("id\n1\n", encoding="utf-8")
+    (task / "transformations.py").write_text(
+        "from ubunye.core.interfaces import Task\n\n\n"
+        "class T(Task):\n"
+        "    def transform(self, sources):\n"
+        "        return {'out': sources['src']}\n",
+        encoding="utf-8",
+    )
+    (task / "config.yaml").write_text(
+        'MODEL: etl\nVERSION: "1.0.0"\nCONFIG:\n  inputs:\n    src:\n      format: s3\n'
+        f"      path: \"{(tmp_path / 'in.csv').as_posix()}\"\n      file_format: csv\n"
+        "  transform: {}\n  outputs:\n    out:\n      format: s3\n"
+        f"      path: \"{(tmp_path / 'out').as_posix()}\"\n      file_format: parquet\n"
+        "      mode: overwrite\n",
+        encoding="utf-8",
+    )
+    ubunye.run_task(str(task), backend="pandas", lineage=True)
+    (rec,) = FileSystemLineageStore(str(tmp_path / ".ubunye" / "lineage")).list_runs("uc/pkg/t")
+    assert rec.time_zone == "UTC"
+    old = rec.to_dict()
+    del old["time_zone"]  # a record written before the field existed still loads
+    assert RunContext.from_dict(old).time_zone is None

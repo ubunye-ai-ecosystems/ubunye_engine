@@ -31,5 +31,6 @@ After: both bb08a7d7a9fd, every dimension PASS.
 Test: tests/unit/backends/test_spark_default_time_zone.py (fails without the fix).
 
 ## Follow-ups
-Record the effective session zone in the run record, so a divergence explains itself;
-warn when an ambient session's zone differs from the task's.
+Done: the run record carries `time_zone`, and `ubunye prove report` names a zone
+mismatch as the reason (tests/integration/test_proving_c01.py). Open: warn in
+`ubunye plan` when an ambient session's zone differs from the task's.
