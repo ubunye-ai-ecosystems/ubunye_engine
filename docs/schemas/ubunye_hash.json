@@ -44,6 +44,12 @@
             "string",
             "null"
           ]
+        },
+        "hashSeconds": {
+          "type": [
+            "number",
+            "null"
+          ]
         }
       }
     }

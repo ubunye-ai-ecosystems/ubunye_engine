@@ -135,6 +135,7 @@ def _hash_facet(prod: str, step: StepRecord) -> Dict[str, Any]:
         dataHash=step.data_hash,
         hashMethod=step.hash_method,
         hashError=step.hash_error,
+        hashSeconds=step.hash_seconds,
     )
 
 

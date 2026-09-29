@@ -24,6 +24,28 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 - **The run record says which time zone the run cut time in** (`time_zone`), from the
   backend. `ubunye prove report` treats the same code in two zones as two different runs
   and names the zones as the reason.
+- **`--lineage` costs about a third of what it did on pandas (F-014).** A 1,000,000 row
+  task with one input and two outputs took 1.6 s without `--lineage` and 11 to 13 s
+  with it; it now takes 4.4 to 4.8 s. The `rows-v1` hash builds each row's canonical line with
+  Arrow compute, hashes it straight from Arrow's buffer and sums the lanes with numpy,
+  instead of building every line in Python: 1,000,000 rows of four columns hash in
+  1.5 s (was 2.6 s), of eight mixed columns in 2.8 s (was 14 s). It runs in the
+  calling thread and changes no interpreter setting. A frame written to
+  two outputs is hashed once. Values Arrow's text cannot be proven to match (a string
+  with a control character, a double outside 0.001 to 10,000,000, NaN, a timestamp
+  before year 1000, nanoseconds, decimals, binary, nested types) are still written by
+  the Python path, and a string column holding invalid UTF-8 still records its
+  `UnicodeDecodeError` and no digest. **Every digest that was recorded before is
+  unchanged**: property tests hold the new path to the row at a time reference, and
+  the C01 and R1 golden digests did not move.
+  **Behaviour change:** a timestamp column with a zone east of UTC holding instants
+  near 9999-12-31 used to record `OverflowError` and no digest; it now gets a digest,
+  the same as the same instants in UTC.
+- **The run record says how long each hash took** (`hash_seconds` on every input and
+  output, `hashSeconds` in the OpenLineage `ubunye_hash` facet, and `hashed in` in
+  `ubunye lineage trace`). The hash runs after the writes and was in no timing. A step
+  whose frame was already hashed for another step (one frame written to two outputs)
+  says so: `hash_reused_from` names that step (`output:<name>`) and `hash_seconds` is 0.
 
 ### Fixed
 

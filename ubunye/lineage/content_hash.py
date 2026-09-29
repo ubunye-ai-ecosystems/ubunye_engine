@@ -34,7 +34,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 METHOD = "rows-v1"
 _MASK = (1 << 64) - 1
@@ -291,22 +291,230 @@ except ImportError:  # pragma: no cover
     pass
 
 
+#: Rows per slice on the vectorised path. It bounds the memory of one slice's text
+#: and keeps its offsets well inside Arrow's 32 bit string limit.
+_SLICE_ROWS = 1 << 15
+
+#: A float whose Java text is plain decimal (no exponent), where Arrow's shortest
+#: text and Python's repr agree apart from the ".0" Java adds.
+_PLAIN_FLOAT_LOW, _PLAIN_FLOAT_HIGH = 1e-3, 1e7
+
+#: date32 days for 0001-01-01 and 9999-12-31, the dates Python can hold.
+_DATE32_MIN, _DATE32_MAX = -719162, 2932896
+
+#: Microseconds since 1970 of 1000-01-01 and 10000-01-01 (UTC): the timestamps
+#: Arrow and Python both write with a four digit year.
+_TS_MIN, _TS_MAX = -30610224000 * 10**6, 253402300800 * 10**6
+
+
+def _python_lanes(columns: List[List[Optional[str]]]) -> Tuple[int, int]:
+    """The two lane sums from members built in Python, one row at a time."""
+    total_a = total_b = 0
+    for members in zip(*columns):
+        line = "{" + ",".join([m for m in members if m is not None]) + "}"
+        digest = hashlib.sha256(line.encode("utf-8")).digest()
+        total_a += int.from_bytes(digest[:8], "big")
+        total_b += int.from_bytes(digest[8:16], "big")
+    return total_a, total_b
+
+
+def _arrow_members(name: str, kind: str, col: Any) -> Optional[Any]:
+    """One column's ``,"name":value`` texts as an Arrow string array, or None.
+
+    Built with Arrow compute instead of Python, for the kinds where Arrow's text
+    is provably the canonical text: integers, booleans, strings, dates, doubles
+    and microsecond (or coarser) timestamps. Values those rules do not cover (a
+    string with a control character, a double outside the plain decimal range,
+    NaN, a timestamp before year 1000) are written by :func:`_members`, the Python
+    path, and put back in place. A null stays null. Every member starts with a
+    comma, which the caller drops for the first one. None means the kind is not
+    vectorised: the caller uses :func:`_members` for the whole column.
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    t = col.type
+    head = "," + json.dumps(name, ensure_ascii=False) + ":"
+    tail = ""
+    mask = None  # True where the Python path writes the value
+    if pa.types.is_integer(t):
+        text = pc.cast(col, pa.string())
+    elif pa.types.is_boolean(t):
+        text = pc.if_else(col, "true", "false")
+    elif pa.types.is_string(t) or pa.types.is_large_string(t):
+        col = col.cast(pa.string())
+        # Invalid UTF-8 (a string column cast from bytes unchecked) raises here, so
+        # the slice goes to the Python path, which fails with UnicodeDecodeError
+        # and records no digest, as before; Arrow would hash the raw bytes and
+        # disagree with Spark.
+        col.validate(full=True)
+        head, tail, text = head + '"', '"', col
+        if pc.any(pc.match_substring_regex(col, r'[\x00-\x1f"\\]')).as_py():
+            # JSON escapes: the backslash first, then the quote. A control
+            # character has its own escapes, so those strings go to Python.
+            mask = pc.match_substring_regex(col, r"[\x00-\x1f]")
+            text = pc.replace_substring(col, "\\", "\\\\")
+            text = pc.replace_substring(text, '"', '\\"')
+    elif pa.types.is_date32(t):
+        days = col.cast(pa.int32())
+        low, high = pc.min(days).as_py(), pc.max(days).as_py()
+        if low is not None and (low < _DATE32_MIN or high > _DATE32_MAX):
+            return None  # outside Python's dates: the Python path fails as before
+        head, tail, text = head + '"', '"', pc.cast(col, pa.string())
+    elif pa.types.is_float64(t):
+        size = pc.abs(col)
+        plain = pc.or_(
+            pc.equal(size, 0.0),
+            pc.and_(pc.greater_equal(size, _PLAIN_FLOAT_LOW), pc.less(size, _PLAIN_FLOAT_HIGH)),
+        )
+        mask = pc.invert(plain)  # NaN compares false, so it is not plain either
+        # Arrow writes the shortest digits, as Python's repr does, but drops ".0".
+        text = pc.cast(col, pa.string())
+        text = pc.if_else(
+            pc.match_substring(text, "."), text, pc.binary_join_element_wise(text, ".0", "")
+        )
+    elif pa.types.is_timestamp(t) and t.unit in ("s", "ms", "us"):
+        # An aware timestamp holds UTC microseconds: read them as a naive one, which
+        # is then the UTC wall time. (Arrow's strftime and time zone kernels are
+        # hundreds of times slower on Windows; a plain cast to text is not.)
+        micros = col.cast(pa.timestamp("us", tz=t.tz)).cast(pa.int64())
+        wall = micros.cast(pa.timestamp("us"))
+        # Arrow writes "yyyy-MM-dd HH:mm:ss.SSSSSS" for microseconds; outside years
+        # 1000 to 9999 the year's width may differ, so Python writes those.
+        mask = pc.or_(pc.less(micros, _TS_MIN), pc.greater_equal(micros, _TS_MAX))
+        text = pc.replace_substring(pc.cast(wall, pa.string()), " ", "T", max_replacements=1)
+        head, tail = head + '"', 'Z"' if t.tz else '"'
+    else:
+        return None
+
+    text = pc.binary_join_element_wise(head, text, tail, "")
+    if mask is not None:
+        mask = mask.fill_null(False)
+        if pc.any(mask).as_py():
+            values = col.filter(mask).to_pylist()
+            written = ["," + m for m in _members(name, kind, values) if m is not None]
+            text = pc.replace_with_mask(text, mask, pa.array(written, pa.string()))
+    return text
+
+
+def _slice_lines(names: List[str], kinds: Dict[str, str], batch: Any) -> Optional[Any]:
+    """One slice of rows as an Arrow string array of canonical lines.
+
+    None when Arrow cannot build it (a slice too large for 32 bit offsets, an old
+    pyarrow without a kernel): the caller then hashes the slice the Python way.
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    try:
+        members = []
+        for i, name in enumerate(names):
+            col = batch.column(i)
+            kind = kinds.get(name, "")
+            text = _arrow_members(name, kind, col)
+            if text is None:
+                written = _members(name, kind, col.to_pylist())
+                text = pa.array([None if m is None else "," + m for m in written], pa.string())
+            members.append(text)
+        # A null member is left out. (Not null_handling="skip": pyarrow 25 drops
+        # the rows where every input is null, so the array comes back shorter.)
+        lines = pc.binary_join_element_wise(
+            "{", *members, "}", "", null_handling="replace", null_replacement=""
+        )
+        # Every member starts with a comma: drop the one after the brace. A row
+        # with no members is "{}", which holds no "{," to replace.
+        lines = pc.replace_substring(lines, "{,", "{", max_replacements=1)
+        if len(lines) != batch.num_rows or lines.null_count:
+            return None
+        return lines
+    except pa.ArrowException:
+        return None
+
+
+def _pick_line_sha256() -> Callable[..., Any]:
+    """CPython's own SHA-256 (HACL*, module ``_sha2``) when it behaves like hashlib's.
+
+    It gives the same digest about a fifth faster on short lines. It is a private
+    module, so it is used only if it imports, takes a memoryview slice as this
+    module passes one, and returns hashlib's digest; anything else (missing,
+    renamed, another signature) falls back to :func:`hashlib.sha256`.
+    """
+    try:
+        from _sha2 import sha256 as builtin
+
+        probe = memoryview(b"{rows-v1}")[1:-1]
+        if builtin(probe).digest() == hashlib.sha256(probe).digest():
+            return builtin
+    except Exception:
+        pass
+    return hashlib.sha256
+
+
+_line_sha256: Callable[..., Any] = _pick_line_sha256()
+
+
+def _arrow_lanes(lines: Any) -> Tuple[int, int]:
+    """The two lane sums of an Arrow string array of canonical lines.
+
+    Each line is hashed straight from Arrow's buffer (no Python strings), and the
+    lanes are summed by numpy, whose uint64 addition wraps modulo 2**64, the same
+    as the Python sum masked at the end.
+    """
+    import numpy as np
+
+    n = len(lines)
+    buffers = lines.buffers()
+    offsets = np.frombuffer(buffers[1], dtype=np.int32, count=n + 1, offset=lines.offset * 4)
+    data = memoryview(buffers[2]) if buffers[2] is not None else memoryview(b"")
+    sha = _line_sha256
+    o = offsets.tolist()
+    digests = b"".join([sha(data[a:b]).digest() for a, b in zip(o, o[1:])])
+    words = np.frombuffer(digests, dtype=">u8").reshape(n, 4)
+    a = words[:, 0].astype(np.uint64).sum(dtype=np.uint64)
+    b = words[:, 1].astype(np.uint64).sum(dtype=np.uint64)
+    return int(a), int(b)
+
+
+def _slices(table: Any, names: List[str]) -> Iterator[Any]:
+    for batch in table.select(names).to_batches():
+        for start in range(0, batch.num_rows, _SLICE_ROWS):
+            yield batch.slice(start, _SLICE_ROWS)
+
+
+def _slice_lanes(names: List[str], kinds: Dict[str, str], piece: Any) -> Tuple[int, int]:
+    """One slice's lane sums: from the lines Arrow builds, else the Python way."""
+    lines = _slice_lines(names, kinds, piece)
+    if lines is not None:
+        try:
+            return _arrow_lanes(lines)
+        except ImportError:  # pragma: no cover  (no numpy)
+            pass
+    columns = [
+        _members(name, kinds.get(name, ""), piece.column(i).to_pylist())
+        for i, name in enumerate(names)
+    ]
+    return _python_lanes(columns)
+
+
 def fingerprint_arrow(table: Any) -> Fingerprint:
-    """The ``rows-v1`` fingerprint of an Arrow table."""
+    """The ``rows-v1`` fingerprint of an Arrow table.
+
+    Rows are taken in slices. Each slice's canonical lines are built by Arrow
+    compute (:func:`_slice_lines`) and hashed from Arrow's buffer; a slice Arrow
+    cannot build is written and hashed the Python way. A test holds the result to
+    :func:`fingerprint_rows`, the row at a time reference, byte for byte.
+    """
     schema = [(f.name, arrow_kind(f.type)) for f in table.schema]
     kinds = dict(schema)
     names = sorted(table.column_names)
     total_a = total_b = 0
-    for batch in table.select(names).to_batches():
-        columns = [
-            _members(name, kinds.get(name, ""), batch.column(i).to_pylist())
-            for i, name in enumerate(names)
-        ]
-        for members in zip(*columns):
-            line = "{" + ",".join([m for m in members if m is not None]) + "}"
-            digest = hashlib.sha256(line.encode("utf-8")).digest()
-            total_a += int.from_bytes(digest[:8], "big")
-            total_b += int.from_bytes(digest[8:16], "big")
+    # A table with no columns has always summed to zero here (no members to zip);
+    # kept, so no recorded digest moves.
+    if names:
+        for piece in _slices(table, names):
+            a, b = _slice_lanes(names, kinds, piece)
+            total_a += a
+            total_b += b
     return Fingerprint(
         schema_hash=schema_hash(schema),
         data_hash=data_hash(schema, table.num_rows, (total_a, total_b)),

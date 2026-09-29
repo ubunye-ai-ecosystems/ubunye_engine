@@ -25,6 +25,7 @@ with final status, duration, and per-step hashes at ``task_end``.
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -61,15 +62,43 @@ def _make_store(store: str, base_dir: str) -> LineageStore:
     return FileSystemLineageStore(base_dir)
 
 
-def _fingerprint_into(step: StepRecord, frame: Any) -> None:
+def _fingerprint_into(step: StepRecord, frame: Any, seen: Optional[Dict[Any, Any]] = None) -> None:
     """Every row, one pass, the same method on every engine (ADR 006).
 
     A failure is recorded as a failure: no data_hash and the reason, never the
-    schema hash standing in for the data.
+    schema hash standing in for the data. The time the hash took is recorded too
+    (``hash_seconds``), so its cost is never invisible. ``seen`` holds the
+    fingerprints already taken in this record, by frame: a frame written to two
+    outputs is hashed once, and the step says whose hash it reused
+    (``hash_reused_from``, with ``hash_seconds`` 0).
     """
     from ubunye.lineage.content_hash import fingerprint
 
-    print_ = fingerprint(frame)
+    t0 = time.perf_counter()
+    # The engine hands each pandas output over in its own port, so the key is the
+    # frame inside it (and the zone the port reads time in). Only that adapter is
+    # unwrapped: on anything else ``native`` may be a column, a fresh object whose
+    # id is reused once it is freed. The cache holds the object and checks it is
+    # the same one, so an id is never trusted on its own.
+    obj = frame
+    try:
+        from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
+
+        if isinstance(frame, PandasDataFrameAdapter):
+            obj = frame.native
+    except ImportError:  # pragma: no cover
+        pass
+    key = (type(frame), id(obj), getattr(frame, "timezone", None))
+    cached = seen.get(key) if seen is not None else None
+    if cached is not None and cached[0] is obj:
+        _, print_, owner = cached
+        step.hash_seconds = 0.0
+        step.hash_reused_from = owner
+    else:
+        print_ = fingerprint(frame)
+        step.hash_seconds = round(time.perf_counter() - t0, 6)
+        if seen is not None:
+            seen[key] = (obj, print_, f"{step.direction}:{step.name}")
     step.schema_hash = print_.schema_hash
     step.data_hash = print_.data_hash
     step.row_count = print_.row_count
@@ -206,11 +235,13 @@ class LineageRecorder:
         ctx.llm_budget = dict(llm_budget or {})
 
         # --- Input StepRecords, hashed like outputs when the frames are given ---
+        # Fingerprints taken in this record, by frame: the same frame is hashed once.
+        seen: Dict[Any, Any] = {}
         ctx.inputs = []
         for name, io_cfg in inputs_cfg.items():
             step = StepRecord.from_io_cfg(name, "input", io_cfg)
             if self._hash_inputs and inputs and inputs.get(name) is not None:
-                _fingerprint_into(step, inputs[name])
+                _fingerprint_into(step, inputs[name], seen)
             ctx.inputs.append(step)
 
         # --- Build output StepRecords with optional DataFrame hashes ---
@@ -218,7 +249,7 @@ class LineageRecorder:
         for name, io_cfg in outputs_cfg.items():
             step = StepRecord.from_io_cfg(name, "output", io_cfg)
             if outputs and name in outputs and outputs[name] is not None:
-                _fingerprint_into(step, outputs[name])
+                _fingerprint_into(step, outputs[name], seen)
             step_outputs.append(step)
         ctx.outputs = step_outputs
         values = self._secret_values.pop(run_id, [])

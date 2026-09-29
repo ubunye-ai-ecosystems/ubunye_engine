@@ -193,6 +193,11 @@ A change counts when it is proven, not when it is written:
 - **Typer vendors click**, so `isinstance(cmd, click.Group)` is always False; duck-type.
   CI terminals get colour: strip `\x1b\[[0-9;]*m` before matching CLI output.
 - **pyarrow before 24** cannot find a timezone database on Windows.
+- **The dev box Spark venv (`sparkvenv`) resolves `ubunye-engine` 0.5.0** from the user
+  site (an old editable install of `Documents/gits/ubunye_engine`), so its entry points
+  have no pandas backend and integration tests fail with `No backend named 'pandas'`.
+  Put the tree under test and a copy of a current `ubunye_engine-*.dist-info` (without
+  `RECORD` and `direct_url.json`) first on `PYTHONPATH`.
 - **Retargeting a PR's base fires no pull_request workflows.** Close and reopen it.
 - **Stopping a background job can orphan its Python child.** Check for and stop leftover
   processes; the dev box has 16 GB and runs out.

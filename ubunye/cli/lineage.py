@@ -396,6 +396,10 @@ def _print_steps(steps: List[StepRecord]) -> None:
             typer.echo(f"      data     : {step.data_hash}")
         elif getattr(step, "hash_error", None):
             typer.echo(f"      data     : unavailable ({step.hash_error})")
+        if getattr(step, "hash_seconds", None) is not None:
+            typer.echo(f"      hashed in: {step.hash_seconds:.3f}s")
+        if getattr(step, "hash_reused_from", None):
+            typer.echo(f"      hash of  : {step.hash_reused_from} (same frame)")
 
 
 @lineage_app.command("trace")

@@ -16,7 +16,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 7 (F-008 to F-010, F-014, F-015, F-017, F-018) | 15 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-016, F-019, F-020, F-031, F-032) | 0 |
+| 6 (F-008 to F-010, F-015, F-017, F-018) | 16 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
 
 ## Experiments
 
@@ -35,6 +35,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Date | Engine | Job | Data | Compute | Plain (s) | Ubunye (s) | Overhead | Notes |
 |---|---|---|---|---|---|---|---|---|
+| 2026-09-29 | hardening (F-014) | E-01 task, `--lineage` vs none (1 input, 2 outputs) | 1,000,000 rows, 3 columns | pandas, dev box (Windows, 16 GB) | 1.6 | 4.4 to 4.8 (was 10.8 to 13.4) | 2.9x (was 6.8 to 8.4x) | hash 1.28 s input + 1.60 s output (incl. pandas to Arrow), now in the record; runs as in `tests/experiments/timing.py` |
 
 ## Environments green
 

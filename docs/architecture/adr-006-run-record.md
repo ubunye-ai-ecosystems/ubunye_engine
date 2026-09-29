@@ -90,6 +90,8 @@ transform, an input or the machine could each have moved. Version 2
 | `environment`, `environment_hash` | Python version and implementation, platform, machine, and the versions of the packages that can change a result (engine, pyspark, delta-spark, pandas, pyarrow, numpy, narwhals, scikit-learn, torch, mlflow) |
 | `inputs[*].data_hash`, `row_count`, `schema_hash` | every input hashed exactly like the outputs (`rows-v1`) |
 | `timings` | one entry per read, transform and write, with seconds; kept when the run fails |
+| `inputs[*].hash_seconds`, `outputs[*].hash_seconds` | how long that data hash took; it runs after the writes, so it is in no timing (F-014) |
+| `inputs[*].hash_reused_from`, `outputs[*].hash_reused_from` | set when the same frame was already hashed for another step of the run, which it names (`output:<name>`); `hash_seconds` is then 0 |
 | `expectations` | every `CONFIG.expectations` rule checked, passed or not; kept when the run fails |
 
 `ubunye lineage compare` reports each of these as changed or unchanged, and

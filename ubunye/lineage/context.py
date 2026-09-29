@@ -84,6 +84,12 @@ class StepRecord:
     hash_method: Optional[str] = None
     #: Why there is no data_hash, when the rows could not be read.
     hash_error: Optional[str] = None
+    #: Seconds the data hash took. The hash runs after the writes and is
+    #: not in ``timings``; this keeps its cost in the record.
+    hash_seconds: Optional[float] = None
+    #: Set when this frame was already hashed for another step of the run (the
+    #: same frame written twice): that step, as "output:<name>" or "input:<name>".
+    hash_reused_from: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -100,6 +106,8 @@ class StepRecord:
             data_hash=d.get("data_hash"),
             hash_method=d.get("hash_method"),
             hash_error=d.get("hash_error"),
+            hash_seconds=d.get("hash_seconds"),
+            hash_reused_from=d.get("hash_reused_from"),
         )
 
     @staticmethod
