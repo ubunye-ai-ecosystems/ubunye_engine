@@ -1,13 +1,19 @@
 name: scale-ladder (E-06)
 
 # Experiment E-06: Ubunye against the same job written plain, at growing sizes,
-# on a free GitHub runner (4 vCPU, 16 GB). Manual only: it measures, it gates
-# nothing. One job per backend and size, so each gets a fresh machine; the
+# on a free GitHub runner (4 vCPU, 16 GB). It measures, it gates nothing: manual,
+# or a push of the harness itself to an exp/ branch (a workflow_dispatch workflow
+# cannot be started until it is on the default branch). One job per backend and size, so each gets a fresh machine; the
 # results (one JSON line per run) are uploaded as artifacts.
 #
 #   gh workflow run scale-ladder.yml --ref <branch>
 
 on:
+  push:
+    branches: ["exp/**"]
+    paths:
+      - ".github/workflows/scale-ladder.yml"
+      - "tests/experiments/e06_*.py"
   workflow_dispatch:
     inputs:
       repeats:
@@ -68,7 +74,7 @@ jobs:
         run: |
           python tests/experiments/e06_scale.py \
             --backend "${{ matrix.backend }}" --rows "${{ matrix.rows }}" \
-            --repeats "${{ inputs.repeats }}" --work "${RUNNER_TEMP}/e06" \
+            --repeats "${{ inputs.repeats || '3' }}" --work "${RUNNER_TEMP}/e06" \
             --out "e06-${{ matrix.backend }}-${{ matrix.rows }}.jsonl" \
             --host "gha-ubuntu-latest" --driver-memory 10g --timeout 5400
 
