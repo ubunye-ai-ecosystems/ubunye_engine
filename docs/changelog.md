@@ -15,6 +15,9 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Changed
 
+- **A Spark run record's hash takes about 45% less time** (F-041). The per row SHA-256
+  lanes are summed as 32 bit halves in `long` instead of as decimals; the digest is
+  the same. A table past about 2.1 billion rows falls back to the decimal sums.
 - **On Spark, a task that overwrites the folder it reads is refused before it starts**
   (F-047). Spark deleted the input's files and then failed reading them, so the run
   failed and the source was gone. `ubunye validate --backend spark` reports it too.

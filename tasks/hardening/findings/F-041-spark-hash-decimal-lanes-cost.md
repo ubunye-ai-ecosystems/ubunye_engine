@@ -1,6 +1,6 @@
 # F-041: On Spark, 40% of the content hash time is decimal arithmetic that long sums could do
 
-**Status:** open
+**Status:** fixed on fix/f041-half-lanes
 **Severity:** minor
 **Source:** scale-runner, experiment E-06 (2026-09-29)
 **Promise:** 7 (the core stays small)
@@ -43,3 +43,54 @@ the decimal sums are good to about 10**11 rows; a table beyond that needs the
 decimal path (or a sum per partition, combined on the driver as Python integers).
 Changing the digest definition itself (for example `xxhash64`) is not the fix: the
 digest must stay equal to the pandas side's (ADR 006).
+
+## Fix
+`fingerprint_spark` sums four 32 bit half lanes as `long` (`_half_lane_sums`) and
+rebuilds the two lane sums in Python (`lanes_from_halves`). The digest is the same
+`rows-v1` digest: the Spark digest still equals the pandas and Arrow digests
+(`tests/integration/test_content_hash_parity.py`), and a combine step that is off by
+one bit fails that test.
+
+Past about 2.1 billion rows a `long` sum overflows. With ANSI on (Spark 4's default)
+Spark raises `ARITHMETIC_OVERFLOW`; only that error is caught, and the hash is taken
+again with the old decimal sums (`_decimal_lane_sums`, same digest, pinned by
+`test_the_decimal_fallback_gives_the_same_digest`). Any other error is raised, so a
+failing job is not computed twice. With ANSI off the sums wrap modulo 2**64, which is
+all the digest keeps (`data_hash` masks each sum), so the digest is still exact
+(`test_sums_that_wrapped_in_a_spark_long_give_the_same_digest`).
+
+Checked on live Spark 4.2 with a real `long` overflow (four rows of 2**62): ANSI on
+raises `[ARITHMETIC_OVERFLOW]`, which `_long_overflow` recognises; ANSI off returns
+0, the true sum modulo 2**64. Only that error is retried: a JVM `StackOverflowError`
+or a failed task is raised, not hashed again.
+
+`try_sum` (null instead of an error) was measured and rejected: it keeps about a third
+of the saving.
+
+## After
+`tasks/hardening/experiments/e06/e06_halflanes.py 2000000`, dev box, Spark 4.2 local,
+generated 5 column rows, cached, median of 3, every way giving the same lane totals:
+
+| aggregation | seconds |
+|---|---|
+| before: two `decimal(20,0)` lane sums | 2.29 |
+| **after: four `long` half lane sums** | **1.25** (45% less) |
+| four `try_sum` half lane sums (rejected) | 1.62 |
+
+On the E-06 scale ladder (GitHub `ubuntu-latest`, 4 vCPU, Spark 4, median of 3; before =
+`hardening/real-world` at f569e0a, after = this fix; runs 36632756146 and 36632771300):
+
+| Spark rows | record `hash_seconds`, before | after | `--lineage` / plain, before | after |
+|---|---|---|---|---|
+| 1,000,000 | 8.0 | **5.9** | 1.74x | **1.55x** |
+| 5,000,000 | 16.7 | **12.5** | 2.52x | **2.03x** |
+| 20,000,000 | 62.1 | **34.3** | 4.08x | **2.97x** |
+| 50,000,000 | 125.1 | **83.5** | 4.80x | **3.54x** |
+
+All 48 output digests are identical before and after. pandas is unchanged (its hash
+does not use this code; its rows moved within run to run noise).
+
+The E-06 target (`--lineage` within 1.5x of plain at 5M rows and above) is still not
+met on Spark. What remains is mostly reading and hashing each input a second time
+(F-046) and the `to_json` plus `sha2` per row that the digest definition requires.
+
