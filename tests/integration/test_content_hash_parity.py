@@ -100,6 +100,37 @@ def test_spark_and_pandas_agree(spark, written):
     assert spark_fp.data_hash == pandas_fp.data_hash
 
 
+def test_the_decimal_fallback_gives_the_same_digest(spark, written, monkeypatch):
+    # Past about 2.1 billion rows, ANSI Spark raises on the long half lane sums
+    # (F-041) and the hash is taken with decimal sums instead.
+    from ubunye.adapters.spark import content_hash as sch
+
+    df = spark.read.parquet(written)
+    fast = fingerprint_spark(df)
+
+    def overflow(*_):
+        raise ArithmeticError("[ARITHMETIC_OVERFLOW] long overflow")
+
+    monkeypatch.setattr(sch, "_half_lane_sums", overflow)
+    assert fingerprint_spark(df).data_hash == fast.data_hash
+
+
+def test_a_failing_job_is_not_hashed_a_second_time(spark, written, monkeypatch):
+    from ubunye.adapters.spark import content_hash as sch
+
+    calls = []
+
+    def failing(*_):
+        calls.append("half")
+        raise RuntimeError("Job aborted: a UDF raised")
+
+    monkeypatch.setattr(sch, "_half_lane_sums", failing)
+    monkeypatch.setattr(sch, "_decimal_lane_sums", lambda *_: calls.append("decimal"))
+    with pytest.raises(RuntimeError, match="Job aborted"):
+        fingerprint_spark(spark.read.parquet(written))
+    assert calls == ["half"]
+
+
 def test_the_dispatcher_picks_spark(spark, written):
     df = spark.read.parquet(written)
     assert fingerprint(df).data_hash == fingerprint_spark(df).data_hash
