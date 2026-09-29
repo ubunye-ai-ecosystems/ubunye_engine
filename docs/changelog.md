@@ -201,14 +201,23 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   for 6 minutes with nothing on screen. Now a line goes to stderr, such as
   `LLM anthropic/claude-haiku-4-5: 90/300 calls (30%), 1m48s, $0.0412 spent of $2`,
   at most every 10 seconds and every 10% of the calls, whichever is rarer, and one at
-  the end. A batch under 20 prompts or under 10 seconds writes nothing. The spend
-  shows when a budget keeps count. Sequential and concurrent batches both report.
+  the end. A batch under 20 prompts or under 10 seconds writes nothing. Sequential
+  and concurrent batches both report. Calls that got no answer are named
+  (`50 answered, 250 refused by the budget`, or `failed`), not counted as done. The
+  spend shows only when a dollar limit is enforced (`UBUNYE_LLM_MAX_USD` in a run or
+  outside one, or the port's `max_usd=`; both when both are set). The line is best
+  effort: a missing or broken stderr drops it and never stops a batch or hides a
+  call's own error. `UBUNYE_LLM_PROGRESS=0` turns it off.
 - **Docs: check each model answer, ask again for the bad ones** (F-009). A newcomer
   asked for `SENTIMENT | ASPECT` and 20 of 300 answers missed the format. The LLM
   page now has a short recipe, `complete_parsed`: parse each answer, ask again only
-  where the parse fails, up to a cap, with an optional reminder. It needs no new
-  engine feature: the extra calls count against the budget, are in the run record,
-  and replay call for call. A test runs the recipe from the page as written.
+  where the parse fails, up to a cap, with an optional reminder. It answers by
+  position (a pandas column's index is not used), treats any error in the parse as
+  "did not parse" and keeps it as the reason, adds the reminder to chat message
+  prompts too, and keeps the answers already paid for when the budget refuses an ask
+  again. It needs no new engine feature: the extra calls count against the budget
+  and are in the run record, and inside a run they replay call for call. A test runs
+  the recipe from the page as written.
 
 - **`ubunye deploy` runs several tasks in one launch** (glue, dataproc, k8s,
   container-apps, emr-serverless): repeat `-t`, as in `-t clean -t monitor`. They run in

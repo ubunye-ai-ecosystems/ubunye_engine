@@ -8,15 +8,21 @@ A line is written only when at least :data:`EVERY_S` seconds and at least
 :data:`EVERY_SHARE` of the calls have passed since the last one, so a slow run
 gets about ten lines and a fast one none. A batch of fewer than :data:`MIN_CALLS`
 prompts never writes. When a batch wrote a line, its end writes one more.
+
+Calls that got no answer are named (``50 answered, 250 refused by the budget``).
+The spend shows only for a budget that enforces a dollar limit. Progress is best
+effort: a missing or broken stderr drops the line and never stops the batch.
+``UBUNYE_LLM_PROGRESS=0`` (or false, no, off) turns it off.
 """
 
 from __future__ import annotations
 
 import math
+import os
 import sys
 import threading
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Sequence, Tuple
 
 #: Seconds between two lines, at least.
 EVERY_S = 10.0
@@ -26,30 +32,49 @@ EVERY_SHARE = 0.10
 MIN_CALLS = 20
 #: The clock lines are timed by (a test swaps it for a fake one).
 CLOCK: Callable[[], float] = time.monotonic
+#: Set to one of these to turn progress off.
+ENV = "UBUNYE_LLM_PROGRESS"
+OFF = frozenset({"0", "false", "no", "off"})
+
+#: What a finished call was.
+ANSWERED, FAILED, REFUSED = "answered", "failed", "refused"
 
 
 def _stderr(line: str) -> None:
-    print(line, file=sys.stderr, flush=True)
+    err = sys.stderr
+    if err is None:  # pythonw, some services: never fall back to stdout
+        return
+    print(line, file=err, flush=True)
+
+
+def enabled() -> bool:
+    return os.environ.get(ENV, "").strip().lower() not in OFF
 
 
 class Progress:
-    """Counts finished calls; thread safe, so concurrent workers can tick it."""
+    """Counts finished calls; thread safe, so concurrent workers can tick it.
+
+    ``budgets`` is a list of ``(name, budget)``: the budgets that enforce limits on
+    these calls (``run`` and ``port``).
+    """
 
     def __init__(
         self,
         label: str,
         total: int,
         *,
-        budget: Any = None,
+        budgets: Sequence[Tuple[str, Any]] = (),
         clock: Optional[Callable[[], float]] = None,
         write: Callable[[str], None] = _stderr,
     ) -> None:
         self.label = label
         self.total = total
-        self.budget = budget
+        self.budgets = [(n, b) for n, b in budgets if b is not None]
         self.clock = clock or CLOCK
         self.write = write
+        self.on = total >= MIN_CALLS and enabled()
         self.done = 0
+        self.counts = {ANSWERED: 0, FAILED: 0, REFUSED: 0}
         self.lines = 0
         self._lock = threading.Lock()
         self._step = max(1, math.ceil(total * EVERY_SHARE))
@@ -57,12 +82,13 @@ class Progress:
         self._last_at = self._started
         self._last_done = 0
 
-    def tick(self) -> None:
-        """One call finished (answered or failed)."""
-        if self.total < MIN_CALLS:
+    def tick(self, outcome: str = ANSWERED) -> None:
+        """One call finished: ``answered``, ``failed`` or ``refused`` by a budget."""
+        if not self.on:
             return
         with self._lock:
             self.done += 1
+            self.counts[outcome] += 1
             now = self.clock()
             if self.done >= self.total:
                 if self.lines:
@@ -74,12 +100,21 @@ class Progress:
     def _line(self, now: float) -> None:
         self._last_at, self._last_done = now, self.done
         self.lines += 1
-        pct = 100 * self.done // self.total
-        text = f"LLM {self.label}: {self.done}/{self.total} calls ({pct}%), {_elapsed(now - self._started)}"
-        spent = _spent(self.budget)
+        parts = [f"{self.done}/{self.total} calls ({100 * self.done // self.total}%)"]
+        if self.counts[ANSWERED] != self.done:
+            parts.append(f"{self.counts[ANSWERED]} answered")
+            if self.counts[FAILED]:
+                parts.append(f"{self.counts[FAILED]} failed")
+            if self.counts[REFUSED]:
+                parts.append(f"{self.counts[REFUSED]} refused by the budget")
+        parts.append(_elapsed(now - self._started))
+        spent = _spent(self.budgets)
         if spent:
-            text += f", {spent}"
-        self.write(text)
+            parts.append(spent)
+        try:
+            self.write(f"LLM {self.label}: " + ", ".join(parts))
+        except Exception:  # best effort: a broken stderr never stops a batch
+            pass
 
 
 def _elapsed(seconds: float) -> str:
@@ -87,11 +122,10 @@ def _elapsed(seconds: float) -> str:
     return f"{s // 60}m{s % 60:02d}s" if s >= 60 else f"{s}s"
 
 
-def _spent(budget: Optional[Any]) -> str:
-    """What the budget has spent; empty when no budget is keeping count."""
-    if budget is None or not getattr(budget, "limited", False):
-        return ""
-    text = f"${budget.spent_usd:.4f} spent"
-    if budget.max_usd is not None:
-        text += f" of ${budget.max_usd:g}"
-    return text
+def _spent(budgets: Sequence[Tuple[str, Any]]) -> str:
+    """The spend of each budget that enforces a dollar limit; empty when none does."""
+    money = [(n, b) for n, b in budgets if getattr(b, "max_usd", None) is not None]
+    if len(money) == 1:
+        ((_, b),) = money
+        return f"${b.spent_usd:.4f} spent of ${b.max_usd:g}"
+    return ", ".join(f"{n} ${b.spent_usd:.4f} of ${b.max_usd:g}" for n, b in money)

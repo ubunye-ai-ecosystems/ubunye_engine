@@ -54,3 +54,45 @@ cannot drift from working code:
 Before (the page without the recipe): 3 errors, `ValueError: not enough values to
 unpack (expected 1, got 0)`, the block is not there. After: 3 passed, with the
 engine unchanged.
+
+## Skeptic review (2026-09-30) and what changed
+The skeptic's `attack_recipe.py` found four bugs in the first recipe, and one
+claim that was too strong. The fix is still docs only; the engine is unchanged.
+
+1. **A pandas column with its own index put answers on the wrong rows, silently.**
+   `prompts[i]` read by label: after a sort (index 3, 2, 1, 0) the row `beta` got
+   `gamma`'s answer (case 4). Now `prompts = list(prompts)` first. After: every row
+   gets its own answer.
+2. **A budget refusal on an ask again lost every answer already paid for.** 10
+   prompts, `max_calls=10`, one bad answer: `LLMBudgetError`, 10 paid calls, nothing
+   returned (case 1). Now a refusal after the first round stops the asking and
+   returns what parsed, with the rest in `failed` and the `LLMBudgetError` as the
+   reason. A budget that cannot cover the first pass still raises. After: 10 paid,
+   9 values kept, `failed {9: LLMBudgetError(...)}`.
+3. **Only `ValueError` meant "did not parse".** A `KeyError` from a JSON parse
+   escaped after paying and lost all values (case 2). Now any `Exception` from the
+   parse counts, and `failed` maps each position to the last error. After:
+   `{3: KeyError('aspect')}`, the other four values kept.
+4. **Chat message prompts with a reminder crashed** in round two, `list + str`
+   (case 3). Now the reminder goes on the last user message of a copy (or a new user
+   message when there is none with text). After: parsed, no crash, the caller's
+   list unchanged.
+5. `tries=-1` sent nothing and returned all failed (case 8); now `ValueError`.
+6. **"Replay call for call" holds only inside a run** (the engine opens a call log
+   for every task run). Outside one, a second identical ask is recorded over the
+   first, and replay can make fewer calls (cases 5 and 5b: 4 calls recorded, 2
+   replayed). The page now says so plainly.
+
+The recipe now returns `(values, failed)` with `failed` a dict of position to
+reason, not a list.
+
+New tests in `tests/unit/llm/test_llm_reask_recipe.py`:
+`test_a_pandas_column_with_its_own_index_answers_by_position`,
+`test_the_extra_calls_count_against_the_budget_and_paid_answers_are_kept`,
+`test_a_budget_that_cannot_cover_the_first_pass_raises`,
+`test_any_error_in_parse_means_did_not_parse`,
+`test_the_reminder_works_on_both_prompt_shapes` (text and messages),
+`test_negative_tries_are_refused`. On the first recipe 7 of the 9 tests fail: every
+bug test, and the two older tests on the new return shape. The two that pass there
+guard behaviour that was already right (a text prompt with a reminder, and a budget
+that cannot cover the first pass). After: all 9 pass.

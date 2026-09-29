@@ -292,23 +292,43 @@ class LLMPort:
             (r, active.occurrence(r.key(self.name), self.mode) if active is not None else 0)
             for r in requests
         ]
-        run_budget = active.budget if active is not None else None
         progress = Progress(
-            f"{self.name}/{self.model}",
-            len(requests),
-            budget=run_budget if run_budget is not None and run_budget.limited else self.own_budget,
+            f"{self.name}/{self.model}", len(requests), budgets=self._progress_budgets(active)
         )
 
         def one(request: LLMRequest, occurrence: int) -> LLMResponse:
             try:
-                return self.send(request, occurrence=occurrence)
-            finally:
-                progress.tick()
+                response = self.send(request, occurrence=occurrence)
+            except LLMBudgetError:
+                progress.tick("refused")
+                raise
+            except BaseException:
+                progress.tick("failed")
+                raise
+            progress.tick("answered")
+            return response
 
         with ThreadPoolExecutor(max_workers=max(1, min(max_concurrency, len(requests)))) as pool:
             # Each worker runs in a copy of this context, so the run's call log sees it.
             futures = [pool.submit(contextvars.copy_context().run, one, r, n) for r, n in numbered]
             return [f.result() for f in futures]
+
+    def _progress_budgets(self, active: Optional[_CallLog]) -> List[Tuple[str, Any]]:
+        """The budgets that enforce limits on this port's calls, for the progress line."""
+        if self.mode == "replay":
+            return []  # replayed calls cost nothing and are never refused
+        if active is not None:
+            run_budget = active.budget
+        else:
+            try:
+                run_budget = self._outside_run_budget()
+            except LLMError:
+                run_budget = None  # a bad limit fails the first call, not the progress
+        return [
+            (name, b)
+            for name, b in (("run", run_budget), ("port", self.own_budget))
+            if b is not None and b.limited
+        ]
 
     def send(self, request: LLMRequest, *, occurrence: Optional[int] = None) -> LLMResponse:
         """One call. Inside a run, the nth identical request is recorded, and

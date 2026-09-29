@@ -7,11 +7,14 @@ the same whatever order concurrent calls finish in.
 
 from __future__ import annotations
 
+import io
+import sys
 import threading
 
 import pytest
 
 from ubunye import llm
+from ubunye.core.errors import LLMBudgetError, LLMError
 from ubunye.llm import progress
 
 
@@ -36,6 +39,12 @@ def clock(monkeypatch):
         return fake
 
     return use
+
+
+@pytest.fixture(autouse=True)
+def _no_progress_or_limit_settings(monkeypatch):
+    for name in ("UBUNYE_LLM_PROGRESS", "UBUNYE_LLM_MAX_USD", "UBUNYE_LLM_MAX_CALLS"):
+        monkeypatch.delenv(name, raising=False)
 
 
 def _port(provider, **kwargs):
@@ -91,3 +100,89 @@ def test_ten_seconds_bound_the_lines_when_ten_percent_come_faster(provider, cloc
     _port(provider).complete_many([str(i) for i in range(20)])
     done = [x.split(": ")[1].split(" calls")[0] for x in _lines(capsys)]
     assert done == ["10/20", "20/20"]
+
+
+# --- after the skeptic's review ---------------------------------------------------
+
+
+class BrokenStderr(io.TextIOBase):
+    def write(self, s):
+        raise BrokenPipeError(32, "Broken pipe")
+
+    def flush(self):
+        raise BrokenPipeError(32, "Broken pipe")
+
+    def close(self):  # garbage collection closes a stream: stay quiet there
+        pass
+
+
+def test_a_broken_stderr_never_stops_a_batch_that_succeeded(provider, clock, monkeypatch):
+    clock(1.0)
+    monkeypatch.setattr(sys, "stderr", BrokenStderr())
+    assert len(_port(provider).complete_many([str(i) for i in range(40)])) == 40
+
+
+def test_a_broken_stderr_never_hides_the_calls_own_error(provider, clock, monkeypatch):
+    clock(1.0)  # call 10 fails, and call 10 is when the first line is due
+    for _ in range(9):
+        provider.answer(None)
+    provider.answer({"error": "no"}, status=400)
+    monkeypatch.setattr(sys, "stderr", BrokenStderr())
+    with pytest.raises(LLMError, match="HTTP 400"):
+        _port(provider).complete_many([str(i) for i in range(40)], max_concurrency=1)
+
+
+def test_no_stderr_means_no_line_and_never_stdout(provider, clock, capsys, monkeypatch):
+    clock(1.0)
+    monkeypatch.setattr(sys, "stderr", None)
+    _port(provider).complete_many([str(i) for i in range(40)])
+    assert "LLM " not in capsys.readouterr().out
+
+
+def test_refused_calls_are_not_counted_as_answered(provider, clock, capsys):
+    clock(1.0)
+    with pytest.raises(LLMBudgetError):
+        _port(provider, max_calls=50).complete_many([str(i) for i in range(300)], max_concurrency=8)
+    assert _lines(capsys)[-1] == (
+        "LLM anthropic/c: 300/300 calls (100%), 50 answered, 250 refused by the budget, 5m00s"
+    )
+
+
+def test_failed_calls_are_not_counted_as_answered(provider, clock, capsys):
+    clock(1.0)
+    for _ in range(40):
+        provider.answer({"error": "no"}, status=400)
+    with pytest.raises(LLMError):
+        _port(provider).complete_many([str(i) for i in range(40)], max_concurrency=1)
+    assert _lines(capsys)[-1] == "LLM anthropic/c: 40/40 calls (100%), 0 answered, 40 failed, 40s"
+
+
+def test_no_spend_shows_without_a_dollar_limit(provider, clock, capsys):
+    clock(1.0)
+    _port(provider, max_calls=1000, price=(3.0, 15.0)).complete_many([str(i) for i in range(40)])
+    lines = _lines(capsys)
+    assert lines and not any("$" in x for x in lines)
+
+
+def test_the_environment_dollar_limit_shows_outside_a_run(provider, clock, capsys, monkeypatch):
+    clock(1.0)
+    monkeypatch.setenv("UBUNYE_LLM_MAX_USD", "2")
+    _port(provider, price=(3.0, 15.0)).complete_many([str(i) for i in range(40)])
+    assert _lines(capsys)[-1].endswith(", $0.0037 spent of $2")
+
+
+def test_a_run_limit_and_a_port_limit_both_show(provider, clock, capsys):
+    from ubunye.llm.budget import Budget
+
+    clock(1.0)
+    with llm.recording(budget=Budget(max_usd=100.0)):
+        _port(provider, max_usd=5, price=(3.0, 15.0)).complete_many([str(i) for i in range(40)])
+    assert _lines(capsys)[-1].endswith(", run $0.0037 of $100, port $0.0037 of $5")
+
+
+@pytest.mark.parametrize("value", ["0", "false", "No", " off "])
+def test_the_environment_turns_it_off(provider, clock, capsys, monkeypatch, value):
+    clock(1.0)
+    monkeypatch.setenv("UBUNYE_LLM_PROGRESS", value)
+    _port(provider).complete_many([str(i) for i in range(300)])
+    assert _lines(capsys) == []
