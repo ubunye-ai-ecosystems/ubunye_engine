@@ -28,3 +28,16 @@ F-013 (killed run stays `running`), F-014 (run record hashing cost).
 Not yet covered: Spark backend, delta, jdbc, merge; a kill inside the overwrite swap
 (its window is two renames; not hit in 16 trials); an operating-system crash (this
 kills the process, the disk cache survives).
+
+## Rerun after the fix (2026-09-29, branch fix/rerun-safety, claim design)
+20 trials, same harness. 18 were killed; all 18 came back exactly right (snapshot and
+events), no debris, every killed run's record `interrupted`, none left `running`. The
+2 trials the harness could not kill (the run finished first) were then run a second
+time and appended dt=2 again: a finished batch, not a crash (F-031). An earlier
+design scored the same on this harness but deleted other runs' files in a shared
+folder (adversarial review); passing E-01 is not evidence of that safety, the unit
+tests are. Output in the session scratchpad (e01-v3.txt).
+
+Final run on the shipped design (after four adversarial reviews): 20 of 20 trials
+killed, 20 of 20 exactly right, no debris, no `running` record (e01-v5.txt). E-02 on the
+same build: 0 of 10 doubled (e02-v5.txt).

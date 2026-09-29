@@ -12,6 +12,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 
+from ubunye.core import runs
 from ubunye.core.capabilities import Capabilities, check_task
 from ubunye.core.errors import (
     BackendCapabilityError,
@@ -66,6 +67,9 @@ class EngineContext:
     task_dir: Optional[str] = None
     #: The session time zone the backend cuts time in (ADR 007).
     time_zone: Optional[str] = None
+    #: Where run records are kept, when recorded: a dead run's record is marked
+    #: ``interrupted`` there by the run that takes over its lease (ADR 008).
+    lineage_dir: Optional[str] = None
 
 
 class Registry:
@@ -517,8 +521,18 @@ class Engine:
                     },
                     hint="Ensure your transform returns a dict with keys matching CONFIG.outputs.",
                 )
+            # Rerun safety (ADR 008): the lease knows which output is being written. A
+            # backend that claims its files (pandas) has its appends taken back exactly
+            # if the run fails or dies; other appends are named, never guessed at. A
+            # missing mode counts as append: most writers default to it.
+            runs.writing(
+                name,
+                appends=str(ocfg.get("mode") or "append").lower() == "append",
+                exact=bool(getattr(self.backend, "claims_appends", False)),
+            )
             with self._step(chain, ctx, f"Writer:{wtype}", {"output": name}):
                 writer_cls().write(outputs_map[name], self._secrets.resolve(ocfg), self.backend)
+            runs.written(name)
 
     # ---------- internal helpers ----------
 

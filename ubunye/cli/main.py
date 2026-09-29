@@ -40,6 +40,7 @@ from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
+from ubunye.core import runs
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
@@ -555,10 +556,15 @@ def run(
                 profile=mode,
                 task_name=f"{usecase}/{package}/{task}",
                 variables=variables,
+                lineage_dir=str(usecase_dir / lineage_dir) if lineage else None,
             )
             try:
                 execute_user_task(backend, task_dir, cfg, context, extra_hooks=extra_hooks)
                 typer.secho(f"[OK] Run complete for {task}", fg=typer.colors.GREEN)
+            except runs.RunLeaseHeld as e:
+                # A refusal, not a crash: nothing ran, so no traceback.
+                typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
+                raise typer.Exit(code=1)
             except Exception as e:
                 typer.secho(f"[ERROR] Run failed for {task}: {e}", fg=typer.colors.RED, err=True)
                 raise

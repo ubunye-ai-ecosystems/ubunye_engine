@@ -36,7 +36,9 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from ubunye.adapters import ddl
 from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
+from ubunye.core import runs
 from ubunye.core.errors import SinkWriteError, SourceReadError
+from ubunye.core.runs import RunLeaseLost
 from ubunye.core.write_modes import ResolvedWriteMode
 
 logger = logging.getLogger(__name__)
@@ -936,13 +938,21 @@ def _commit(local: str, save_mode: str, write: Any) -> None:
     os.makedirs(staging)
     try:
         part = write(staging)
+        if save_mode == "append":
+
+            # Claimed before it lands (into the folder, or with a new folder): a run
+            # that fails or dies has exactly this file taken back, and no other (ADR 008).
+            runs.claim(os.path.join(local, part))
         if exists and save_mode == "append":
             os.replace(os.path.join(staging, part), os.path.join(local, part))
+            runs.landed(os.path.join(local, part))
             _touch(os.path.join(local, "_SUCCESS"))
             return
         _touch(os.path.join(staging, "_SUCCESS"))
         if not exists:
             os.replace(staging, local)
+            if save_mode == "append":
+                runs.landed(os.path.join(local, part))
             return
         old = staging + ".old"
         os.replace(local, old)
@@ -1031,7 +1041,7 @@ def execute_write(
             resolved.save_mode,
             lambda folder: _write_part(arrow, fmt, folder, opts, timezone),
         )
-    except SinkWriteError:
+    except (SinkWriteError, RunLeaseLost):
         raise
     except Exception as exc:  # pyarrow and filesystem errors, with the path named
         raise SinkWriteError(

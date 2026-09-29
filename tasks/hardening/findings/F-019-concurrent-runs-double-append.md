@@ -1,6 +1,6 @@
 # F-019: two runs of the same task and date both succeed, and an append doubles
 
-**Status:** open
+**Status:** fixed on branch fix/rerun-safety (ADR 008)
 **Severity:** major
 **Source:** experiment E-02 (2026-09-28)
 **Promise:** 5
@@ -21,3 +21,6 @@ message naming the live run, or waits; a stale lease (a killed run, F-013) expir
 ## Evidence
 7 of 10 pairs: both exit 0, events 2,000,000 rows (the batch twice). The `overwrite`
 output was correct in 10 of 10.
+
+## Fix (2026-09-29)
+A second run of the same task and variables while the first lives is refused, naming the first (ADR 008). E-02 rerun: 0 of 10 doubled.

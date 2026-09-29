@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, Optional
 
 from ubunye.config.hashing import config_hash
+from ubunye.core import runs
 from ubunye.core.errors import TaskClassMissingError, TaskNotFoundError
 from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend, Task
@@ -203,6 +204,13 @@ def execute_user_task(
             manage_backend=manage_backend,
         )
 
-        result = engine.run(cfg_dict)
+        # One live run per task and batch; a dead run's claimed appends are taken back
+        # first, and a run that fails takes back its own (ubunye.core.runs).
+        resolved = Path(task_dir).resolve()
+        task_path = context.task_name or "/".join(resolved.parts[-3:])
+        root = resolved.parents[2] if len(resolved.parents) > 2 else resolved.parent
+        lineage_dir = Path(context.lineage_dir) if context.lineage_dir else None
+        with runs.held(root, task_path, dict(context.variables or {}), context.run_id, lineage_dir):
+            result = engine.run(cfg_dict)
 
     return result or {}

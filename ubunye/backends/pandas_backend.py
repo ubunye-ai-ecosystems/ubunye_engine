@@ -47,6 +47,8 @@ class PandasBackend(Backend):
     """Execute a Ubunye task with pandas, no Spark and no JVM."""
 
     name = "pandas"
+    #: Each appended part file is claimed in the run lease before it lands (ADR 008).
+    claims_appends = True
     #: Local csv / json / parquet paths and the native save modes. No SparkSession,
     #: no partitioned folders, no cloud paths, no lakehouse modes: a task that
     #: needs any of those is refused before it starts.
