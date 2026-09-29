@@ -69,7 +69,21 @@ The tasks share the job, its session and its disk, so a later task can read what
 an earlier one wrote even on a container whose disk goes when it stops. The first
 task that fails stops the rest, and the deploy fails if any task failed or never
 ran. With several tasks, `--record-out glue.json` writes one record per task:
-`glue.clean.json`, `glue.monitor.json`. Each is a normal run record.
+`glue.clean.json`, `glue.monitor.json`, also when the job failed. Each is a normal run
+record.
+
+Things to know:
+
+- A task name is a folder name: no `/`, `\`, or `,`, and each task once. A bad list
+  is refused before anything is uploaded or started.
+- The default job name and bundle folder of several tasks is their names joined by
+  `-` plus a short hash of the list (`clean-monitor-29df150d`), so two different lists
+  never share them. Pass `--job` for a name of your own.
+- The tasks share the platform's time limit: Glue's job `Timeout` (60 minutes) and
+  the container `--timeout` cover all of them together, not each.
+- The entry script inside an image runs several tasks only if the image was built
+  from this version: rebuild a Kubernetes, Container Apps, Dataproc or EMR image made
+  with an older `ubunye deploy dockerfile`. (Glue uploads the script on every deploy.)
 
 ## Kubernetes and Azure Container Apps
 

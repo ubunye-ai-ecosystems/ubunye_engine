@@ -183,7 +183,7 @@ def test_container_jobs_run_several_tasks_in_one_launch():
         "--task",
         "uc/pkg/clean,uc/pkg/monitor",
     ]
-    assert aca.job == "ubunye-clean-monitor"
+    assert aca.job.startswith("ubunye-clean-monitor-")
 
 
 @pytest.mark.parametrize("condition, code", [("Failed", 1), ("Complete", 0)])

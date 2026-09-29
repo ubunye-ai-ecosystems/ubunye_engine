@@ -11,6 +11,7 @@ command: the same task, unchanged, gives the same data on every platform.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -113,8 +114,15 @@ def execute(plan: Plan) -> Plan:
 
 
 def _label(task: Union[str, Sequence[str]]) -> str:
-    """The task name(s) for a default job name: ``clean-monitor`` for two tasks."""
-    return "-".join(package._tasks(task))
+    """The task name(s) for default job names and bundle paths.
+
+    One task: its name. Several: their names joined by ``-`` and a short hash of the
+    list, so ``-t a-b -t c`` and ``-t a -t b-c`` never share a job or a bundle.
+    """
+    tasks = package._tasks(task)
+    if len(tasks) == 1:
+        return tasks[0]
+    return "-".join(tasks) + "-" + hashlib.sha256(",".join(tasks).encode()).hexdigest()[:8]
 
 
 def _entry_args(

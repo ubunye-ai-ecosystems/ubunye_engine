@@ -44,5 +44,12 @@ records, reports each task, then exits 1; with no record in the log, the origina
 error is raised as before. Test: `test_a_job_that_exits_1_still_gives_back_every_record`
 (the last command exits 1; fails on the old code).
 
+Also from the review: a repeated `-t` overwrote its own record file and a name with
+`/` wrote outside the folder; both are now refused before anything is launched. With
+several tasks a record file is always `NAME.TASK.json`, even when only one record came
+back. `-t a-b -t c` and `-t a -t b-c` shared a job name and bundle folder; several
+tasks now add a short hash of the list. Tests: `test_bad_task_lists_are_refused_before_anything_runs`,
+`test_several_tasks_always_name_records_by_task`, `test_the_label_of_several_tasks_is_unambiguous`.
+
 ## Evidence
 R1 on all seven environments, one launch each: `docs/proving-ground/latest.md`.

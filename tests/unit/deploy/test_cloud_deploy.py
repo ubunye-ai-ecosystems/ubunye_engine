@@ -303,8 +303,9 @@ def test_the_plans_pass_several_tasks_in_one_argument(tmp_path):
     pipelines = _two_tasks(tmp_path)
     glue = cloud.plan_glue(pipelines, "uc", "pkg", ["t", "t2"], bucket="b", role="r")
     assert json.loads(glue.commands[0][4])["DefaultArguments"]["--task"] == "uc/pkg/t,uc/pkg/t2"
-    assert glue.job == "ubunye-uc-pkg-t-t2"
-    assert glue.uploads[0][0] == "s3://b/ubunye/uc/pkg/t-t2/bundle.zip"
+    label = cloud._label(["t", "t2"])
+    assert glue.job == f"ubunye-uc-pkg-{label}" and label.startswith("t-t2-")
+    assert glue.uploads[0][0] == f"s3://b/ubunye/uc/pkg/{label}/bundle.zip"
     dataproc = cloud.plan_dataproc(
         pipelines, "uc", "pkg", ["t", "t2"], project="p", region="r", bucket="b", image="i"
     )
@@ -397,3 +398,37 @@ def test_a_job_that_exits_1_without_a_record_still_raises(tmp_path, monkeypatch)
     assert result.exit_code != 0
     assert isinstance(result.exception, cloud.DeployError)
     assert "quota exceeded" in str(result.exception)
+
+
+@pytest.mark.parametrize("tasks", [["t", "t"], ["t", "sub/t2"], ["t", "a,b"]])
+def test_bad_task_lists_are_refused_before_anything_runs(tmp_path, monkeypatch, tasks):
+    """A repeated task would overwrite its own record file; a path is not a task name."""
+    monkeypatch.setattr(cloud, "execute", lambda plan: pytest.fail("launched a bad task list"))
+    args = ["deploy", "dataproc", "-d", str(_two_tasks(tmp_path)), "-u", "uc", "-p", "pkg"]
+    for t in tasks:
+        args += ["-t", t]
+    args += ["--project", "p", "--region", "r", "--bucket", "b", "--image", "i"]
+    result = runner.invoke(app, args)
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValueError)
+
+
+def test_several_tasks_always_name_records_by_task(tmp_path, monkeypatch):
+    """Only the first of two tasks left a record: still rec.t.json, never rec.json."""
+
+    def ran(plan):
+        plan.log = _envelope_log([_rec("t", status="failed")])
+
+    monkeypatch.setattr(cloud, "execute", ran)
+    args = ["deploy", "dataproc", "-d", str(_two_tasks(tmp_path)), "-u", "uc", "-p", "pkg",
+            "-t", "t", "-t", "t2", "--project", "p", "--region", "r", "--bucket", "b",
+            "--image", "i", "--record-out", str(tmp_path / "rec.json")]  # fmt: skip
+    result = runner.invoke(app, args)
+    assert result.exit_code == 1
+    assert (tmp_path / "rec.t.json").exists() and not (tmp_path / "rec.json").exists()
+
+
+def test_the_label_of_several_tasks_is_unambiguous():
+    assert cloud._label("t") == "t"
+    assert cloud._label(["a-b", "c"]) != cloud._label(["a", "b-c"])
+    assert cloud._label(["clean", "monitor"]).startswith("clean-monitor-")

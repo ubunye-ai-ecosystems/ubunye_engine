@@ -221,8 +221,12 @@ if __name__ == "__main__":
 
 def _tasks(task: Union[str, Sequence[str]]) -> List[str]:
     tasks = [task] if isinstance(task, str) else list(task)
-    if not tasks or any(not t or "," in t for t in tasks):
-        raise ValueError(f"give one or more task names without commas, not {task!r}")
+    if not tasks or any(not t or any(c in t for c in ",/\\") for t in tasks):
+        raise ValueError(
+            f"a task is a folder name under usecase/package, without ',', '/' or a backslash: {task!r}"
+        )
+    if len(set(tasks)) != len(tasks):
+        raise ValueError(f"a task is given twice (its record would overwrite itself): {task!r}")
     return tasks
 
 

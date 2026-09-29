@@ -91,9 +91,10 @@ def _pairs(values: Optional[List[str]], flag: str) -> Dict[str, str]:
     return out
 
 
-def _record_paths(record_out: Path, records: List[Dict[str, Any]]) -> List[Path]:
-    """One file per task: ``glue.json`` for one, ``glue.clean.json`` ... for several."""
-    if len(records) == 1:
+def _record_paths(record_out: Path, records: List[Dict[str, Any]], tasks: int) -> List[Path]:
+    """One file per task: ``glue.json`` for one task, ``glue.clean.json`` ... for several
+    (even when only some of them left a record)."""
+    if tasks == 1:
         return [record_out]
     return [
         record_out.with_name(f"{record_out.stem}.{r.get('task_name', i)}{record_out.suffix}")
@@ -142,7 +143,7 @@ def _finish(plan: Any, dry_run: bool, record_out: Optional[Path], tasks: int = 1
     if not records:
         typer.secho(f"[OK] {plan.platform}: '{plan.job}' submitted.", fg=typer.colors.GREEN)
         return
-    paths = _record_paths(record_out, records) if record_out is not None else []
+    paths = _record_paths(record_out, records, tasks) if record_out is not None else []
     for path, record in zip(paths, records):
         path.write_text(json.dumps(record, indent=2), encoding="utf-8")
     # Every task ran and succeeded: a task the job never reached is a failure too.
