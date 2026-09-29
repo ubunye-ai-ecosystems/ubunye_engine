@@ -52,6 +52,23 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   **Behaviour change:** a scheduler that runs the
   same appending batch twice now gets exit code 1 the second time; give each run its
   own variable, or pass `--rerun` to replace.
+- **The pandas backend writes and reads partition folders, and does
+  `overwrite_partitions` (F-012).** `partitionBy` was refused on pandas, so the
+  rerun safe way to write a daily batch (replace the day's partition) needed Spark.
+  Now the same config writes the same folders as Spark 4.2 (`dt=2024-01-02/`, Spark's
+  `%` escapes, `__HIVE_DEFAULT_PARTITION__` for null, one `part-00000-<uuid>.c000`
+  file per partition, partition columns left out of the files) with every save mode,
+  and `overwrite_partitions` replaces only the partitions the data fills, one staged
+  folder swapped in at a time and put back if a swap fails. Reading a partitioned
+  folder finds the partition columns and infers their types as Spark does (int,
+  bigint, decimal, double, timestamp, date, text; widened across folders). A
+  partitioned append claims every file, so ADR 008 takes back exactly those.
+  Partition columns Spark does not read back as the same type (double, decimal,
+  binary, time) are refused with the reason, as are the layouts Spark refuses.
+  Checked against live Spark: 54 parity cases. E-01 with `overwrite_partitions`:
+  10 of 10 right after a kill and a rerun.
+  **Behaviour change:** reading a folder now skips empty (zero byte) files, as Spark
+  does, and a folder holding `name=value` folders gains their columns.
 
 - **`ubunye prove report` treats two names of one time zone as one** (`UTC`,
   `Etc/UTC`, `GMT`, `Zulu`; other zones by their offsets over time). Databricks records

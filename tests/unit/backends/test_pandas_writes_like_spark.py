@@ -297,8 +297,10 @@ class TestParquetTypes:
 
 
 class TestRefusals:
-    def test_partition_by_is_refused_not_ignored(self, tmp_path):
-        with pytest.raises(SinkWriteError, match="partition"):
+    def test_partition_by_every_column_is_refused_as_spark_refuses_it(self, tmp_path):
+        # Partitioned writes work since F-012 (test_pandas_partitions.py); this one
+        # Spark refuses too (ALL_PARTITION_COLUMNS_NOT_ALLOWED).
+        with pytest.raises(SinkWriteError, match="Cannot use all columns"):
             _write(tmp_path / "out", pd.DataFrame({"x": [1]}), partition_by=["x"])
         assert not (tmp_path / "out").exists()
 

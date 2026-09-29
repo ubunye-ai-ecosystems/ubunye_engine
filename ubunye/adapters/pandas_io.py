@@ -14,8 +14,9 @@ backend cannot honour is refused by name rather than quietly ignored:
   ``bigint``; an all-null column is text; timestamps are instants.
 * JSON: one object per line unless ``multiLine`` is true; columns (and nested
   fields) sorted by name; integers are ``bigint``; timestamps stay text.
-* A path may be a file, a folder of part files (Spark's layout; files starting
-  with ``_`` or ``.`` are skipped, as Spark skips them) or a glob.
+* A path may be a file, a folder of part files (Spark's layout; names starting
+  with ``_`` or ``.`` and empty files are skipped, as Spark skips them) or a glob. ``name=value`` folders are partition columns, typed as
+  Spark infers them (:mod:`ubunye.adapters.pandas_partitions`).
 * Timestamp text is read in the backend's timezone (``UTC`` unless set), the
   way Spark reads it in ``spark.sql.session.timeZone``.
 
@@ -34,7 +35,7 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Sequence
 
-from ubunye.adapters import ddl
+from ubunye.adapters import ddl, pandas_partitions
 from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
 from ubunye.core import runs
 from ubunye.core.errors import SinkWriteError, SourceReadError
@@ -268,7 +269,13 @@ def _apply_schema(table: Any, schema: Any, timezone: str = "UTC") -> Any:
 # --------------------------------------------------------------------------- #
 
 
-def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str) -> Any:
+def _read_csv(
+    files: List[str],
+    opts: Dict[str, Any],
+    schema: Any,
+    timezone: str,
+    counts: Optional[List[int]] = None,
+) -> Any:
     import pyarrow as pa
     import pyarrow.csv as pcsv
 
@@ -331,6 +338,8 @@ def _read_csv(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str
                     evened, read_options=read, parse_options=parse, convert_options=convert
                 )
             )
+        if counts is not None:
+            counts.append(tables[-1].num_rows)
 
     table = pa.concat_tables(tables, promote_options="permissive")
     if schema is not None:
@@ -525,12 +534,19 @@ def _sorted_keys(value: Any) -> Any:
     return value
 
 
-def _read_json(files: List[str], opts: Dict[str, Any], schema: Any, timezone: str) -> Any:
+def _read_json(
+    files: List[str],
+    opts: Dict[str, Any],
+    schema: Any,
+    timezone: str,
+    counts: Optional[List[int]] = None,
+) -> Any:
     import pyarrow as pa
 
     encoding = str(opts.get("encoding", "utf-8"))
     rows: List[Dict[str, Any]] = []
     for f in files:
+        before = len(rows)
         with open(f, encoding=encoding) as handle:
             if _truthy(opts.get("multiline", "false")):
                 doc = json.load(handle)
@@ -546,6 +562,8 @@ def _read_json(files: List[str], opts: Dict[str, Any], schema: Any, timezone: st
                         if not drop:
                             raise
                         # DROPMALFORMED: skip the record, as Spark does
+        if counts is not None:
+            counts.append(len(rows) - before)
     # Parsed with the json module, not pyarrow's reader: pyarrow turns ISO text
     # into timestamps and keeps key order, and Spark does neither.
     rows = [_sorted_keys(r) for r in rows]
@@ -556,7 +574,7 @@ def _read_json(files: List[str], opts: Dict[str, Any], schema: Any, timezone: st
     return _to_spark_types(table)
 
 
-def _read_parquet(files: List[str], schema: Any) -> Any:
+def _read_parquet(files: List[str], schema: Any, counts: Optional[List[int]] = None) -> Any:
     import pyarrow as pa
     import pyarrow.parquet as pq
 
@@ -571,6 +589,8 @@ def _read_parquet(files: List[str], schema: Any) -> Any:
             col = table.column(i).cast(pa.timestamp("us")).cast(pa.timestamp("us", tz="UTC"))
             table = table.set_column(i, pa.field(name, col.type), col)
         tables.append(table)
+        if counts is not None:
+            counts.append(table.num_rows)
     table = pa.concat_tables(tables, promote_options="permissive")
     return _apply_schema(table, schema) if schema is not None else table
 
@@ -603,7 +623,15 @@ def read_frame(
     arrow_schema = ddl.parse(schema) if schema else None
 
     local = _local_path(path, error=SourceReadError)
-    files = _data_files(local)
+    layout = None
+    if not glob.has_magic(local) and os.path.isdir(local):
+        # A folder is listed the way Spark lists it: name=value folders become
+        # partition columns (F-012); otherwise only its top level files are read.
+        given = [f.name for f in arrow_schema] if arrow_schema is not None else []
+        layout = pandas_partitions.discover(local, timezone, given)
+        files = layout.files
+    else:
+        files = _data_files(local)
     if not files:
         raise SourceReadError(
             f"Path does not exist or holds no data files: {path}",
@@ -611,13 +639,31 @@ def read_frame(
             hint="Check the path. A folder must hold data files, not only _ or . files.",
         )
 
+    data_schema, given_types = arrow_schema, {}
+    if layout is not None and layout.columns and arrow_schema is not None:
+        import pyarrow as pa
+
+        # The data files hold the other columns; the schema's partition columns
+        # come from the folder names.
+        names = {c.lower() for c in layout.columns}
+        data_schema = pa.schema([f for f in arrow_schema if f.name.lower() not in names])
+        given_types = {f.name.lower(): f.type for f in arrow_schema if f.name.lower() in names}
+    counts: List[int] = []
     try:
         if fmt == "csv":
-            table = _read_csv(files, opts, arrow_schema, timezone)
+            table = _read_csv(files, opts, data_schema, timezone, counts)
         elif fmt == "json":
-            table = _read_json(files, opts, arrow_schema, timezone)
+            table = _read_json(files, opts, data_schema, timezone, counts)
         else:
-            table = _read_parquet(files, arrow_schema)
+            table = _read_parquet(files, data_schema, counts)
+        if layout is not None and layout.columns:
+            table = pandas_partitions.attach(
+                table,
+                layout,
+                counts,
+                given_types,
+                cast=lambda col, target: _cast(col, target, timezone),
+            )
     except Exception as exc:  # pyarrow and json errors, with the path named
         raise SourceReadError(
             f"The pandas backend could not read {fmt} at {path}: {exc}",
@@ -783,21 +829,36 @@ def _shortest_floats(table: Any) -> Any:
     return table
 
 
-def _write_part(table: Any, fmt: str, folder: str, opts: Dict[str, Any], timezone: str) -> str:
-    """Write one ``part-00000-<uuid>-c000.<ext>`` file into ``folder``."""
+def _parquet_codec(opts: Dict[str, Any]) -> Optional[str]:
+    codec_name = str(opts.get("compression", "snappy")).lower()
+    if codec_name not in _PARQUET_CODECS:
+        raise _refuse(
+            f"The pandas backend cannot write parquet compression '{codec_name}'.",
+            Supported=sorted(_PARQUET_CODECS),
+        )
+    return _PARQUET_CODECS[codec_name]
+
+
+def _write_part(
+    table: Any,
+    fmt: str,
+    folder: str,
+    opts: Dict[str, Any],
+    timezone: str,
+    stem: Optional[str] = None,
+) -> str:
+    """Write one part file into ``folder``; its name is returned.
+
+    Spark's names: ``part-00000-<uuid>-c000.<ext>`` for an unpartitioned write,
+    ``part-00000-<uuid>.c000.<ext>`` (a dot before ``c000``) in a partition folder.
+    """
     import uuid
 
-    stem = f"part-00000-{uuid.uuid4()}-c000"
+    stem = stem or f"part-00000-{uuid.uuid4()}-c000"
     if fmt == "parquet":
         import pyarrow.parquet as pq
 
-        codec_name = str(opts.get("compression", "snappy")).lower()
-        if codec_name not in _PARQUET_CODECS:
-            raise _refuse(
-                f"The pandas backend cannot write parquet compression '{codec_name}'.",
-                Supported=sorted(_PARQUET_CODECS),
-            )
-        codec = _PARQUET_CODECS[codec_name]
+        codec = _parquet_codec(opts)
         name = f"{stem}.{codec}.parquet" if codec else f"{stem}.parquet"
         pq.write_table(table, os.path.join(folder, name), compression=codec or "none")
         return name
@@ -909,16 +970,27 @@ def _touch(path: str) -> None:
         pass
 
 
-def _commit(local: str, save_mode: str, write: Any) -> None:
-    """Put a freshly written part file in place, the way ``save_mode`` asks.
+def _staging(local: str) -> str:
+    """A new hidden folder beside ``local`` (same disk, so a rename is one step)."""
+    import uuid
 
-    The part is written into a hidden staging folder beside the target first,
-    so a failed write never touches data already there: ``overwrite`` swaps the
-    staged folder in only once it is complete, ``append`` moves the one new part
-    file into the existing folder.
+    parent, base = os.path.split(local)
+    os.makedirs(parent, exist_ok=True)
+    staging = os.path.join(parent, f".{base}.ubunye-{uuid.uuid4().hex[:12]}")
+    os.makedirs(staging)
+    return staging
+
+
+def _commit(local: str, save_mode: str, write: Any) -> None:
+    """Put freshly written part files in place, the way ``save_mode`` asks.
+
+    ``write(folder)`` writes the part files (in partition folders, if any) and
+    returns their paths relative to ``folder``. They are written into a hidden
+    staging folder beside the target first, so a failed write never touches
+    data already there: ``overwrite`` swaps the staged folder in only once it is
+    complete, ``append`` moves each new part file into the existing folder.
     """
     import shutil
-    import uuid
 
     local = os.path.normpath(os.path.abspath(local))
     exists = os.path.exists(local)
@@ -932,27 +1004,29 @@ def _commit(local: str, save_mode: str, write: Any) -> None:
             path=local,
         )
 
-    parent, base = os.path.split(local)
-    os.makedirs(parent, exist_ok=True)
-    staging = os.path.join(parent, f".{base}.ubunye-{uuid.uuid4().hex[:12]}")
-    os.makedirs(staging)
+    staging = _staging(local)
     try:
-        part = write(staging)
+        parts = write(staging)
         if save_mode == "append":
-
-            # Claimed before it lands (into the folder, or with a new folder): a run
-            # that fails or dies has exactly this file taken back, and no other (ADR 008).
-            runs.claim(os.path.join(local, part))
+            # Claimed before they land (into the folder, or with a new folder): a run
+            # that fails or dies has exactly these files taken back, and no other
+            # (ADR 008).
+            for part in parts:
+                runs.claim(os.path.join(local, part))
         if exists and save_mode == "append":
-            os.replace(os.path.join(staging, part), os.path.join(local, part))
-            runs.landed(os.path.join(local, part))
+            for part in parts:
+                target = os.path.join(local, part)
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                os.replace(os.path.join(staging, part), target)
+                runs.landed(target)
             _touch(os.path.join(local, "_SUCCESS"))
             return
         _touch(os.path.join(staging, "_SUCCESS"))
         if not exists:
             os.replace(staging, local)
             if save_mode == "append":
-                runs.landed(os.path.join(local, part))
+                for part in parts:
+                    runs.landed(os.path.join(local, part))
             return
         old = staging + ".old"
         os.replace(local, old)
@@ -970,6 +1044,97 @@ def _commit(local: str, save_mode: str, write: Any) -> None:
             shutil.rmtree(staging, ignore_errors=True)
 
 
+def _replace_partitions(local: str, write: Any) -> None:
+    """Spark's dynamic partition overwrite: replace only the partitions written.
+
+    Each leaf partition folder the new data fills (``p=2/q=a``) replaces the
+    folder of the same name; every other partition, any stray file and the
+    root ``_SUCCESS`` are left as they are, and a new target gets an empty folder
+    and no ``_SUCCESS`` (as in Spark). The leaves are written to a hidden staging
+    folder first; then, one leaf at a time, the old folder is moved aside, the
+    new one moved in, and only when every leaf is in are the old ones deleted.
+    If a move fails, the leaves already moved are put back.
+    """
+    import shutil
+
+    local = os.path.normpath(os.path.abspath(local))
+    if os.path.exists(local) and not os.path.isdir(local):
+        raise _refuse(
+            f"Cannot replace partitions in {local}: it is a single file, not a folder.",
+            path=local,
+        )
+    # Spark stages inside the target, so even an empty frame leaves the folder.
+    os.makedirs(local, exist_ok=True)
+    staging = _staging(local)
+    aside = staging + ".old"
+    swapped: List[Any] = []  # (target, where its old folder went, or None)
+    keep_aside = False
+    try:
+        parts = write(staging)
+        for n, leaf in enumerate(sorted({os.path.dirname(p) for p in parts})):
+            target = os.path.join(local, leaf)
+            old = None
+            if os.path.lexists(target):
+                os.makedirs(aside, exist_ok=True)
+                old = os.path.join(aside, str(n))
+                os.replace(target, old)
+            try:
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                os.replace(os.path.join(staging, leaf), target)
+            except BaseException:
+                if old is not None:
+                    os.replace(old, target)
+                raise
+            swapped.append((target, old))
+    except BaseException:
+        for target, old in reversed(swapped):
+            try:
+                shutil.rmtree(target)
+                if old is not None:
+                    os.replace(old, target)
+            except OSError as exc:
+                keep_aside = True
+                logger.error(
+                    "Could not put back the partition %s (%s); its old files are in %s.",
+                    target,
+                    exc,
+                    aside,
+                )
+        raise
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+        if not keep_aside and os.path.exists(aside):
+            shutil.rmtree(aside, ignore_errors=True)
+
+
+def _write_tree(
+    table: Any,
+    cut: Optional["pandas_partitions.Split"],
+    fmt: str,
+    folder: str,
+    opts: Dict[str, Any],
+    timezone: str,
+) -> List[str]:
+    """Write ``table`` into ``folder`` as Spark lays it out; the files, relative to ``folder``.
+
+    Unpartitioned (no ``cut``), one part file. Partitioned, one part file in
+    each leaf partition folder (Spark's ``part-00000-<uuid>.c000`` name, one uuid
+    per write), and none at all for an empty frame.
+    """
+    import uuid
+
+    if cut is None:
+        return [_write_part(table, fmt, folder, opts, timezone)]
+    stem = f"part-00000-{uuid.uuid4()}.c000"
+    files = []
+    for leaf, rows in cut.leaves:
+        where = os.path.join(folder, leaf)
+        os.makedirs(where, exist_ok=True)
+        name = _write_part(cut.data.take(rows), fmt, where, opts, timezone, stem=stem)
+        files.append(os.path.join(leaf, name))
+    return files
+
+
 def execute_write(
     df: Any,
     resolved: ResolvedWriteMode,
@@ -984,9 +1149,11 @@ def execute_write(
 ) -> None:
     """Write a frame to ``path`` as Spark would: a folder of part files.
 
-    ``overwrite`` replaces the folder, ``append`` adds a part file,
-    ``errorifexists`` and ``ignore`` do what they say. Lakehouse modes,
-    partitioned writes, managed tables and unknown options are refused.
+    ``overwrite`` replaces the folder, ``append`` adds part files,
+    ``errorifexists`` and ``ignore`` do what they say, and
+    ``overwrite_partitions`` replaces only the partitions the frame fills.
+    ``partition_by`` writes Spark's ``name=value`` folders (F-012). merge,
+    managed tables and unknown options are refused.
     """
     if table and not path:
         raise _refuse(
@@ -996,21 +1163,15 @@ def execute_write(
         )
     if not path:
         raise _refuse("Nothing to write to: no path.", connector=connector)
-    # resolve() maps merge and overwrite_partitions to save_mode "overwrite" for
-    # a first run, so honouring only save_mode would turn a merge into a full
-    # overwrite. They are lakehouse modes; refuse them.
-    if resolved.is_merge or resolved.is_overwrite_partitions:
+    # resolve() maps merge to save_mode "overwrite" for a first run, so honouring
+    # only save_mode would turn a merge into a full overwrite. Refuse it.
+    if resolved.is_merge or resolved.options:
         raise SinkWriteError(
-            f"The pandas backend does not support write mode '{resolved.mode}'.",
+            f"The pandas backend does not support write mode '{resolved.mode}'"
+            + (f" with {sorted(resolved.options)}." if resolved.options else "."),
             context={"Backend": "pandas", "connector": connector, "mode": resolved.mode},
-            hint="merge and overwrite_partitions are lakehouse modes. Use the Spark "
-            "backend, or a native mode (append / overwrite).",
-        )
-    if partition_by:
-        raise SinkWriteError(
-            "The pandas backend does not write partitioned folders (partition_by).",
-            context={"Backend": "pandas", "partition_by": list(partition_by)},
-            hint="Remove partition_by, or use the Spark backend.",
+            hint="merge and replace_where are Delta modes. Use the Spark backend, or "
+            "append, overwrite or overwrite_partitions with partitionBy.",
         )
 
     fmt = (file_format or "parquet").lower()
@@ -1033,14 +1194,24 @@ def execute_write(
         )
     opts = {str(k).lower(): v for k, v in (options or {}).items()}
 
+    if fmt == "parquet":
+        _parquet_codec(opts)  # refused before anything is written
+
     local = _local_path(path, error=SinkWriteError)
     arrow = to_arrow(df, timezone)
+    # Partition columns and values are checked before anything is written, as
+    # Spark checks them before its job starts (F-012).
+    cut = pandas_partitions.split(arrow, partition_by, timezone) if partition_by else None
+
+    def write(folder: str) -> List[str]:
+        return _write_tree(arrow, cut, fmt, folder, opts, timezone)
+
     try:
-        _commit(
-            local,
-            resolved.save_mode,
-            lambda folder: _write_part(arrow, fmt, folder, opts, timezone),
-        )
+        if resolved.is_overwrite_partitions and cut is not None:
+            _replace_partitions(local, write)  # Spark's dynamic partition overwrite
+        else:
+            # overwrite_partitions without partitionBy is a plain overwrite, as in Spark.
+            _commit(local, resolved.save_mode, write)
     except (SinkWriteError, RunLeaseLost):
         raise
     except Exception as exc:  # pyarrow and filesystem errors, with the path named

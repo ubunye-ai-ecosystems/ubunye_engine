@@ -31,7 +31,8 @@ table and information date, and with repairs made from what was actually written
   that run's record `interrupted`, and takes back its claimed appends.
 - **Only claimed files are ever removed.** A backend that names the files it appends
   *claims* each one in the lease before it lands. The pandas backend does: one part
-  file with a fresh UUID in its name, moved into the folder in one step. A run that
+  file with a fresh UUID in its name (one per partition folder for a partitioned
+  append, F-012), each moved into place in one step. A run that
   fails removes its claimed files; the run that takes over a dead run removes that
   run's. No folder is ever listed to decide what to delete, so another run's files are
   never touched.

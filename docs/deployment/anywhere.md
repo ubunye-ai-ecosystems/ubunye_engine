@@ -54,7 +54,8 @@ copies Spark's defaults instead of pandas' own:
 | An empty CSV field | null, not an empty string |
 | Quotes in a CSV value | Spark's escape is a backslash, so `"Anna ""Annie"""` stays exactly as written, and `"a\"b"` is `a"b` (set `escape: '"'` for doubled quotes); a line of only spaces is skipped |
 | JSON | One object per line (`multiLine: "true"` for one big array); columns sorted by name; whole numbers are `bigint`; dates stay text |
-| A folder | Every data file in it, skipping `_SUCCESS` and other `_` or `.` files, so it reads what Spark wrote |
+| A folder | Every data file in it, skipping `_SUCCESS` and other `_` or `.` files and empty files, so it reads what Spark wrote |
+| A partitioned folder (`dt=2024-01-02/...`) | The partition columns, after the data columns, typed as Spark infers them (see below) |
 | A glob such as `data/*.csv` | Every matching file |
 | `schema: "id INT, name STRING"` | Exactly those columns and types |
 | `mode: "FAILFAST"`, `"DROPMALFORMED"`, `"PERMISSIVE"` | What Spark does with a bad row: stop, skip it, or (the default) cut a row with too many fields and pad one with too few |
@@ -84,14 +85,54 @@ file. So Spark can read what pandas wrote, and pandas can read what Spark wrote.
 - `overwrite` replaces the folder. The new data is written to a hidden folder
   first and swapped in only when it is complete, so a failed run never leaves
   you with half a table.
-- `append` adds one new part file and leaves the old ones alone.
+- `append` adds new part files and leaves the old ones alone.
+- `overwrite_partitions` with `partitionBy` replaces only the partitions the
+  new data fills (see below).
 - CSV is written the Spark way: no header unless `header: "true"`, text quoted
   only when it has to be, numbers such as `2.0` and `1.0E10`, timestamps such as
   `2024-01-02T03:04:05.000+02:00`.
 - JSON is one object per line, and null fields are left out.
 - Parquet timestamps are stored in microseconds, which is what Spark reads.
 
-`partition_by` is not supported yet on this backend and is refused, not ignored.
+### Partition folders
+
+`partitionBy: [dt]` writes Spark's folders, `out/dt=2024-01-02/part-....parquet`,
+with every mode, and the same task gives the same folders and rows on both
+backends (the engine's tests check this against Spark 4.2). What Spark does,
+this does:
+
+- One folder level per column, in `partitionBy` order. Characters a folder name
+  cannot hold become `%` codes (`a/b` is `a%2Fb`; on Windows a space is `%20`, as
+  Spark writes it there). A null or empty value is `__HIVE_DEFAULT_PARTITION__`.
+- The partition columns are not in the data files; reading the folder puts them
+  back after the other columns.
+- `overwrite_partitions` replaces each partition folder the new data fills and
+  leaves every other partition alone. Each new partition is written to a hidden
+  folder first, then swapped in; if a swap fails, the partitions already
+  swapped are put back. Rerunning a day this way replaces that day, so it is
+  safe after a crash with no other help.
+- `append` claims every new file before it lands, so a failed or killed run has
+  exactly its own files taken back ([ADR 008](../architecture/adr-008-rerun-safety.md)).
+
+Reading a partitioned folder, a value becomes an `int`, `bigint`, `decimal`,
+`double`, `timestamp`, `date` or text, as Spark infers it. That inference is why
+some column types are refused as partition columns: Spark writes them, but reads
+them back as something else (a `double` column comes back as text or a decimal,
+a `decimal` as a double, `binary` as text). The pandas backend refuses
+`double`, `decimal`, binary, time and nested partition columns with a message
+saying so; cast the column to a string or a date first. Partition by strings,
+whole numbers, dates, booleans or timestamps. As on Spark, a boolean comes back
+as the text `true` or `false`, a small integer as `int`, and a timestamp with 2
+to 6 decimal places of seconds makes the column text.
+
+Three things differ from Spark, all rare:
+
+- A partition column whose every value is null reads back as all null text;
+  Spark calls its type `void`, which pandas has no match for.
+- A folder value like `10:05:06` reads back as text; Spark 4.2 infers a `time`.
+- Folder names that differ only in case (`p=1` and `P=2`) are one column on both;
+  Spark takes the spelling from whichever folder it lists first, which is not a
+  fixed order, so the name's case may differ.
 
 `ubunye plan --backend pandas` and `ubunye validate --backend pandas` check these
 options before a run, so an option the pandas backend cannot honour is found

@@ -16,13 +16,13 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 8 (F-008 to F-010, F-012, F-014, F-015, F-017, F-018) | 13 (F-001 to F-007 in PR #98, F-011, F-013, F-016, F-019, F-020, F-031) | 0 |
+| 7 (F-008 to F-010, F-014, F-015, F-017, F-018) | 14 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-016, F-019, F-020, F-031) | 0 |
 
 ## Experiments
 
 | E | Question | Status |
 |---|---|---|
-| E-01 | Crash mid-write | answered: append doubled 16/16; after ADR 008 19/20; after F-031 20/20 (2026-09-29: 18 killed runs rerun once each, 2 finished runs refused on rerun) |
+| E-01 | Crash mid-write | answered: append doubled 16/16; after ADR 008 19/20; after F-031 20/20 (2026-09-29: 18 killed runs rerun once each, 2 finished runs refused on rerun); pandas `overwrite_partitions` events 10/10 (F-012) |
 | E-02 | Two runs at once | answered: append doubled 7/10; after ADR 008 0/10, second run refused by name (rerun after F-031: 0/10) |
 | E-03 | Silent row loss | answered: visible in the record, not enforceable (F-017) |
 | E-04 | Secrets in records | answered: secret:// and env safe; --var leaks (F-016); REST needs Spark (F-015) |
@@ -41,7 +41,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 | Environment | Last green on this branch |
 |---|---|
 | Unit tier, Linux/Windows/macOS, Python 3.10 to 3.13 | PR #98 checks |
-| Live Spark parity (dev box, Spark 4.2) | 2026-09-28, 49 passed |
+| Live Spark parity (dev box, Spark 4.2) | 2026-09-28, 49 passed; 2026-09-29 partition folders (F-012), 54 passed |
 
 ## Proving ground (generated evidence: docs/proving-ground/latest.md)
 
