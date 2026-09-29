@@ -55,6 +55,36 @@ job; `--record-out` saves it. It is the same record a local run writes, so
 `ubunye gate` and `ubunye lineage compare` work across clouds: the same task on
 two platforms must write the same data.
 
+## Several tasks in one launch
+
+Repeat `-t` to run a package's tasks in that order, in one job:
+
+```bash
+ubunye deploy glue -d pipelines -u food -p prices -t clean -t monitor \
+  --bucket my-bucket --role arn:aws:iam::...:role/glue-job \
+  --var out_dir=s3://my-bucket/food --record-out glue.json
+```
+
+The tasks share the job, its session and its disk, so a later task can read what
+an earlier one wrote even on a container whose disk goes when it stops. The first
+task that fails stops the rest, and the deploy fails if any task failed or never
+ran. With several tasks, `--record-out glue.json` writes one record per task:
+`glue.clean.json`, `glue.monitor.json`, also when the job failed. Each is a normal run
+record.
+
+Things to know:
+
+- A task name is a folder name: no `/`, `\`, or `,`, and each task once. A bad list
+  is refused before anything is uploaded or started.
+- The default job name and bundle folder of several tasks is their names joined by
+  `-` plus a short hash of the list (`clean-monitor-29df150d`), so two different lists
+  never share them. Pass `--job` for a name of your own.
+- The tasks share the platform's time limit: Glue's job `Timeout` (60 minutes) and
+  the container `--timeout` cover all of them together, not each.
+- The entry script inside an image runs several tasks only if the image was built
+  from this version: rebuild a Kubernetes, Container Apps, Dataproc or EMR image made
+  with an older `ubunye deploy dockerfile`. (Glue uploads the script on every deploy.)
+
 ## Kubernetes and Azure Container Apps
 
 For a runtime with no managed Spark, the image carries everything: Java, Spark in

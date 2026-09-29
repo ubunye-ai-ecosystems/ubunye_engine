@@ -14,10 +14,10 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Union
 
 from ubunye.deploy import package
-from ubunye.deploy.cloud import Plan, _entry_args
+from ubunye.deploy.cloud import Plan, _entry_args, _label
 
 
 def _name(task: str, prefix: str = "ubunye") -> str:
@@ -31,7 +31,7 @@ def _name(task: str, prefix: str = "ubunye") -> str:
 def plan_k8s(
     usecase: str,
     pkg: str,
-    task: str,
+    task: Union[str, Sequence[str]],
     *,
     image: str,
     namespace: str = "default",
@@ -45,9 +45,9 @@ def plan_k8s(
     variables: Optional[Dict[str, str]] = None,
     wait: bool = True,
 ) -> Plan:
-    """A Kubernetes Job that runs the task once, in ``image``."""
+    """A Kubernetes Job that runs the task once, in ``image`` (several tasks: in order)."""
     path = package.task_path(usecase, pkg, task)
-    job = job or f"{_name(task)}-{int(time.time()) % 100000}"
+    job = job or f"{_name(_label(task))}-{int(time.time()) % 100000}"
     manifest = {
         "apiVersion": "batch/v1",
         "kind": "Job",
@@ -90,19 +90,44 @@ def plan_k8s(
 
 
 _K8S_RUN = r"""
-import json, subprocess, sys
+import json, subprocess, sys, time
 manifest, timeout, wait = json.loads(sys.argv[1]), sys.argv[2], sys.argv[3]
 name, ns = manifest["metadata"]["name"], manifest["metadata"]["namespace"]
 subprocess.run(["kubectl", "apply", "-f", "-"], input=json.dumps(manifest), text=True, check=True)
 if wait != "wait":
     sys.exit(0)
-done = subprocess.run(["kubectl", "wait", "-n", ns, f"job/{name}", "--for=condition=complete",
-                       f"--timeout={timeout}s"], capture_output=True, text=True)
+# Follow the Job to Complete OR Failed. `kubectl wait --for=condition=complete` alone
+# sat out the whole timeout after a Job had already failed (F-037).
+deadline, state, errors = time.time() + int(timeout), "timed out", 0
+while time.time() < deadline:
+    got = subprocess.run(
+        ["kubectl", "get", "-n", ns, f"job/{name}", "-o",
+         'jsonpath={.status.conditions[?(@.status=="True")].type}'],
+        capture_output=True, text=True)
+    if got.returncode != 0:
+        # The Job was deleted, or kubectl lost access (RBAC, an expired token): say so,
+        # and stop after three tries in a row rather than wait out the timeout.
+        errors += 1
+        if errors >= 3:
+            print("kubectl cannot read the job:", got.stderr.strip(), file=sys.stderr)
+            state = "unreadable"
+            break
+        time.sleep(5)
+        continue
+    errors = 0
+    types = got.stdout.split()
+    if "Failed" in types:
+        state = "failed"
+        break
+    if "Complete" in types:
+        state = "complete"
+        break
+    time.sleep(5)
+print(time.strftime("%H:%M:%S"), "job", name, state, file=sys.stderr)
 logs = subprocess.run(["kubectl", "logs", "-n", ns, f"job/{name}"], capture_output=True, text=True)
 print(logs.stdout)
 print(logs.stderr, file=sys.stderr)
-if done.returncode != 0:
-    print(done.stderr, file=sys.stderr)
+if state != "complete":
     sys.exit(1)
 """
 
@@ -113,7 +138,7 @@ if done.returncode != 0:
 def plan_container_apps(
     usecase: str,
     pkg: str,
-    task: str,
+    task: Union[str, Sequence[str]],
     *,
     image: str,
     resource_group: str,
@@ -137,7 +162,7 @@ def plan_container_apps(
     which receives a job's output a few minutes after it ends.
     """
     path = package.task_path(usecase, pkg, task)
-    job = job or _name(task)[:32].rstrip("-")
+    job = job or _name(_label(task))[:32].rstrip("-")
     spec = {
         "job": job,
         "resource_group": resource_group,
@@ -224,7 +249,7 @@ if state != "Succeeded":
 def plan_emr_serverless(
     usecase: str,
     pkg: str,
-    task: str,
+    task: Union[str, Sequence[str]],
     *,
     application_id: str,
     role: str,
@@ -268,7 +293,7 @@ def plan_emr_serverless(
     overrides = {
         "monitoringConfiguration": {"s3MonitoringConfiguration": {"logUri": f"s3://{bucket}/logs/"}}
     }
-    plan = Plan("emr-serverless", f"ubunye-{task}")
+    plan = Plan("emr-serverless", f"ubunye-{_label(task)}")
     command = [
         "aws", "emr-serverless", "start-job-run", "--application-id", application_id,
         "--execution-role-arn", role, "--name", plan.job,

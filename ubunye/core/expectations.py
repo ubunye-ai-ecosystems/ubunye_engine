@@ -148,7 +148,14 @@ def _collect(frame: Any) -> Any:
 
 def _scalars(frame: Any, exprs: List[Any]) -> Dict[str, Any]:
     """One pass over the data for every count, as a {name: value} dict."""
-    row = _collect(frame.select(*exprs)).rows(named=True)[0]
+    selected = frame.select(*exprs)
+    native = _nw().to_native(selected)
+    if hasattr(native, "sparkSession") and hasattr(native, "collect"):
+        # A Spark frame gives its one row itself. Narwhals would collect it through
+        # Arrow, and a Spark image need not have pyarrow (F-036).
+        row = native.collect()[0].asDict()
+    else:
+        row = _collect(selected).rows(named=True)[0]
     return {k: (0 if v is None else v) for k, v in row.items()}
 
 

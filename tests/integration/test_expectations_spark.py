@@ -104,3 +104,20 @@ def test_an_empty_quarantine_output_on_spark_has_the_reason_column(spark):
     out, _ = expectations.apply({"out": clean}, {"out": spec})
     assert out["bad"].count() == 0
     assert expectations.FAILED_RULES_COLUMN in out["bad"].columns
+
+
+def test_rules_are_counted_on_spark_without_pyarrow(spark, monkeypatch):
+    """A Spark image need not have pyarrow (F-036).
+
+    `ubunye deploy dockerfile dataproc` and `container` install the engine without it,
+    and R1's expectations failed on Dataproc, Kubernetes and Container Apps with
+    "No module named 'pyarrow'": Narwhals collects a Spark result through Arrow unless
+    told otherwise. The counts must come from Spark itself.
+    """
+    spec = ExpectationSet(rules=RULES, quarantine="bad")
+    pandas_frame, spark_frame = _both(spark)
+    _, _, on_pandas = expectations.check_output("out", pandas_frame, spec)
+    for name in ("pyarrow", "narwhals._arrow.dataframe", "narwhals._arrow.series"):
+        monkeypatch.setitem(__import__("sys").modules, name, None)
+    _, _, on_spark = expectations.check_output("out", spark_frame, spec)
+    assert [r.as_dict() for r in on_spark] == [r.as_dict() for r in on_pandas]

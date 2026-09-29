@@ -49,6 +49,23 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **`ubunye deploy k8s` stops when the Job fails**, not when its timeout runs out. It
+  waited only for `Complete`, so a failed Job held the command for the whole
+  `--timeout` (30 minutes by default). It now stops at `Complete` or `Failed` and
+  prints the Job's log either way. When kubectl cannot read the Job three times in a row
+  (deleted, RBAC, an expired token) it stops and prints kubectl's error (F-037).
+- **Expectations on a Spark output no longer need pyarrow.** The one row of counts was
+  collected through Arrow, and the images `ubunye deploy dockerfile dataproc` and
+  `container` write have no pyarrow, so a task with expectations died on Dataproc,
+  Kubernetes and Container Apps after its transform ran. Spark now gives the counts
+  itself; the numbers are the same (F-036).
+- **A cloud run's record survives a log line cut inside its marker.** Glue's CloudWatch
+  sent `UB` and `UNYE-RECORD-PART 9/14 ...` as two lines, so a part lost its header
+  and a run that succeeded gave back no record. The reader now joins a marker cut in
+  two, whatever the cut point and log prefix. A record in parts is now accepted only
+  when its SHA-256 line is read whole and matches (before, a record whose digest line
+  was lost was taken unchecked, and reordered pieces could decode to a scrambled
+  record), and a log holding two different records is refused (F-035).
 - **A backend that cannot write partition folders is refused before the run** when an
   output sets `partitionBy`. The check looked for `partition_by`, which no config uses,
   so it never fired and the task failed at the write instead (F-032).
@@ -150,6 +167,20 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   first match silently.
 
 ### Added
+
+- **`ubunye deploy` runs several tasks in one launch** (glue, dataproc, k8s,
+  container-apps, emr-serverless): repeat `-t`, as in `-t clean -t monitor`. They run in
+  that order in the one job, so a task can read what the one before it wrote to the
+  job's own disk; the first that fails stops the rest and fails the deploy, as does a
+  task the job never reached. `--record-out glue.json` then writes one record per task
+  (`glue.clean.json`, `glue.monitor.json`), also when the job failed: the records the
+  failed job printed are read, written and reported task by task before the deploy
+  exits 1. A repeated task or a name with `/`, `\` or `,` is refused before
+  anything starts; several tasks get a job name and bundle folder with a short hash of
+  the list. Images built by an older `deploy dockerfile` must be rebuilt to run several
+  tasks. One task works as before. Before, a
+  container job ran one task and its disk went with it, so a two step pipeline could
+  not run on Kubernetes or Container Apps without shared storage (F-034).
 
 - **A real-world example: a staple food price monitor for African markets**
   (`examples/real-world/food_prices_africa`). WFP market prices, African retail, one

@@ -60,7 +60,11 @@ as a bill), and a link to the run.
 | Id | What it protects | Where |
 |---|---|---|
 | `c01-portable-etl` | a portable (Narwhals) join, filter, null group keys, integer money, timestamps cut to a day | `examples/proving/c01_portable_etl`; PASS on pandas, local Spark, Kubernetes (kind), AWS Glue 5.0, GCP Dataproc Serverless, Azure Container Apps and Databricks serverless, one digest ([latest](latest.md)) |
+| `r1-food-prices-clean`, `r1-food-prices-monitor` | a real two step pipeline (WFP food prices in Africa): a folder of CSV files with a declared schema, units turned into a price per kg, expectations, a monthly table and alerts; the second step reads what the first wrote | `examples/real-world/food_prices_africa` (committed sample); both steps in one launch per environment, each compared on its own; PASS on the same seven environments, digests `f61e0f0544f5` and `021cc19ca2b6` ([latest](latest.md)) |
 
 What the proving ground has found is recorded as findings in `tasks/hardening/`: F-021
 (a Spark session's day depended on the machine's time zone, ADR 007) and F-023 (a cloud
-run's record was lost when the log store cut its line).
+run's record was lost when the log store cut its line). R1 added F-034 (a deploy ran one task per launch),
+F-035 (a record lost when the log store cut a line inside its marker), F-036
+(expectations on Spark needed pyarrow, which the Spark images lack) and F-037 (a failed
+Kubernetes Job held the deploy for its whole timeout).

@@ -18,7 +18,7 @@ import json
 import re
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 #: Printed around the run record at the end of a cloud run.
 RECORD_BEGIN = "=====UBUNYE-RUN-RECORD-BEGIN====="
@@ -33,13 +33,77 @@ PART_SIZE = 600
 _PART = re.compile(re.escape(RECORD_PART) + r" (\d+)/(\d+) (\d+) ([A-Za-z0-9+/=]*)")
 _DIGEST = re.compile(re.escape(RECORD_DIGEST) + r" ([0-9a-f]{64})")
 _B64 = re.compile(r"[A-Za-z0-9+/=]+")
+#: A whole marker line, to its end: what a line starting one must hold to be read alone.
+_WHOLE = {
+    RECORD_PART: re.compile(re.escape(RECORD_PART) + r" \d+/\d+ \d+ [A-Za-z0-9+/=]*\s*"),
+    RECORD_DIGEST: re.compile(re.escape(RECORD_DIGEST) + r" [0-9a-f]{64}\s*"),
+}
+
+
+def _marker_starts(line: str) -> List[Tuple[str, str]]:
+    """Each marker a line may start without finishing, with the piece printed.
+
+    A piece such as ``UBUNY`` starts both markers; each is tried in turn.
+    """
+    for marker, whole in _WHOLE.items():
+        at = line.find(marker)
+        if at >= 0:
+            piece = line[at:]
+            return [] if whole.fullmatch(piece) else [(marker, piece)]
+    tokens = line.split()
+    last = tokens[-1] if tokens else ""
+    return [(marker, last) for marker in _WHOLE if last and marker.startswith(last)]
+
+
+def _join(piece: str, marker: str, nxt: str) -> Optional[str]:
+    """``piece`` and the next line as one whole marker line, skipping its prefix."""
+    tokens = nxt.split()
+    for k in range(len(tokens)):
+        rest = " ".join(tokens[k:])
+        for glue in ("", " "):
+            if _WHOLE[marker].fullmatch(piece + glue + rest):
+                return piece + glue + rest
+    return None
+
+
+def _mend(lines: List[str]) -> List[str]:
+    """Join a marker a log store cut in two (F-035) back into one line.
+
+    Glue's CloudWatch flushed its buffer inside a marker and sent ``UB`` and
+    ``UNYE-RECORD-PART 9/14 600 ...`` as two lines, so part 9 had no header. A line
+    that starts a marker without finishing it is joined with the next line, with or
+    without a space, skipping any prefix the store put on that line, but only when
+    the join makes a whole marker and the next line holds no marker of its own (so a
+    part's last character that looks like the start of a marker is never taken). A
+    wrong join cannot pass: each part says its length, and a record is accepted only
+    with its SHA-256 line read whole and matching.
+    """
+    out: List[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if i + 1 < len(lines) and not any(m in lines[i + 1] for m in _WHOLE):
+            for marker, piece in _marker_starts(line):
+                joined = _join(piece, marker, lines[i + 1])
+                if joined:
+                    out += [line[: len(line) - len(piece)], joined]
+                    i += 2
+                    break
+            else:
+                out.append(line)
+                i += 1
+            continue
+        out.append(line)
+        i += 1
+    return out
+
 
 ENTRY_SCRIPT = (
     '''\
-"""Run one Ubunye task in a cloud job, and print its run record.
+"""Run Ubunye task(s) in a cloud job, and print the run record(s).
 
 Written by `ubunye deploy`. Arguments: --task PATH (usecase/package/task inside
-the bundle), --mode, --dt, --bundle (the zip, when the platform did not unpack it
+the bundle; several, comma-separated, run in that order), --mode, --dt, --bundle (the zip, when the platform did not unpack it
 next to this script: a local path or an s3:// URI), --backend, and any number of
 --var KEY=VALUE (template variables) and --env KEY=VALUE (environment).
 """
@@ -90,40 +154,50 @@ def main():
     root = os.getcwd()
     # Unpacked next to the script (Dataproc), the working folder (a container image
     # sets it), or where the images bake the pipelines.
+    first = args.task.split(",")[0]
     for candidate in ("bundle", ".", "/app/pipelines"):
-        if os.path.isdir(os.path.join(candidate, args.task)):
+        if os.path.isdir(os.path.join(candidate, first)):
             root = os.path.abspath(candidate)
             break
     else:
         if not args.bundle:
-            raise SystemExit(f"task {args.task} not found and no --bundle given")
+            raise SystemExit(f"task {first} not found and no --bundle given")
         root = _fetch(args.bundle, tempfile.mkdtemp(prefix="ubunye-"))
 
     import ubunye
 
-    lineage = tempfile.mkdtemp(prefix="ubunye-lineage-")
     variables = dict(v.split("=", 1) for v in args.var)
     variables.update(json.loads(args.var_json))
     error = None
-    try:
-        ubunye.run_task(
-            os.path.join(root, args.task),
-            mode=args.mode,
-            dt=args.dt,
-            backend=args.backend,
-            variables=variables or None,
-            lineage=True,
-            lineage_dir=lineage,
-        )
-    except Exception as exc:  # the record says what failed; the job still fails below
-        error = exc
-    records = []
-    for dirpath, _dirs, files in os.walk(lineage):
-        records += [os.path.join(dirpath, f) for f in files if f.endswith(".json")]
-    if records:
-        newest = max(records, key=os.path.getmtime)
-        with open(newest, encoding="utf-8") as fh:
-            record = json.load(fh)
+    done = []
+    # Several tasks (comma-separated) run in order in this one job, in one session, so
+    # a task can read what the one before it wrote to the job's own disk. The first
+    # that fails stops the rest.
+    for task in [t for t in args.task.split(",") if t]:
+        lineage = tempfile.mkdtemp(prefix="ubunye-lineage-")
+        try:
+            ubunye.run_task(
+                os.path.join(root, task),
+                mode=args.mode,
+                dt=args.dt,
+                backend=args.backend,
+                variables=variables or None,
+                lineage=True,
+                lineage_dir=lineage,
+            )
+        except Exception as exc:  # the record says what failed; the job still fails below
+            error = exc
+        records = []
+        for dirpath, _dirs, files in os.walk(lineage):
+            records += [os.path.join(dirpath, f) for f in files if f.endswith(".json")]
+        if records:
+            with open(max(records, key=os.path.getmtime), encoding="utf-8") as fh:
+                done.append(json.load(fh))
+        if error is not None:
+            break
+    if done:
+        # One task prints its record; several print them in one document, in order.
+        record = done[0] if "," not in args.task else {"ubunye_records": done}
         # In short numbered base64 parts: a log store splits a long line (CloudWatch
         # cut a record at about 1,000 characters) and can reorder lines printed in the
         # same instant (Log Analytics); the reader puts the parts back by number.
@@ -152,23 +226,43 @@ if __name__ == "__main__":
 )
 
 
-def task_path(usecase: str, package: str, task: str) -> str:
-    return f"{usecase}/{package}/{task}"
+def _tasks(task: Union[str, Sequence[str]]) -> List[str]:
+    tasks = [task] if isinstance(task, str) else list(task)
+    if not tasks or any(not t or any(c in t for c in ",/\\") for t in tasks):
+        raise ValueError(
+            f"a task is a folder name under usecase/package, without ',', '/' or a backslash: {task!r}"
+        )
+    if len(set(tasks)) != len(tasks):
+        raise ValueError(f"a task is given twice (its record would overwrite itself): {task!r}")
+    return tasks
 
 
-def bundle(usecase_dir: Path, usecase: str, package: str, task: str) -> bytes:
-    """The task folder as a zip, at ``usecase/package/task`` (caches left out)."""
+def task_path(usecase: str, package: str, task: Union[str, Sequence[str]]) -> str:
+    """``usecase/package/task``; several tasks give their paths comma-separated, in order."""
+    return ",".join(f"{usecase}/{package}/{t}" for t in _tasks(task))
+
+
+def unpack_records(record: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The run record(s) a job printed: one per task, in the order they ran."""
+    if record is None:
+        return []
+    return list(record.get("ubunye_records") or [record])
+
+
+def bundle(usecase_dir: Path, usecase: str, package: str, task: Union[str, Sequence[str]]) -> bytes:
+    """The task folder(s) as a zip, at ``usecase/package/task`` (caches left out)."""
     root = Path(usecase_dir)
-    folder = root / usecase / package / task
-    if not (folder / "config.yaml").is_file():
-        raise FileNotFoundError(f"no config.yaml in {folder}")
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
-        for path in sorted(folder.rglob("*")):
-            rel = path.relative_to(root)
-            if path.is_dir() or "__pycache__" in rel.parts or path.suffix == ".pyc":
-                continue
-            z.write(path, rel.as_posix())
+        for name in _tasks(task):
+            folder = root / usecase / package / name
+            if not (folder / "config.yaml").is_file():
+                raise FileNotFoundError(f"no config.yaml in {folder}")
+            for path in sorted(folder.rglob("*")):
+                rel = path.relative_to(root)
+                if path.is_dir() or "__pycache__" in rel.parts or path.suffix == ".pyc":
+                    continue
+                z.write(path, rel.as_posix())
     return buffer.getvalue()
 
 
@@ -183,8 +277,12 @@ def _parts_from(log: str) -> Tuple[Dict[int, str], int, Optional[str]]:
     that follow it, which is where the store puts the rest: the last token of each,
     while it is plain base64 and not the start of another part or a marker.
     """
-    lines = log.splitlines()
-    digest = _DIGEST.search(log)
+    lines = _mend(log.splitlines())
+    digests = set(_DIGEST.findall("\n".join(lines)))
+    if len(digests) > 1:
+        raise RecordIncomplete(
+            "the log holds more than one run record; cannot tell which is this run's"
+        )
     parts: Dict[int, str] = {}
     damaged: Dict[int, str] = {}
     totals = set()
@@ -216,7 +314,7 @@ def _parts_from(log: str) -> Tuple[Dict[int, str], int, Optional[str]]:
     for n, why in damaged.items():
         if n not in parts:
             raise RecordIncomplete(why + " and could not be completed from the log")
-    return parts, total, digest[1] if digest else None
+    return parts, total, digests.pop() if digests else None
 
 
 def read_record(log: str) -> Optional[Dict[str, Any]]:
@@ -237,7 +335,11 @@ def read_record(log: str) -> Optional[Dict[str, Any]]:
                 f"missing {missing[:10]}"
             )
         raw = base64.b64decode("".join(parts[n] for n in range(1, total + 1)))
-        if digest is not None and hashlib.sha256(raw).hexdigest() != digest:
+        if digest is None:
+            # Every engine that prints parts prints the digest with them. Without it a
+            # cut or reordered part could decode to a wrong record: never accept that.
+            raise RecordIncomplete("the record's SHA-256 line was not found whole in the log")
+        if hashlib.sha256(raw).hexdigest() != digest:
             raise RecordIncomplete("the record read from the log does not match its SHA-256")
         return json.loads(raw.decode("utf-8"))
     if RECORD_BEGIN not in log:
