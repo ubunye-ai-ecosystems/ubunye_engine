@@ -32,6 +32,22 @@ class LabelReviews(Task):
 Calls run where the task's Python runs. On Spark that is the driver: collect the
 column you want to label, or keep the frame small.
 
+## Progress on a long batch
+
+A long `complete_many` writes how far it is to stderr:
+
+```
+LLM anthropic/claude-haiku-4-5: 90/300 calls (30%), 1m48s, $0.0412 spent of $2
+```
+
+A line comes at most every 10 seconds and every 10% of the calls, whichever is
+rarer, so a slow batch gets about ten lines. A batch that ends when a line was
+written gets one more line at the end. A batch of fewer than 20 prompts, or one
+that is done in under 10 seconds, writes nothing. The spend shows when a budget
+keeps count (see [Cap the bill](#cap-the-bill-before-the-run)). It goes to stderr,
+so stdout stays clean for pipes and for `ubunye mcp`. A loop of `complete()` calls
+has no total and writes no progress: use `complete_many`.
+
 ## Backends
 
 | Backend | For | Key (when `api_key=` is not given) |

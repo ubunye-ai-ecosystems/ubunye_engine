@@ -197,6 +197,13 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Added
 
+- **A long `complete_many` shows its progress** (F-008). A 300 call model step ran
+  for 6 minutes with nothing on screen. Now a line goes to stderr, such as
+  `LLM anthropic/claude-haiku-4-5: 90/300 calls (30%), 1m48s, $0.0412 spent of $2`,
+  at most every 10 seconds and every 10% of the calls, whichever is rarer, and one at
+  the end. A batch under 20 prompts or under 10 seconds writes nothing. The spend
+  shows when a budget keeps count. Sequential and concurrent batches both report.
+
 - **`ubunye deploy` runs several tasks in one launch** (glue, dataproc, k8s,
   container-apps, emr-serverless): repeat `-t`, as in `-t clean -t monitor`. They run in
   that order in the one job, so a task can read what the one before it wrote to the
