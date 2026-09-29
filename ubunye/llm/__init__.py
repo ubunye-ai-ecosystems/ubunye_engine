@@ -32,6 +32,8 @@ Limits on dollars, calls and seconds are checked before each call is sent, and a
 call that could pass one is refused (:mod:`ubunye.llm.budget`, prices in
 :mod:`ubunye.llm.prices`). Each logged call carries ``cost_usd`` (None when the
 model has no price) and the ``estimated_usd`` worst case that was reserved.
+
+A long ``complete_many`` writes its progress to stderr (:mod:`ubunye.llm.progress`).
 """
 
 from __future__ import annotations
@@ -275,7 +277,11 @@ class LLMPort:
         max_concurrency: int = 4,
         **options: Any,
     ) -> List[LLMResponse]:
-        """One call per prompt, ``max_concurrency`` at a time; answers in prompt order."""
+        """One call per prompt, ``max_concurrency`` at a time; answers in prompt order.
+
+        A long batch writes its progress to stderr (:mod:`ubunye.llm.progress`)."""
+        from ubunye.llm.progress import Progress
+
         requests = [self.request(p, **options) for p in prompts]
         if not requests:
             return []
@@ -286,13 +292,43 @@ class LLMPort:
             (r, active.occurrence(r.key(self.name), self.mode) if active is not None else 0)
             for r in requests
         ]
+        progress = Progress(
+            f"{self.name}/{self.model}", len(requests), budgets=self._progress_budgets(active)
+        )
+
+        def one(request: LLMRequest, occurrence: int) -> LLMResponse:
+            try:
+                response = self.send(request, occurrence=occurrence)
+            except LLMBudgetError:
+                progress.tick("refused")
+                raise
+            except BaseException:
+                progress.tick("failed")
+                raise
+            progress.tick("answered")
+            return response
+
         with ThreadPoolExecutor(max_workers=max(1, min(max_concurrency, len(requests)))) as pool:
             # Each worker runs in a copy of this context, so the run's call log sees it.
-            futures = [
-                pool.submit(contextvars.copy_context().run, self.send, r, occurrence=n)
-                for r, n in numbered
-            ]
+            futures = [pool.submit(contextvars.copy_context().run, one, r, n) for r, n in numbered]
             return [f.result() for f in futures]
+
+    def _progress_budgets(self, active: Optional[_CallLog]) -> List[Tuple[str, Any]]:
+        """The budgets that enforce limits on this port's calls, for the progress line."""
+        if self.mode == "replay":
+            return []  # replayed calls cost nothing and are never refused
+        if active is not None:
+            run_budget = active.budget
+        else:
+            try:
+                run_budget = self._outside_run_budget()
+            except LLMError:
+                run_budget = None  # a bad limit fails the first call, not the progress
+        return [
+            (name, b)
+            for name, b in (("run", run_budget), ("port", self.own_budget))
+            if b is not None and b.limited
+        ]
 
     def send(self, request: LLMRequest, *, occurrence: Optional[int] = None) -> LLMResponse:
         """One call. Inside a run, the nth identical request is recorded, and
