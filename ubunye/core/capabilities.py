@@ -250,7 +250,7 @@ def self_overwrites(
 
 def _writes_path(registry: "Registry", ocfg: Dict[str, Any]) -> bool:
     """False for a writer that declares it never writes to ``path`` (a Unity table)."""
-    writer = registry.writers.get(ocfg.get("format"))
+    writer = registry.writers.get(str(ocfg.get("format") or ""))
     requires = getattr(writer, "REQUIRES", None)
     return requires is None or PATH_IO in requires
 
