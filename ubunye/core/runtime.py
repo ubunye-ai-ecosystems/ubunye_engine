@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 from ubunye.core import runs
-from ubunye.core.capabilities import Capabilities, check_task
+from ubunye.core.capabilities import SELF_OVERWRITE_MARK, Capabilities, check_task
 from ubunye.core.errors import (
     BackendCapabilityError,
     ReaderNotFoundError,
@@ -347,6 +347,9 @@ class Engine:
         leaves a run record.
         """
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
+        # The notebook path writes here without run(): the same pre-checks apply,
+        # or an overwrite of its own input deletes the source (F-047).
+        self._check_backend_can_run(cfg)
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
         state: Dict[str, Any] = {"outputs": None}
@@ -697,12 +700,18 @@ class Engine:
         io_check = self.backend.check_io if isinstance(self.backend, Backend) else None
         problems = check_task(caps, cfg, self.registry, backend_name=name, io_check=io_check)
         if problems:
+            if all(SELF_OVERWRITE_MARK in p for p in problems):
+                hint = "Write each output listed above to a new path, or use Delta."
+            else:
+                hint = (
+                    "Run it on a backend that can (--backend spark), or change the "
+                    "inputs and outputs listed above."
+                )
             raise BackendCapabilityError(
                 f"This task cannot run on the {name} backend:\n"
                 + "\n".join(f"  - {p}" for p in problems),
                 context={"Backend": name},
-                hint="Run it on a backend that can (--backend spark), or change the "
-                "inputs and outputs listed above.",
+                hint=hint,
             )
 
     def _validate_io_configs(self, inputs: Dict[str, Any], outputs: Dict[str, Any]) -> None:

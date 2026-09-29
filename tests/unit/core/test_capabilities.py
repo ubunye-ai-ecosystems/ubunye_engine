@@ -143,3 +143,138 @@ def test_capabilities_describe_themselves():
     assert described["file_formats"] == ["csv", "json", "parquet"]
     assert described["features"] == ["path_io"]
     assert Capabilities.unknown().describe()["declared"] is False
+
+
+class TestSelfOverwrite:
+    """An overwrite of a folder the task reads deletes the input before it is read (F-047)."""
+
+    LAZY = Capabilities(features=SPARK_LIKE.features, lazy=True)
+
+    @staticmethod
+    def _task(out_path, mode="overwrite", in_path="/data/in", **out):
+        return _cfg(
+            {"src": {"format": "s3", "path": in_path, "file_format": "parquet"}},
+            {"out": {"format": "s3", "path": out_path, "mode": mode, **out}},
+        )
+
+    @pytest.mark.parametrize(
+        "out_path, in_path",
+        [
+            ("/data/in", "/data/in"),
+            ("/data/in/", "/data/in"),  # a trailing slash is the same folder
+            ("/data", "/data/in"),  # overwriting the parent deletes the input too
+            ("/data/in/part=1", "/data/in"),  # a folder inside the input
+            ("/data/in", "/data/in/*.parquet"),  # a glob reads that folder
+            ("file:///data/in", "/data/in"),
+            ("s3a://bucket/t", "s3a://bucket/t/"),
+            # Spellings of one place that compared unequal (skeptic review of F-047):
+            ("s3a://b/in", "s3://b/in"),  # s3 and s3n are s3a on Spark
+            ("s3a://b/in", "s3n://b/in"),
+            ("s3a://b/in", "s3a://b//in"),
+            ("s3a://b/in", "s3a://b/x/../in"),
+            ("s3a://b/my in", "s3a://b/my%20in"),
+            ("abfss://c@acct.dfs.core.windows.net/in", "abfss://c@Acct.dfs.core.windows.net/in"),
+            ("/dbfs/mnt/in", "dbfs:/mnt/in"),  # the FUSE mount and the URI
+            ("dbfs:///mnt/in", "dbfs:/mnt/in"),
+            ("/data/in2", "/data/in*"),  # a glob in the last name reaches in2 too
+            ("/data/out", "/data/*/x.parquet"),  # the glob reads /data/out/x.parquet
+        ],
+    )
+    def test_an_overwrite_of_what_the_task_reads_is_refused(self, reg, out_path, in_path):
+        cfg = self._task(out_path, in_path=in_path)
+        (problem,) = check_task(self.LAZY, cfg, reg, backend_name="spark")
+        assert "output 'out'" in problem and "input 'src'" in problem
+        assert "source is lost" in problem
+
+    @pytest.mark.parametrize("mode", ["overwrite", "overwrite_partitions"])
+    def test_both_deleting_modes_are_refused(self, reg, mode):
+        assert check_task(self.LAZY, self._task("/data/in", mode), reg, backend_name="spark")
+
+    @pytest.mark.parametrize(
+        "cfg",
+        [
+            _cfg(
+                {"src": {"format": "s3", "path": "/data/in"}},
+                {"out": {"format": "s3", "path": "/data/in", "mode": "append"}},
+            ),
+            _cfg(
+                {"src": {"format": "s3", "path": "/data/in"}},
+                {"out": {"format": "s3", "path": "/data/in2", "mode": "overwrite"}},
+            ),
+            _cfg(
+                {"src": {"format": "s3", "path": "/t", "file_format": "delta"}},
+                {
+                    "out": {
+                        "format": "s3",
+                        "path": "/t",
+                        "mode": "overwrite",
+                        "file_format": "delta",
+                    }
+                },
+            ),
+            _cfg(
+                {"src": {"format": "delta", "path": "/t"}},
+                {"out": {"format": "delta", "path": "/t", "mode": "overwrite"}},
+            ),
+            _cfg(
+                {"src": {"format": "s3", "path": "s3a://a/t"}},
+                {"out": {"format": "s3", "path": "s3a://b/t", "mode": "overwrite"}},
+            ),
+            _cfg(
+                {"src": {"format": "s3", "path": "/data/events_*"}},
+                {"out": {"format": "s3", "path": "/data/summary", "mode": "overwrite"}},
+            ),
+            _cfg(
+                {"src": {"format": "s3", "path": "s3a://logs-*/in"}},
+                {"out": {"format": "s3", "path": "s3a://logs-a/in", "mode": "overwrite"}},
+            ),
+            _cfg(
+                {"src": {"format": "s3", "path": "s3a://b/claims"}},
+                {
+                    "out": {
+                        "format": "unity",
+                        "table": "main.gold.claims",
+                        "path": "s3a://b/claims",
+                        "mode": "overwrite",
+                    }
+                },
+            ),
+        ],
+        ids=[
+            "append",
+            "sibling-folder",
+            "delta-file-format",
+            "delta-format",
+            "other-bucket",
+            "glob-name-next-to-output",
+            "glob-in-bucket-unknowable",
+            "unity-writer-ignores-path",
+        ],
+    )
+    def test_safe_writes_pass(self, reg, cfg):
+        assert check_task(self.LAZY, cfg, reg, backend_name="spark") == []
+
+    @pytest.mark.parametrize("mode", [" overwrite ", "OVERWRITE", "WriteMode.OVERWRITE"])
+    def test_a_mode_is_read_the_way_the_writer_reads_it(self, reg, mode):
+        from ubunye.config.schema import WriteMode
+
+        given = WriteMode.OVERWRITE if mode == "WriteMode.OVERWRITE" else mode
+        assert check_task(self.LAZY, self._task("/data/in", given), reg, backend_name="spark")
+
+    def test_the_notebook_write_path_is_refused_before_the_writer_runs(self, reg):
+        # ubunye.notebook's ctx.write() and ctx.run() call write_outputs, not run().
+        backend = MagicMock(spec=["capabilities", "name", "start", "stop"])
+        backend.capabilities = self.LAZY
+        backend.name = "spark"
+        engine = Engine(backend=backend, registry=reg, context=EngineContext(run_id="r"), hooks=[])
+        written = []
+        engine._write_outputs = lambda *a, **k: written.append(a)  # type: ignore[method-assign]
+        with pytest.raises(BackendCapabilityError) as err:
+            engine.write_outputs({"out": object()}, self._task("/data/in"), as_run=True)
+        assert written == []
+        assert "new path, or use Delta" in str(err.value.hint)
+
+    def test_a_backend_that_reads_into_memory_first_may_overwrite_its_input(self, reg):
+        # pandas holds every input in memory before the write deletes anything.
+        cfg = self._task("/data/in")
+        assert check_task(PANDAS_LIKE, cfg, reg, backend_name="pandas") == []

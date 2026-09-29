@@ -1,6 +1,6 @@
 # F-047: On Spark, an output that overwrites its own input deletes the input, then fails
 
-**Status:** open (made safe on the paths ADR 009 holds; a plain run still loses the data)
+**Status:** fixed (refused before anything is read, on every lazy backend)
 **Severity:** major (data loss, with an error, but after the delete)
 **Source:** engine-fixer, while choosing the mechanism for F-040 (2026-09-29)
 **Promise:** 5 (nothing is lost silently); here it is lost loudly
@@ -34,3 +34,55 @@ A plain run is refused before anything is deleted (`ubunye validate` can see tha
 output overwrites a path or table an input reads), or the output is held first so the
 source is read in full before it is deleted. Not fixed here: F-040 is about the
 record, and this changes what a plain run does.
+
+## Fix
+Refused before the run starts. `check_task` (the pre-run check behind `ubunye run`,
+`ubunye validate --backend` and `ubunye plan`) reports any output whose mode deletes
+(`overwrite`, `overwrite_partitions`) and whose path is a folder an input of the same
+task reads: the same folder, a parent, or a folder inside it, with trailing slashes,
+`file:` and globs normalised. Only a lazy backend is checked (pandas reads into memory
+first, so its overwrite is safe), and Delta outputs pass, since a Delta overwrite
+reads a fixed snapshot. A path that is not rendered yet (`{{ ... }}`) is not judged.
+
+Holding the output first (what ADR 009 does for recorded runs) was rejected as the
+fix: the rows are computed before the delete, but an executor lost during the write
+fails with `CHECKPOINT_RDD_BLOCK_ID_NOT_FOUND` after the delete, the same loss in a
+narrower window. A refusal loses nothing and says what to do instead.
+
+Pinned by `tests/integration/test_self_overwrite_spark.py` (live Spark, both backends:
+refused, and the 1,000 input rows still read back; with the rule off the same test
+fails with `FAILED_READ_FILE.FILE_NOT_EXIST`) and `TestSelfOverwrite` in
+`tests/unit/core/test_capabilities.py`. No config in the repo is flagged (21 checked:
+12 rendered, 9 raw templates).
+
+
+## Skeptic review (2026-09-29) and what changed
+Probes of the pure functions (no Spark, the box was short on memory) found:
+
+1. **The notebook path skipped the check.** `ubunye.notebook(...)` writes through
+   `Engine.write_outputs`, which never ran the pre-checks. Fixed: `write_outputs` runs
+   `_check_backend_can_run` first.
+2. **Cloud spellings compared as raw text:** `s3`, `s3n` and `s3a`; `//` and `..`;
+   host case; %-escapes. Fixed: s3 and s3n are s3a, the host is lower case, the path is
+   unescaped and normalised (repeated slashes collapsed first, since `normpath` keeps a
+   leading `//`).
+3. **`dbfs:` was read as a local relative path.** Fixed: `dbfs:/x`, `dbfs:///x` and
+   `/dbfs/x` are one place.
+4. **A drive-root glob became the current folder** (`abspath("C:")`). Fixed, and a glob
+   in a bucket or host name is not judged.
+5. **The mode was not read as the writer reads it** (an enum, spaces). Fixed.
+6. **False positive: `/data/events_*` next to `/data/summary` was refused.** A glob now
+   keeps its literal start as a prefix, so `in*` reaches `in2` but not `out`.
+7. **False positive: a Unity output with a fallback `path`** (the writer ignores it).
+   Fixed: only writers that write to `path` (`REQUIRES` has `path_io`, or undeclared)
+   are checked.
+8. **The hint told a Spark user to use `--backend spark`.** A self-overwrite now gets
+   its own hint.
+
+Every case is a unit test in `TestSelfOverwrite`. Kept on purpose: a glob from a
+folder (`/data/*/x.parquet`, `/*`) refuses an overwrite of anything under that folder,
+since the glob can read it.
+
+Still not seen (documented in `self_overwrites`): a relative path a cluster resolves
+against another folder (HDFS `/user/<name>`), two `secret://` names for one path, and a
+table input whose storage is the output's folder. Symlinks are followed for local paths.
