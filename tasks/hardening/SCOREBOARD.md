@@ -16,7 +16,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 7 (F-008 to F-010, F-014, F-015, F-017, F-018) | 15 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-016, F-019, F-020, F-031, F-032) | 0 |
+| 7 (F-008 to F-010, F-014, F-015, F-017, F-018) | 15 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-016, F-019, F-020, F-031, F-032), plus 4 on feat/prove-r1 not yet merged (F-034 to F-037) | 0 |
 
 ## Experiments
 
@@ -48,6 +48,14 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 | Workload | pandas-local | spark-local | kubernetes-kind | aws-glue | gcp-dataproc | azure (Container Apps) | databricks |
 |---|---|---|---|---|---|---|---|
 | c01-portable-etl | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| r1-food-prices-clean | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| r1-food-prices-monitor | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 
-Digest bb08a7d7a9fd in all seven; infra run 36497932069, engine eba4922, 2026-09-28.
-Teardown verified on AWS, GCP and Azure in earlier runs of the same workflow.
+C01: digest bb08a7d7a9fd in all seven, infra run 36580043728 (prove-c01, now a caller of
+the reusable prove.yml), engine feat/prove-r1 at 1f5242d, 2026-09-29 (first proven in run
+36497932069, engine eba4922). R1 (food prices, both steps in one launch per environment):
+digests f61e0f0544f5 and 021cc19ca2b6 in all seven, infra run 36579989167, same engine.
+The first R1 run (36576881079) failed on Glue, Dataproc, Container Apps and kind and gave
+F-035, F-036 and F-037. Teardown checked after both runs with cloud-cli (2026-09-29): no
+Glue job, S3 or GCS object, Artifact Registry or ACR image, Container Apps job, or
+Databricks volume or workspace folder of either workload left.

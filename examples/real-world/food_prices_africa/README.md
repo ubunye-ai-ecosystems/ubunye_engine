@@ -70,6 +70,12 @@ the same on both.
 Times are the task time from each run record, on one Windows laptop (Spark 4.2 in local
 mode, pandas 3), one run each: a rough guide, not a benchmark.
 
+On the committed sample, the same two steps also give the same rows on Kubernetes, AWS
+Glue, GCP Dataproc Serverless, Azure Container Apps and Databricks serverless, both steps
+in one launch each (`ubunye deploy ... -t clean -t monitor`): every dimension PASS, digests
+`f61e0f0544f5` (`clean`) and `021cc19ca2b6` (`monitor`), in the
+[proving ground](../../../docs/proving-ground/latest.md).
+
 At this size pandas is the right tool; Spark earns its start-up cost only on much more
 data. The point is that the choice is yours, and moving costs nothing.
 
