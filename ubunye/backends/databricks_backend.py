@@ -208,6 +208,17 @@ class DatabricksBackend(Backend):
             options=options,
         )
 
+    def materialise(self, frame: Any) -> Optional[Any]:
+        """Compute an output once for its checks, write and hash (ADR 009)."""
+        from ubunye.adapters.spark import materialise
+
+        return materialise.materialise(frame)
+
+    def release(self, frame: Any) -> None:
+        from ubunye.adapters.spark import materialise
+
+        materialise.release(frame)
+
     @property
     def app_name(self) -> str:
         if self._spark is not None:

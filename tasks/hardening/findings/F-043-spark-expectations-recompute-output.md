@@ -1,6 +1,6 @@
 # F-043: On Spark, each expectations pass computes the output again, and the write computes it once more
 
-**Status:** open
+**Status:** fixed on fix/f040-spark-persist (2026-09-29, ADR 009), awaiting skeptic review and merge into hardening/real-world
 **Severity:** minor for a cheap plan; major for a plan that is costly to compute
 **Source:** scale-runner, experiment E-06 (2026-09-29)
 **Promise:** 7 (the core stays small)
@@ -40,3 +40,22 @@ the output again. Persisting a checked output (`MEMORY_AND_DISK`) for the checks
 the write would do both; the checks could also share one job (the `unique` count
 and the row rules in one aggregation). The trade is executor memory or disk for
 the persisted rows, which a user may want to switch off.
+
+## After (ADR 009)
+An output with expectations is computed once and held; each check and the write read
+the held rows. The checks still run as separate jobs (the row rules, `unique`, the
+other output), but over the held rows, not the transform. Dev box, E-06 job at
+5,000,000 rows, 3 runs each:
+
+| | before | after |
+|---|---|---|
+| Spark jobs, with expectations | 18 | 16 |
+| `events` (5M rows) read from the source | 5 times | 2 times (one per held output) |
+| wall s, median (min to max) | 26.87 (23.72 to 36.82) | 25.56 (25.48 to 27.43) |
+| / plain (same batch) | 1.74x | 1.46x |
+| JVM peak, median | 2.5 GB | 2.2 GB |
+
+The trade is executor memory and local disk for the held rows (ADR 009: about 3.4
+times the size of a `persist` cache, as rows, not compressed columns);
+`UBUNYE_MATERIALISE_OUTPUTS=0` turns it off. Sharing one job between `unique` and the
+row rules is not done here.

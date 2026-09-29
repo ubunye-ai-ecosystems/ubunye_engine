@@ -34,6 +34,11 @@ class Hook:
     need it can ignore the argument.
     """
 
+    #: True for a hook that acts on the output frames in ``state["outputs"]`` when
+    #: the task ends (the run record hashes them). The engine then computes each
+    #: output once and hands every consumer that one copy (ADR 009).
+    reads_outputs: bool = False
+
     @contextmanager
     def task(
         self,

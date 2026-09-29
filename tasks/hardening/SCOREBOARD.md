@@ -16,7 +16,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 12 (F-008 to F-010, F-015, F-017, F-018, F-038 to F-043) | 21 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032, F-034 to F-037, F-045) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
+| 12 (F-008 to F-010, F-015, F-017, F-018, F-038, F-039 (item 1 fixed), F-041, F-042, F-046, F-047) | 23 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032, F-034 to F-037, F-045; F-040 and F-043 on fix/f040-spark-persist, awaiting review) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
 
 ## Experiments
 
@@ -27,7 +27,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 | E-03 | Silent row loss | answered: visible in the record, not enforceable (F-017) |
 | E-04 | Secrets in records | answered: secret:// and env safe; --var leaks (F-016); REST needs Spark (F-015) |
 | E-05 | Schema drift | answered: gate catches all; a retype writes wrong data at run time (F-018) |
-| E-06 | Scale ladder | answered 2026-09-29: without `--lineage` 1.01x (Spark) and 1.04x to 1.36x (pandas), falling with size: pass; with `--lineage` 1.7x to 4.4x (Spark) and 5.4x to 11.5x (pandas), rising: fail (F-038, F-039, F-041); nothing collected to the driver; Spark record can hash rows it did not write (F-040) |
+| E-06 | Scale ladder | answered 2026-09-29: without `--lineage` 1.01x (Spark) and 1.04x to 1.36x (pandas), falling with size: pass; with `--lineage` 1.7x to 4.4x (Spark) and 5.4x to 11.5x (pandas), rising: fail (F-038, F-039, F-041); nothing collected to the driver; Spark record can hash rows it did not write (F-040). After ADR 009 (fix/f040-spark-persist): record equals written files 3/3 (was 0/3); at 5M, `--lineage` 1.83x (was 2.32x) and expectations 1.46x (was 1.74x) on the dev box |
 | E-07 | Laptop to cluster | planned |
 | E-08 | Stranger rerun | planned |
 
@@ -44,6 +44,8 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 | 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 5,000,000 rows, generated | Spark 4.2 local, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 17.32 | 17.56 / 38.15 | 1.01x / 2.20x | median of 3; hash 20.87 s; E-06 |
 | 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 20,000,000 rows, generated | Spark 4.2 local, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 21.59 | 21.76 / 75.82 | 1.01x / 3.51x | median of 3; hash 54.45 s; with expectations 1.47x (F-043); E-06 |
 | 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 50,000,000 rows, generated | Spark 4.2 local, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 27.87 | 28.03 / 123.16 | 1.01x / 4.42x | median of 3; hash 95.64 s; 147 kB to the driver, as at 5M; E-06 |
+| 2026-09-29 | hardening 08fcf8b (before ADR 009) | E-06 job, no `--lineage` / `--lineage` / expectations | 5,000,000 rows, generated | Spark 4.2 local, dev box (Windows, 16 GB) | 15.46 | 17.61 / 35.88 / 26.87 | 1.14x / 2.32x / 1.74x | median of 3, noisy (Ubunye 14.95 to 26.85); jobs 7 / 18 / 18; source read 2 / 5 / 5 times; `devbox-f040-before.jsonl` |
+| 2026-09-29 | fix/f040-spark-persist (ADR 009) | E-06 job, no `--lineage` / `--lineage` / expectations | 5,000,000 rows, generated | Spark 4.2 local, dev box (Windows, 16 GB) | 17.47 | 18.73 / 31.93 / 25.56 | 1.07x / 1.83x / 1.46x | median of 3; jobs 7 / 17 / 16; source read 2 / 3 / 2 times; same output digests; `devbox-f040-after.jsonl`; F-039, F-043 |
 
 ## Environments green
 

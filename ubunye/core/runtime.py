@@ -168,6 +168,12 @@ def _unwrap(frame: Any) -> Any:
     return frame.to_native() if callable(to_native) else frame
 
 
+def _materialise_enabled() -> bool:
+    """``UBUNYE_MATERIALISE_OUTPUTS``, read when a run starts; on unless 0 (ADR 009)."""
+    value = os.getenv("UBUNYE_MATERIALISE_OUTPUTS", "1").strip().lower()
+    return value not in ("0", "false", "no", "off")
+
+
 class Engine:
     """
     Executes a task by reading inputs, applying one or more transforms, and writing outputs.
@@ -274,29 +280,37 @@ class Engine:
         self._timings = []
         state["timings"] = self._timings
         state["llm_calls"] = []
-        with chain.task(ctx, cfg, state):
-            if self._manage_backend:
-                self.backend.start()
-            try:
-                sources = self._read_inputs(ctx, chain, inputs_cfg)
-                state["inputs"] = self._to_ports(sources)
-                from ubunye import llm
-
-                budget = llm.budget.Budget.from_env()
-                try:
-                    with llm.recording(state["llm_calls"], task_dir=ctx.task_dir, budget=budget):
-                        outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
-                finally:
-                    state["llm_budget"] = budget.summary() if budget.limited else {}
-                outputs_map = self._check_expectations(cfg, outputs_map, state)
-                ports = self._to_ports(outputs_map)
-                self._write_outputs(ctx, chain, outputs_cfg, ports)
-                # Hooks (lineage, monitors) get the port; the caller gets native frames.
-                state["outputs"] = ports
-                return outputs_map
-            finally:
+        held: List[Any] = []
+        try:
+            with chain.task(ctx, cfg, state):
                 if self._manage_backend:
-                    self.backend.stop()
+                    self.backend.start()
+                try:
+                    sources = self._read_inputs(ctx, chain, inputs_cfg)
+                    state["inputs"] = self._to_ports(sources)
+                    from ubunye import llm
+
+                    budget = llm.budget.Budget.from_env()
+                    try:
+                        with llm.recording(
+                            state["llm_calls"], task_dir=ctx.task_dir, budget=budget
+                        ):
+                            outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
+                    finally:
+                        state["llm_budget"] = budget.summary() if budget.limited else {}
+                    once = self._hold_outputs(cfg, ctx, chain, outputs_map, state, held)
+                    checked = self._check_expectations(cfg, once, state)
+                    ports = self._to_ports(checked)
+                    self._write_outputs(ctx, chain, outputs_cfg, ports)
+                    # Hooks (lineage, monitors) get the port; the caller gets native frames.
+                    state["outputs"] = ports
+                    return self._hand_back(cfg, outputs_map, once, checked, state)
+                finally:
+                    if self._manage_backend:
+                        self.backend.stop()
+        finally:
+            # After the hooks: the run record hashes the held frames at task end.
+            self._release(held)
 
     def read_inputs(self, cfg: dict) -> Dict[str, Any]:
         """Read all inputs defined in ``CONFIG.inputs``.
@@ -336,15 +350,21 @@ class Engine:
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
         state: Dict[str, Any] = {"outputs": None}
-        if not as_run:
-            outputs = self._check_expectations(cfg, outputs, state)
-            self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
-            return
-        with chain.task(ctx, cfg, state):
-            outputs = self._check_expectations(cfg, outputs, state)
-            ports = self._to_ports(outputs)
-            self._write_outputs(ctx, chain, outputs_cfg, ports)
-            state["outputs"] = ports
+        held: List[Any] = []
+        try:
+            if not as_run:
+                once = self._hold_outputs(cfg, ctx, chain, outputs, state, held, task=False)
+                outputs = self._check_expectations(cfg, once, state)
+                self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
+                return
+            with chain.task(ctx, cfg, state):
+                once = self._hold_outputs(cfg, ctx, chain, outputs, state, held)
+                outputs = self._check_expectations(cfg, once, state)
+                ports = self._to_ports(outputs)
+                self._write_outputs(ctx, chain, outputs_cfg, ports)
+                state["outputs"] = ports
+        finally:
+            self._release(held)
 
     def _check_expectations(
         self, cfg: dict, outputs: Dict[str, Any], state: Dict[str, Any]
@@ -371,7 +391,137 @@ class Engine:
             state["expectations"] = list(exc.results)
             raise
         state["expectations"] = [r.as_dict() for r in results]
+        # A quarantine output is cut from its output's rows: it has the same basis.
+        basis = state.get("hash_basis")
+        if isinstance(basis, dict):
+            for name, spec in specs.items():
+                if spec.quarantine and name in basis:
+                    basis[spec.quarantine] = basis[name]
         return checked
+
+    # ---------- one computation per output (ADR 009) ----------
+
+    def _hold_outputs(
+        self,
+        cfg: dict,
+        ctx: EngineContext,
+        chain: HookChain,
+        outputs: Dict[str, Any],
+        state: Dict[str, Any],
+        held: List[Any],
+        task: bool = True,
+    ) -> Dict[str, Any]:
+        """Each output that more than one consumer acts on, computed once.
+
+        An output's consumers are its expectation checks, its writer, and the
+        run record's hash at task end. On a lazy backend each is a new
+        computation of the plan, so a value that differs per computation made
+        the record hash rows that were not written (F-040), and every check and
+        the write paid for the transform again (F-039, F-043). An output is held
+        (``Backend.materialise``) when the run is recorded, when it has
+        expectations, or when it is written under two names; a plain run is left
+        exactly as it was. Every consumer then gets the held frame.
+
+        ``state["hash_basis"]`` says, per output, whether the frame the record
+        will hash is the rows written (``"materialised"``) or will be computed
+        again (``"recomputed"``). What is held is added to ``held``, for
+        :meth:`_release` once the hooks are done. Holding is a timed step
+        (``Materialise``), so its cost is in the record's timings. ``task`` is
+        False for a write outside a task, where no hook sees the outputs.
+        """
+        section = cfg.get("CONFIG") or {}
+        outputs_cfg = section.get("outputs") or {}
+        expected = set((section.get("expectations") or {}).keys())
+        names = [n for n in sorted(outputs_cfg) if n in outputs]
+        recorded = task and any(getattr(h, "reads_outputs", False) for h in chain.hooks)
+        uses: Dict[int, int] = {}
+        for name in names:
+            uses[id(outputs[name])] = uses.get(id(outputs[name]), 0) + 1
+
+        in_memory = self._frames_in_memory()
+        # Only a real backend is asked: a test double or pre-0.7 object is left alone.
+        is_backend = isinstance(self.backend, Backend)
+        allowed = is_backend and not in_memory and _materialise_enabled()
+        result = dict(outputs)
+        done: Dict[int, Any] = {}  # one computation per frame, however many names
+        basis: Dict[str, str] = {}
+        for name in names:
+            frame = outputs[name]
+            needed = recorded or name in expected or uses[id(frame)] > 1
+            if needed and allowed:
+                if id(frame) not in done:
+                    # An error here is the job failing while it computes the
+                    # output; it propagates, as it would from the writer. Falling
+                    # back would compute the same failing plan again (ADR 009).
+                    with self._step(chain, ctx, "Materialise", {"output": name}):
+                        raw = _unwrap(frame)
+                        once = self.backend.materialise(raw)
+                    if once is raw:  # handed back unheld: it would recompute
+                        once = None
+                    done[id(frame)] = once
+                    if once is not None:
+                        held.append(once)
+                if done.get(id(frame)) is not None:
+                    result[name] = done[id(frame)]
+                    basis[name] = "materialised"
+                    continue
+            if in_memory is not None:
+                basis[name] = "materialised" if in_memory else "recomputed"
+        state["hash_basis"] = basis
+        return result
+
+    def _frames_in_memory(self) -> Optional[bool]:
+        """True when the backend's frames are the rows themselves (not lazy).
+
+        ``None`` when the backend has not said (a test double): the run record
+        then judges by the frame's type.
+        """
+        caps = getattr(self.backend, "capabilities", None)
+        if not isinstance(caps, Capabilities) or not caps.declared:
+            return None
+        return not caps.lazy
+
+    def _hand_back(
+        self,
+        cfg: dict,
+        original: Dict[str, Any],
+        once: Dict[str, Any],
+        checked: Dict[str, Any],
+        state: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """The frames ``run`` returns: never a held frame, which is freed at task end.
+
+        A held frame, and anything cut from it (the clean and quarantined rows),
+        stops working when it is released. So the caller gets the frames the
+        transform returned, cut again by the same rule results where
+        expectations quarantined rows. They are lazy, as they always were.
+        """
+        swapped = [n for n in once if once[n] is not original.get(n)]
+        if not swapped:
+            return checked
+        back = dict(checked)
+        for name in swapped:
+            if back.get(name) is once[name]:
+                back[name] = original[name]
+        raw = (cfg.get("CONFIG") or {}).get("expectations") or {}
+        cut = {n: spec for n, spec in raw.items() if n in swapped}
+        if cut:
+            from ubunye.config.schema import ExpectationSet
+            from ubunye.core import expectations
+
+            specs = {n: ExpectationSet.model_validate(spec) for n, spec in cut.items()}
+            natives = self._to_natives({n: original[n] for n in specs})
+            back.update(expectations.cut(natives, specs, state.get("expectations") or []))
+        return back
+
+    def _release(self, held: List[Any]) -> None:
+        """Free every held frame. Never raises: the run's result stands either way."""
+        while held:
+            frame = held.pop()
+            try:
+                self.backend.release(frame)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Releasing a held output failed: %s", exc)
 
     @contextmanager
     def _step(

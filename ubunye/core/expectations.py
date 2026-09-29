@@ -225,9 +225,22 @@ def check_output(
         for r in spec.rules
     ]
 
+    clean, quarantined = _split(nw, frame, df, row_rules, floats, failed)
+    return clean, quarantined, results
+
+
+def _split(
+    nw: Any,
+    frame: Any,
+    df: Any,
+    row_rules: List[ExpectationRule],
+    floats: frozenset,
+    failed: Dict[str, int],
+) -> Tuple[Any, Optional[Any]]:
+    """The clean rows and the quarantined rows (None when no quarantine rule broke)."""
     quarantine_rules = [r for r in row_rules if r.severity == "quarantine"]
-    if not quarantine_rules or not any(failed[r.name] for r in quarantine_rules):
-        return frame, None, results
+    if not quarantine_rules or not any(failed.get(r.name) for r in quarantine_rules):
+        return frame, None
 
     breaks_any = reduce(lambda a, b: a | b, [_breaks(nw, r, floats) for r in quarantine_rules])
     clean = df.filter(~breaks_any)
@@ -237,7 +250,46 @@ def check_output(
         ignore_nulls=True,
     )
     quarantined = df.filter(breaks_any).with_columns(reasons.alias(FAILED_RULES_COLUMN))
-    return nw.to_native(clean), nw.to_native(quarantined), results
+    return nw.to_native(clean), nw.to_native(quarantined)
+
+
+def cut(
+    outputs: Dict[str, Any],
+    expectations: Dict[str, ExpectationSet],
+    results: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Cut outputs into clean and quarantined rows by rule results already found.
+
+    Nothing is counted and nothing is checked: ``results`` (``RuleResult.as_dict``)
+    say which quarantine rules broke. The engine uses this to hand the caller the
+    same cut of the transform's own frames when the checked frames were held and
+    are freed at task end (ADR 009). Returns the clean frames, and the quarantine
+    outputs, by name.
+    """
+    nw = _nw()
+    cut_frames: Dict[str, Any] = {}
+    for name in sorted(expectations):
+        if name not in outputs:
+            continue
+        spec = expectations[name]
+        df = nw.from_native(outputs[name])
+        schema = df.collect_schema()
+        floats = frozenset(c for c, t in schema.items() if t in (nw.Float32, nw.Float64))
+        row_rules = [
+            r for r in spec.rules if r.kind in ("not_null", "between", "one_of", "matches")
+        ]
+        failed = {
+            str(r.get("rule")): int(r.get("failed") or 0)
+            for r in results
+            if r.get("output") == name
+        }
+        clean, quarantined = _split(nw, outputs[name], df, row_rules, floats, failed)
+        cut_frames[name] = clean
+        if spec.quarantine:
+            cut_frames[spec.quarantine] = (
+                quarantined if quarantined is not None else _empty_quarantine(clean)
+            )
+    return cut_frames
 
 
 def apply(

@@ -106,6 +106,30 @@ def _fingerprint_into(step: StepRecord, frame: Any, seen: Optional[Dict[Any, Any
     step.hash_error = print_.error
 
 
+#: The hash_basis values (ADR 009).
+MATERIALISED = "materialised"
+RECOMPUTED = "recomputed"
+
+
+def _basis_of(frame: Any) -> str:
+    """The hash basis when the engine did not say: in memory, or computed again.
+
+    A pandas or Arrow frame is the rows themselves, so its hash is of what was
+    written. Anything else (a Spark frame, another port) is taken to have been
+    computed again for the hash, which is the honest default.
+    """
+    from ubunye.lineage.content_hash import _package
+
+    try:
+        from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
+
+        if isinstance(frame, PandasDataFrameAdapter):
+            return MATERIALISED
+    except ImportError:  # pragma: no cover
+        pass
+    return MATERIALISED if _package(frame) in ("pandas", "pyarrow") else RECOMPUTED
+
+
 class LineageRecorder:
     """Monitor plugin that persists run lineage as structured JSON.
 
@@ -119,6 +143,10 @@ class LineageRecorder:
         Ignored since 0.7.0 and kept so existing configs still load: every row is
         hashed now (the ``rows-v1`` content hash), so there is nothing to sample.
     """
+
+    #: The recorder hashes the output frames at task end, so the engine computes
+    #: each output once and hands it the rows that were written (ADR 009).
+    reads_outputs = True
 
     def __init__(
         self,
@@ -214,8 +242,15 @@ class LineageRecorder:
         timings: Optional[List[Dict[str, Any]]] = None,
         llm_calls: Optional[List[Dict[str, Any]]] = None,
         llm_budget: Optional[Dict[str, Any]] = None,
+        hash_basis: Optional[Dict[str, str]] = None,
     ) -> None:
-        """Update the run record with final status, duration, and step hashes."""
+        """Update the run record with final status, duration, and step hashes.
+
+        ``hash_basis`` is the engine's word, by output name, on whether each
+        output frame is the rows that were written (``"materialised"``) or will
+        be computed again for the hash (``"recomputed"``). An output it does not
+        name, and every input, gets the basis its frame type implies.
+        """
         run_id = context.run_id
         ctx = self._runs.get(run_id)
         if ctx is None:
@@ -242,6 +277,8 @@ class LineageRecorder:
             step = StepRecord.from_io_cfg(name, "input", io_cfg)
             if self._hash_inputs and inputs and inputs.get(name) is not None:
                 _fingerprint_into(step, inputs[name], seen)
+                # An input is never held: on Spark its hash reads the source again.
+                step.hash_basis = _basis_of(inputs[name])
             ctx.inputs.append(step)
 
         # --- Build output StepRecords with optional DataFrame hashes ---
@@ -250,6 +287,7 @@ class LineageRecorder:
             step = StepRecord.from_io_cfg(name, "output", io_cfg)
             if outputs and name in outputs and outputs[name] is not None:
                 _fingerprint_into(step, outputs[name], seen)
+                step.hash_basis = (hash_basis or {}).get(name) or _basis_of(outputs[name])
             step_outputs.append(step)
         ctx.outputs = step_outputs
         values = self._secret_values.pop(run_id, [])

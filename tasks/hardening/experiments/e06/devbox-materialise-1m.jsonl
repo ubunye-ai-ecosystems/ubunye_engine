@@ -1,0 +1,11 @@
+{"mechanism": "persist", "question": "normal", "rows": 1000000, "same": true, "materialise_s": 16.492, "write_s": 1.625, "hash_s": 1.897, "stored_bytes": 43259029}
+{"mechanism": "persist", "question": "derived_after_release", "ok": true, "rows": 989690}
+{"mechanism": "persist", "question": "left_in_storage_after_release", "bytes": 0}
+{"mechanism": "persist", "question": "block_loss", "rdds_dropped": 1, "failed": false, "checked_rows_are_written_rows": false}
+{"mechanism": "persist", "question": "overwrite_input", "failed": false, "same": false, "written_rows": 1000000}
+{"mechanism": "localCheckpoint", "question": "normal", "rows": 1000000, "same": true, "materialise_s": 16.823, "write_s": 0.962, "hash_s": 1.504, "stored_bytes": 148000256}
+{"mechanism": "localCheckpoint", "question": "derived_after_release", "ok": false, "error": ": org.apache.spark.SparkException: [CHECKPOINT_RDD_BLOCK_ID_NOT_FOUND] Checkpoint block rdd_144_15 not found!"}
+{"mechanism": "localCheckpoint", "question": "left_in_storage_after_release", "bytes": 0}
+{"mechanism": "localCheckpoint", "question": "block_loss", "rdds_dropped": 1, "failed": true, "error": ": org.apache.spark.SparkException: [CHECKPOINT_RDD_BLOCK_ID_NOT_FOUND] Checkpoint block rdd_172_5 not found!"}
+{"mechanism": "localCheckpoint", "question": "overwrite_input", "failed": false, "same": true, "written_rows": 1000000}
+{"mechanism": "none", "question": "overwrite_input", "failed": true, "error": ": org.apache.spark.SparkException: [FAILED_READ_FILE.FILE_NOT_EXIST] Encountered error while reading file file:///T:/f040/mat1m/own_plain/part-00001-96b72f9c-d1aa-4974-97d7-05529220ff89-c000.snappy.parquet. File does not exist. It is possib"}
