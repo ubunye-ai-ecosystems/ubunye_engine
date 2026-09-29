@@ -196,6 +196,10 @@ A change counts when it is proven, not when it is written:
 - **Retargeting a PR's base fires no pull_request workflows.** Close and reopen it.
 - **Stopping a background job can orphan its Python child.** Check for and stop leftover
   processes; the dev box has 16 GB and runs out.
+- **A lease's host is not the hostname on Linux.** `runs._host()` adds the pid namespace
+  (`name|pid:[...]`), so a test that writes `socket.gethostname()` fakes another host and
+  its dead run looks alive. Use `runs._host()`. Windows and macOS hide this; only CI's
+  Linux jobs caught it.
 - **Windows paths:** `Path.resolve()` can spell a folder two ways (8.3 short names); use
   `os.path.abspath` + `normcase` for identity.
 

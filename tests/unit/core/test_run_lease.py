@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import os
-import socket
 import subprocess
 import sys
 import time
@@ -46,7 +45,7 @@ def _leave_dead_lease(root: Path, variables, *, run_id="dead-run", outputs=None)
             {
                 "run_id": run_id,
                 "pid": _dead_pid(),
-                "host": socket.gethostname(),
+                "host": runs._host(),  # with the pid namespace on Linux, as the engine writes it
                 "started_at": "2026-09-29T00:00:00Z",
                 "heartbeat": 0,
                 "outputs": outputs or {},
