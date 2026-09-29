@@ -68,7 +68,8 @@ HEARTBEAT_TIMEOUT = 15 * 60
 #: How often a live run refreshes its heartbeat.
 HEARTBEAT_EVERY = 30
 #: How long a takeover holds the lease before taking anything back, so a run judged
-#: dead that is alive can show it (longer than one lease save with its retries).
+#: dead that is alive can show it. A save checks ownership, then replaces the lease,
+#: retrying for at most :data:`BUSY_FOR`: a save under way lands within that window.
 TAKEOVER_SETTLE = 3.0
 
 _CURRENT: contextvars.ContextVar[Optional["RunLease"]] = contextvars.ContextVar(
@@ -207,17 +208,76 @@ def _remove(files: List[str]) -> List[str]:
     return removed
 
 
+#: How long a lease file operation retries a ``PermissionError`` (F-048).
+BUSY_FOR = 2.0
+_BUSY_PAUSE = 0.01
+
+
+def _patient(op: Any, *args: Any, **kwargs: Any) -> Any:
+    """Run a file operation, retrying a ``PermissionError`` for up to :data:`BUSY_FOR`
+    seconds, then raising it.
+
+    On Windows a lease file is refused for a moment while another thread or process
+    replaces it (a read, a stat, a rename), and a replace is refused while a reader has
+    the file open. Both pass in milliseconds. Every other error, a missing file
+    included, is raised at once: a lease that is gone is gone (F-048)."""
+    deadline = time.monotonic() + BUSY_FOR
+    while True:
+        try:
+            return op(*args, **kwargs)
+        except PermissionError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(_BUSY_PAUSE)
+
+
+def _read_text(path: Path) -> Optional[str]:
+    """A lease file's text, or None when there is none. A file that exists but cannot
+    be read, even after the patient retries, raises its ``OSError``: it is never taken
+    for a missing one."""
+    try:
+        return _patient(path.read_text, encoding="utf-8")
+    except FileNotFoundError:
+        return None
+
+
+def _parse(text: str) -> Dict[str, Any]:
+    """A lease file's document, or {} when it is empty or not valid JSON."""
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return {}
+    return doc if isinstance(doc, dict) else {}
+
+
+class _Unreadable(Exception):
+    """A lease file exists but cannot be read or parsed. Never guess what it says."""
+
+    def __init__(self, path: Path, why: str):
+        super().__init__(f"{path}: {why}")
+        self.path = path
+        self.why = why
+
+    def refusal(self, task_path: str) -> "RunLeaseHeld":
+        return RunLeaseHeld(
+            f"{self.path.name} for {task_path} exists but cannot be read ({self.why}), "
+            "so Ubunye cannot tell what it says. Nothing was run or taken back.",
+            context={"File": str(self.path)},
+            hint="Close whatever holds it (a backup, a scanner, a file permission), then "
+            "run again. If it is damaged, check it before removing it: it may list "
+            "another run's files.",
+        )
+
+
 def _write_atomic(path: Path, text: str) -> bool:
     tmp = path.with_name(f"{path.stem}.{uuid.uuid4().hex[:8]}.tmp")
     tmp.write_text(text, encoding="utf-8")
-    for _ in range(40):
-        try:
-            os.replace(tmp, path)
-            return True
-        except PermissionError:  # Windows: a reader has it open for a moment
-            time.sleep(0.05)
-    tmp.unlink(missing_ok=True)
-    return False
+    try:
+        _patient(os.replace, tmp, path)
+        return True
+    except PermissionError:  # held open for longer than a moment
+        tmp.unlink(missing_ok=True)
+        return False
 
 
 class RunLease:
@@ -268,9 +328,17 @@ class RunLease:
                 self._adopt_or_refuse()
                 self._start_heartbeat()
                 return self
-            held = self._read()
-            if held is None:
+            try:
+                text = _read_text(self.path)
+            except OSError as exc:
+                # It exists but cannot be read: whether its run is alive cannot be
+                # told, so never judge it dead by its age.
+                raise _Unreadable(self.path, str(exc)).refusal(self.task_path) from None
+            if text is None:
                 continue  # it vanished between the two calls: try again
+            # Empty or not JSON ({}): a crash inside ``_create`` leaves that, and it
+            # names no process, so it is judged by its age alone, like another host's.
+            held = _parse(text)
             if not self._dead(held):
                 raise RunLeaseHeld(
                     f"Run {str(held.get('run_id', '?'))[:8]} of {self.task_path} with the "
@@ -284,14 +352,16 @@ class RunLease:
             # is the one judged dead: another run may have taken it over just before.
             stale = self.path.with_name(f"{self.path.stem}.dead-{uuid.uuid4().hex[:8]}.json")
             try:
-                os.replace(self.path, stale)
+                _patient(os.replace, self.path, stale)
             except (FileNotFoundError, PermissionError):
                 continue
             try:
-                text = stale.read_text(encoding="utf-8")
-                taken = json.loads(text or "{}")
-            except (OSError, ValueError):
-                text, taken = "", {}
+                text = _read_text(stale) or ""
+            except OSError as exc:
+                # Which lease was renamed cannot be told: put it back, take nothing.
+                self._put_back(stale)
+                raise _Unreadable(stale, str(exc)).refusal(self.task_path) from None
+            taken = _parse(text)
             if taken.get("run_id") != held.get("run_id"):
                 # A live lease was renamed away. Put it back only if nobody took the
                 # name meanwhile (never overwrite a lease); its owner checks ownership
@@ -333,6 +403,12 @@ class RunLease:
             self._tombstone(str(taken.get("run_id") or "")).write_text(_now(), encoding="utf-8")
             try:
                 self.recovered = self._recover(taken)
+            except _Unreadable as bad:
+                # Its record cannot be read, so whether it finished cannot be told:
+                # hand the lease back as it was, and take nothing back.
+                if _write_atomic(self.path, json.dumps(taken)):
+                    stale.unlink(missing_ok=True)
+                raise bad.refusal(self.task_path) from None
             except _InUse as busy:
                 # Hand the lease back to the dead run, with what is left, and refuse: a
                 # forgotten claim would let its batch land twice.
@@ -373,6 +449,10 @@ class RunLease:
         give the batch up rather than run it a second time over them."""
         try:
             self._adopt_orphans()
+        except _Unreadable as bad:
+            self._stop.set()
+            self.path.unlink(missing_ok=True)
+            raise bad.refusal(self.task_path) from None
         except _InUse as busy:
             self._stop.set()
             self.path.unlink(missing_ok=True)
@@ -393,10 +473,16 @@ class RunLease:
             except OSError:
                 pass
         for orphan in self.leases_dir.glob(f"{self.path.stem}.dead-*.json"):
-            doc = self._read(orphan)
-            if not doc:
+            try:
+                text = _read_text(orphan)
+            except OSError as exc:
+                # Skipping it would leave its claimed files beside this run's append.
+                raise _Unreadable(orphan, str(exc)) from None
+            if text is None:
                 continue
-            self._recover(doc)  # _InUse: the orphan is kept, the caller refuses
+            # Empty or not JSON: a crash inside ``_create``, which claimed nothing (the
+            # same judgement as a takeover of such a lease).
+            self._recover(_parse(text))  # _InUse, _Unreadable: kept, the caller refuses
             orphan.unlink(missing_ok=True)
 
     def check_finished(self, appends: List[str], rerun: bool) -> None:
@@ -405,8 +491,17 @@ class RunLease:
         succeeds (F-031). The lease is this run's by now."""
         if not appends or not self.named:
             return
-        last = self._read(self._finished_path())
-        if not last or not last.get("outputs"):
+        path = self._finished_path()
+        try:
+            text = _read_text(path)
+        except OSError as exc:
+            raise _Unreadable(path, str(exc)).refusal(self.task_path) from None
+        if text is None:
+            return
+        last = _parse(text)
+        if not last:  # written in one replace, so never partly: something changed it
+            raise _Unreadable(path, "not valid JSON").refusal(self.task_path)
+        if not last.get("outputs"):
             return
         outputs = last["outputs"]
         who = f"run {str(last.get('run_id', '?'))[:8]} (finished {last.get('finished_at', '?')})"
@@ -548,13 +643,12 @@ class RunLease:
             self._beat.join()  # never unlink while a beat could still write
         if self._owner() is not True:
             return
-        for _ in range(40):
-            try:
-                self.path.unlink(missing_ok=True)
-                self._done_mark(self.run_id).unlink(missing_ok=True)
-                return
-            except PermissionError:  # Windows: a reader has it open for a moment
-                time.sleep(0.05)
+        try:
+            _patient(self.path.unlink, missing_ok=True)
+            _patient(self._done_mark(self.run_id).unlink, missing_ok=True)
+            return
+        except PermissionError:  # held open for longer than a moment
+            pass
         logger.warning("Could not remove the lease %s; the next run takes it over.", self.path)
 
     # --- outputs ----------------------------------------------------------------------
@@ -685,6 +779,20 @@ class RunLease:
 
     # --- internals --------------------------------------------------------------------
 
+    def _put_back(self, stale: Path) -> None:
+        """Put a lease renamed away for a takeover back, never over another lease (a
+        hard link fails if the name is taken). If it cannot be, it stays beside the
+        lease, where whoever holds the batch adopts it."""
+        try:
+            os.link(stale, self.path)
+        except OSError:
+            logger.warning("Lease %s could not be put back; it is kept as %s.", self.path, stale)
+            return
+        try:
+            stale.unlink()
+        except OSError:
+            pass
+
     def _create(self, text: str) -> bool:
         try:
             fd = os.open(str(self.path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -695,9 +803,12 @@ class RunLease:
         return True
 
     def _read(self, path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
-        """The lease: None if there is none, {} if it cannot be read right now."""
+        """The lease: None if there is none, {} if it cannot be read right now.
+
+        A read that meets the heartbeat's replace is retried, not called unreadable
+        (F-048)."""
         try:
-            return json.loads((path or self.path).read_text(encoding="utf-8"))
+            return json.loads(_patient((path or self.path).read_text, encoding="utf-8"))
         except FileNotFoundError:
             return None
         except (ValueError, OSError):
@@ -718,12 +829,16 @@ class RunLease:
         if self._tombstone(self.run_id).exists():
             return False
         for _ in range(5):
-            held = self._read()
-            if held is None:
+            try:
+                text = _read_text(self.path)  # one patient read, at most BUSY_FOR
+            except OSError:
+                return None
+            if text is None:
                 return False
+            held = _parse(text)
             if held:
                 return held.get("run_id") == self.run_id
-            time.sleep(0.05)
+            time.sleep(0.05)  # empty or partial: a lease being put back by ``_create``
         return None
 
     def _save(self) -> bool:
@@ -759,9 +874,9 @@ class RunLease:
             # Alive, but not inspectable (access denied): maybe a reused pid. Judge by
             # the lease's age, as for another host.
         try:
-            touched = self.path.stat().st_mtime
-        except FileNotFoundError:
-            return False
+            touched = _patient(self.path.stat).st_mtime
+        except OSError:
+            return False  # gone, or cannot be told: never dead
         return self._disk_now() - touched > HEARTBEAT_TIMEOUT
 
     def _start_heartbeat(self) -> None:
@@ -831,11 +946,16 @@ class RunLease:
     def _record_status(self, run_id: str) -> Optional[str]:
         if not run_id:
             return None
+        record = self.lineage_dir / self.task_path / f"{run_id}.json"
         try:
-            record = self.lineage_dir / self.task_path / f"{run_id}.json"
-            return json.loads(record.read_text(encoding="utf-8")).get("status")
-        except (OSError, ValueError):
-            return None
+            text = _read_text(record)
+        except OSError as exc:
+            # It may say "success" (it is written before the commit): taking the run
+            # for unfinished would take back what may be the batch.
+            raise _Unreadable(record, str(exc)) from None
+        # Missing, or partly written when the run died (the record is not written in
+        # one replace): the run did not get as far as recording success.
+        return _parse(text).get("status") if text else None
 
     def _mark_interrupted(self, run_id: str, unrepaired: List[str]) -> None:
         if not run_id:

@@ -91,6 +91,18 @@ table and information date, and with repairs made from what was actually written
   orphan whose file was in use, and a claim made through a drive letter. Each is fixed
   (a separate done marker, a check after each file lands, a refusal, real paths) and
   has a unit test.
+- On Windows a lease file is refused for a moment while it is replaced, and a replace
+  is refused while a reader has the file open (F-048). Every lease read, stat, rename
+  and removal retries a `PermissionError` for up to 2 seconds. A missing file is
+  never waited for, and it is still absent.
+- **A file that exists but cannot be read is never absent, free or dead** (F-048
+  skeptic review). If a lease, a dead run's lease left beside it, the finished note
+  or a dead run's record still cannot be read after the retries, the run is refused
+  and names the file. A takeover that cannot read the lease it renamed puts it back.
+  A finished note that is not valid JSON is refused too: it is written in one
+  replace, so something else changed it. One exception: a lease that is empty or not
+  valid JSON is judged by its age, as before, since a crash inside its creation
+  leaves one, and it names no process and claims nothing.
 - Three adversarial reviews shaped this. The third found no way to delete another
   run's file, and proved two silent doubles (a claim forgotten when its file was in
   use; a claim not found from another mount), a heartbeat that stopped for good, and a
