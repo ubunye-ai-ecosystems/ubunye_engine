@@ -27,6 +27,11 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **Expectations on a Spark output no longer need pyarrow.** The one row of counts was
+  collected through Arrow, and the images `ubunye deploy dockerfile dataproc` and
+  `container` write have no pyarrow, so a task with expectations died on Dataproc,
+  Kubernetes and Container Apps after its transform ran. Spark now gives the counts
+  itself; the numbers are the same (F-036).
 - **A cloud run's record survives a log line cut inside its marker.** Glue's CloudWatch
   sent `UB` and `UNYE-RECORD-PART 9/14 ...` as two lines, so a part lost its header
   and a run that succeeded gave back no record. The reader now joins a marker cut in
