@@ -14,6 +14,9 @@ pandas). Three principles, from the data contract example they replace:
   source that changed, not a few bad rows.
 - **Report every rule, passed or not.** The results list carries a zero for a
   rule nobody broke today, which is how you notice it breaking tomorrow.
+- **Nothing is lost silently.** A ``reconcile`` compares an output with an input
+  the transform received: its row count, and a column's sum, within a tolerance
+  (F-017). Quarantined rows count as carried over; they were set aside, not lost.
 
 A null passes every rule except ``not_null``, as in SQL. In a float column NaN counts
 as missing too, on every backend (F-045): pandas stores a missing float as NaN, so it
@@ -24,11 +27,12 @@ other. So ``not_null`` breaks on NaN, and ``between`` and ``one_of`` let it pass
 from __future__ import annotations
 
 import logging
+import numbers
 from dataclasses import asdict, dataclass
 from functools import reduce
 from typing import Any, Dict, List, Optional, Tuple
 
-from ubunye.config.schema import ExpectationRule, ExpectationSet
+from ubunye.config.schema import ExpectationRule, ExpectationSet, allowed
 from ubunye.core.errors import ExpectationError, TransformOutputError
 
 log = logging.getLogger(__name__)
@@ -47,11 +51,16 @@ class RuleResult:
     severity: str
     column: Optional[str]
     failed: int  # rows breaking it (duplicate rows for unique; 1 or 0 for row_count)
-    total: int  # rows checked
+    total: int  # rows checked (input rows for a reconcile of rows)
     passed: bool
+    #: What was found, in words, where a count alone does not say it (reconcile).
+    detail: Optional[str] = None
 
     def as_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        d = asdict(self)
+        if d["detail"] is None:  # only a reconcile has one; records stay as they were
+            del d["detail"]
+        return d
 
 
 def _nw() -> Any:
@@ -175,13 +184,175 @@ def _scalars(frame: Any, exprs: List[Any]) -> Dict[str, Any]:
     return {k: (0 if v is None else v) for k, v in row.items()}
 
 
+def _sum(nw: Any, column: str, floats: frozenset) -> Any:
+    """A column's sum, leaving out missing values (null, and NaN in a float column).
+
+    Spark's sum of a column holding NaN is NaN and pandas skips it; NaN counts as
+    missing on every backend here, as it does for the rules (F-045).
+    """
+    if column in floats:
+        return nw.when(~_missing(nw, column, floats)).then(nw.col(column)).sum()
+    return nw.col(column).sum()
+
+
+def _numeric_column(nw: Any, where: str, df: Any, column: str, rule: str) -> None:
+    """``column`` exists in ``df`` and is a number, or an ExpectationError says which."""
+    schema = df.collect_schema()
+    available = list(schema.names())
+    if column not in available:
+        raise ExpectationError(
+            f"{where}: {rule} names column '{column}', which it does not have.",
+            context={"Frame": where, "Rule": rule, "Columns": ", ".join(available)},
+            hint="Check the column name in CONFIG.expectations.",
+        )
+    if not schema[column].is_numeric():
+        raise ExpectationError(
+            f"{where}: {rule} sums column '{column}', which is {schema[column]}, not a number.",
+            context={"Frame": where, "Rule": rule, "Column": column},
+            hint=_TEXT_NUMBER_HINT.format(column=column),
+        )
+
+
+def measure_inputs(
+    inputs: Optional[Dict[str, Any]], expectations: Dict[str, ExpectationSet]
+) -> Dict[str, Dict[str, Any]]:
+    """Row count and asked-for sums of every input a ``reconcile`` names.
+
+    One pass over each such input, as the transform received it. On a lazy
+    backend (Spark) that pass reads the source again: inputs are not held
+    (ADR 009). Returns ``{input: {"rows": n, "sums": {column: value}}}``.
+    """
+    wanted: Dict[str, List[str]] = {}
+    for spec in expectations.values():
+        for check in spec.reconcile:
+            columns = wanted.setdefault(check.input, [])
+            if check.sum is not None:
+                column = check.sum.input_column or check.sum.column
+                if column not in columns:
+                    columns.append(column)
+    if not wanted:
+        return {}
+    missing = sorted(n for n in wanted if not inputs or n not in inputs)
+    if missing:
+        raise ExpectationError(
+            f"reconcile needs the input frames the transform received, and "
+            f"{', '.join(repr(m) for m in missing)} was not given.",
+            context={"Missing inputs": ", ".join(missing)},
+            hint="Pass the frames read for the task (Engine.write_outputs(..., inputs=...)).",
+        )
+    nw = _nw()
+    measured: Dict[str, Dict[str, Any]] = {}
+    for name in sorted(wanted):
+        df = nw.from_native(inputs[name])  # type: ignore[index]
+        for column in wanted[name]:
+            _numeric_column(nw, f"input {name}", df, column, "reconcile")
+        schema = df.collect_schema()
+        floats = frozenset(c for c, t in schema.items() if t in (nw.Float32, nw.Float64))
+        got = _scalars(
+            df,
+            [nw.len().alias("__rows")]
+            + [_sum(nw, c, floats).alias(f"s{i}") for i, c in enumerate(wanted[name])],
+        )
+        measured[name] = {
+            "rows": int(got["__rows"]),
+            "sums": {c: got[f"s{i}"] for i, c in enumerate(wanted[name])},
+        }
+    return measured
+
+
+def _text(value: Any) -> str:
+    return str(value) if isinstance(value, numbers.Integral) else f"{float(value):.10g}"
+
+
+def _limit_text(value: Any) -> str:
+    return value if isinstance(value, str) else _text(value)
+
+
+def _reconcile(
+    name: str,
+    spec: ExpectationSet,
+    total: int,
+    sums: Dict[str, Any],
+    measured: Dict[str, Dict[str, Any]],
+) -> List[RuleResult]:
+    """The reconcile results for one output, from counts already taken."""
+    results: List[RuleResult] = []
+    for check in spec.reconcile:
+        got = measured[check.input]
+        if check.rows is not None:
+            read = int(got["rows"])
+            lost, gained = max(read - total, 0), max(total - read, 0)
+            ok = True
+            limits = []
+            for label, bound, moved in (
+                ("lost", check.rows.max_lost, lost),
+                ("gained", check.rows.max_gained, gained),
+            ):
+                if bound is not None:
+                    ok = ok and moved <= allowed(bound, read)
+                    limits.append(f"at most {_limit_text(bound)} {label}")
+            results.append(
+                RuleResult(
+                    output=name,
+                    rule=check.rows_name,
+                    kind="reconcile",
+                    severity=check.severity,
+                    column=None,
+                    failed=lost or gained,
+                    total=read,
+                    passed=ok,
+                    detail=f"{read} rows read from {check.input}, {total} reached {name}: "
+                    f"{lost} lost, {gained} gained ({', '.join(limits)})",
+                )
+            )
+        if check.sum is not None:
+            source = check.sum.input_column or check.sum.column
+            before, after = got["sums"][source], sums[check.sum.column]
+            if isinstance(before, numbers.Integral) and isinstance(after, numbers.Integral):
+                diff: Any = int(after) - int(before)
+            else:
+                diff = float(after) - float(before)
+            limit = allowed(check.sum.tolerance, float(before))
+            ok = abs(diff) <= limit
+            results.append(
+                RuleResult(
+                    output=name,
+                    rule=check.sum_name,
+                    kind="reconcile",
+                    severity=check.severity,
+                    column=check.sum.column,
+                    failed=0 if ok else 1,
+                    total=1,
+                    passed=ok,
+                    detail=f"sum of {source} in {check.input} {_text(before)}, of "
+                    f"{check.sum.column} in {name} {_text(after)}: difference "
+                    f"{_text(diff)} (at most {_limit_text(check.sum.tolerance)})",
+                )
+            )
+    return results
+
+
 def check_output(
-    name: str, frame: Any, spec: ExpectationSet
+    name: str,
+    frame: Any,
+    spec: ExpectationSet,
+    measured: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Tuple[Any, Optional[Any], List[RuleResult]]:
-    """Check one output: (clean frame, quarantined frame or None, results)."""
+    """Check one output: (clean frame, quarantined frame or None, results).
+
+    ``measured`` is :func:`measure_inputs` for the inputs the output's
+    ``reconcile`` names. Their checks count the output before any row is
+    quarantined, so a quarantined row counts as carried over.
+    """
     nw = _nw()
     df = nw.from_native(frame)
     _check_columns(nw, name, df, spec)
+    measured = measured if measured is not None else measure_inputs(None, {name: spec})
+    sum_columns: List[str] = []
+    for check in spec.reconcile:
+        if check.sum is not None and check.sum.column not in sum_columns:
+            _numeric_column(nw, name, df, check.sum.column, "reconcile")
+            sum_columns.append(check.sum.column)
 
     row_rules = [r for r in spec.rules if r.kind in ("not_null", "between", "one_of", "matches")]
     schema = df.collect_schema()
@@ -192,7 +363,8 @@ def check_output(
         + [
             _breaks(nw, r, floats).cast(nw.Int64).sum().alias(f"r{i}")
             for i, r in enumerate(row_rules)
-        ],
+        ]
+        + [_sum(nw, c, floats).alias(f"s{i}") for i, c in enumerate(sum_columns)],
     )
     total = int(counts["__total"])
     failed: Dict[str, int] = {r.name: int(counts[f"r{i}"]) for i, r in enumerate(row_rules)}
@@ -224,6 +396,8 @@ def check_output(
         )
         for r in spec.rules
     ]
+    sums = {c: counts[f"s{i}"] for i, c in enumerate(sum_columns)}
+    results += _reconcile(name, spec, total, sums, measured)
 
     clean, quarantined = _split(nw, frame, df, row_rules, floats, failed)
     return clean, quarantined, results
@@ -293,19 +467,25 @@ def cut(
 
 
 def apply(
-    outputs: Dict[str, Any], expectations: Dict[str, ExpectationSet]
+    outputs: Dict[str, Any],
+    expectations: Dict[str, ExpectationSet],
+    inputs: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], List[RuleResult]]:
     """Check every output that has expectations; nothing is written here.
 
     Returns the outputs to write (clean frames, plus quarantined rows under their
     quarantine output) and every rule's result. Raises :class:`ExpectationError`
-    if any ``fail`` rule is broken or a quarantine rate is exceeded.
+    if any ``fail`` rule is broken or a quarantine rate is exceeded. ``inputs``
+    are the frames the transform received; a ``reconcile`` needs them.
     """
     if not expectations:
         return outputs, []
     outputs = dict(outputs)
     results: List[RuleResult] = []
     problems: List[str] = []
+    measured = measure_inputs(
+        inputs, {n: s for n, s in expectations.items() if n in outputs and s.reconcile}
+    )
 
     for name in sorted(expectations):
         spec = expectations[name]
@@ -318,7 +498,7 @@ def apply(
                 context={"Output": name, "Quarantine": spec.quarantine},
                 hint=f"Stop returning '{spec.quarantine}' from transform().",
             )
-        clean, quarantined, found = check_output(name, outputs[name], spec)
+        clean, quarantined, found = check_output(name, outputs[name], spec, measured)
         results += found
         outputs[name] = clean
         if spec.quarantine:
@@ -330,7 +510,10 @@ def apply(
         for r in found:
             if r.passed:
                 continue
-            line = f"{name}: {r.rule} ({r.kind}) broken by {r.failed} of {r.total} rows"
+            if r.detail:
+                line = f"{name}: {r.rule} ({r.kind}): {r.detail}"
+            else:
+                line = f"{name}: {r.rule} ({r.kind}) broken by {r.failed} of {r.total} rows"
             if r.severity == "fail":
                 problems.append(line)
             elif r.severity == "warn":

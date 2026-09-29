@@ -185,9 +185,9 @@ def test_only_the_outputs_with_expectations_are_held_when_not_recorded(monkeypat
     seen: Dict[str, Any] = {}
     real = expectations.apply
 
-    def spy(outputs, specs):
+    def spy(outputs, specs, inputs=None):
         seen.update(outputs)
-        return real(outputs, specs)
+        return real(outputs, specs, inputs)
 
     monkeypatch.setattr(expectations, "apply", spy)
     backend = LazyBackend()
@@ -205,9 +205,9 @@ def test_checks_write_and_record_see_the_same_frame(monkeypatch):
     seen: Dict[str, Any] = {}
     real = expectations.apply
 
-    def spy(outputs, specs):
+    def spy(outputs, specs, inputs=None):
         seen.update(outputs)
-        return real(outputs, specs)
+        return real(outputs, specs, inputs)
 
     monkeypatch.setattr(expectations, "apply", spy)
     backend = LazyBackend()

@@ -355,12 +355,117 @@ class ExpectationRule(BaseModel):
         return self
 
 
+_PERCENT = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*%\s*$")
+
+
+def _allowance(value: Any, what: str) -> Any:
+    """A tolerance: a number (at least 0), or a share of the input written "1%"."""
+    if isinstance(value, bool):
+        raise ValueError(f"{what} must be a number or a percentage like '1%', not {value!r}")
+    if isinstance(value, str):
+        if not _PERCENT.match(value):
+            raise ValueError(f"{what} must be a number or a percentage like '1%', not {value!r}")
+        return value.strip()
+    if value < 0:
+        raise ValueError(f"{what} cannot be negative")
+    return value
+
+
+def allowed(value: Any, base: float) -> float:
+    """What a tolerance allows against ``base``: the number itself, or its share of base."""
+    if isinstance(value, str):
+        return float(_PERCENT.match(value).group(1)) / 100 * abs(base)  # type: ignore[union-attr]
+    return float(value)
+
+
+class ReconcileRows(BaseModel):
+    """``rows``: how many of the input's rows may be lost, or gained, on the way.
+
+    A bound left out is not checked. ``max_lost: 0`` means every input row must
+    reach the output. A bound is a number of rows or a share of the input ("1%").
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_lost: Optional[Any] = None
+    max_gained: Optional[Any] = None
+
+    @field_validator("max_lost", "max_gained")
+    @classmethod
+    def _bound(cls, v: Any, info: Any) -> Any:
+        if v is None:
+            return v
+        if isinstance(v, float) and not v.is_integer():
+            raise ValueError(f"{info.field_name} is a number of rows; use '{v}%' for a share")
+        v = _allowance(v, info.field_name)
+        return int(v) if isinstance(v, float) else v
+
+    @model_validator(mode="after")
+    def _one_bound(self) -> "ReconcileRows":
+        if self.max_lost is None and self.max_gained is None:
+            raise ValueError("'rows' needs 'max_lost', 'max_gained' or both")
+        return self
+
+
+class ReconcileSum(BaseModel):
+    """``sum``: a column's total must carry over from the input to the output."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    #: The input's column, when it has another name there. Defaults to ``column``.
+    input_column: Optional[str] = None
+    #: How far the output's sum may be from the input's: a number, or "0.1%" of it.
+    tolerance: Any = 0
+
+    @field_validator("tolerance")
+    @classmethod
+    def _tolerance(cls, v: Any) -> Any:
+        return _allowance(v, "tolerance")
+
+
+class ReconcileSpec(BaseModel):
+    """One reconciliation: what must carry over from an input to this output.
+
+    Checked with the other expectations, before anything is written. Rows set
+    aside by a ``quarantine`` rule count as carried over: they were not lost.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    input: str
+    rows: Optional[ReconcileRows] = None
+    sum: Optional[ReconcileSum] = None
+    severity: Literal["fail", "warn"] = "fail"
+    description: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _something_to_check(self) -> "ReconcileSpec":
+        if self.rows is None and self.sum is None:
+            raise ValueError(f"reconcile with '{self.input}' needs 'rows', 'sum' or both")
+        return self
+
+    @property
+    def rows_name(self) -> str:
+        return f"rows_from_{self.input}"
+
+    @property
+    def sum_name(self) -> str:
+        return f"{self.sum.column}_sum_from_{self.input}" if self.sum else ""
+
+    @property
+    def names(self) -> List[str]:
+        return [n for n in (self.rows and self.rows_name, self.sum and self.sum_name) if n]
+
+
 class ExpectationSet(BaseModel):
     """The expectations on one output, and where its quarantined rows go."""
 
     model_config = ConfigDict(extra="forbid")
 
-    rules: List[ExpectationRule]
+    rules: List[ExpectationRule] = Field(default_factory=list)
+    #: What must carry over from an input to this output (row counts, a column's sum).
+    reconcile: List[ReconcileSpec] = Field(default_factory=list)
     #: The output that receives rows breaking a ``quarantine`` rule, with a
     #: ``_ubunye_failed_rules`` column naming the rules each row broke.
     quarantine: Optional[str] = None
@@ -370,7 +475,7 @@ class ExpectationSet(BaseModel):
 
     @model_validator(mode="after")
     def _quarantine_has_a_target(self) -> "ExpectationSet":
-        names = [r.name for r in self.rules]
+        names = [r.name for r in self.rules] + [n for c in self.reconcile for n in c.names]
         dupes = sorted({n for n in names if names.count(n) > 1})
         if dupes:
             raise ValueError(f"expectation names must be unique; repeated: {', '.join(dupes)}")
@@ -428,6 +533,12 @@ class TaskConfig(BaseModel):
                 )
             if spec.quarantine == name:
                 errors.append(f"expectations.{name}: an output cannot quarantine into itself")
+            for check in spec.reconcile:
+                if check.input not in self.inputs:
+                    errors.append(
+                        f"expectations.{name}.reconcile: there is no input named "
+                        f"'{check.input}' (inputs: {', '.join(sorted(self.inputs))})"
+                    )
             if name in targets:
                 errors.append(
                     f"expectations.{name}: '{name}' receives quarantined rows, so it "

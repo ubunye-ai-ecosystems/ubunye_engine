@@ -16,7 +16,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 11 (F-008 to F-010, F-015, F-017, F-018, F-038, F-039 (item 1 fixed), F-042, F-046, F-048) | 25 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032, F-034 to F-037, F-045; F-040 and F-043 merged eff8ba8; F-047 merged f569e0a; F-041 merged) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
+| 10 (F-008 to F-010, F-015, F-018, F-038, F-039 (item 1 fixed), F-042, F-046, F-048) | 26 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032, F-034 to F-037, F-045; F-040 and F-043 merged eff8ba8; F-047 merged f569e0a; F-041 merged; F-017 on fix/f017-f018-contracts) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
 
 ## Experiments
 
@@ -24,7 +24,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 |---|---|---|
 | E-01 | Crash mid-write | answered: append doubled 16/16; after ADR 008 19/20; after F-031 20/20 (2026-09-29: 18 killed runs rerun once each, 2 finished runs refused on rerun); pandas `overwrite_partitions` events 10/10 (F-012) |
 | E-02 | Two runs at once | answered: append doubled 7/10; after ADR 008 0/10, second run refused by name (rerun after F-031: 0/10) |
-| E-03 | Silent row loss | answered: visible in the record, not enforceable (F-017) |
+| E-03 | Silent row loss | answered: visible in the record, not enforceable (F-017). After F-017 (`reconcile`, `--contracts`): run exit 1, nothing written, "100 lost" named (was exit 0, 900 of 1000 written) |
 | E-04 | Secrets in records | answered: secret:// and env safe; --var leaks (F-016); REST needs Spark (F-015) |
 | E-05 | Schema drift | answered: gate catches all; a retype writes wrong data at run time (F-018) |
 | E-06 | Scale ladder | answered 2026-09-29: without `--lineage` 1.01x (Spark) and 1.04x to 1.36x (pandas), falling with size: pass; with `--lineage` 1.7x to 4.4x (Spark) and 5.4x to 11.5x (pandas), rising: fail (F-038, F-039, F-041); nothing collected to the driver; Spark record can hash rows it did not write (F-040). After ADR 009 (fix/f040-spark-persist): record equals written files 3/3 (was 0/3); at 5M, `--lineage` 1.83x (was 2.32x) and expectations 1.46x (was 1.74x) on the dev box |

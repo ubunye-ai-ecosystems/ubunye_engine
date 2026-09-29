@@ -475,6 +475,8 @@ def _print_evidence(ctx: RunContext) -> None:
                 f"    {mark:<10} {e['output']}.{e['rule']:<28} {e['failed']}/{e['total']}",
                 fg=colour,
             )
+            if e.get("detail"):
+                typer.echo(f"               {e['detail']}")
     if ctx.llm_calls:
         typer.echo()
         typer.secho("  MODEL CALLS", fg=typer.colors.CYAN)

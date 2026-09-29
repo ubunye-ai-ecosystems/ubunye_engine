@@ -151,3 +151,92 @@ def test_nan_counts_as_missing_on_spark_as_on_pandas(spark):
             "qty_one_of": 1,
         }
     )
+
+
+# --- reconcile (F-017): rows and totals carried from an input to an output ----------
+
+ORDERS = [
+    (0, 1, 10.0),
+    (1, 2, float("nan")),
+    (2, 3, None),
+    (3, 99, 40.0),  # an unknown customer: the inner join drops it
+    (4, 99, 50.0),
+    (5, 1, 60.0),
+]
+CUSTOMERS = [(1, "jhb"), (2, "cpt"), (3, "dbn")]
+RECONCILE = [
+    {"input": "orders", "rows": {"max_lost": 0}, "severity": "warn"},
+    {"input": "orders", "sum": {"column": "amount", "tolerance": 1}, "severity": "warn"},
+]
+
+
+def _orders_and_join(spark, engine):
+    if engine == "pandas":
+        orders = pd.DataFrame(ORDERS, columns=["order_id", "customer_id", "amount"])
+        customers = pd.DataFrame(CUSTOMERS, columns=["customer_id", "city"])
+        return orders, orders.merge(customers, on="customer_id", how="inner")
+    orders = spark.createDataFrame(ORDERS, "order_id INT, customer_id INT, amount DOUBLE")
+    customers = spark.createDataFrame(CUSTOMERS, "customer_id INT, city STRING")
+    return orders, orders.join(customers, "customer_id", "inner")
+
+
+def test_reconcile_gives_the_same_results_on_spark_and_pandas(spark):
+    spec = ExpectationSet(reconcile=RECONCILE)
+    found = {}
+    for engine in ("pandas", "spark"):
+        orders, joined = _orders_and_join(spark, engine)
+        _, results = expectations.apply(
+            {"enriched": joined}, {"enriched": spec}, {"orders": orders}
+        )
+        found[engine] = [r.as_dict() for r in results]
+    assert found["spark"] == found["pandas"]
+    rows, total = found["spark"]
+    assert (rows["failed"], rows["total"], rows["passed"]) == (2, 6, False)
+    # NaN and null are left out of both sums: 160 read, 70 reached.
+    assert "difference -90" in total["detail"] and total["passed"] is False
+
+
+def test_a_reconcile_refuses_the_run_on_spark_too(spark):
+    orders, joined = _orders_and_join(spark, "spark")
+    spec = ExpectationSet(reconcile=[{"input": "orders", "rows": {"max_lost": 0}}])
+    with pytest.raises(ExpectationError, match="6 rows read from orders, 4 reached"):
+        expectations.apply({"enriched": joined}, {"enriched": spec}, {"orders": orders})
+
+
+def test_a_task_that_drops_orders_writes_nothing_on_spark(spark, tmp_path):
+    import textwrap
+
+    import ubunye
+
+    root = tmp_path.as_posix()
+    _orders_and_join(spark, "spark")[0].write.parquet(f"{root}/orders")
+    spark.createDataFrame(CUSTOMERS, "customer_id INT, city STRING").write.parquet(
+        f"{root}/customers"
+    )
+    task = tmp_path / "uc" / "pkg" / "enrich"
+    task.mkdir(parents=True)
+    (task / "config.yaml").write_text(textwrap.dedent(f"""\
+        CONFIG:
+          inputs:
+            orders: {{format: s3, path: "{root}/orders", file_format: parquet}}
+            customers: {{format: s3, path: "{root}/customers", file_format: parquet}}
+          outputs:
+            enriched: {{format: s3, path: "{root}/out", file_format: parquet, mode: overwrite}}
+          expectations:
+            enriched:
+              reconcile:
+                - input: orders
+                  rows: {{max_lost: 0}}
+        """))
+    (task / "transformations.py").write_text(textwrap.dedent("""\
+        from ubunye.core.interfaces import Task
+
+
+        class Enrich(Task):
+            def transform(self, sources):
+                joined = sources["orders"].join(sources["customers"], "customer_id", "inner")
+                return {"enriched": joined}
+        """))
+    with pytest.raises(ExpectationError, match="2 lost"):
+        ubunye.run_task(str(task), spark=spark)
+    assert not (tmp_path / "out").exists()

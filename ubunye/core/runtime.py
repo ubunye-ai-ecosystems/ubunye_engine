@@ -299,7 +299,7 @@ class Engine:
                     finally:
                         state["llm_budget"] = budget.summary() if budget.limited else {}
                     once = self._hold_outputs(cfg, ctx, chain, outputs_map, state, held)
-                    checked = self._check_expectations(cfg, once, state)
+                    checked = self._check_expectations(cfg, once, state, sources)
                     ports = self._to_ports(checked)
                     self._write_outputs(ctx, chain, outputs_cfg, ports)
                     # Hooks (lineage, monitors) get the port; the caller gets native frames.
@@ -338,13 +338,21 @@ class Engine:
         chain = self._build_hook_chain(cfg)
         return self._apply_transforms(ctx, chain, sources, transforms)
 
-    def write_outputs(self, outputs: Dict[str, Any], cfg: dict, *, as_run: bool = False) -> None:
+    def write_outputs(
+        self,
+        outputs: Dict[str, Any],
+        cfg: dict,
+        *,
+        as_run: bool = False,
+        inputs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """Write *outputs* to the sinks defined in ``CONFIG.outputs``.
 
         With ``as_run=True`` the write is wrapped as a whole task for the hooks,
         so lineage and monitors record it exactly as they record ``run()``. This
         is how a notebook that reads, transforms and writes step by step still
-        leaves a run record.
+        leaves a run record. *inputs* are the frames the transform received
+        (from :meth:`read_inputs`); an expectation's ``reconcile`` needs them.
         """
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         # The notebook path writes here without run(): the same pre-checks apply,
@@ -357,12 +365,12 @@ class Engine:
         try:
             if not as_run:
                 once = self._hold_outputs(cfg, ctx, chain, outputs, state, held, task=False)
-                outputs = self._check_expectations(cfg, once, state)
+                outputs = self._check_expectations(cfg, once, state, inputs)
                 self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
                 return
             with chain.task(ctx, cfg, state):
                 once = self._hold_outputs(cfg, ctx, chain, outputs, state, held)
-                outputs = self._check_expectations(cfg, once, state)
+                outputs = self._check_expectations(cfg, once, state, inputs)
                 ports = self._to_ports(outputs)
                 self._write_outputs(ctx, chain, outputs_cfg, ports)
                 state["outputs"] = ports
@@ -370,14 +378,19 @@ class Engine:
             self._release(held)
 
     def _check_expectations(
-        self, cfg: dict, outputs: Dict[str, Any], state: Dict[str, Any]
+        self,
+        cfg: dict,
+        outputs: Dict[str, Any],
+        state: Dict[str, Any],
+        inputs: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """``CONFIG.expectations``: check every output before any is written.
 
         Returns the frames to write: clean rows, plus the quarantined rows under
         their quarantine output. Raises ``ExpectationError`` (nothing written)
         when a ``fail`` rule is broken. Every rule's result goes into
-        ``state["expectations"]`` for the hooks.
+        ``state["expectations"]`` for the hooks. *inputs* are the frames the
+        transform received, for a ``reconcile``.
         """
         raw = (cfg.get("CONFIG") or {}).get("expectations") or {}
         if not raw:
@@ -389,7 +402,11 @@ class Engine:
         from ubunye.core.errors import ExpectationError
 
         try:
-            checked, results = expectations.apply(self._to_natives(outputs), specs)
+            checked, results = expectations.apply(
+                self._to_natives(outputs),
+                specs,
+                self._to_natives(inputs) if inputs is not None else None,
+            )
         except ExpectationError as exc:
             state["expectations"] = list(exc.results)
             raise

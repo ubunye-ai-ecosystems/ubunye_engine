@@ -254,7 +254,7 @@ class NotebookContext:
                 raise ValueError(
                     "No outputs to write. Call transform() first or pass outputs explicitly."
                 )
-        self._engine.write_outputs(outputs, self._cfg_dict, as_run=True)
+        self._engine.write_outputs(outputs, self._cfg_dict, as_run=True, inputs=self._last_sources)
 
     def run(self) -> Dict[str, Any]:
         """Read, transform, and write in one call (same as ``ubunye.run_task``)."""

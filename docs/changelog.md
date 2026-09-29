@@ -197,6 +197,19 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Added
 
+- **`reconcile`: an output can declare that nothing is lost on the way from an input**
+  (F-017). Under `CONFIG.expectations.<output>`, `reconcile: [{input: orders, rows:
+  {max_lost: 0}, sum: {column: amount, tolerance: 0.01}}]`. Bounds are a number or a
+  share (`"1%"`); `max_gained` catches a join that fans out. It is checked with the
+  other expectations, before anything is written, and reported like a rule
+  (`rows_from_orders`, with what was found in a new `detail` field) in the error, the
+  run record, `ubunye lineage show` and `ubunye gate`. Rows sent to quarantine count
+  as carried over. Before, an inner join that dropped 100 of 1,000 orders succeeded;
+  the E-03 task now stops with "1000 rows read from orders, 900 reached enriched: 100
+  lost". It costs one pass over each reconciled input (on Spark, a second read of it).
+  `ubunye validate` refuses a reconcile that names no real input.
+  `Engine.write_outputs` takes `inputs=` for it; the notebook passes what it read.
+
 - **`ubunye deploy` runs several tasks in one launch** (glue, dataproc, k8s,
   container-apps, emr-serverless): repeat `-t`, as in `-t clean -t monitor`. They run in
   that order in the one job, so a task can read what the one before it wrote to the
