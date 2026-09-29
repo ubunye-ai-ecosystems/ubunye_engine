@@ -1,6 +1,6 @@
 # F-027: a cast inside a group-by was lost on pandas
 
-**Status:** worked around in the example; upstream (Narwhals) not yet reported
+**Status:** worked around in the example; reported upstream: narwhals-dev/narwhals#4005 (2026-09-29)
 **Severity:** major (the same code gave another schema on pandas than on Spark)
 **Source:** real-world example R1 (examples/real-world/food_prices_africa), WFP data 2025-2026, pandas-local vs spark-local (2026-09-29)
 **Promise:** 1
@@ -18,5 +18,5 @@ df.group_by("k").agg(n=nw.len().cast(nw.Int64), m=nw.col("x").mean())   # n: flo
 ```
 
 ## Fix
-Cast after the aggregation (`docs/guides/portable-transforms.md`). An upstream issue for
-Narwhals is drafted; filing it is the owner's decision (public, under their account).
+Cast after the aggregation (`docs/guides/portable-transforms.md`). Reported upstream:
+https://github.com/narwhals-dev/narwhals/issues/4005

@@ -41,7 +41,8 @@ question altogether.
 
 On pandas, Narwhals 2.26 dropped a `.cast(nw.Int64)` written inside a group-by that
 also computed a mean: the counts came out as `float64`, and the schema no longer
-matched Spark's `bigint` (finding F-027). Cast after the aggregation:
+matched Spark's `bigint` (finding F-027, reported as
+[narwhals#4005](https://github.com/narwhals-dev/narwhals/issues/4005)). Cast after the aggregation:
 
 ```python
 agg = df.group_by("k").agg(n=nw.len(), m=nw.col("x").mean())
