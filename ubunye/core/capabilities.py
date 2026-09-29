@@ -26,9 +26,11 @@ Feature names a backend can declare (connectors refer to the same names):
 from __future__ import annotations
 
 import os
+import posixpath
 import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable, Dict, FrozenSet, List, Mapping, Optional
+from urllib.parse import unquote
 
 if TYPE_CHECKING:
     from ubunye.core.runtime import Registry
@@ -180,48 +182,82 @@ def check_task(
             caps, f"output '{name}'", ocfg, writer, backend_name, is_output=True, io_check=io_check
         )
     if caps.lazy:
-        problems += self_overwrites(config)
+        problems += self_overwrites(config, lambda o: _writes_path(registry, o))
     return problems
 
 
 #: Write modes that delete what is at the output's path before writing.
 _DELETING_MODES = frozenset({"overwrite", "overwrite_partitions"})
 _GLOB = re.compile(r"[*?\[{]")
+#: Schemes that reach the same store: Hadoop's s3 and s3n are s3a on Spark today.
+_SCHEME_ALIASES = {"s3": "s3a", "s3n": "s3a"}
+#: In every self-overwrite problem, so a caller can give it its own hint.
+SELF_OVERWRITE_MARK = "the source is lost"
 
 
-def self_overwrites(config: Dict[str, Any]) -> List[str]:
+@dataclass(frozen=True)
+class _Location:
+    """A path as compared here. ``prefix``: a glob's literal start; anything under it may be read."""
+
+    text: str
+    prefix: bool = False
+
+
+def self_overwrites(
+    config: Dict[str, Any], writes_path: Optional[Callable[[Dict[str, Any]], bool]] = None
+) -> List[str]:
     """Outputs that would delete, before the write, files an input still has to read (F-047).
 
     On a lazy backend the transform runs during the write. An ``overwrite`` of a
-    folder the task reads (the same folder, or one inside the other) deletes the
-    input's files first, then the write reads files that are gone: the run fails
-    and the source is lost. Delta outputs are left alone, since a Delta overwrite
-    reads a fixed snapshot of the table. A backend that reads into memory first
-    (pandas) never gets here: only a lazy backend is checked.
+    folder the task reads (the same folder, a parent, one inside it, or one a glob
+    can reach) deletes the input's files first, then the write reads files that are
+    gone: the run fails and the source is lost. Delta outputs are left alone, since
+    a Delta overwrite reads a fixed snapshot of the table. ``writes_path`` says
+    whether an output's writer writes to its ``path`` at all (a Unity writer
+    ignores it). A backend that reads into memory first (pandas) never gets here:
+    only a lazy backend is checked.
+
+    Not seen: a relative path that a cluster resolves somewhere other than this
+    process's folder, two secrets that resolve to one path, and a table input
+    whose storage is the output's folder.
     """
     reads = []
     for name, icfg in sorted((config.get("inputs") or {}).items()):
-        root = _local_root(icfg.get("path"))
-        if root:
-            reads.append((name, icfg.get("path"), root))
+        loc = _location(icfg.get("path"))
+        if loc:
+            reads.append((name, icfg.get("path"), loc))
     problems: List[str] = []
     for name, ocfg in sorted((config.get("outputs") or {}).items()):
-        mode = str(ocfg.get("mode") or "").lower()
+        mode = _mode(ocfg.get("mode"))
         if mode not in _DELETING_MODES or _is_delta(ocfg):
             continue
-        out = _local_root(ocfg.get("path"))
-        if not out:
+        if writes_path is not None and not writes_path(ocfg):
             continue
-        for iname, ipath, root in reads:
-            if _overlaps(out, root):
+        out = _location(ocfg.get("path"))
+        if not out or out.prefix:
+            continue  # an output path with a glob in it is not a folder we can judge
+        for iname, ipath, loc in reads:
+            if _overlaps(out.text, loc):
                 problems.append(
                     f"output '{name}' ({mode}) writes to '{ocfg.get('path')}', which "
                     f"input '{iname}' reads ('{ipath}'). The overwrite deletes the input's "
-                    "files before the write has read them, so the run fails and the source "
-                    "is lost. Write to a new path, or use Delta (file_format: delta), whose "
-                    "overwrite reads a fixed snapshot."
+                    f"files before the write has read them, so the run fails and "
+                    f"{SELF_OVERWRITE_MARK}. Write to a new path, or use Delta "
+                    "(file_format: delta), whose overwrite reads a fixed snapshot."
                 )
     return problems
+
+
+def _writes_path(registry: "Registry", ocfg: Dict[str, Any]) -> bool:
+    """False for a writer that declares it never writes to ``path`` (a Unity table)."""
+    writer = registry.writers.get(ocfg.get("format"))
+    requires = getattr(writer, "REQUIRES", None)
+    return requires is None or PATH_IO in requires
+
+
+def _mode(raw: Any) -> str:
+    """The mode as the writer resolves it: an enum's value, trimmed, lower case."""
+    return str(getattr(raw, "value", raw) or "").strip().lower()
 
 
 def _is_delta(cfg: Dict[str, Any]) -> bool:
@@ -231,26 +267,60 @@ def _is_delta(cfg: Dict[str, Any]) -> bool:
     )
 
 
-def _local_root(path: Any) -> Optional[str]:
-    """The folder a path names, compared as text: no scheme case, no trailing slash, no glob."""
+def _location(path: Any) -> Optional[_Location]:
+    """One spelling for every way of writing the same place, or ``None`` if unknowable.
+
+    Local paths are made absolute, symlinks followed, case folded where the file
+    system folds it. ``file:`` is local. ``dbfs:/x``, ``dbfs:///x`` and ``/dbfs/x``
+    are one place. For other schemes s3 and s3n are s3a, the host is lower case,
+    and ``//``, ``..`` and %-escapes are resolved. A glob keeps only its literal
+    start, marked as a prefix.
+    """
     if not isinstance(path, str) or not path.strip() or "{{" in path or "{%" in path:
         return None  # not rendered yet: nothing is known about it
     p = path.strip().replace("\\", "/")
     glob = _GLOB.search(p)
-    if glob:
-        p = p[: glob.start()].rsplit("/", 1)[0]
-        if not p.strip("/"):
-            return None  # a glob from the root names no one folder
-    scheme, sep, rest = p.partition("://")
-    if not sep:  # a local path, or "file:/x"
-        scheme, rest = "", p[5:] if p.lower().startswith("file:") else p
-    elif scheme.lower() == "file":
-        scheme = ""
-    if not scheme:
-        rest = os.path.normcase(os.path.abspath(rest)).replace("\\", "/")
-        return rest.rstrip("/") or "/"
-    return f"{scheme.lower()}://{rest.rstrip('/')}"
+    literal = p[: glob.start()] if glob else p
+    m = re.match(r"^([A-Za-z][A-Za-z0-9+.-]+):(.*)$", literal)  # one letter is a drive
+    if m and m.group(1).lower() != "file":
+        scheme, rest = m.group(1).lower(), m.group(2)
+        if scheme == "dbfs":
+            return _finish("dbfs:" + _clean("/" + rest.lstrip("/")), literal, glob)
+        if not rest.startswith("//"):
+            return None
+        host, slash, tail = rest[2:].partition("/")
+        if glob and not slash:
+            return None  # a glob in the bucket or host names no one place
+        scheme = _SCHEME_ALIASES.get(scheme, scheme)
+        return _finish(f"{scheme}://{host.lower()}" + _clean("/" + unquote(tail)), literal, glob)
+    if m:  # file:, file:/x, file:///x, file:///C:/x
+        rest = m.group(2).lstrip("/")
+        literal = rest if re.match(r"^[A-Za-z]:", rest) else "/" + rest
+    if literal.startswith("/dbfs/") or literal == "/dbfs":
+        return _finish("dbfs:" + _clean(literal[5:] or "/"), literal, glob)
+    base = literal if literal.strip() else "."
+    if re.fullmatch(r"[A-Za-z]:", base):
+        base += "/"  # "C:" alone is the current folder on drive C, not its root
+    local = os.path.normcase(os.path.realpath(os.path.abspath(base))).replace("\\", "/")
+    return _finish(local, literal, glob)
 
 
-def _overlaps(a: str, b: str) -> bool:
-    return a == b or a.startswith(b + "/") or b.startswith(a + "/")
+def _clean(path: str) -> str:
+    # normpath keeps a leading "//" (POSIX allows it); an object store does not.
+    cleaned = posixpath.normpath(re.sub("/+", "/", path))
+    return "/" if cleaned == "." else cleaned
+
+
+def _finish(text: str, literal: str, glob: Any) -> _Location:
+    text = text.rstrip("/") or "/"
+    if not glob:
+        return _Location(text)
+    # The literal before the glob: "data/" is the folder, "data/in" also reaches "data/in2".
+    return _Location(text if not literal.endswith("/") else text.rstrip("/") + "/", prefix=True)
+
+
+def _overlaps(out: str, read: _Location) -> bool:
+    if read.prefix:
+        return out.startswith(read.text) or read.text.startswith(out.rstrip("/") + "/")
+    b = read.text
+    return out == b or out.startswith(b.rstrip("/") + "/") or b.startswith(out.rstrip("/") + "/")
