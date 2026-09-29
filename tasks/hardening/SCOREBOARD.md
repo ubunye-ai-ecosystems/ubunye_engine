@@ -16,7 +16,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 6 (F-008 to F-010, F-015, F-017, F-018) | 16 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
+| 12 (F-008 to F-010, F-015, F-017, F-018, F-038 to F-043) | 16 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
 
 ## Experiments
 
@@ -27,7 +27,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 | E-03 | Silent row loss | answered: visible in the record, not enforceable (F-017) |
 | E-04 | Secrets in records | answered: secret:// and env safe; --var leaks (F-016); REST needs Spark (F-015) |
 | E-05 | Schema drift | answered: gate catches all; a retype writes wrong data at run time (F-018) |
-| E-06 | Scale ladder | planned |
+| E-06 | Scale ladder | answered 2026-09-29: without `--lineage` 1.01x (Spark) and 1.04x to 1.36x (pandas), falling with size: pass; with `--lineage` 1.7x to 4.4x (Spark) and 5.4x to 11.5x (pandas), rising: fail (F-038, F-039, F-041); nothing collected to the driver; Spark record can hash rows it did not write (F-040) |
 | E-07 | Laptop to cluster | planned |
 | E-08 | Stranger rerun | planned |
 
@@ -36,6 +36,14 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 | Date | Engine | Job | Data | Compute | Plain (s) | Ubunye (s) | Overhead | Notes |
 |---|---|---|---|---|---|---|---|---|
 | 2026-09-29 | hardening (F-014) | E-01 task, `--lineage` vs none (1 input, 2 outputs) | 1,000,000 rows, 3 columns | pandas, dev box (Windows, 16 GB) | 1.6 | 4.4 to 4.8 (was 10.8 to 13.4) | 2.9x (was 6.8 to 8.4x) | hash 1.28 s input + 1.60 s output (incl. pandas to Arrow), now in the record; runs as in `tests/experiments/timing.py` |
+| 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 1,000,000 rows, generated | pandas, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 0.81 | 1.10 / 4.39 | 1.36x / 5.43x | median of 3; hash 3.28 s; E-06 |
+| 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 5,000,000 rows, generated | pandas, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 1.88 | 2.36 / 18.22 | 1.25x / 9.67x | median of 3; hash 15.87 s; E-06 |
+| 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 20,000,000 rows, generated | pandas, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 6.09 | 6.99 / 70.14 | 1.15x / 11.52x | median of 3; hash 63.15 s; peak 4.6 GB plain, 3.8 GB Ubunye; E-06 |
+| 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 50,000,000 rows, generated | pandas, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 16.09 | 16.73 / 171.78 | 1.04x / 10.67x | median of 3; hash 155.48 s; peak 12.2 GB plain, 9.1 GB Ubunye; no OOM; E-06 |
+| 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 1,000,000 rows, generated | Spark 4.2 local, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 13.21 | 13.44 / 22.51 | 1.02x / 1.70x | median of 3; hash 9.37 s; E-06 |
+| 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 5,000,000 rows, generated | Spark 4.2 local, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 17.32 | 17.56 / 38.15 | 1.01x / 2.20x | median of 3; hash 20.87 s; E-06 |
+| 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 20,000,000 rows, generated | Spark 4.2 local, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 21.59 | 21.76 / 75.82 | 1.01x / 3.51x | median of 3; hash 54.45 s; with expectations 1.47x (F-043); E-06 |
+| 2026-09-29 | hardening 65fb1ed | E-06 job (filter, join, group by; append + overwrite), no `--lineage` / `--lineage` | 50,000,000 rows, generated | Spark 4.2 local, GitHub `ubuntu-latest` (4 vCPU, 16 GB) | 27.87 | 28.03 / 123.16 | 1.01x / 4.42x | median of 3; hash 95.64 s; 147 kB to the driver, as at 5M; E-06 |
 
 ## Environments green
 
