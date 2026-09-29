@@ -679,3 +679,168 @@ class TestRoundFour:
         doc.update(pid=os.getpid(), kept=True, host=runs._host())
         path.write_text(json.dumps(doc), encoding="utf-8")
         RunLease(tmp_path, TASK, {}, "next").acquire().release()
+
+
+# --- F-048 skeptic review: a file that exists but cannot be read is never absent -------
+
+DT = {"dt": "2026-01-01"}
+
+
+def _deny(monkeypatch, match):
+    """Reads of a file for which ``match(path)`` holds raise PermissionError, as a
+    backup tool, a scanner or a file permission would, for longer than BUSY_FOR."""
+    monkeypatch.setattr(runs, "BUSY_FOR", 0.1)
+    real = Path.read_text
+
+    def read_text(self, *a, **k):
+        if match(self):
+            raise PermissionError(13, "Permission denied", str(self))
+        return real(self, *a, **k)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+
+
+def _same_file(path: Path):
+    """Match the file now at ``path`` wherever it is renamed to, never a new one."""
+    ino = os.stat(path).st_ino
+
+    def match(p: Path) -> bool:
+        try:
+            return os.stat(p).st_ino == ino
+        except OSError:
+            return False
+
+    return match
+
+
+def _finish_batch(root: Path, out: Path, run_id: str) -> None:
+    with runs.held(root, TASK, DT, run_id, appends=["events"]):
+        runs.writing("events", appends=True, exact=True)
+        _append(out, f"part-{run_id}.csv")
+        runs.written("events")
+
+
+class TestUnreadableIsNeverAbsent:
+    def test_an_unreadable_finished_note_refuses_the_run(self, tmp_path, monkeypatch):
+        out = tmp_path / "out"
+        out.mkdir()
+        _finish_batch(tmp_path, out, "one")
+        note = RunLease(tmp_path, TASK, DT, "x")._finished_path()
+        _deny(monkeypatch, lambda p: p == note)
+        with pytest.raises(RunLeaseHeld, match="cannot be read"):
+            _finish_batch(tmp_path, out, "two")
+        assert sorted(p.name for p in out.iterdir()) == ["part-one.csv"]  # not twice
+
+    def test_a_damaged_finished_note_refuses_the_run(self, tmp_path):
+        out = tmp_path / "out"
+        out.mkdir()
+        _finish_batch(tmp_path, out, "one")
+        RunLease(tmp_path, TASK, DT, "x")._finished_path().write_text("{not json", "utf-8")
+        with pytest.raises(RunLeaseHeld, match="cannot be read"):
+            _finish_batch(tmp_path, out, "two")
+        assert sorted(p.name for p in out.iterdir()) == ["part-one.csv"]
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="a Windows share lock")
+    def test_a_finished_note_locked_open_refuses_the_run(self, tmp_path, monkeypatch):
+        import ctypes
+        from ctypes import wintypes
+
+        out = tmp_path / "out"
+        out.mkdir()
+        _finish_batch(tmp_path, out, "one")
+        note = RunLease(tmp_path, TASK, DT, "x")._finished_path()
+        monkeypatch.setattr(runs, "BUSY_FOR", 0.2)
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateFileW.restype = wintypes.HANDLE
+        k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD]
+        k32.CreateFileW.argtypes += [ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD]
+        k32.CreateFileW.argtypes += [wintypes.HANDLE]
+        # GENERIC_READ, share mode none (a backup tool), OPEN_EXISTING
+        handle = k32.CreateFileW(str(note), 0x80000000, 0, None, 3, 0x80, None)
+        assert handle not in (None, wintypes.HANDLE(-1).value)
+        try:
+            with pytest.raises(RunLeaseHeld, match="cannot be read"):
+                _finish_batch(tmp_path, out, "two")
+        finally:
+            k32.CloseHandle(handle)
+        assert sorted(p.name for p in out.iterdir()) == ["part-one.csv"]
+
+    def test_an_unreadable_live_lease_is_not_judged_dead_by_its_age(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(runs, "HEARTBEAT_EVERY", 3600)
+        owner = RunLease(tmp_path, TASK, DT, "owner").acquire()
+        try:
+            old = time.time() - 2 * runs.HEARTBEAT_TIMEOUT
+            os.utime(owner.path, (old, old))
+            _deny(monkeypatch, _same_file(owner.path))
+            with pytest.raises(RunLeaseHeld, match="cannot be read"):
+                RunLease(tmp_path, TASK, DT, "taker").acquire()
+            monkeypatch.undo()
+            assert not owner._tombstone("owner").exists()
+            assert owner._owner() is True  # the live run keeps its lease
+        finally:
+            owner.release()
+
+    def test_a_takeover_that_cannot_read_the_renamed_lease_puts_it_back(
+        self, tmp_path, monkeypatch
+    ):
+        out = tmp_path / "out"
+        out.mkdir()
+        (out / "part-a.parquet").write_text("a")
+        note = {"appends": True, "exact": True, "claimed": [str(out / "part-a.parquet")]}
+        path = _leave_dead_lease(tmp_path, {}, outputs={"events": note})
+        _deny(monkeypatch, lambda p: ".dead-" in p.name)  # readable until renamed
+        with pytest.raises(RunLeaseHeld, match="cannot be read"):
+            RunLease(tmp_path, TASK, {}, "taker").acquire()
+        monkeypatch.undo()
+        monkeypatch.setattr(runs, "TAKEOVER_SETTLE", 0.05)
+        # The dead run's lease, and so its claim, is back where the next run finds it.
+        assert json.loads(path.read_text("utf-8"))["run_id"] == "dead-run"
+        RunLease(tmp_path, TASK, {}, "next").acquire().release()
+        assert not (out / "part-a.parquet").exists()  # taken back, never forgotten
+
+    def test_an_unreadable_orphan_lease_refuses_the_run(self, tmp_path, monkeypatch):
+        out = tmp_path / "out"
+        out.mkdir()
+        (out / "part-a.parquet").write_text("a")
+        note = {"appends": True, "exact": True, "claimed": [str(out / "part-a.parquet")]}
+        path = _leave_dead_lease(tmp_path, {}, outputs={"events": note})
+        orphan = path.with_name(f"{path.stem}.dead-0000abcd.json")
+        path.rename(orphan)
+        _deny(monkeypatch, lambda p: p == orphan)
+        with pytest.raises(RunLeaseHeld, match="cannot be read"):
+            RunLease(tmp_path, TASK, {}, "new").acquire()
+        assert orphan.exists() and not path.exists()
+        monkeypatch.undo()
+        RunLease(tmp_path, TASK, {}, "next").acquire().release()
+        assert not (out / "part-a.parquet").exists() and not orphan.exists()
+
+    def test_an_unreadable_record_of_a_dead_run_refuses_the_takeover(self, tmp_path, monkeypatch):
+        # The record may say the run succeeded (it is written before the commit); a
+        # takeover that cannot read it must not take back what may be the batch.
+        out = tmp_path / "out"
+        out.mkdir()
+        (out / "part-a.parquet").write_text("a")
+        note = {"appends": True, "exact": True, "claimed": [str(out / "part-a.parquet")]}
+        path = _leave_dead_lease(tmp_path, {}, outputs={"events": note})
+        record = _record(tmp_path)
+        record.write_text(json.dumps({"run_id": "dead-run", "status": "success"}), "utf-8")
+        _deny(monkeypatch, lambda p: p == record)
+        with pytest.raises(RunLeaseHeld, match="cannot be read"):
+            RunLease(tmp_path, TASK, {}, "taker").acquire()
+        assert (out / "part-a.parquet").exists()
+        assert json.loads(path.read_text("utf-8"))["run_id"] == "dead-run"
+
+    def test_a_denied_lease_fails_a_claim_in_one_patience_not_five(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(runs, "HEARTBEAT_EVERY", 3600)
+        lease = RunLease(tmp_path, TASK, {}, "mine").acquire()
+        try:
+            lease.writing("events", appends=True, exact=True)
+            _deny(monkeypatch, lambda p: p == lease.path)
+            monkeypatch.setattr(runs, "BUSY_FOR", 0.3)
+            started = time.monotonic()
+            with pytest.raises(RunLeaseLost):
+                lease.claim(str(tmp_path / "part-1.parquet"))
+            assert time.monotonic() - started < 0.9  # the old loop took 5 x BUSY_FOR
+        finally:
+            monkeypatch.undo()
+            lease.release()

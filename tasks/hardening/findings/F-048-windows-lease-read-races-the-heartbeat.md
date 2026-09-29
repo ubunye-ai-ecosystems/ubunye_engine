@@ -72,7 +72,66 @@ and 23 unreadable reads) and `TestPatient` (retries, gives up, never waits for a
 missing file).
 
 ## Left open
-`check_finished` treats a finished note it cannot read (`{}`) as no note, so a note
-refused for longer than 2 s would let the batch append again. Nothing replaces the
-note while this run holds the lease, so the race here cannot reach it; a scanner
-holding it open for seconds could. Refusing instead is a design call for F-031.
+(Closed by the skeptic review below.) `check_finished` treated a finished note it
+cannot read as no note.
+
+## Skeptic review (2026-09-30) and what changed
+The skeptic proved three bugs on the first fix (7c0e39a), with a real Windows lock
+(`CreateFileW`, share mode none or no read) and real ACL denials (`icacls`). The
+decision: a lease file that exists but cannot be read or parsed refuses the run with
+a clear message. It is never treated as absent, free or dead. A missing file is
+still absent.
+
+One reader, `_read_text`, now tells the two apart: None for a missing file, the
+`OSError` raised for one that exists but cannot be read after `_patient`. The
+refusal is a `RunLeaseHeld` naming the file (one line, exit 1). It is not an
+`OSError`, since `held()` runs without a lease on an `OSError`.
+
+1. **Double append (most severe).** A finished note locked for 5 s: run two appended
+   the batch again (2 part files), and `--rerun` could not heal it (it replaced the
+   second copy, not the first). An ACL denial did the same. Fix: `check_finished`
+   refuses when the note cannot be read, or is not valid JSON (it is written in one
+   replace, so it is never partly written). After: refused, 1 part file (lock 5 s,
+   2.0 s; ACL denial, 2.1 s). Locks under 2 s still read the note and refuse with
+   `BatchFinished`, as before.
+2. **Live lease taken over when unreadable.** A live run A whose lease could not be
+   read (no read sharing) and was 20 minutes old: `{}` skipped the same host pid
+   check, so it was judged dead by its age. The renamed file could not be read
+   either, and `None == None` passed the check. Run B took over, and A lost its lease
+   while alive. Fix: a lease that exists but cannot be read refuses (never judged by
+   age); a takeover that cannot read the file it renamed puts it back (a hard link,
+   which never overwrites) and refuses. `_dead` calls a lease whose age cannot be
+   read not dead, instead of raising an `OSError` that would have run B without a
+   lease. After: B refused in 2.0 s in both cases, and A saved its claim, still
+   owner. Kept on purpose: a lease that is empty or not valid JSON is still judged by
+   its age. A crash inside `_create` leaves one, and it names no process and claims
+   nothing.
+3. **Slow failure on a real ACL denial.** `_owner` looped 5 times over a read that was
+   now patient (2 s each). A run whose own lease was denied failed after 30.8 s (0.8 s
+   before 7c0e39a). Fix: one patient read; the loop is kept only for an empty or
+   partial lease being put back by `_create`. After: the whole run fails in 6.0 s
+   (three saves: the write, the rollback, the kept lease), a claim in one `BUSY_FOR`.
+   The `TAKEOVER_SETTLE` comment now states the real bound: a save checks ownership,
+   then its replace lands within `BUSY_FOR`.
+
+Also checked:
+
+- **`_adopt_orphans` skipped an orphan it could not read**, and the run went on. The
+  orphan's claimed files then stayed beside the new append: the batch twice, until a
+  later run of the batch adopted it. Not provably safe, so it now refuses the same
+  way, and the orphan is kept. An empty or non JSON orphan is recovered as empty and
+  removed (the same judgement as a takeover of such a lease).
+- **`_record_status` treated an unreadable record as "not success".** The record is
+  written before the commit, so a run that died between the two has "success" only
+  in its record. Taking it for unfinished removed its claimed files (the batch) and
+  appended its unclaimed outputs again. Now a record that exists but cannot be read
+  refuses the takeover, and the lease is handed back as it was. A record that is
+  missing or not valid JSON is still "not success": it is written with `write_text`,
+  so a run that died while writing it had not recorded success.
+
+Tests (`TestUnreadableIsNeverAbsent`, 8 tests): an unreadable finished note, a
+damaged one, one locked open for real (Windows only), an unreadable live lease with
+an old mtime, a takeover whose renamed lease cannot be read, an unreadable orphan, an
+unreadable record of a dead run, and a denied lease failing a claim in one
+`BUSY_FOR`. All 8 failed on 7c0e39a (7 did not refuse; the claim took 1.78 s against
+a 0.9 s bound) and pass on the new code.
