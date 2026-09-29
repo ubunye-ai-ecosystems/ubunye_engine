@@ -54,10 +54,23 @@ TASK_ID = re.compile(r"^part-\d{5}-")
 @pytest.fixture(scope="module")
 def spark():
     session = SparkSession.getActiveSession() or SparkSession.builder.getOrCreate()
-    before = session.conf.get("spark.sql.session.timeZone")
-    session.conf.set("spark.sql.session.timeZone", ZONE)
+    # Spark 3.5 refuses to read dates before 1582 from parquet unless told how
+    # (READ_ANCIENT_DATETIME); Spark 4 reads them as written (CORRECTED). The date
+    # case holds year 1, so pin Spark 4's behaviour on both.
+    keys = {
+        "spark.sql.session.timeZone": ZONE,
+        "spark.sql.parquet.datetimeRebaseModeInRead": "CORRECTED",
+        "spark.sql.parquet.datetimeRebaseModeInWrite": "CORRECTED",
+    }
+    before = {k: session.conf.get(k, None) for k in keys}
+    for k, v in keys.items():
+        session.conf.set(k, v)
     yield session
-    session.conf.set("spark.sql.session.timeZone", before)
+    for k, v in before.items():
+        if v is None:
+            session.conf.unset(k)
+        else:
+            session.conf.set(k, v)
 
 
 @pytest.fixture
