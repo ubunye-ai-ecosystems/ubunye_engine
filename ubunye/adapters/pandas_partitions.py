@@ -137,7 +137,7 @@ def resolve_columns(names: Sequence[str], partition_by: Sequence[str]) -> List[s
                 partition_by=list(partition_by),
             )
         seen[key] = str(col)
-    by_lower = {}
+    by_lower: Dict[str, str] = {}
     for n in names:
         by_lower.setdefault(str(n).lower(), str(n))
     actual = []
@@ -480,7 +480,8 @@ def _whole_decimal(raw: str) -> Optional[int]:
         value = decimal.Decimal(raw)
     except decimal.InvalidOperation:
         return None
-    if value.as_tuple().exponent < 0:  # a scale above 0: 1.5, 1.0, 0.00
+    exponent = value.as_tuple().exponent
+    if not isinstance(exponent, int) or exponent < 0:  # NaN/inf, or a scale above 0
         return None
     whole = int(value)
     return whole if len(str(abs(whole))) <= 38 else None
@@ -592,6 +593,8 @@ def value_of(kind: Tuple[Any, ...], raw: str, timezone: str) -> Any:
     stamp = _timestamp_text(unescape(raw))
     if stamp is None:  # a date in a timestamp column: midnight in the session zone
         day = _date_text(raw)
+        if day is None:  # inference only types a column timestamp when every value is one
+            raise ValueError(f"not a timestamp or a date: {raw!r}")
         stamp = dt.datetime(day.year, day.month, day.day)
     return _instant(stamp, timezone)
 
