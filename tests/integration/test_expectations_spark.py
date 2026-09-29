@@ -121,3 +121,33 @@ def test_rules_are_counted_on_spark_without_pyarrow(spark, monkeypatch):
         monkeypatch.setitem(__import__("sys").modules, name, None)
     _, _, on_spark = expectations.check_output("out", spark_frame, spec)
     assert [r.as_dict() for r in on_spark] == [r.as_dict() for r in on_pandas]
+
+
+def test_nan_counts_as_missing_on_spark_as_on_pandas(spark):
+    # F-045: Spark keeps NaN apart from null and orders it above every number, so
+    # without the rule not_null counted 1 (pandas 2) and between 2 (pandas 1).
+    rows = [(1, 1.0), (2, float("nan")), (3, 5.0), (4, 2.0), (5, None)]
+    spec = ExpectationSet(
+        rules=[
+            {"not_null": "qty", "severity": "warn"},
+            {"between": {"column": "qty", "min": 1, "max": 4}, "severity": "warn"},
+            {"one_of": {"column": "qty", "values": [1.0, 2.0]}, "severity": "warn"},
+        ]
+    )
+    frames = {
+        "pandas": pd.DataFrame(rows, columns=["id", "qty"]),
+        "spark": spark.createDataFrame(rows, "id INT, qty DOUBLE"),
+    }
+    counts = {
+        name: {r.rule: r.failed for r in expectations.check_output("out", f, spec)[2]}
+        for name, f in frames.items()
+    }
+    assert (
+        counts["spark"]
+        == counts["pandas"]
+        == {
+            "qty_not_null": 2,
+            "qty_between": 1,
+            "qty_one_of": 1,
+        }
+    )

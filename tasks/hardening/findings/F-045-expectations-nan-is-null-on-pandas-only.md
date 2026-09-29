@@ -1,6 +1,6 @@
 # F-045: an expectation counts NaN as null on pandas but not on Spark
 
-**Status:** open (found 2026-09-29, not fixed)
+**Status:** fixed on hardening/real-world (2026-09-29)
 **Severity:** major (the same task gives a different verdict on two backends)
 **Source:** skeptic review of feat/prove-r1 (F-036), reproduced by the example author
 **Promise:** a task gives the same result on pandas and Spark
@@ -45,3 +45,11 @@ for name, frame in (("pandas", pd.DataFrame(rows, columns=["id", "qty"])),
 One rule must be chosen and pinned as a parity case (for example "NaN counts as
 missing" on both, checking `is_null | is_nan` for float columns), and the choice
 documented next to the rows-v1 rule that already tells null from NaN.
+
+## Decision and fix
+NaN counts as missing on every backend. Following Spark (NaN is a value) was not
+possible: pandas stores a missing float as NaN, so a missing value would pass
+`not_null` on pandas and fail it on Spark. For float columns `not_null` checks
+`is_null | is_nan`; `between` and `one_of` rule the missing out. Tests: the unit
+tier on numpy and Arrow floats (Arrow failed before), and live Spark 4.2 (failed
+before: between 2, one_of 2; now 1 and 1, the same as pandas).

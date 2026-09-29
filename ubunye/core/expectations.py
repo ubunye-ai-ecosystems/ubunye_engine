@@ -15,7 +15,10 @@ pandas). Three principles, from the data contract example they replace:
 - **Report every rule, passed or not.** The results list carries a zero for a
   rule nobody broke today, which is how you notice it breaking tomorrow.
 
-A null passes every rule except ``not_null``, as in SQL.
+A null passes every rule except ``not_null``, as in SQL. In a float column NaN counts
+as missing too, on every backend (F-045): pandas stores a missing float as NaN, so it
+cannot tell the two apart, and a rule must not pass on one backend and fail on the
+other. So ``not_null`` breaks on NaN, and ``between`` and ``one_of`` let it pass.
 """
 
 from __future__ import annotations
@@ -62,10 +65,19 @@ def _nw() -> Any:
     return nw
 
 
-def _breaks(nw: Any, rule: ExpectationRule) -> Any:
-    """A boolean expression, True where the row breaks a row-level rule."""
+def _missing(nw: Any, column: str, floats: frozenset) -> Any:
+    """True where a value is missing: null, or NaN in a float column (F-045)."""
+    col = nw.col(column)
+    return (col.is_null() | col.is_nan()) if column in floats else col.is_null()
+
+
+def _breaks(nw: Any, rule: ExpectationRule, floats: frozenset = frozenset()) -> Any:
+    """A boolean expression, True where the row breaks a row-level rule.
+
+    ``floats`` names the float columns, where NaN counts as missing like null.
+    """
     if rule.not_null is not None:
-        return nw.col(rule.not_null).is_null()
+        return _missing(nw, rule.not_null, floats)
     if rule.between is not None:
         col = nw.col(rule.between.column)
         parts = []
@@ -73,10 +85,14 @@ def _breaks(nw: Any, rule: ExpectationRule) -> Any:
             parts.append(col < rule.between.min)
         if rule.between.max is not None:
             parts.append(col > rule.between.max)
-        return reduce(lambda a, b: a | b, parts).fill_null(False)
+        # Spark orders NaN above every number, so NaN > max; rule it out as missing.
+        outside = reduce(lambda a, b: a | b, parts).fill_null(False)
+        if rule.between.column in floats:
+            outside = outside & ~_missing(nw, rule.between.column, floats)
+        return outside
     if rule.one_of is not None:
         col = nw.col(rule.one_of.column)
-        return (~col.is_in(rule.one_of.values)) & ~col.is_null()
+        return (~col.is_in(rule.one_of.values)) & ~_missing(nw, rule.one_of.column, floats)
     if rule.matches is not None:
         col = nw.col(rule.matches.column)
         # A null passes, and engines disagree on what contains() gives for one:
@@ -168,10 +184,15 @@ def check_output(
     _check_columns(nw, name, df, spec)
 
     row_rules = [r for r in spec.rules if r.kind in ("not_null", "between", "one_of", "matches")]
+    schema = df.collect_schema()
+    floats = frozenset(c for c, t in schema.items() if t in (nw.Float32, nw.Float64))
     counts = _scalars(
         df,
         [nw.len().alias("__total")]
-        + [_breaks(nw, r).cast(nw.Int64).sum().alias(f"r{i}") for i, r in enumerate(row_rules)],
+        + [
+            _breaks(nw, r, floats).cast(nw.Int64).sum().alias(f"r{i}")
+            for i, r in enumerate(row_rules)
+        ],
     )
     total = int(counts["__total"])
     failed: Dict[str, int] = {r.name: int(counts[f"r{i}"]) for i, r in enumerate(row_rules)}
@@ -208,10 +229,10 @@ def check_output(
     if not quarantine_rules or not any(failed[r.name] for r in quarantine_rules):
         return frame, None, results
 
-    breaks_any = reduce(lambda a, b: a | b, [_breaks(nw, r) for r in quarantine_rules])
+    breaks_any = reduce(lambda a, b: a | b, [_breaks(nw, r, floats) for r in quarantine_rules])
     clean = df.filter(~breaks_any)
     reasons = nw.concat_str(
-        [nw.when(_breaks(nw, r)).then(nw.lit(r.name)) for r in quarantine_rules],
+        [nw.when(_breaks(nw, r, floats)).then(nw.lit(r.name)) for r in quarantine_rules],
         separator=",",
         ignore_nulls=True,
     )

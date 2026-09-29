@@ -40,7 +40,10 @@ CONFIG:
 | `row_count: {min, max}` | the number of rows is in range | no |
 
 A missing value passes every rule except `not_null`, as in SQL. When a value must
-be present and valid, write both rules.
+be present and valid, write both rules. In a float column NaN counts as missing, like
+null, on every backend: pandas stores a missing float as NaN and cannot tell the two
+apart, so this is the one rule both backends can keep. `not_null` breaks on NaN;
+`between` and `one_of` let it pass.
 
 Each rule is named after its column and kind (`quantity_between`), or give it a
 `name:`. Names must be unique within an output.

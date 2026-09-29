@@ -16,7 +16,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 7 (F-008 to F-010, F-015, F-017, F-018, F-045) | 20 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032, F-034 to F-037) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
+| 6 (F-008 to F-010, F-015, F-017, F-018) | 21 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032, F-034 to F-037, F-045) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
 
 ## Experiments
 

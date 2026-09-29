@@ -49,6 +49,11 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **Expectations give the same verdict on pandas and Spark when a float column holds
+  NaN (F-045).** pandas counted NaN as null and Spark did not, so `not_null` and
+  `between` broke on different rows and a `fail` rule could stop a run on one backend
+  only. NaN now counts as missing on both: `not_null` breaks on it, `between` and
+  `one_of` let it pass. **Behaviour change** on Spark (and on Arrow-backed pandas).
 - **`ubunye deploy k8s` stops when the Job fails**, not when its timeout runs out. It
   waited only for `Complete`, so a failed Job held the command for the whole
   `--timeout` (30 minutes by default). It now stops at `Complete` or `Failed` and

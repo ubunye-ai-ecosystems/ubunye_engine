@@ -348,3 +348,37 @@ class TestAColumnARuleCannotCheck:
         )
         _, _, results = expectations.check_output("out", ROWS, spec)
         assert all(r.passed for r in results)
+
+
+# --- F-045: NaN counts as missing in a float column, on every backend --------------
+
+NAN_RULES = ExpectationSet(
+    rules=[
+        {"not_null": "qty", "severity": "warn"},
+        {"between": {"column": "qty", "min": 1, "max": 4}, "severity": "warn"},
+        {"one_of": {"column": "qty", "values": [1.0, 2.0]}, "severity": "warn"},
+    ]
+)
+
+
+@pytest.mark.parametrize("backing", ["numpy", "pyarrow"])
+def test_nan_counts_as_missing_like_null(backing):
+    # qty = [1.0, NaN, 5.0, 2.0, null]. With numpy floats NaN and null are one value;
+    # with Arrow floats they are two. Either way: not_null breaks on both, between and
+    # one_of break only on 5.0 (a missing value passes, as in SQL). Spark agrees
+    # (tests/integration/test_expectations_spark.py).
+    qty = pd.array([1.0, float("nan"), 5.0, 2.0, None], dtype="float64")
+    if backing == "pyarrow":
+        import pyarrow as pa
+
+        qty = pd.array(
+            pa.array([1.0, float("nan"), 5.0, 2.0, None], pa.float64(), from_pandas=False),
+            dtype=pd.ArrowDtype(pa.float64()),
+        )
+    frame = pd.DataFrame({"id": [1, 2, 3, 4, 5], "qty": qty})
+    _, _, results = expectations.check_output("out", frame, NAN_RULES)
+    assert {r.rule: r.failed for r in results} == {
+        "qty_not_null": 2,
+        "qty_between": 1,
+        "qty_one_of": 1,
+    }
