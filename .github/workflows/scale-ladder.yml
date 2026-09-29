@@ -1,0 +1,103 @@
+name: scale-ladder (E-06)
+
+# Experiment E-06: Ubunye against the same job written plain, at growing sizes,
+# on a free GitHub runner (4 vCPU, 16 GB). It measures, it gates nothing: manual,
+# or a push of the harness itself to an exp/ branch (a workflow_dispatch workflow
+# cannot be started until it is on the default branch). One job per backend and size, so each gets a fresh machine; the
+# results (one JSON line per run) are uploaded as artifacts.
+#
+#   gh workflow run scale-ladder.yml --ref <branch>
+
+on:
+  push:
+    branches: ["exp/**"]
+    paths:
+      - ".github/workflows/scale-ladder.yml"
+      - "tests/experiments/e06_*.py"
+  workflow_dispatch:
+    inputs:
+      repeats:
+        description: "Runs per variant"
+        default: "3"
+
+permissions:
+  contents: read
+
+jobs:
+  ladder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { backend: pandas, rows: 1000000 }
+          - { backend: pandas, rows: 5000000 }
+          - { backend: pandas, rows: 20000000 }
+          - { backend: pandas, rows: 50000000 }
+          - { backend: spark, rows: 1000000 }
+          - { backend: spark, rows: 5000000 }
+          - { backend: spark, rows: 20000000 }
+          - { backend: spark, rows: 50000000 }
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Java 21 (Spark)
+        if: matrix.backend == 'spark'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pandas pyarrow numpy psutil
+          if [ "${{ matrix.backend }}" = "spark" ]; then pip install "pyspark>=4.0,<5"; fi
+          # Compile the editable tree now, so the first timed run does not pay for it.
+          python -m compileall -q ubunye
+          pip list | grep -iE "ubunye|pandas|pyarrow|pyspark|numpy|narwhals"
+
+      - name: Machine
+        run: |
+          nproc; free -m; df -h .; python --version
+          if [ "${{ matrix.backend }}" = "spark" ]; then java -version; fi
+
+      - name: Ladder
+        # Exit status is not the result: a size that runs out of memory is a result,
+        # recorded in the JSON lines, so the artifact is uploaded whatever happens.
+        run: |
+          # tests/experiments/e06_only.txt, when not empty, names the rungs to run,
+          # one "backend-rows" or "backend-rows:variants" per line; the others stop.
+          only=tests/experiments/e06_only.txt
+          rung="${{ matrix.backend }}-${{ matrix.rows }}"
+          variants=plain,ubunye,lineage
+          if [ -s "$only" ]; then
+            line=$(grep -E "^${rung}(:|$)" "$only" || true)
+            if [ -z "$line" ]; then echo "not selected in $only"; exit 0; fi
+            case "$line" in *:*) variants="${line#*:}";; esac
+          fi
+          python tests/experiments/e06_scale.py --variants "$variants" \
+            --backend "${{ matrix.backend }}" --rows "${{ matrix.rows }}" \
+            --repeats "${{ inputs.repeats || '3' }}" --work "${RUNNER_TEMP}/e06" \
+            --out "e06-${{ matrix.backend }}-${{ matrix.rows }}.jsonl" \
+            --host "gha-ubuntu-latest" --driver-memory 10g --timeout 5400
+
+      - name: Summary
+        if: always()
+        run: |
+          ls e06-*.jsonl >/dev/null 2>&1 || exit 0
+          python tests/experiments/e06_scale.py --summary e06-*.jsonl | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e06-${{ matrix.backend }}-${{ matrix.rows }}
+          path: e06-*.jsonl
+          if-no-files-found: warn
