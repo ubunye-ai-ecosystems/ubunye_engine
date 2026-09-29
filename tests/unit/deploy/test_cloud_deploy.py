@@ -219,3 +219,137 @@ def test_a_run_whose_record_is_missing_fails_when_one_was_asked_for(tmp_path, mo
     assert result.exit_code == 1
     assert "run record" in result.output and "not found" in result.output
     assert not out.exists()
+
+
+# --- several tasks in one launch (F-034) -------------------------------------------------------
+
+SECOND = """\
+CONFIG:
+  inputs:
+    src: {format: s3, path: "{{ env.UBUNYE_TEST_ROOT }}/out", file_format: parquet}
+  outputs:
+    out: {format: s3, path: "{{ env.UBUNYE_TEST_ROOT }}/out2", file_format: parquet, mode: overwrite}
+"""
+
+
+def _two_tasks(root: Path, second: str = SECOND) -> Path:
+    """Task ``t`` writes ``out``; task ``t2`` reads it and writes ``out2``."""
+    pipelines = _task(root)
+    t2 = pipelines / "uc" / "pkg" / "t2"
+    t2.mkdir()
+    (t2 / "transformations.py").write_text(TRANSFORM, encoding="utf-8")
+    (t2 / "config.yaml").write_text(second, encoding="utf-8")
+    return pipelines
+
+
+def _entry(tmp_path: Path, pipelines: Path, tasks: str) -> subprocess.CompletedProcess:
+    job = tmp_path / "job"
+    job.mkdir()
+    (job / "bundle.zip").write_bytes(package.bundle(pipelines, "uc", "pkg", ["t", "t2"]))
+    (job / "ubunye_entry.py").write_text(package.ENTRY_SCRIPT, encoding="utf-8")
+    return subprocess.run(
+        [
+            sys.executable, str(job / "ubunye_entry.py"),
+            "--task", tasks, "--bundle", str(job / "bundle.zip"), "--backend", "pandas",
+            "--env", f"UBUNYE_TEST_ROOT={tmp_path.as_posix()}",
+        ],
+        cwd=job, capture_output=True, text=True, timeout=300,
+    )  # fmt: skip
+
+
+def test_the_bundle_holds_every_task_given(tmp_path):
+    names = zipfile.ZipFile(
+        io.BytesIO(package.bundle(_two_tasks(tmp_path), "uc", "pkg", ["t", "t2"]))
+    ).namelist()
+    assert sorted(names) == [
+        "uc/pkg/t/config.yaml",
+        "uc/pkg/t/transformations.py",
+        "uc/pkg/t2/config.yaml",
+        "uc/pkg/t2/transformations.py",
+    ]
+    assert package.task_path("uc", "pkg", ["t", "t2"]) == "uc/pkg/t,uc/pkg/t2"
+    with pytest.raises(ValueError):
+        package.task_path("uc", "pkg", ["a,b"])
+
+
+def test_the_entry_script_runs_two_tasks_in_order_and_prints_both_records(tmp_path):
+    """The second task reads what the first wrote to the job's own disk."""
+    pytest.importorskip("pandas")
+    pytest.importorskip("pyarrow")
+    done = _entry(tmp_path, _two_tasks(tmp_path), "uc/pkg/t,uc/pkg/t2")
+    assert done.returncode == 0, done.stderr[-2000:]
+    first, second = package.unpack_records(package.read_record(done.stdout))
+    assert [first["task_path"], second["task_path"]] == ["uc/pkg/t", "uc/pkg/t2"]
+    assert first["status"] == second["status"] == "success"
+    assert second["inputs"][0]["data_hash"] == first["outputs"][0]["data_hash"]
+    assert second["outputs"][0]["row_count"] == 3
+
+
+def test_a_failing_first_task_stops_the_second_and_fails_the_job(tmp_path):
+    pytest.importorskip("pandas")
+    pytest.importorskip("pyarrow")
+    pipelines = _two_tasks(tmp_path)
+    (pipelines / "uc" / "pkg" / "t" / "transformations.py").write_text(
+        TRANSFORM.replace('return {"out"', 'raise RuntimeError("boom")  # '), encoding="utf-8"
+    )
+    done = _entry(tmp_path, pipelines, "uc/pkg/t,uc/pkg/t2")
+    assert done.returncode != 0
+    [only] = package.unpack_records(package.read_record(done.stdout))
+    assert only["task_path"] == "uc/pkg/t" and only["status"] != "success"
+    assert not (tmp_path / "out2").exists()
+
+
+def test_the_plans_pass_several_tasks_in_one_argument(tmp_path):
+    pipelines = _two_tasks(tmp_path)
+    glue = cloud.plan_glue(pipelines, "uc", "pkg", ["t", "t2"], bucket="b", role="r")
+    assert json.loads(glue.commands[0][4])["DefaultArguments"]["--task"] == "uc/pkg/t,uc/pkg/t2"
+    assert glue.job == "ubunye-uc-pkg-t-t2"
+    assert glue.uploads[0][0] == "s3://b/ubunye/uc/pkg/t-t2/bundle.zip"
+    dataproc = cloud.plan_dataproc(
+        pipelines, "uc", "pkg", ["t", "t2"], project="p", region="r", bucket="b", image="i"
+    )
+    command = dataproc.commands[0]
+    assert command[command.index("--") + 1 :][:2] == ["--task", "uc/pkg/t,uc/pkg/t2"]
+
+
+def _envelope_log(records):
+    return (
+        package.RECORD_BEGIN + "\n" + json.dumps({"ubunye_records": records}) + "\n"
+        + package.RECORD_END + "\n"
+    )  # fmt: skip
+
+
+def _rec(task, status="success"):
+    return {
+        "run_id": task, "task_path": f"uc/pkg/{task}", "task_name": task, "status": status,
+        "outputs": [{"name": "out", "row_count": 3, "data_hash": "sha256:" + "a" * 64}],
+    }  # fmt: skip
+
+
+def test_record_out_writes_one_file_per_task(tmp_path, monkeypatch):
+    def ran(plan):
+        plan.log = _envelope_log([_rec("t"), _rec("t2")])
+
+    monkeypatch.setattr(cloud, "execute", ran)
+    out = tmp_path / "rec.json"
+    args = ["deploy", "dataproc", "-d", str(_two_tasks(tmp_path)), "-u", "uc", "-p", "pkg",
+            "-t", "t", "-t", "t2", "--project", "p", "--region", "r", "--bucket", "b",
+            "--image", "i", "--record-out", str(out)]  # fmt: skip
+    result = runner.invoke(app, args)
+    assert result.exit_code == 0, result.output
+    assert json.loads((tmp_path / "rec.t.json").read_text())["task_name"] == "t"
+    assert json.loads((tmp_path / "rec.t2.json").read_text())["task_name"] == "t2"
+    assert not out.exists()
+
+
+def test_a_task_the_job_never_reached_fails_the_deploy(tmp_path, monkeypatch):
+    def ran(plan):
+        plan.log = _envelope_log([_rec("t", status="failed")])
+
+    monkeypatch.setattr(cloud, "execute", ran)
+    args = ["deploy", "dataproc", "-d", str(_two_tasks(tmp_path)), "-u", "uc", "-p", "pkg",
+            "-t", "t", "-t", "t2", "--project", "p", "--region", "r", "--bucket", "b",
+            "--image", "i", "--record-out", str(tmp_path / "rec.json")]  # fmt: skip
+    result = runner.invoke(app, args)
+    assert result.exit_code == 1
+    assert "1 of 2 tasks did not run" in result.output

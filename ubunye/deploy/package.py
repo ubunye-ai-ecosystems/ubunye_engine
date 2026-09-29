@@ -18,7 +18,7 @@ import json
 import re
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 #: Printed around the run record at the end of a cloud run.
 RECORD_BEGIN = "=====UBUNYE-RUN-RECORD-BEGIN====="
@@ -36,10 +36,10 @@ _B64 = re.compile(r"[A-Za-z0-9+/=]+")
 
 ENTRY_SCRIPT = (
     '''\
-"""Run one Ubunye task in a cloud job, and print its run record.
+"""Run Ubunye task(s) in a cloud job, and print the run record(s).
 
 Written by `ubunye deploy`. Arguments: --task PATH (usecase/package/task inside
-the bundle), --mode, --dt, --bundle (the zip, when the platform did not unpack it
+the bundle; several, comma-separated, run in that order), --mode, --dt, --bundle (the zip, when the platform did not unpack it
 next to this script: a local path or an s3:// URI), --backend, and any number of
 --var KEY=VALUE (template variables) and --env KEY=VALUE (environment).
 """
@@ -90,40 +90,50 @@ def main():
     root = os.getcwd()
     # Unpacked next to the script (Dataproc), the working folder (a container image
     # sets it), or where the images bake the pipelines.
+    first = args.task.split(",")[0]
     for candidate in ("bundle", ".", "/app/pipelines"):
-        if os.path.isdir(os.path.join(candidate, args.task)):
+        if os.path.isdir(os.path.join(candidate, first)):
             root = os.path.abspath(candidate)
             break
     else:
         if not args.bundle:
-            raise SystemExit(f"task {args.task} not found and no --bundle given")
+            raise SystemExit(f"task {first} not found and no --bundle given")
         root = _fetch(args.bundle, tempfile.mkdtemp(prefix="ubunye-"))
 
     import ubunye
 
-    lineage = tempfile.mkdtemp(prefix="ubunye-lineage-")
     variables = dict(v.split("=", 1) for v in args.var)
     variables.update(json.loads(args.var_json))
     error = None
-    try:
-        ubunye.run_task(
-            os.path.join(root, args.task),
-            mode=args.mode,
-            dt=args.dt,
-            backend=args.backend,
-            variables=variables or None,
-            lineage=True,
-            lineage_dir=lineage,
-        )
-    except Exception as exc:  # the record says what failed; the job still fails below
-        error = exc
-    records = []
-    for dirpath, _dirs, files in os.walk(lineage):
-        records += [os.path.join(dirpath, f) for f in files if f.endswith(".json")]
-    if records:
-        newest = max(records, key=os.path.getmtime)
-        with open(newest, encoding="utf-8") as fh:
-            record = json.load(fh)
+    done = []
+    # Several tasks (comma-separated) run in order in this one job, in one session, so
+    # a task can read what the one before it wrote to the job's own disk. The first
+    # that fails stops the rest.
+    for task in [t for t in args.task.split(",") if t]:
+        lineage = tempfile.mkdtemp(prefix="ubunye-lineage-")
+        try:
+            ubunye.run_task(
+                os.path.join(root, task),
+                mode=args.mode,
+                dt=args.dt,
+                backend=args.backend,
+                variables=variables or None,
+                lineage=True,
+                lineage_dir=lineage,
+            )
+        except Exception as exc:  # the record says what failed; the job still fails below
+            error = exc
+        records = []
+        for dirpath, _dirs, files in os.walk(lineage):
+            records += [os.path.join(dirpath, f) for f in files if f.endswith(".json")]
+        if records:
+            with open(max(records, key=os.path.getmtime), encoding="utf-8") as fh:
+                done.append(json.load(fh))
+        if error is not None:
+            break
+    if done:
+        # One task prints its record; several print them in one document, in order.
+        record = done[0] if "," not in args.task else {"ubunye_records": done}
         # In short numbered base64 parts: a log store splits a long line (CloudWatch
         # cut a record at about 1,000 characters) and can reorder lines printed in the
         # same instant (Log Analytics); the reader puts the parts back by number.
@@ -152,23 +162,39 @@ if __name__ == "__main__":
 )
 
 
-def task_path(usecase: str, package: str, task: str) -> str:
-    return f"{usecase}/{package}/{task}"
+def _tasks(task: Union[str, Sequence[str]]) -> List[str]:
+    tasks = [task] if isinstance(task, str) else list(task)
+    if not tasks or any(not t or "," in t for t in tasks):
+        raise ValueError(f"give one or more task names without commas, not {task!r}")
+    return tasks
 
 
-def bundle(usecase_dir: Path, usecase: str, package: str, task: str) -> bytes:
-    """The task folder as a zip, at ``usecase/package/task`` (caches left out)."""
+def task_path(usecase: str, package: str, task: Union[str, Sequence[str]]) -> str:
+    """``usecase/package/task``; several tasks give their paths comma-separated, in order."""
+    return ",".join(f"{usecase}/{package}/{t}" for t in _tasks(task))
+
+
+def unpack_records(record: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The run record(s) a job printed: one per task, in the order they ran."""
+    if record is None:
+        return []
+    return list(record.get("ubunye_records") or [record])
+
+
+def bundle(usecase_dir: Path, usecase: str, package: str, task: Union[str, Sequence[str]]) -> bytes:
+    """The task folder(s) as a zip, at ``usecase/package/task`` (caches left out)."""
     root = Path(usecase_dir)
-    folder = root / usecase / package / task
-    if not (folder / "config.yaml").is_file():
-        raise FileNotFoundError(f"no config.yaml in {folder}")
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
-        for path in sorted(folder.rglob("*")):
-            rel = path.relative_to(root)
-            if path.is_dir() or "__pycache__" in rel.parts or path.suffix == ".pyc":
-                continue
-            z.write(path, rel.as_posix())
+        for name in _tasks(task):
+            folder = root / usecase / package / name
+            if not (folder / "config.yaml").is_file():
+                raise FileNotFoundError(f"no config.yaml in {folder}")
+            for path in sorted(folder.rglob("*")):
+                rel = path.relative_to(root)
+                if path.is_dir() or "__pycache__" in rel.parts or path.suffix == ".pyc":
+                    continue
+                z.write(path, rel.as_posix())
     return buffer.getvalue()
 
 

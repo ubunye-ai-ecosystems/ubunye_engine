@@ -91,8 +91,18 @@ def _pairs(values: Optional[List[str]], flag: str) -> Dict[str, str]:
     return out
 
 
-def _finish(plan: Any, dry_run: bool, record_out: Optional[Path]) -> None:
-    """Print the plan, or run it and report the run record the job printed."""
+def _record_paths(record_out: Path, records: List[Dict[str, Any]]) -> List[Path]:
+    """One file per task: ``glue.json`` for one, ``glue.clean.json`` ... for several."""
+    if len(records) == 1:
+        return [record_out]
+    return [
+        record_out.with_name(f"{record_out.stem}.{r.get('task_name', i)}{record_out.suffix}")
+        for i, r in enumerate(records)
+    ]
+
+
+def _finish(plan: Any, dry_run: bool, record_out: Optional[Path], tasks: int = 1) -> None:
+    """Print the plan, or run it and report the run record(s) the job printed."""
     from ubunye.deploy import cloud, package
 
     if dry_run:
@@ -103,8 +113,8 @@ def _finish(plan: Any, dry_run: bool, record_out: Optional[Path]) -> None:
         )
         return
     cloud.execute(plan)
-    record = package.read_record(plan.log)
-    if record is None and record_out is not None:
+    records = package.unpack_records(package.read_record(plan.log))
+    if not records and record_out is not None:
         # Asked for the record and did not get it: never report that as success.
         typer.secho(
             f"[FAIL] {plan.platform}: '{plan.job}' ran, but its run record was not found "
@@ -112,27 +122,41 @@ def _finish(plan: Any, dry_run: bool, record_out: Optional[Path]) -> None:
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
-    if record is None:
+    if not records:
         typer.secho(f"[OK] {plan.platform}: '{plan.job}' submitted.", fg=typer.colors.GREEN)
         return
-    if record_out is not None:
-        record_out.write_text(json.dumps(record, indent=2), encoding="utf-8")
-    ok = record.get("status") == "success"
-    typer.secho(
-        f"[{'OK' if ok else 'FAIL'}] {plan.platform} run {record.get('status')}: {plan.job}",
-        fg=typer.colors.GREEN if ok else typer.colors.RED,
-    )
-    for step in record.get("outputs", []):
-        typer.echo(f"  {step['name']}: {step.get('row_count')} rows, {step.get('data_hash')}")
-    if record_out is not None:
-        typer.echo(f"  run record: {record_out}")
+    paths = _record_paths(record_out, records) if record_out is not None else []
+    for path, record in zip(paths, records):
+        path.write_text(json.dumps(record, indent=2), encoding="utf-8")
+    # Every task ran and succeeded: a task the job never reached is a failure too.
+    ok = len(records) == tasks and all(r.get("status") == "success" for r in records)
+    for i, record in enumerate(records):
+        name = record.get("task_path") or plan.job
+        good = record.get("status") == "success"
+        typer.secho(
+            f"[{'OK' if good else 'FAIL'}] {plan.platform} run {record.get('status')}: {name}",
+            fg=typer.colors.GREEN if good else typer.colors.RED,
+        )
+        for step in record.get("outputs", []):
+            typer.echo(f"  {step['name']}: {step.get('row_count')} rows, {step.get('data_hash')}")
+        if paths:
+            typer.echo(f"  run record: {paths[i]}")
+    if len(records) < tasks:
+        typer.secho(
+            f"[FAIL] {plan.platform}: {tasks - len(records)} of {tasks} tasks did not run.",
+            fg=typer.colors.RED,
+        )
     if not ok:
         raise typer.Exit(code=1)
 
 
+_TASK_HELP = "Task name; repeat to run several in this order, in one launch."
 _ENV_HELP = "Environment for the task, KEY=VALUE (repeatable)."
 _VAR_HELP = "Template variable, KEY=VALUE (repeatable)."
-_OUT_HELP = "Save the run's record here (for `ubunye gate`)."
+_OUT_HELP = (
+    "Save the run's record here (for `ubunye gate`); with several tasks, one file each: "
+    "NAME.TASK.json."
+)
 
 
 @deploy_app.command("glue")
@@ -140,7 +164,7 @@ def deploy_glue(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", exists=True, file_okay=False),
     usecase: str = typer.Option(..., "-u", "--usecase"),
     package: str = typer.Option(..., "-p", "--package"),
-    task: str = typer.Option(..., "-t", "--task"),
+    task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     bucket: str = typer.Option(..., "--bucket", help="S3 bucket for the task, script and wheel."),
     role: str = typer.Option(..., "--role", help="IAM role ARN the Glue job runs as."),
     region: Optional[str] = typer.Option(None, "--region"),
@@ -181,7 +205,7 @@ def deploy_glue(
         variables=_pairs(var, "--var"),
         wait=wait,
     )
-    _finish(plan, dry_run, record_out)
+    _finish(plan, dry_run, record_out, len(task))
 
 
 @deploy_app.command("dataproc")
@@ -189,7 +213,7 @@ def deploy_dataproc(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", exists=True, file_okay=False),
     usecase: str = typer.Option(..., "-u", "--usecase"),
     package: str = typer.Option(..., "-p", "--package"),
-    task: str = typer.Option(..., "-t", "--task"),
+    task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     project: str = typer.Option(..., "--project"),
     region: str = typer.Option(..., "--region"),
     bucket: str = typer.Option(..., "--bucket", help="GCS bucket for the task and script."),
@@ -228,7 +252,7 @@ def deploy_dataproc(
         variables=_pairs(var, "--var"),
         wait=wait,
     )
-    _finish(plan, dry_run, record_out)
+    _finish(plan, dry_run, record_out, len(task))
 
 
 @deploy_app.command("dockerfile")
@@ -262,7 +286,7 @@ def deploy_dockerfile(
 def deploy_k8s(
     usecase: str = typer.Option(..., "-u", "--usecase"),
     package: str = typer.Option(..., "-p", "--package"),
-    task: str = typer.Option(..., "-t", "--task"),
+    task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     image: str = typer.Option(
         ..., "--image", help="Image from `deploy dockerfile container` (pipelines baked in)."
     ),
@@ -298,14 +322,14 @@ def deploy_k8s(
         variables=_pairs(var, "--var"),
         wait=wait,
     )
-    _finish(plan, dry_run, record_out)
+    _finish(plan, dry_run, record_out, len(task))
 
 
 @deploy_app.command("container-apps")
 def deploy_container_apps(
     usecase: str = typer.Option(..., "-u", "--usecase"),
     package: str = typer.Option(..., "-p", "--package"),
-    task: str = typer.Option(..., "-t", "--task"),
+    task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     image: str = typer.Option(
         ..., "--image", help="Image from `deploy dockerfile container` (pipelines baked in)."
     ),
@@ -349,14 +373,14 @@ def deploy_container_apps(
         variables=_pairs(var, "--var"),
         wait=wait,
     )
-    _finish(plan, dry_run, record_out)
+    _finish(plan, dry_run, record_out, len(task))
 
 
 @deploy_app.command("emr-serverless")
 def deploy_emr_serverless(
     usecase: str = typer.Option(..., "-u", "--usecase"),
     package: str = typer.Option(..., "-p", "--package"),
-    task: str = typer.Option(..., "-t", "--task"),
+    task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     application_id: str = typer.Option(
         ...,
         "--application-id",
@@ -387,4 +411,4 @@ def deploy_emr_serverless(
         env=_pairs(env, "--env"),
         variables=_pairs(var, "--var"),
     )
-    _finish(plan, dry_run, None)
+    _finish(plan, dry_run, None, len(task))

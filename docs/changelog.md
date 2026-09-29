@@ -129,6 +129,15 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Added
 
+- **`ubunye deploy` runs several tasks in one launch** (glue, dataproc, k8s,
+  container-apps, emr-serverless): repeat `-t`, as in `-t clean -t monitor`. They run in
+  that order in the one job, so a task can read what the one before it wrote to the
+  job's own disk; the first that fails stops the rest and fails the deploy, as does a
+  task the job never reached. `--record-out glue.json` then writes one record per task
+  (`glue.clean.json`, `glue.monitor.json`). One task works as before. Before, a
+  container job ran one task and its disk went with it, so a two step pipeline could
+  not run on Kubernetes or Container Apps without shared storage (F-034).
+
 - **A real-world example: a staple food price monitor for African markets**
   (`examples/real-world/food_prices_africa`). WFP market prices, African retail, one
   price per kg, a monthly price per country and food, and alerts where a staple rose by

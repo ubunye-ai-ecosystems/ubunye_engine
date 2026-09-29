@@ -14,10 +14,10 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Union
 
 from ubunye.deploy import package
-from ubunye.deploy.cloud import Plan, _entry_args
+from ubunye.deploy.cloud import Plan, _entry_args, _label
 
 
 def _name(task: str, prefix: str = "ubunye") -> str:
@@ -31,7 +31,7 @@ def _name(task: str, prefix: str = "ubunye") -> str:
 def plan_k8s(
     usecase: str,
     pkg: str,
-    task: str,
+    task: Union[str, Sequence[str]],
     *,
     image: str,
     namespace: str = "default",
@@ -45,9 +45,9 @@ def plan_k8s(
     variables: Optional[Dict[str, str]] = None,
     wait: bool = True,
 ) -> Plan:
-    """A Kubernetes Job that runs the task once, in ``image``."""
+    """A Kubernetes Job that runs the task once, in ``image`` (several tasks: in order)."""
     path = package.task_path(usecase, pkg, task)
-    job = job or f"{_name(task)}-{int(time.time()) % 100000}"
+    job = job or f"{_name(_label(task))}-{int(time.time()) % 100000}"
     manifest = {
         "apiVersion": "batch/v1",
         "kind": "Job",
@@ -113,7 +113,7 @@ if done.returncode != 0:
 def plan_container_apps(
     usecase: str,
     pkg: str,
-    task: str,
+    task: Union[str, Sequence[str]],
     *,
     image: str,
     resource_group: str,
@@ -137,7 +137,7 @@ def plan_container_apps(
     which receives a job's output a few minutes after it ends.
     """
     path = package.task_path(usecase, pkg, task)
-    job = job or _name(task)[:32].rstrip("-")
+    job = job or _name(_label(task))[:32].rstrip("-")
     spec = {
         "job": job,
         "resource_group": resource_group,
@@ -224,7 +224,7 @@ if state != "Succeeded":
 def plan_emr_serverless(
     usecase: str,
     pkg: str,
-    task: str,
+    task: Union[str, Sequence[str]],
     *,
     application_id: str,
     role: str,
@@ -268,7 +268,7 @@ def plan_emr_serverless(
     overrides = {
         "monitoringConfiguration": {"s3MonitoringConfiguration": {"logUri": f"s3://{bucket}/logs/"}}
     }
-    plan = Plan("emr-serverless", f"ubunye-{task}")
+    plan = Plan("emr-serverless", f"ubunye-{_label(task)}")
     command = [
         "aws", "emr-serverless", "start-job-run", "--application-id", application_id,
         "--execution-role-arn", role, "--name", plan.job,

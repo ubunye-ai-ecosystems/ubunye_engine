@@ -167,3 +167,20 @@ def test_container_apps_sets_env_vars_the_way_create_and_update_each_take_them(m
     assert write[write.index(flag) + 1 : write.index(flag) + 3] == ["A=1", "B=2"]
     other = "--env-vars" if exists else "--replace-env-vars"
     assert other not in write
+
+
+def test_container_jobs_run_several_tasks_in_one_launch():
+    k8s = containers.plan_k8s("uc", "pkg", ["clean", "monitor"], image="img:1")
+    manifest = json.loads(k8s.commands[0][3])
+    args = manifest["spec"]["template"]["spec"]["containers"][0]["args"]
+    assert args[:2] == ["--task", "uc/pkg/clean,uc/pkg/monitor"]
+    assert k8s.job.startswith("ubunye-clean-monitor-")
+    aca = containers.plan_container_apps(
+        "uc", "pkg", ["clean", "monitor"], image="i", resource_group="rg", environment="e"
+    )
+    spec = json.loads(aca.commands[0][3])
+    assert json.loads(spec["env"][-1].partition("=")[2])[:2] == [
+        "--task",
+        "uc/pkg/clean,uc/pkg/monitor",
+    ]
+    assert aca.job == "ubunye-clean-monitor"

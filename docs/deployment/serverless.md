@@ -55,6 +55,22 @@ job; `--record-out` saves it. It is the same record a local run writes, so
 `ubunye gate` and `ubunye lineage compare` work across clouds: the same task on
 two platforms must write the same data.
 
+## Several tasks in one launch
+
+Repeat `-t` to run a package's tasks in that order, in one job:
+
+```bash
+ubunye deploy glue -d pipelines -u food -p prices -t clean -t monitor \
+  --bucket my-bucket --role arn:aws:iam::...:role/glue-job \
+  --var out_dir=s3://my-bucket/food --record-out glue.json
+```
+
+The tasks share the job, its session and its disk, so a later task can read what
+an earlier one wrote even on a container whose disk goes when it stops. The first
+task that fails stops the rest, and the deploy fails if any task failed or never
+ran. With several tasks, `--record-out glue.json` writes one record per task:
+`glue.clean.json`, `glue.monitor.json`. Each is a normal run record.
+
 ## Kubernetes and Azure Container Apps
 
 For a runtime with no managed Spark, the image carries everything: Java, Spark in
