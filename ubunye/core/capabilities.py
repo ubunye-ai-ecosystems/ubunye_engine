@@ -16,7 +16,7 @@ Feature names a backend can declare (connectors refer to the same names):
 ``path_io``
     ``read_frame`` / ``execute_write`` on paths, which the ``s3`` connector uses.
 ``partitioned_writes``
-    Honours ``partition_by`` on a path write.
+    Honours ``partitionBy`` on a path write.
 ``remote_paths``
     Reads and writes cloud paths (``s3a://``, ``abfss://``, ``gs://``, ``dbfs:``).
 ``catalog``
@@ -135,9 +135,13 @@ def _connector_problems(
                     f"{where} uses mode '{mode}'; the {backend_name} backend can do "
                     f"{', '.join(sorted(caps.write_modes))}."
                 )
-            if cfg.get("partition_by") and PARTITIONED_WRITES not in caps.features:
+            # Writers read ``partitionBy``; ``partition_by`` is the adapter's argument
+            # name, accepted too. Checking only the latter meant this never fired (F-032).
+            if (
+                cfg.get("partitionBy") or cfg.get("partition_by")
+            ) and PARTITIONED_WRITES not in caps.features:
                 problems.append(
-                    f"{where} uses partition_by; the {backend_name} backend does not "
+                    f"{where} uses partitionBy; the {backend_name} backend does not "
                     "write partitioned folders."
                 )
         if io_check is not None:

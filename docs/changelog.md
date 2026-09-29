@@ -27,6 +27,9 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A backend that cannot write partition folders is refused before the run** when an
+  output sets `partitionBy`. The check looked for `partition_by`, which no config uses,
+  so it never fired and the task failed at the write instead (F-032).
 - **A rerun is safe (ADR 008).** A run takes a lease on its task and variables (its
   batch) under `.ubunye/leases/`. A second run of a batch that is still running is
   refused in one line naming the first (was: both appended, 7 of 10 pairs, F-019; or a

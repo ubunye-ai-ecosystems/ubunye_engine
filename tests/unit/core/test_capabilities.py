@@ -72,10 +72,13 @@ class TestCheck:
         (problem,) = check_task(PANDAS_LIKE, cfg, reg, backend_name="pandas")
         assert "output 'b'" in problem and "'merge'" in problem
 
-    def test_partitioned_writes(self, reg):
-        cfg = _cfg(outputs={"b": {"format": "s3", "path": "/t", "partition_by": ["d"]}})
+    @pytest.mark.parametrize("key", ["partitionBy", "partition_by"])
+    def test_partitioned_writes(self, reg, key):
+        # partitionBy is what every writer reads; checking only partition_by meant a
+        # backend without partitioned writes was never refused up front (F-032).
+        cfg = _cfg(outputs={"b": {"format": "s3", "path": "/t", key: ["d"]}})
         (problem,) = check_task(PANDAS_LIKE, cfg, reg, backend_name="pandas")
-        assert "partition_by" in problem
+        assert "partitionBy" in problem
 
     @pytest.mark.parametrize("path", ["s3a://b/k", "abfss://c@a.dfs.core.windows.net/x", "dbfs:/x"])
     def test_remote_paths(self, reg, path):
