@@ -16,9 +16,9 @@ databricks
   write modes:  any
   distributed:  yes   needs Java: yes
 pandas
-  features:     path_io
+  features:     partitioned_writes, path_io
   file formats: csv, json, parquet
-  write modes:  append, errorifexists, ignore, overwrite
+  write modes:  append, errorifexists, ignore, overwrite, overwrite_partitions
   distributed:  no   needs Java: no
 spark (default)
   features:     catalog, partitioned_writes, path_io, remote_paths, spark
@@ -49,7 +49,7 @@ starting anything, and lists every problem at once:
 ```text
   [FAIL] daily (on the pandas backend)
          - input 'orders' uses the 'hive' connector, which needs spark; the pandas backend does not provide it.
-         - output 'report' uses mode 'merge'; the pandas backend can do append, errorifexists, ignore, overwrite.
+         - output 'report' uses mode 'merge'; the pandas backend can do append, errorifexists, ignore, overwrite, overwrite_partitions.
 ```
 
 `ubunye run` makes the same check before it starts, so a task that cannot run

@@ -41,3 +41,14 @@ tests are. Output in the session scratchpad (e01-v3.txt).
 Final run on the shipped design (after four adversarial reviews): 20 of 20 trials
 killed, 20 of 20 exactly right, no debris, no `running` record (e01-v5.txt). E-02 on the
 same build: 0 of 10 doubled (e02-v5.txt).
+
+## `events` with `overwrite_partitions` on pandas (2026-09-29, F-012)
+Same harness, `EVENTS=partitions`: `events` written with `mode: overwrite_partitions`,
+`partitionBy: [batch]`, which the pandas backend can do since F-012. 10 trials, 10
+killed, 10 of 10 exactly right after the rerun (snapshot and events: batch 1 and
+batch 2 once each), no debris, no `running` record left. The rerun is not refused
+(an overwrite is already rerun safe) and replaces `batch=2`. Every kill in this run
+landed after the events write (in the run record hashing, about 90% of the run), so
+a kill inside the partition swap itself was not hit; that path is covered by a unit
+test that fails the second leaf's swap and checks every partition is put back.
+Output in the session scratchpad (e01-partitions.txt).

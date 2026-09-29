@@ -52,6 +52,36 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   **Behaviour change:** a scheduler that runs the
   same appending batch twice now gets exit code 1 the second time; give each run its
   own variable, or pass `--rerun` to replace.
+- **The pandas backend writes and reads partition folders, and does
+  `overwrite_partitions` (F-012).** `partitionBy` was refused on pandas, so the
+  rerun safe way to write a daily batch (replace the day's partition) needed Spark.
+  Now the same config writes the same folders as Spark 4.2 (`dt=2024-01-02/`, Spark's
+  `%` escapes, `__HIVE_DEFAULT_PARTITION__` for null, one `part-00000-<uuid>.c000`
+  file per partition, partition columns left out of the files) with every save mode,
+  and `overwrite_partitions` replaces only the partitions the data fills, one staged
+  folder swapped in at a time and put back if a swap fails. Reading a partitioned
+  folder finds the partition columns and infers their types as Spark does (int,
+  bigint, decimal, double, timestamp, date, text; widened across folders). A
+  partitioned append claims every file, so ADR 008 takes back exactly those.
+  Partition columns Spark does not read back as the same type (double, decimal,
+  binary, time) are refused with the reason, as are the layouts Spark refuses.
+  Checked against live Spark: 56 parity cases. E-01 with `overwrite_partitions`:
+  10 of 10 right after a kill and a rerun.
+  **Behaviour change:** reading a folder now follows Spark's partition discovery. A
+  folder holding `name=value` folders gains their columns, and data files directly
+  in it, beside those folders, are **dropped** (with a warning naming them), as Spark
+  drops them; the old code read those top level files. Layouts Spark refuses now fail
+  the read where the old code read the top level files: a plain folder beside
+  `name=value` folders (`CONFLICTING_DIRECTORY_STRUCTURES`), or folders with
+  different partition columns. Empty (zero byte) files are skipped for a folder, a
+  glob and a single file alike, as Spark skips them.
+  A skeptic review then found and fixed: an old partition deleted when it could not
+  be put back after a failed swap (now kept and named), two timestamps in a daylight
+  saving fold merged into one folder (now refused, as Spark fails), case collisions
+  at an outer level or on a case blind macOS disk or against existing folders (now
+  refused everywhere), `.old` folders named by number (now by partition path, and
+  the next write warns about any left behind), and a first partitioned append's root
+  `_SUCCESS` left after its take back (now removed).
 
 - **`ubunye prove report` treats two names of one time zone as one** (`UTC`,
   `Etc/UTC`, `GMT`, `Zulu`; other zones by their offsets over time). Databricks records

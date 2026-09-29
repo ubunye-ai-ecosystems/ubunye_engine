@@ -8,6 +8,10 @@ Task: one input, two outputs: `snapshot` (overwrite) and `events` (append, one b
 per dt). Each trial starts from the same state (dt=1 already written once), kills a
 dt=2 run, then reruns dt=2 to completion. Correct: snapshot equals a clean run; events
 holds dt=1 once and dt=2 once; no run record claims success for a killed run.
+
+`EVENTS=partitions` writes `events` with `mode: overwrite_partitions` and
+`partitionBy: [batch]` instead of an append (the pandas backend can since F-012):
+the rerun replaces the batch's partition, so it is safe without any claim.
 """
 
 from __future__ import annotations
@@ -28,6 +32,8 @@ UBUNYE = sys.argv[1]  # path to the ubunye executable under test
 TRIALS = int(sys.argv[2]) if len(sys.argv) > 2 else 40
 ROWS = 1_000_000
 EVENTS_MODE = os.environ.get("EVENTS_MODE", "      mode: append\n")
+if os.environ.get("EVENTS") == "partitions":
+    EVENTS_MODE = "      mode: overwrite_partitions\n      partitionBy: [batch]\n"
 
 TRANSFORM = """\
 from ubunye.core.interfaces import Task
@@ -135,6 +141,12 @@ def read(path: str) -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
+def batches(events: pd.DataFrame) -> dict:
+    """Rows per batch. A partition column reads back as a number: compare as text."""
+    counts = events.get("batch", pd.Series(dtype=str)).astype(str).value_counts()
+    return {str(k): int(v) for k, v in counts.items()}
+
+
 def records(root: str) -> list:
     out = []
     for f in glob.glob(os.path.join(root, ".ubunye", "lineage", "**", "*.json"), recursive=True):
@@ -177,17 +189,14 @@ def main() -> None:
         code = kill_run(root, "2", after)
         after_kill = {
             "snapshot_rows": len(read(os.path.join(root, "out", "snapshot"))),
-            "events_by_batch": read(os.path.join(root, "out", "events"))
-            .get("batch", pd.Series(dtype=str))
-            .value_counts()
-            .to_dict(),
+            "events_by_batch": batches(read(os.path.join(root, "out", "events"))),
             "debris": debris(root),
             "records": records(root),
         }
         refused = run(root, "2", finished_ok=True) < 0
         snap = read(os.path.join(root, "out", "snapshot")).sort_values("id").reset_index(drop=True)
         events = read(os.path.join(root, "out", "events"))
-        by_batch = events["batch"].value_counts().to_dict()
+        by_batch = batches(events)
         result = {
             "trial": n,
             "kill_after_s": round(after, 2),
