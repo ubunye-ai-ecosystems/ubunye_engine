@@ -424,7 +424,7 @@ class TestRefusals:
             (
                 pd.DataFrame({"a": [1, 2], "p": ["__HIVE_DEFAULT_PARTITION__", None]}),
                 ["p"],
-                "Two different values map to the one folder",
+                "map to the one folder",
             ),  # W7
             (pd.DataFrame({"a": [1], "p": ["a\x00b"]}), ["p"], "NUL"),
         ],
@@ -459,8 +459,8 @@ class TestRefusals:
         with pytest.raises(SinkWriteError, match="ends in '.'"):
             _write(tmp_path / "out", pd.DataFrame({"a": [1], "p": ["5."]}), ["p"])
 
-    @pytest.mark.skipif(not WINDOWS, reason="folders differ only in case on Windows")
-    def test_values_that_differ_only_in_case_are_refused_on_windows(self, tmp_path):
+    def test_values_that_differ_only_in_case_are_refused_everywhere(self, tmp_path):
+        # Windows and macOS disks ignore case: the two folders would be one.
         with pytest.raises(SinkWriteError, match="differ only in case"):
             _write(tmp_path / "out", pd.DataFrame({"a": [1, 2], "p": ["A", "a"]}), ["p"])
 
@@ -641,3 +641,84 @@ class TestReadLayouts:
         (root / "_SUCCESS").write_text("")
         back = _read(root)
         assert len(back) == 4 and sorted(back["a"].tolist()) == ["x", "x", "y", "y"]
+
+
+# --------------------------------------------------------------------------- #
+# Review of F-012 (skeptic round 3): each case lost or changed data before
+# --------------------------------------------------------------------------- #
+
+
+class TestReview:
+    def test_an_old_partition_that_cannot_be_put_back_is_kept_and_named(
+        self, tmp_path, monkeypatch
+    ):
+        out = tmp_path / "out"
+        _golden_before(out)
+        (old_part,) = os.listdir(out / "p=2" / "q=a")
+        old_bytes = (out / "p=2" / "q=a" / old_part).read_bytes()
+        real = os.replace
+        target = os.path.join(str(out), "p=2", "q=a")
+
+        def broken(src, dst):
+            if os.path.normcase(os.path.abspath(dst)) == os.path.normcase(target):
+                raise OSError("disk gone")  # neither the new leaf nor the old one goes in
+            return real(src, dst)
+
+        monkeypatch.setattr(os, "replace", broken)
+        with pytest.raises(SinkWriteError, match="could not be put back") as info:
+            _write(out, NEW, ["p", "q"], mode=DYNAMIC)
+        monkeypatch.setattr(os, "replace", real)
+        (kept,) = info.value.context["Kept"]
+        assert kept.endswith(os.path.join(".old", "p=2", "q=a"))  # named by its partition
+        assert (open(os.path.join(kept, old_part), "rb").read()) == old_bytes
+
+    def test_two_instants_with_one_wall_clock_time_are_refused(self, tmp_path):
+        # Europe/London, 2024-10-27: 00:30Z and 01:30Z are both 01:30 local. Spark's
+        # write fails; one folder would silently merge two values.
+        stamps = pd.array(
+            [
+                dt.datetime(2024, 10, 27, 0, 30, tzinfo=UTC),
+                dt.datetime(2024, 10, 27, 1, 30, tzinfo=UTC),
+            ],
+            pd.ArrowDtype(pa.timestamp("us", tz="UTC")),
+        )
+        frame = pd.DataFrame({"id": [1, 2], "p": stamps})
+        with pytest.raises(SinkWriteError, match="map to the one folder"):
+            _write(tmp_path / "out", frame, ["p"], zone="Europe/London")
+        assert not (tmp_path / "out").exists()
+        _write(tmp_path / "utc", frame, ["p"], zone="UTC")  # two folders in UTC: fine
+        assert len(_dirs(tmp_path / "utc")) == 2
+
+    def test_an_outer_level_differing_in_case_is_refused_everywhere(self, tmp_path):
+        frame = pd.DataFrame({"id": [1, 2], "p": ["A", "a"], "q": ["x", "y"]})
+        with pytest.raises(SinkWriteError, match="differ only in case"):
+            _write(tmp_path / "out", frame, ["p", "q"])
+        assert not (tmp_path / "out").exists()
+
+    @pytest.mark.parametrize("mode", [APPEND, DYNAMIC], ids=["append", "overwrite_partitions"])
+    def test_a_new_folder_matching_an_existing_one_only_in_case_is_refused(self, tmp_path, mode):
+        out = tmp_path / "out"
+        _write(out, pd.DataFrame({"id": [1], "p": ["a"]}), ["p"])
+        before = _files(out)
+        with pytest.raises(SinkWriteError, match="differs from it only in case"):
+            _write(out, pd.DataFrame({"id": [2], "p": ["A"]}), ["p"], mode=mode)
+        assert _files(out) == before
+
+    def test_left_staging_folders_are_named_and_never_deleted(self, tmp_path, caplog):
+        out = tmp_path / "out"
+        _golden_before(out)
+        stale = tmp_path / ".out.ubunye-0123456789ab.old" / "p=2" / "q=a"
+        stale.mkdir(parents=True)
+        (stale / "part-old.parquet").write_bytes(b"only copy")
+        with caplog.at_level(logging.WARNING):
+            _write(out, NEW, ["p", "q"], mode=DYNAMIC)
+        assert ".out.ubunye-0123456789ab.old" in caplog.text
+        assert "the path under it is the partition" in caplog.text
+        assert (stale / "part-old.parquet").read_bytes() == b"only copy"
+
+    def test_an_empty_file_in_a_glob_is_skipped_as_spark_skips_it(self, tmp_path):
+        folder = tmp_path / "in"
+        folder.mkdir()
+        pq.write_table(pa.table({"id": [1]}), folder / "a.parquet")
+        (folder / "b.parquet").write_bytes(b"")
+        assert _read(folder / "*.parquet")["id"].tolist() == [1]

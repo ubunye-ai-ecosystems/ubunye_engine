@@ -230,12 +230,14 @@ def split(table: Any, partition_by: Sequence[str], timezone: str) -> Split:
             raise problem
 
     codes, texts = [], []
-    for name in actual:
+    for name, spelled in zip(actual, partition_by):
         col = table.column(name).combine_chunks()
         encoded = pc.dictionary_encode(col, null_encoding="encode")
+        raw = encoded.dictionary.to_pylist()
         rendered = _render(encoded.dictionary, timezone)
         for value in rendered:
             _check_value(name, value)
+        _refuse_shared_folders(spelled, raw, rendered)
         distinct: Dict[Optional[str], int] = {}
         mapping = [distinct.setdefault(v, len(distinct)) for v in rendered]
         codes.append(pc.take(pa.array(mapping, pa.int32()), encoded.indices))
@@ -247,34 +249,92 @@ def split(table: Any, partition_by: Sequence[str], timezone: str) -> Split:
         .group_by(keys)
         .aggregate([("row", "list")])
     )
-    leaves: Dict[str, Tuple[Tuple[Optional[str], ...], Any]] = {}
+    leaves: Dict[str, Any] = {}
     folded: Dict[str, str] = {}
     key_columns = [grouped.column(k).to_pylist() for k in keys]
     rows = grouped.column("row_list")
     for g in range(grouped.num_rows):
         values = tuple(texts[i][key_columns[i][g]] for i in range(len(keys)))
-        path = os.path.join(*[_segment(n, v) for n, v in zip(partition_by, values)])
-        if path in leaves:
-            raise _refuse(
-                f"Two different values map to the one folder {path}: a null (or empty) "
-                f"value and the text '{HIVE_DEFAULT}'. Spark's write fails on this frame "
-                "too (it names both the same file).",
-                f"Replace the text '{HIVE_DEFAULT}', or the nulls, in the transform.",
-                folder=path,
-            )
-        same = os.path.normcase(path)
-        if same in folded and folded[same] != path:
-            raise _refuse(
-                f"The folders {folded[same]} and {path} differ only in case, and this "
-                "file system ignores case, so they would be one folder. Spark's write "
-                "fails on this frame on this host too.",
-                "Make the values differ by more than case (for example lower case them).",
-                folder=path,
-            )
-        folded[same] = path
-        leaves[path] = (values, rows[g].values)
+        segments = [_segment(n, v) for n, v in zip(partition_by, values)]
+        # Every level, compared ignoring case on every system: on a disk that
+        # ignores case (Windows, macOS by default) p=A and p=a are one folder, and
+        # the second write would land on the first one's file.
+        for depth in range(1, len(segments) + 1):
+            prefix = "/".join(segments[:depth])
+            seen = folded.setdefault(prefix.casefold(), prefix)
+            if seen != prefix:
+                raise _refuse(
+                    f"The folders {seen} and {prefix} differ only in case. On a disk "
+                    "that ignores case (Windows, macOS by default) they are one folder, "
+                    "and one write would replace the other's file; Spark's write fails "
+                    "there too.",
+                    "Make the values differ by more than case (for example lower case them).",
+                    folder=prefix,
+                )
+        leaves[os.path.join(*segments)] = rows[g].values
     data = table.drop_columns(actual)
-    return Split(data=data, leaves=[(p, leaves[p][1]) for p in sorted(leaves)])
+    return Split(data=data, leaves=[(p, leaves[p]) for p in sorted(leaves)])
+
+
+def _refuse_shared_folders(name: str, raw: List[Any], rendered: List[Optional[str]]) -> None:
+    """Refuse when one folder name would hold two different values of a column.
+
+    Spark sorts rows by value, so two values that render to the same text (a null
+    and the text ``__HIVE_DEFAULT_PARTITION__``; two instants an hour apart that
+    read the same on the wall clock when daylight saving ends) are two partitions
+    with one path, and its write fails (FileAlreadyExistsException). Writing them
+    to one folder would silently change a value, so the pandas backend refuses
+    too. A null and an empty string are one value to Spark, and are allowed.
+    """
+    groups: Dict[str, List[Any]] = {}
+    for value, text in zip(raw, rendered):
+        folder = _segment(name, text)
+        groups.setdefault(folder, [])
+        if value is None or value == "":
+            value = None  # Spark turns "" into null before it sorts
+        if value not in groups[folder]:
+            groups[folder].append(value)
+    for folder, values in groups.items():
+        if len(values) > 1:
+            shown = ", ".join("null" if v is None else repr(v) for v in values[:3])
+            raise _refuse(
+                f"Different values of `{name}` ({shown}) map to the one folder {folder}. "
+                "Spark's write fails on this frame too (it names both the same file); "
+                "writing both into one folder would change a value without a word.",
+                "Change the values in the transform so each has its own folder (for a "
+                "timestamp in a daylight saving change, partition by a UTC text or a date).",
+                folder=folder,
+            )
+
+
+def check_existing(root: str, leaves: Sequence[str]) -> None:
+    """Refuse leaf folders that match a folder already in ``root`` only ignoring case.
+
+    For a write that keeps what is there (append, overwrite_partitions): on a disk
+    that ignores case ``p=A`` would land in the existing ``p=a``, and on one that
+    does not, the table would then hold two folders Spark treats as one column
+    value each. Checked before anything is written.
+    """
+    listings: Dict[str, Dict[str, str]] = {}
+    for leaf in leaves:
+        parent = root
+        for seg in leaf.split(os.sep):
+            if parent not in listings:
+                try:
+                    names = os.listdir(parent)
+                except OSError:
+                    names = []
+                listings[parent] = {n.casefold(): n for n in names}
+            there = listings[parent].get(seg.casefold())
+            if there is not None and there != seg:
+                raise _refuse(
+                    f"{os.path.join(parent, there)} already exists, and the new data's "
+                    f"folder {seg} differs from it only in case. On a disk that ignores "
+                    "case they are one folder; on one that does not, two.",
+                    "Write the values with the same case as the existing folders.",
+                    folder=os.path.join(parent, seg),
+                )
+            parent = os.path.join(parent, seg)
 
 
 def _check_value(name: str, value: Optional[str]) -> None:

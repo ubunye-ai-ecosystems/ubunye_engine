@@ -109,8 +109,19 @@ this does:
 - `overwrite_partitions` replaces each partition folder the new data fills and
   leaves every other partition alone. Each new partition is written to a hidden
   folder first, then swapped in; if a swap fails, the partitions already
-  swapped are put back. Rerunning a day this way replaces that day, so it is
+  swapped are put back; an old partition that cannot be put back is kept, and
+  the error says where. Rerunning a day this way replaces that day, so it is
   safe after a crash with no other help.
+- One window is left, as in Spark's own commit: a hard kill (power cut) between
+  moving a partition's old folder aside and moving the new one in leaves that
+  partition missing until the batch is rerun. Its old files are then in a hidden
+  folder beside the target, `.<name>.ubunye-<id>.old/<partition path>`; the next
+  write to the target warns and names it, and nothing deletes it.
+- A write whose values would share a folder is refused, as Spark's write fails on
+  it: a null and the text `__HIVE_DEFAULT_PARTITION__`, two timestamps that read
+  the same on the wall clock when daylight saving ends, or folder names that
+  differ only in case (also against folders already in the target), on every
+  system, since Windows and macOS disks ignore case.
 - `append` claims every new file before it lands, so a failed or killed run has
   exactly its own files taken back ([ADR 008](../architecture/adr-008-rerun-safety.md)).
 

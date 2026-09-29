@@ -11,8 +11,9 @@ then compared:
 Then Spark's partition discovery is compared with the pandas reader on folders
 built by hand (type inference, widening, ignored names, errors).
 
-Marked integration (the Spark half needs a JVM). Session zone is not UTC, so a
-time zone slip cannot hide.
+Marked integration (the Spark half needs a JVM). The session zone is not UTC, so
+a fixed offset slip cannot hide; Africa/Johannesburg has no daylight saving, so
+the daylight saving cases (a gap and a fold) run in Europe/London on their own.
 """
 
 from __future__ import annotations
@@ -514,3 +515,48 @@ def test_pandas_reads_a_table_spark_wrote_in_two_tasks(spark, pandas_backend, tm
     spark.read.parquet(source).repartition(2).write.partitionBy("a").parquet(out)
     assert_same(spark.read.parquet(out), pandas_backend.read_frame("parquet", out))
     assert pandas_arrow(pandas_backend.read_frame("parquet", out)).num_rows == 4
+
+
+# --------------------------------------------------------------------------- #
+# 5. Daylight saving (Europe/London): a gap and a fold
+# --------------------------------------------------------------------------- #
+
+LONDON = "Europe/London"
+
+
+def _stamps(*values):
+    return pd.array(
+        [dt.datetime(*v, tzinfo=UTC) for v in values], pd.ArrowDtype(pa.timestamp("us", tz="UTC"))
+    )
+
+
+@pytest.fixture
+def london(spark):
+    spark.conf.set("spark.sql.session.timeZone", LONDON)
+    yield PandasBackend(timezone=LONDON)
+    spark.conf.set("spark.sql.session.timeZone", ZONE)
+
+
+def test_the_edges_of_a_daylight_saving_gap_match(spark, london, tmp_path):
+    # 00:59:59Z is 00:59:59 GMT, 01:00Z is 02:00 BST: the clocks jump an hour.
+    frame = _frame(p=_stamps((2024, 3, 31, 0, 59, 59), (2024, 3, 31, 1, 0), (2024, 10, 27, 1, 30)))
+    spark_out, pandas_out = _write_both(
+        spark, london, frame, tmp_path, "gap", ["p"], "overwrite", "parquet", None
+    )
+    assert_same_everywhere(spark, london, spark_out, pandas_out)
+
+
+def test_two_instants_in_a_daylight_saving_fold_fail_on_both(spark, london, tmp_path):
+    # 00:30Z and 01:30Z on 2024-10-27 are both 01:30 on London's wall clock.
+    frame = _frame(p=_stamps((2024, 10, 27, 0, 30), (2024, 10, 27, 1, 30)))
+    with pytest.raises(Exception):
+        _write_both(spark, london, frame, tmp_path, "fold", ["p"], "overwrite", "parquet", None)
+    with pytest.raises(SinkWriteError, match="map to the one folder"):
+        london.execute_write(
+            frame,
+            _mode("overwrite", ["p"]),
+            connector="s3",
+            file_format="parquet",
+            path=str(tmp_path / "fold_pandas_only"),
+            partition_by=["p"],
+        )

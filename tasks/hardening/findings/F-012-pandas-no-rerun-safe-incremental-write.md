@@ -78,3 +78,29 @@ spec is in the session scratchpad, `partspec/SPEC.md`):
 - A `basePath` read option is not supported (unknown options are refused, as before).
 - A partition emptied by a take back (ADR 008) keeps its empty folder; Spark ignores
   it on read. Removing it would race with another run landing a file there.
+
+## Skeptic review (round 3) and the follow up
+Proved by script (session scratchpad `skeptic3/`) and fixed, each with a unit test that
+fails on 347866d and passes after (8 new tests; a ninth guards a case that already
+worked):
+
+1. Data loss: when both moving the new leaf in and putting the old one back failed,
+   the `.old` folder holding the only copy was deleted. Now it is kept and the
+   `SinkWriteError` names it.
+2. A silent value change: two instants that read the same in a daylight saving fold
+   (Europe/London) went into one folder; Spark fails. Now any folder name that two
+   different values of a column would share is refused. Live parity has a London gap
+   and fold case.
+3. Case: an outer level (`p=A/q=x`, `p=a/q=y`) and any level on a POSIX disk that
+   ignores case (macOS) slipped through, as did a new folder matching an existing
+   one only in case. Every level is now compared case folded on every system, and
+   against the target's folders for append and `overwrite_partitions`.
+4. A kill mid swap left the old leaf in `.old/1`. It is now `.old/<partition path>`,
+   and every write warns about staging folders left beside its target (never deleted).
+   The window itself is Spark's too, and is documented.
+5. A take back of a first partitioned append left the root `_SUCCESS`. The take back
+   now checks the output root above the partition folders.
+6. Globs and single files skip empty files too; the changelog says plainly that
+   files beside partition folders are now dropped and some mixed layouts now fail.
+
+Live parity after the follow up: 56 passed (plus the 30 older pandas parity cases).

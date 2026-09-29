@@ -101,19 +101,25 @@ def _local_path(path: str, *, error: type) -> str:
 
 
 def _data_files(local: str) -> List[str]:
-    """The files behind a path: the file itself, a folder's data files, or a glob."""
+    """The files behind a path: the file itself, a folder's data files, or a glob.
+
+    Empty (zero byte) files are skipped, as Spark skips them however the path
+    names them; folders go through partition discovery instead (F-012).
+    """
     if glob.has_magic(local):
         candidates = sorted(glob.glob(local))
     elif os.path.isdir(local):
         candidates = sorted(os.path.join(local, n) for n in os.listdir(local))
     elif os.path.isfile(local):
-        return [local]
+        candidates = [local]
     else:
         candidates = []
     return [
         f
         for f in candidates
-        if os.path.isfile(f) and not os.path.basename(f).startswith(("_", "."))
+        if os.path.isfile(f)
+        and not os.path.basename(f).startswith(("_", "."))
+        and os.path.getsize(f) > 0
     ]
 
 
@@ -976,6 +982,19 @@ def _staging(local: str) -> str:
 
     parent, base = os.path.split(local)
     os.makedirs(parent, exist_ok=True)
+    left = sorted(glob.glob(os.path.join(glob.escape(parent), f".{glob.escape(base)}.ubunye-*")))
+    if left:
+        # Never deleted here: a `.old` folder may hold the only copy of a partition
+        # a killed overwrite had moved aside, and another may be a live run's.
+        logger.warning(
+            "Found staging folders beside %s, left by a run that was killed or still "
+            "being written by another: %s. A '.old' folder holds old partition folders "
+            "moved aside by a partition overwrite (the path under it is the partition); "
+            "the others hold new files not yet moved in. Remove them once no run is "
+            "writing and nothing in them is needed.",
+            local,
+            left,
+        )
     staging = os.path.join(parent, f".{base}.ubunye-{uuid.uuid4().hex[:12]}")
     os.makedirs(staging)
     return staging
@@ -1051,9 +1070,16 @@ def _replace_partitions(local: str, write: Any) -> None:
     folder of the same name; every other partition, any stray file and the
     root ``_SUCCESS`` are left as they are, and a new target gets an empty folder
     and no ``_SUCCESS`` (as in Spark). The leaves are written to a hidden staging
-    folder first; then, one leaf at a time, the old folder is moved aside, the
-    new one moved in, and only when every leaf is in are the old ones deleted.
-    If a move fails, the leaves already moved are put back.
+    folder first; then, one leaf at a time, the old folder is moved aside (to
+    ``<staging>.old/<leaf path>``), the new one moved in, and only when every
+    leaf is in are the old ones deleted. If a move fails, the leaves already
+    moved are put back. An old folder that cannot be put back is never deleted:
+    the error names where it is.
+
+    A hard kill between moving a leaf aside and moving the new one in leaves
+    that partition missing, with its old files in the ``.old`` folder (Spark's
+    own commit has the same window). The next write warns about such folders;
+    rerunning the batch writes the partition again.
     """
     import shutil
 
@@ -1068,42 +1094,62 @@ def _replace_partitions(local: str, write: Any) -> None:
     staging = _staging(local)
     aside = staging + ".old"
     swapped: List[Any] = []  # (target, where its old folder went, or None)
-    keep_aside = False
+    kept: List[str] = []  # old folders that could not be put back
     try:
         parts = write(staging)
-        for n, leaf in enumerate(sorted({os.path.dirname(p) for p in parts})):
+        for leaf in sorted({os.path.dirname(p) for p in parts}):
             target = os.path.join(local, leaf)
             old = None
             if os.path.lexists(target):
-                os.makedirs(aside, exist_ok=True)
-                old = os.path.join(aside, str(n))
+                old = os.path.join(aside, leaf)
+                os.makedirs(os.path.dirname(old), exist_ok=True)
                 os.replace(target, old)
             try:
                 os.makedirs(os.path.dirname(target), exist_ok=True)
                 os.replace(os.path.join(staging, leaf), target)
             except BaseException:
                 if old is not None:
-                    os.replace(old, target)
+                    try:
+                        os.replace(old, target)
+                    except OSError as exc:
+                        kept.append(old)
+                        logger.error(
+                            "Could not put back the partition %s (%s); its old files are "
+                            "kept in %s.",
+                            target,
+                            exc,
+                            old,
+                        )
                 raise
             swapped.append((target, old))
-    except BaseException:
+    except BaseException as failure:
         for target, old in reversed(swapped):
             try:
                 shutil.rmtree(target)
                 if old is not None:
                     os.replace(old, target)
             except OSError as exc:
-                keep_aside = True
+                if old is not None:
+                    kept.append(old)
                 logger.error(
-                    "Could not put back the partition %s (%s); its old files are in %s.",
+                    "Could not put back the partition %s (%s); its old files are kept in %s.",
                     target,
                     exc,
-                    aside,
+                    old or "(it had none)",
                 )
+        if kept:
+            raise SinkWriteError(
+                f"The partition overwrite of {local} failed ({failure}), and "
+                f"{len(kept)} old partition folder(s) could not be put back. Their files "
+                f"are kept, not deleted, in: {', '.join(kept)}",
+                context={"Backend": "pandas", "path": local, "Kept": kept},
+                hint="Move each kept folder back to its place under the target (the "
+                "path after '.old' is the partition), or rerun the batch.",
+            ) from failure
         raise
     finally:
         shutil.rmtree(staging, ignore_errors=True)
-        if not keep_aside and os.path.exists(aside):
+        if not kept and os.path.exists(aside):
             shutil.rmtree(aside, ignore_errors=True)
 
 
@@ -1202,6 +1248,10 @@ def execute_write(
     # Partition columns and values are checked before anything is written, as
     # Spark checks them before its job starts (F-012).
     cut = pandas_partitions.split(arrow, partition_by, timezone) if partition_by else None
+    keeps = resolved.is_overwrite_partitions or resolved.save_mode == "append"
+    if cut is not None and keeps and os.path.isdir(local):
+        # What stays must not meet a new folder that differs from it only in case.
+        pandas_partitions.check_existing(local, [leaf for leaf, _ in cut.leaves])
 
     def write(folder: str) -> List[str]:
         return _write_tree(arrow, cut, fmt, folder, opts, timezone)

@@ -877,15 +877,38 @@ class _InUse(Exception):
         self.note = note  # the batch note could not be written (nothing was removed)
 
 
-def _drop_success_marker(folder: str) -> None:
-    """A folder left with no data files must not say it holds a complete dataset."""
+def _holds_data(folder: str) -> bool:
+    """Whether a data file (not ``_`` or ``.``) is in ``folder`` or its partition folders."""
     try:
-        names = os.listdir(folder)
+        entries = list(os.scandir(folder))
     except OSError:
-        return
-    if "_SUCCESS" in names and not [n for n in names if not n.startswith(("_", "."))]:
+        return True  # cannot tell: leave the marker alone
+    for entry in entries:
+        name = entry.name
+        if name.startswith("."):
+            continue
+        if entry.is_dir():
+            if "=" in name and _holds_data(entry.path):
+                return True
+        elif not name.startswith("_"):
+            return True
+    return False
+
+
+def _drop_success_marker(folder: str) -> None:
+    """A folder left with no data files must not say it holds a complete dataset.
+
+    A partitioned output (F-012) keeps its ``_SUCCESS`` at the root, above the
+    ``name=value`` folders the file was in: that root is checked, counting the
+    data files in all its partition folders.
+    """
+    root = folder
+    while "=" in os.path.basename(root):
+        root = os.path.dirname(root)
+    marker = os.path.join(root, "_SUCCESS")
+    if os.path.exists(marker) and not _holds_data(root):
         try:
-            os.remove(os.path.join(folder, "_SUCCESS"))
+            os.remove(marker)
         except OSError:
             pass
 

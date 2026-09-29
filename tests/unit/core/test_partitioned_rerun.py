@@ -193,3 +193,40 @@ def test_overwrite_partitions_is_not_an_append(tmp_path):
     assert _ids(tmp_path) == ["1", "2"]
     # Spark's dynamic overwrite writes no _SUCCESS into a new target (SPEC O4).
     assert sorted(os.listdir(tmp_path / "out")) == ["g=a", "g=b"]
+
+
+def test_taking_back_a_first_partitioned_append_drops_the_root_success_marker(tmp_path):
+    # The append created the target, so after the take back it holds no data and must
+    # not say it is complete. _SUCCESS is at the root, above the partition folders.
+    out = tmp_path / "out"
+    with pytest.raises(RuntimeError):
+        with runs.held(tmp_path, TASK, {}, "run-first"):
+            runs.writing("out", appends=True, exact=True)
+            PandasBackend().execute_write(
+                pd.DataFrame({"id": ["1", "2"], "g": ["a", "b"]}),
+                APPEND,
+                connector="s3",
+                file_format="parquet",
+                path=str(out),
+                partition_by=["g"],
+            )
+            assert (out / "_SUCCESS").exists()
+            runs.written("out")
+            raise RuntimeError("a later output failed")
+    assert _parts(tmp_path) == set()
+    assert not (out / "_SUCCESS").exists()
+
+
+def test_the_root_success_marker_stays_while_other_partitions_hold_data(tmp_path):
+    out = tmp_path / "out"
+    kw = dict(connector="s3", file_format="parquet", path=str(out), partition_by=["g"])
+    PandasBackend().execute_write(pd.DataFrame({"id": ["0"], "g": ["z"]}), APPEND, **kw)
+    with pytest.raises(RuntimeError):
+        with runs.held(tmp_path, TASK, {}, "run-second"):
+            runs.writing("out", appends=True, exact=True)
+            PandasBackend().execute_write(pd.DataFrame({"id": ["1"], "g": ["a"]}), APPEND, **kw)
+            runs.written("out")
+            raise RuntimeError("a later output failed")
+    assert (out / "_SUCCESS").exists() and _parts(tmp_path) == {
+        p for p in _parts(tmp_path) if p.startswith("g=z/")
+    }

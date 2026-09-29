@@ -41,7 +41,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 | Environment | Last green on this branch |
 |---|---|
 | Unit tier, Linux/Windows/macOS, Python 3.10 to 3.13 | PR #98 checks |
-| Live Spark parity (dev box, Spark 4.2) | 2026-09-28, 49 passed; 2026-09-29 partition folders (F-012), 54 passed |
+| Live Spark parity (dev box, Spark 4.2) | 2026-09-28, 49 passed; 2026-09-29 partition folders (F-012), 56 passed |
 
 ## Proving ground (generated evidence: docs/proving-ground/latest.md)
 
