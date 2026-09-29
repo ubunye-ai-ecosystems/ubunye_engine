@@ -195,7 +195,11 @@ def run_task(
 
     run_id = str(uuid.uuid4())
     context = EngineContext(
-        run_id=run_id, profile=mode, task_name=task_identity, variables=variables
+        run_id=run_id,
+        profile=mode,
+        task_name=task_identity,
+        variables=variables,
+        lineage_dir=str(usecase_dir / lineage_dir) if lineage else None,
     )
 
     backend.start()
@@ -297,6 +301,7 @@ def run_pipeline(
                 profile=mode,
                 task_name=f"{usecase}/{package}/{task}",
                 variables=variables,
+                lineage_dir=str(base / lineage_dir) if lineage else None,
             )
             results[task] = execute_user_task(
                 chosen,

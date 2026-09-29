@@ -1,0 +1,824 @@
+"""Rerun safety: one live run per task and batch, and a clean rerun after a crash.
+
+The hardening experiments showed a run can be killed at any moment (a power cut, a
+killed job) and that the rerun then did harm: an append committed by the killed run
+was appended again (E-01, 16 of 16 trials), two runs of the same date at once both
+appended (E-02, 7 of 10), and the killed run's record said "running" for ever. The
+AbsaOSS ingestion tool Pramen met the same problems in production and answered them
+with a lease per table and date, and with repairs made from what was actually written.
+This is the same idea, kept small, and it never deletes a file it cannot prove this
+run wrote (ADR 008).
+
+**The lease.** A run takes a lease on its *batch*: the task and its variables (``dt``,
+``--var``), so runs of different dates never block each other. The lease is a file,
+``<usecase_dir>/.ubunye/leases/<usecase>/<package>/<task>/<key>.json``, created
+atomically; it names the run, its process, its host and a heartbeat. A second run of
+the same batch while the first is alive is refused, naming the first.
+
+**A dead run.** A lease whose process is gone (same host), or whose file has not been
+touched for :data:`HEARTBEAT_TIMEOUT` by the shared disk's own clock (another host),
+belongs to a run that died. The next run takes it over and marks that run's record
+``interrupted``.
+
+**Appends: only claimed files are ever removed.** A backend that can name the files it
+appends (pandas: one part file with a fresh UUID in its name) *claims* each one in the
+lease before moving it into the output folder. A run that fails removes its claimed
+files; a run that takes over a dead run's lease removes the dead run's. No folder is
+ever listed to decide what to delete, so another run's files are never touched.
+Appends a backend cannot claim (Spark, JDBC, catalog tables) are never deleted: the run
+says they may hold the batch, in its log and in the dead run's record.
+
+**Limits, said plainly.** The lease protects runs that share the usecase folder (one
+machine, or a shared disk). Two cloud jobs each with their own disk are not protected
+by it. A second run of a batch that already *finished* appends again (F-031).
+``UBUNYE_RUN_LEASE=off`` turns it off.
+"""
+
+from __future__ import annotations
+
+import contextvars
+import copy
+import hashlib
+import json
+import logging
+import os
+import socket
+import sys
+import threading
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+from ubunye.core.errors import UbunyeError
+
+logger = logging.getLogger(__name__)
+
+#: A lease untouched for this long belongs to a run that died, when its process
+#: cannot be checked (it ran on another host).
+HEARTBEAT_TIMEOUT = 15 * 60
+#: How often a live run refreshes its heartbeat.
+HEARTBEAT_EVERY = 30
+#: How long a takeover holds the lease before taking anything back, so a run judged
+#: dead that is alive can show it (longer than one lease save with its retries).
+TAKEOVER_SETTLE = 3.0
+
+_CURRENT: contextvars.ContextVar[Optional["RunLease"]] = contextvars.ContextVar(
+    "ubunye_run_lease", default=None
+)
+
+
+class RunLeaseHeld(UbunyeError, RuntimeError):
+    """Another live run holds the lease on this task and batch."""
+
+
+class RunLeaseLost(UbunyeError, RuntimeError):
+    """This run's lease was taken over; it must not write any more."""
+
+
+def enabled() -> bool:
+    return os.environ.get("UBUNYE_RUN_LEASE", "on").strip().lower() not in ("off", "0", "false")
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _process_start(pid: int) -> Optional[str]:
+    """When a process started, as an opaque token, or None when it cannot be told.
+
+    A pid is reused once its process ends; the start time tells the two apart.
+    """
+    if pid <= 0:
+        return None
+    if sys.platform == "win32":
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return None
+        try:
+            times = [ctypes.c_ulonglong() for _ in range(4)]
+            if not kernel32.GetProcessTimes(handle, *(ctypes.byref(t) for t in times)):
+                return None
+            return str(times[0].value)
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        with open(f"/proc/{pid}/stat", encoding="utf-8") as fh:
+            return fh.read().rsplit(")", 1)[1].split()[19]  # field 22: starttime
+    except (OSError, IndexError):
+        return None
+
+
+def _pid_alive(pid: int, started: Optional[str] = None) -> bool:
+    """Whether a process is running on this host (the same one, when ``started`` is
+    given). Never signals it."""
+    if pid <= 0:
+        return False
+    if sys.platform == "win32":
+        # os.kill(pid, 0) would *terminate* the process on Windows.
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            # 87 (invalid parameter): no such process. Anything else, access denied
+            # included, may be a live process of another user: never call it dead.
+            return kernel32.GetLastError() != 87
+        try:
+            code = ctypes.c_ulong()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return True
+            if code.value != 259:  # STILL_ACTIVE
+                return False
+        finally:
+            kernel32.CloseHandle(handle)
+    else:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            pass
+    now = _process_start(pid)
+    return started is None or now is None or now == started
+
+
+def _host() -> str:
+    """This host, as far as a pid means anything: containers that share a hostname
+    (host networking) but not a pid namespace are different hosts here."""
+    name = socket.gethostname()
+    try:
+        return f"{name}|{os.readlink('/proc/self/ns/pid')}"
+    except (OSError, AttributeError):
+        return name
+
+
+def batch_key(task_path: str, variables: Optional[Dict[str, Any]]) -> str:
+    """The lease key: the task and its variables (one logical batch)."""
+    vars_ = {k: v for k, v in (variables or {}).items() if v is not None}
+    raw = json.dumps({"task": task_path, "variables": vars_}, sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def _remove(files: List[str]) -> List[str]:
+    removed = []
+    for f in files:
+        try:
+            os.remove(f)
+            removed.append(f)
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            logger.warning("Could not remove %s: %s", f, exc)
+    return removed
+
+
+def _write_atomic(path: Path, text: str) -> bool:
+    tmp = path.with_name(f"{path.stem}.{uuid.uuid4().hex[:8]}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    for _ in range(40):
+        try:
+            os.replace(tmp, path)
+            return True
+        except PermissionError:  # Windows: a reader has it open for a moment
+            time.sleep(0.05)
+    tmp.unlink(missing_ok=True)
+    return False
+
+
+class RunLease:
+    """The lease one run holds on its task and batch (see the module docs)."""
+
+    def __init__(
+        self,
+        root: Path,
+        task_path: str,
+        variables: Optional[Dict[str, Any]],
+        run_id: str,
+        lineage_dir: Optional[Path] = None,
+    ):
+        self.task_path = task_path
+        self.run_id = run_id
+        self.key = batch_key(task_path, variables)
+        self.leases_dir = Path(root) / ".ubunye" / "leases" / task_path
+        self.path = self.leases_dir / f"{self.key}.json"
+        self.lineage_dir = Path(lineage_dir) if lineage_dir else Path(root) / ".ubunye" / "lineage"
+        self._doc: Dict[str, Any] = {}
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._beat: Optional[threading.Thread] = None
+        self.root = Path(root)
+        self.left: Dict[str, List[str]] = {}
+        self.recovered: Dict[str, Any] = {}
+        self._current_output: Optional[str] = None
+
+    # --- taking and giving back -------------------------------------------------------
+
+    def acquire(self) -> "RunLease":
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        pid = os.getpid()
+        self._doc = {
+            "run_id": self.run_id,
+            "task": self.task_path,
+            "pid": pid,
+            "pid_started": _process_start(pid),
+            "host": _host(),
+            "started_at": _now(),
+            "heartbeat": time.time(),
+            "outputs": {},
+        }
+        for _ in range(3):
+            if self._create(json.dumps(self._doc)):
+                self._adopt_or_refuse()
+                self._start_heartbeat()
+                return self
+            held = self._read()
+            if held is None:
+                continue  # it vanished between the two calls: try again
+            if not self._dead(held):
+                raise RunLeaseHeld(
+                    f"Run {str(held.get('run_id', '?'))[:8]} of {self.task_path} with the "
+                    f"same variables is still running (process {held.get('pid')} on "
+                    f"{held.get('host')}, since {held.get('started_at')}).",
+                    context={"Lease": str(self.path)},
+                    hint="Wait for it to finish. Delete the lease only if that run is surely "
+                    "gone (a reboot), after removing the files listed under 'claimed' in it.",
+                )
+            # Take a dead run's lease over: one rename wins. Then check the file renamed
+            # is the one judged dead: another run may have taken it over just before.
+            stale = self.path.with_name(f"{self.path.stem}.dead-{uuid.uuid4().hex[:8]}.json")
+            try:
+                os.replace(self.path, stale)
+            except (FileNotFoundError, PermissionError):
+                continue
+            try:
+                text = stale.read_text(encoding="utf-8")
+                taken = json.loads(text or "{}")
+            except (OSError, ValueError):
+                text, taken = "", {}
+            if taken.get("run_id") != held.get("run_id"):
+                # A live lease was renamed away. Put it back only if nobody took the
+                # name meanwhile (never overwrite a lease); its owner checks ownership
+                # before every claim, so if it cannot be put back that run stops.
+                if text and self._create(text):
+                    stale.unlink(missing_ok=True)
+                else:
+                    logger.warning("Lease %s was displaced; its run will stop.", self.path)
+                    stale.unlink(missing_ok=True)
+                continue
+            if not self._create(json.dumps(self._doc)):
+                # Another run created the lease in the instant between: the dead run's
+                # lease stays beside it, and whoever holds the lease adopts it.
+                continue
+            # Hold the lease, then wait: a run judged dead that is in fact alive (paused
+            # for long, or its pid misread) writes its lease back within one save.
+            time.sleep(TAKEOVER_SETTLE)
+            now = self._read()
+            if now and now.get("run_id") == taken.get("run_id"):
+                stale.unlink(missing_ok=True)  # the lease is its again, claims and all
+                raise RunLeaseHeld(
+                    f"Run {str(taken.get('run_id', '?'))[:8]} of {self.task_path} looked "
+                    "dead but wrote its lease again: it is running. Nothing was taken back.",
+                    context={"Lease": str(self.path)},
+                    hint="Wait for it to finish.",
+                )
+            if self._owner() is not True:
+                # The lease changed hands, or cannot be read: keep the dead run's lease
+                # beside it (whoever holds the batch adopts it) and take nothing back.
+                raise RunLeaseHeld(
+                    f"The lease on {self.task_path} changed hands while run "
+                    f"{self.run_id[:8]} was taking it over. Nothing was taken back.",
+                    context={"Lease": str(self.path)},
+                    hint="Run again in a moment.",
+                )
+            # Mark the dead run as taken over before touching its files. A run frozen
+            # in the middle of a save could still overwrite this lease; the mark is how
+            # it learns, afterwards, that it lost the batch.
+            self._tombstone(str(taken.get("run_id") or "")).write_text(_now(), encoding="utf-8")
+            try:
+                self.recovered = self._recover(taken)
+            except _InUse as busy:
+                # Hand the lease back to the dead run, with what is left, and refuse: a
+                # forgotten claim would let its batch land twice.
+                taken["outputs"] = {
+                    n: {**taken["outputs"][n], "claimed": c} for n, c in busy.left.items()
+                }
+                if _write_atomic(self.path, json.dumps(taken)):
+                    stale.unlink(missing_ok=True)
+                else:  # kept beside the lease: the next holder adopts it
+                    _write_atomic(stale, json.dumps(taken))
+                raise RunLeaseHeld(
+                    f"Run {str(taken.get('run_id', '?'))[:8]} of {self.task_path} died, and "
+                    "its appended files cannot be removed yet (in use): "
+                    + ", ".join(c for cs in busy.left.values() for c in cs),
+                    context={"Lease": str(self.path)},
+                    hint="Close whatever has those files open and run again.",
+                ) from None
+            stale.unlink(missing_ok=True)
+            self._adopt_or_refuse()
+            self._start_heartbeat()
+            return self
+        raise RunLeaseHeld(
+            f"Could not take the lease on {self.task_path}: another run keeps taking it.",
+            context={"Lease": str(self.path)},
+            hint="Run again in a moment.",
+        )
+
+    def _adopt_or_refuse(self) -> None:
+        """Adopt dead leases left beside this one; if their files cannot be removed yet,
+        give the batch up rather than run it a second time over them."""
+        try:
+            self._adopt_orphans()
+        except _InUse as busy:
+            self._stop.set()
+            self.path.unlink(missing_ok=True)
+            raise RunLeaseHeld(
+                f"A dead run of {self.task_path} left appended files that cannot be removed "
+                "yet (in use): " + ", ".join(c for cs in busy.left.values() for c in cs),
+                context={"Lease": str(self.path)},
+                hint="Close whatever has those files open and run again.",
+            ) from None
+
+    def _adopt_orphans(self) -> None:
+        """Dead leases left beside this one by a takeover that lost the race to create
+        the lease: take back their claims now that this run holds the batch."""
+        for mark in self.leases_dir.glob(f"{self.path.stem}.taken-*"):
+            try:
+                if time.time() - mark.stat().st_mtime > 7 * 24 * 3600:
+                    mark.unlink()
+            except OSError:
+                pass
+        for orphan in self.leases_dir.glob(f"{self.path.stem}.dead-*.json"):
+            doc = self._read(orphan)
+            if not doc:
+                continue
+            self._recover(doc)  # _InUse: the orphan is kept, the caller refuses
+            orphan.unlink(missing_ok=True)
+
+    def commit(self) -> None:
+        """The run succeeded: its appends are the batch now, never to be taken back.
+
+        A separate marker file first: a reader holding the lease open (a scanner, on
+        Windows) can block rewriting the lease, never creating a new file."""
+        try:
+            self._done_mark(self.run_id).write_text(_now(), encoding="utf-8")
+        except OSError as exc:
+            logger.warning("Could not mark run %s done: %s", self.run_id[:8], exc)
+        with self._lock:
+            self._doc["outputs"] = {}
+            self._doc["committed"] = True
+            self._save()
+
+    def release(self) -> None:
+        self._stop.set()
+        if self._beat is not None:
+            self._beat.join()  # never unlink while a beat could still write
+        if self._owner() is not True:
+            return
+        for _ in range(40):
+            try:
+                self.path.unlink(missing_ok=True)
+                self._done_mark(self.run_id).unlink(missing_ok=True)
+                return
+            except PermissionError:  # Windows: a reader has it open for a moment
+                time.sleep(0.05)
+        logger.warning("Could not remove the lease %s; the next run takes it over.", self.path)
+
+    # --- outputs ----------------------------------------------------------------------
+
+    def writing(self, output: str, *, appends: bool, exact: bool) -> None:
+        """An output is about to be written. ``exact``: its backend claims its files."""
+        with self._lock:
+            self._doc["outputs"][output] = {
+                "appends": appends,
+                "exact": exact,
+                "state": "writing",
+                "claimed": [],
+            }
+            if not self._save():
+                raise self._lost()
+        self._current_output = output
+
+    def written(self, output: str) -> None:
+        with self._lock:
+            note = self._doc["outputs"].get(output)
+            if note is not None:
+                note["state"] = "done"
+                self._save()
+
+    def claim(self, path: str) -> None:
+        """Before a file is moved into an append output: record it as this run's.
+
+        Raises :class:`RunLeaseLost` (and nothing is moved) if the lease is no longer
+        this run's, or the claim could not be saved.
+        """
+        output = self._current_output
+        with self._lock:
+            note = self._doc["outputs"].get(output) if output else None
+            if note is None:
+                return
+            note["claimed"].append(self._portable(path))
+            if not self._save():
+                note["claimed"].pop()
+                raise self._lost()
+
+    def landed(self, path: str) -> None:
+        """After a claimed file was moved in. A run taken over meanwhile (frozen between
+        claim and move) removes it again: the run that took over did not see it."""
+        if self._owner() is False:
+            _remove([path])
+            raise self._lost()
+
+    def still_owned(self) -> bool:
+        """Whether the lease is still this run's (checked before success is recorded)."""
+        return self._owner() is not False
+
+    def _lost(self) -> RunLeaseLost:
+        return RunLeaseLost(
+            f"Run {self.run_id[:8]} no longer holds the lease on {self.task_path} (or could "
+            "not record in it); it stops before writing more.",
+            context={"Lease": str(self.path)},
+        )
+
+    def _portable(self, path: str) -> str:
+        """A claim relative to the usecase folder when it can be, so a host that mounts
+        the shared disk elsewhere resolves it to the same file."""
+        full = os.path.realpath(path)
+        try:
+            return os.path.relpath(full, os.path.realpath(self.root))
+        except ValueError:  # another drive on Windows
+            return full
+
+    def _resolve(self, claim: str) -> str:
+        if os.path.isabs(claim):
+            return claim
+        return os.path.normpath(os.path.join(os.path.realpath(self.root), claim))
+
+    def _take_back(self, outputs: Dict[str, Any]) -> Tuple[List[str], Dict[str, List[str]]]:
+        """Remove claimed files. Returns (removed, left): ``left`` could not be removed
+        (in use) and stays claimed, never forgotten."""
+        removed: List[str] = []
+        left: Dict[str, List[str]] = {}
+        for name, note in outputs.items():
+            for claim in note.get("claimed") or []:
+                full = self._resolve(claim)
+                if not os.path.exists(full):
+                    if not os.path.isdir(os.path.dirname(full)):
+                        note["unseen"] = True  # its folder is not visible from here
+                    continue  # claimed, never landed
+                if _remove([full]):
+                    removed.append(full)
+                    _drop_success_marker(os.path.dirname(full))
+                else:
+                    left.setdefault(name, []).append(claim)
+        return removed, left
+
+    def rollback(self) -> List[str]:
+        """This run failed: remove the files it claimed; name appends it cannot undo."""
+        with self._lock:
+            outputs = copy.deepcopy(self._doc.get("outputs") or {})
+        removed, left = self._take_back(outputs)
+        kept = _unrepaired(outputs)
+        if removed:
+            logger.warning(
+                "Run %s failed; removed the %d file(s) it had appended, so a rerun "
+                "appends them once.",
+                self.run_id[:8],
+                len(removed),
+            )
+        if kept:
+            logger.warning(
+                "Run %s failed after appending to %s; that cannot be taken back here, so "
+                "a rerun appends the batch again. Check those outputs before rerunning.",
+                self.run_id[:8],
+                ", ".join(kept),
+            )
+        with self._lock:
+            # Files still in use stay claimed; the lease is then kept (see ``held``) so
+            # the next run takes them back.
+            self._doc["outputs"] = {
+                n: {**outputs[n], "claimed": claims} for n, claims in left.items()
+            }
+            self._save()
+        if left:
+            logger.error(
+                "Run %s could not remove %s (in use?). The lease is kept so the next run "
+                "takes them back; close whatever holds them.",
+                self.run_id[:8],
+                ", ".join(c for cs in left.values() for c in cs),
+            )
+        self.left = left
+        return removed
+
+    # --- internals --------------------------------------------------------------------
+
+    def _create(self, text: str) -> bool:
+        try:
+            fd = os.open(str(self.path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            return False
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return True
+
+    def _read(self, path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+        """The lease: None if there is none, {} if it cannot be read right now."""
+        try:
+            return json.loads((path or self.path).read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return None
+        except (ValueError, OSError):
+            return {}
+
+    def _done_mark(self, run_id: str) -> Path:
+        return self.leases_dir / f"{self.path.stem}.done-{run_id}"
+
+    def _tombstone(self, run_id: str) -> Path:
+        return self.leases_dir / f"{self.path.stem}.taken-{run_id}"
+
+    def _owner(self) -> Optional[bool]:
+        """True: ours. False: gone, another run's, or this run was taken over. None:
+        cannot tell right now."""
+        if self._tombstone(self.run_id).exists():
+            return False
+        for _ in range(5):
+            held = self._read()
+            if held is None:
+                return False
+            if held:
+                return held.get("run_id") == self.run_id
+            time.sleep(0.05)
+        return None
+
+    def _save(self) -> bool:
+        """Write the lease, only while it is this run's (caller holds the lock)."""
+        if self._owner() is not True:
+            return False
+        if _write_atomic(self.path, json.dumps(self._doc)):
+            # Taken over while this save was under way: the write does not count.
+            return not self._tombstone(self.run_id).exists()
+        logger.warning("Could not update the lease %s", self.path)
+        return False
+
+    def _disk_now(self) -> float:
+        """The time by the lease folder's own disk, so no two hosts' clocks are compared."""
+        probe = self.leases_dir / f".clock-{uuid.uuid4().hex[:8]}"
+        try:
+            probe.write_text("", encoding="utf-8")
+            return probe.stat().st_mtime
+        except OSError:
+            return time.time()
+        finally:
+            probe.unlink(missing_ok=True)
+
+    def _dead(self, held: Dict[str, Any]) -> bool:
+        if held and held.get("host") == _host():
+            pid = int(held.get("pid") or 0)
+            if held.get("kept") and pid == os.getpid():
+                return True  # this process's own earlier run, which failed and ended
+            if not _pid_alive(pid, held.get("pid_started")):
+                return True
+            if not (held.get("pid_started") and _process_start(pid) is None):
+                return False
+            # Alive, but not inspectable (access denied): maybe a reused pid. Judge by
+            # the lease's age, as for another host.
+        try:
+            touched = self.path.stat().st_mtime
+        except FileNotFoundError:
+            return False
+        return self._disk_now() - touched > HEARTBEAT_TIMEOUT
+
+    def _start_heartbeat(self) -> None:
+        def beat() -> None:
+            while not self._stop.wait(HEARTBEAT_EVERY):
+                try:
+                    with self._lock:
+                        held = self._read()
+                        if held and held.get("run_id") != self.run_id:
+                            return  # taken over: this run no longer writes the lease
+                        if not held:
+                            continue  # missing or unreadable for now: try again
+                        self._doc["heartbeat"] = time.time()
+                        self._save()
+                except Exception as exc:  # noqa: BLE001 (a missed beat is not a failed run)
+                    logger.debug("lease heartbeat: %s", exc)
+
+        self._beat = threading.Thread(target=beat, name="ubunye-lease", daemon=True)
+        self._beat.start()
+
+    def _recover(self, dead: Dict[str, Any]) -> Dict[str, Any]:
+        """Remove the files a dead run claimed; say in its record it died."""
+        outputs = dead.get("outputs") or {}
+        dead_id = str(dead.get("run_id") or "")
+        done = self._done_mark(dead_id) if dead_id else None
+        if (
+            dead.get("committed")
+            or (done is not None and done.exists())
+            or self._record_status(dead_id) == "success"
+        ):
+            # It finished (its lease outlived it): its appends are the batch.
+            if done is not None:
+                done.unlink(missing_ok=True)
+            return {"run_id": dead_id, "removed": [], "unrepaired": []}
+        removed, left = self._take_back(outputs)
+        if left:
+            raise _InUse(left)
+        unrepaired = _unrepaired(outputs)
+        try:
+            self._mark_interrupted(dead_id, unrepaired)
+        except Exception as exc:  # noqa: BLE001 (the record is a report; the run goes on)
+            logger.warning("Could not mark run %s interrupted: %s", dead_id[:8], exc)
+        if dead_id:
+            logger.warning(
+                "Run %s of %s died before it finished; this run takes over. Removed %d "
+                "file(s) it had appended.%s",
+                dead_id[:8],
+                self.task_path,
+                len(removed),
+                (
+                    f" Output(s) {', '.join(unrepaired)} may hold part or all of its batch "
+                    "and cannot be taken back here: check them."
+                    if unrepaired
+                    else ""
+                ),
+            )
+        return {"run_id": dead_id, "removed": removed, "unrepaired": unrepaired}
+
+    def _record_status(self, run_id: str) -> Optional[str]:
+        if not run_id:
+            return None
+        try:
+            record = self.lineage_dir / self.task_path / f"{run_id}.json"
+            return json.loads(record.read_text(encoding="utf-8")).get("status")
+        except (OSError, ValueError):
+            return None
+
+    def _mark_interrupted(self, run_id: str, unrepaired: List[str]) -> None:
+        if not run_id:
+            return
+        record = self.lineage_dir / self.task_path / f"{run_id}.json"
+        try:
+            doc = json.loads(record.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        if doc.get("status") == "running":
+            doc["status"] = "interrupted"
+            note = (
+                f"The run did not finish; run {self.run_id[:8]} took over its lease at "
+                f"{_now()} and removed the files it had appended."
+            )
+            if unrepaired:
+                note += (
+                    f" Output(s) {', '.join(unrepaired)} may hold part or all of its batch "
+                    "and were not taken back."
+                )
+            doc["error"] = note
+            _write_atomic(record, json.dumps(doc, indent=2, ensure_ascii=False))
+
+
+def _unrepaired(outputs: Dict[str, Any]) -> List[str]:
+    """Append outputs a backend could not claim files for, that may hold data."""
+    return sorted(
+        n
+        for n, o in outputs.items()
+        if o.get("appends") and (not o.get("exact") or not o.get("claimed") or o.get("unseen"))
+    )
+
+
+class _InUse(Exception):
+    def __init__(self, left: Dict[str, List[str]]):
+        super().__init__("in use")
+        self.left = left
+
+
+def _drop_success_marker(folder: str) -> None:
+    """A folder left with no data files must not say it holds a complete dataset."""
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return
+    if "_SUCCESS" in names and not [n for n in names if not n.startswith(("_", "."))]:
+        try:
+            os.remove(os.path.join(folder, "_SUCCESS"))
+        except OSError:
+            pass
+
+
+def lost() -> Optional[str]:
+    """Why this run may not record success (its lease was taken over), or None."""
+    lease = _CURRENT.get()
+    if lease is None or lease.still_owned():
+        return None
+    return (
+        f"Run {lease.run_id[:8]} lost its lease on {lease.task_path} to another run "
+        "(it was judged dead). That run takes back what this one appended and writes the "
+        "batch itself: check its record before running the batch again."
+    )
+
+
+def landed(path: str) -> None:
+    """Called by a backend just after it moved a claimed file into an append output."""
+    lease = _CURRENT.get()
+    if lease is not None:
+        lease.landed(path)
+
+
+def current() -> Optional[RunLease]:
+    """The lease of the run in progress, if any."""
+    return _CURRENT.get()
+
+
+def writing(output: str, *, appends: bool, exact: bool) -> None:
+    """Called by the engine before an output is written."""
+    lease = _CURRENT.get()
+    if lease is not None:
+        lease.writing(output, appends=appends, exact=exact)
+
+
+def written(output: str) -> None:
+    """Called by the engine after an output was written."""
+    lease = _CURRENT.get()
+    if lease is not None:
+        lease.written(output)
+
+
+def claim(path: str) -> None:
+    """Called by a backend just before it moves a new file into an append output."""
+    lease = _CURRENT.get()
+    if lease is not None:
+        lease.claim(path)
+
+
+class held:
+    """``with runs.held(root, task_path, variables, run_id):`` around one run.
+
+    If the lease folder cannot be written (a read-only checkout), the run goes on
+    without a lease and says so: rerun safety is never a reason a run cannot start.
+    """
+
+    def __init__(
+        self,
+        root: Path,
+        task_path: str,
+        variables: Optional[Dict[str, Any]],
+        run_id: str,
+        lineage_dir: Optional[Path] = None,
+    ):
+        self.lease = (
+            RunLease(root, task_path, variables, run_id, lineage_dir) if enabled() else None
+        )
+        self._token: Optional[contextvars.Token] = None
+
+    def __enter__(self) -> Optional[RunLease]:
+        if self.lease is None:
+            return None
+        try:
+            self.lease.acquire()
+        except RunLeaseHeld:
+            raise
+        except OSError as exc:
+            logger.warning(
+                "No run lease (%s): this run is not protected against a concurrent run of "
+                "the same batch.",
+                exc,
+            )
+            self.lease = None
+            return None
+        self._token = _CURRENT.set(self.lease)
+        return self.lease
+
+    def __exit__(self, exc_type: Any, *exc: Any) -> None:
+        if self.lease is None:
+            return
+        if self._token is not None:
+            _CURRENT.reset(self._token)
+        keep = exc_type is not None  # until the take-back has finished
+        try:
+            if exc_type is not None:
+                try:
+                    self.lease.rollback()
+                    keep = bool(self.lease.left)
+                except Exception as rb:  # noqa: BLE001 (never hide the run's own error)
+                    logger.error("Could not take back run %s's appends: %s", self.lease.run_id, rb)
+        finally:
+            if keep:
+                # Claims remain (or the take-back was interrupted): leave the lease for
+                # the next run to take over, even one started by this same process.
+                self.lease._stop.set()
+                try:
+                    with self.lease._lock:
+                        self.lease._doc["kept"] = True
+                        self.lease._save()
+                except Exception:  # noqa: BLE001 (best effort: pid death also frees it)
+                    pass
+            else:
+                lost_it = exc_type is None and not self.lease.still_owned()
+                if exc_type is None and not lost_it:
+                    self.lease.commit()
+                self.lease.release()
+                if lost_it:
+                    raise self.lease._lost()

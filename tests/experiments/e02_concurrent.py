@@ -125,7 +125,7 @@ def main() -> None:
         failed = [o for o, c in zip((out_a, out_b), codes) if c != 0]
         why = ""
         if failed:
-            lines = [ln for ln in failed[0].splitlines() if "Error" in ln]
+            lines = [ln for ln in failed[0].splitlines() if "[ERROR]" in ln or "Error:" in ln]
             why = (lines[-1] if lines else failed[0].strip().splitlines()[-1])[:160]
 
         summary["snapshot ok" if snap_rows == ROWS and not snap_err else "snapshot bad"] += 1

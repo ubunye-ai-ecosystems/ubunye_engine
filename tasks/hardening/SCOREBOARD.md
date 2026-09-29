@@ -16,14 +16,14 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 12 (F-008 to F-015, F-017 to F-020) | 8 (F-001 to F-007 in PR #98, F-016) | 0 |
+| 9 (F-008 to F-010, F-012, F-014, F-015, F-017, F-018, F-031) | 12 (F-001 to F-007 in PR #98, F-011, F-013, F-016, F-019, F-020) | 0 |
 
 ## Experiments
 
 | E | Question | Status |
 |---|---|---|
-| E-01 | Crash mid-write | answered: append doubles the batch 16/16; F-011 to F-014 |
-| E-02 | Two runs at once | answered: overwrite safe 10/10; append doubled 7/10 (F-019, F-020) |
+| E-01 | Crash mid-write | answered: append doubled 16/16; after ADR 008 20/20 killed runs right (earlier runs: finished-batch reruns doubled, F-031) |
+| E-02 | Two runs at once | answered: append doubled 7/10; after ADR 008 0/10, second run refused by name |
 | E-03 | Silent row loss | answered: visible in the record, not enforceable (F-017) |
 | E-04 | Secrets in records | answered: secret:// and env safe; --var leaks (F-016); REST needs Spark (F-015) |
 | E-05 | Schema drift | answered: gate catches all; a retype writes wrong data at run time (F-018) |

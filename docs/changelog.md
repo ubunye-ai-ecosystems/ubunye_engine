@@ -27,6 +27,19 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A rerun is safe (ADR 008).** A run takes a lease on its task and variables (its
+  batch) under `.ubunye/leases/`. A second run of a batch that is still running is
+  refused in one line naming the first (was: both appended, 7 of 10 pairs, F-019; or a
+  raw OS error, F-020). A killed run is taken over: its record is marked `interrupted`
+  (was: `running` for ever, F-013) and the append files it claimed are removed before
+  the batch runs again (was: the batch landed twice, 16 of 16, F-011). A run that fails
+  removes its own. Only files a backend claims before they land are ever removed (the
+  pandas backend claims each part file; no folder is listed to guess), so another
+  run's files are never touched. Appends that cannot be claimed (Spark, JDBC,
+  catalogs) are named in the log and the dead run's record, never deleted.
+  `UBUNYE_RUN_LEASE=off` turns it
+  off. Not covered: a second run of a batch that already finished appends again (F-031).
+
 - **`ubunye prove report` treats two names of one time zone as one** (`UTC`,
   `Etc/UTC`, `GMT`, `Zulu`; other zones by their offsets over time). Databricks records
   `Etc/UTC` and was reported as a different run while its data matched exactly (F-025).

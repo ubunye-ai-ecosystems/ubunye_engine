@@ -225,6 +225,15 @@ class LineageRecorder:
         for step in ctx.inputs + ctx.outputs:
             step.location = scrub(step.location, values)
 
+        if status == "success":
+            # A run whose lease was taken over may have had its appends taken back by
+            # the run that took it: it is not recorded as a success (ADR 008).
+            from ubunye.core import runs
+
+            why = runs.lost()
+            if why:
+                ctx.status = status = "interrupted"
+                ctx.error = why
         try:
             self._store.save(ctx)
         except Exception:

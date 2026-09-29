@@ -1,6 +1,6 @@
 # F-020: two runs creating a new output at once: the loser gets a raw OS error
 
-**Status:** open
+**Status:** fixed on branch fix/rerun-safety (ADR 008)
 **Severity:** minor
 **Source:** experiment E-02 (2026-09-28)
 **Promise:** none
@@ -20,3 +20,6 @@ path; or no error at all once F-019's lease exists.
 
 ## Evidence
 3 of 10 pairs (the closest starts): second run exit 1 with the raw WinError.
+
+## Fix (2026-09-29)
+The lease is created atomically before anything is written, so the loser of a race gets `RunLeaseHeld` and one line from `ubunye run`, not an OS error (ADR 008). E-02 rerun: all 10 losers refused this way.

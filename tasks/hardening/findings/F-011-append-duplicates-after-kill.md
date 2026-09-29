@@ -1,6 +1,6 @@
 # F-011: a killed run's append is appended again by the rerun
 
-**Status:** open
+**Status:** fixed on branch fix/rerun-safety (ADR 008)
 **Severity:** blocker
 **Source:** experiment E-01 (2026-09-28)
 **Promise:** 5 (nothing is lost or doubled silently)
@@ -26,3 +26,6 @@ committed at the kill. The window is most of the run because the run spends abou
 output was correct in all 16. Plain Spark `append` has the same property by design;
 the difference is that Spark users have `overwrite_partitions` and pandas users do not
 (F-012).
+
+## Fix (2026-09-29)
+A lease per batch. The pandas backend claims each part file in the lease before it lands; the run that takes over a killed run removes exactly the claimed files, then runs the batch once (ADR 008). Spark appends are named in the record, not repaired: on Spark use overwrite, overwrite_partitions or Delta. E-01 rerun: all 18 trials that were killed came back right; the 2 wrong trials were never killed (the run had finished), which is F-031.
