@@ -33,6 +33,63 @@ PART_SIZE = 600
 _PART = re.compile(re.escape(RECORD_PART) + r" (\d+)/(\d+) (\d+) ([A-Za-z0-9+/=]*)")
 _DIGEST = re.compile(re.escape(RECORD_DIGEST) + r" ([0-9a-f]{64})")
 _B64 = re.compile(r"[A-Za-z0-9+/=]+")
+#: A whole marker line, to its end: what a line starting one must hold to be read alone.
+_WHOLE = {
+    RECORD_PART: re.compile(re.escape(RECORD_PART) + r" \d+/\d+ \d+ [A-Za-z0-9+/=]*\s*"),
+    RECORD_DIGEST: re.compile(re.escape(RECORD_DIGEST) + r" [0-9a-f]{64}\s*"),
+}
+
+
+def _marker_start(line: str) -> Tuple[Optional[str], str]:
+    """The marker a line starts to print but does not finish, and the piece printed."""
+    for marker, whole in _WHOLE.items():
+        at = line.find(marker)
+        if at >= 0:
+            piece = line[at:]
+            return (None, "") if whole.fullmatch(piece) else (marker, piece)
+    tokens = line.split()
+    last = tokens[-1] if tokens else ""
+    for marker in _WHOLE:
+        if last and marker.startswith(last):
+            return marker, last
+    return None, ""
+
+
+def _mend(lines: List[str]) -> List[str]:
+    """Join a marker a log store cut in two (F-035) back into one line.
+
+    Glue's CloudWatch flushed its buffer inside a marker and sent ``UB`` and
+    ``UNYE-RECORD-PART 9/14 600 ...`` as two lines, so part 9 had no header. A line
+    that starts a marker without finishing it is joined with the next line, with or
+    without a space, skipping any prefix the store put on that line, but only when
+    the join makes a whole marker and the next line holds no marker of its own (so a
+    part's last character that looks like the start of a marker is never taken). A
+    wrong join cannot pass: each part says its length and the record its SHA-256.
+    """
+    out: List[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        marker, piece = _marker_start(line)
+        if marker and i + 1 < len(lines) and not any(m in lines[i + 1] for m in _WHOLE):
+            tokens = lines[i + 1].split()
+            joined = None
+            for k in range(len(tokens)):
+                rest = " ".join(tokens[k:])
+                for glue in ("", " "):
+                    if _WHOLE[marker].fullmatch(piece + glue + rest):
+                        joined = piece + glue + rest
+                        break
+                if joined:
+                    break
+            if joined:
+                out += [line[: len(line) - len(piece)], joined]
+                i += 2
+                continue
+        out.append(line)
+        i += 1
+    return out
+
 
 ENTRY_SCRIPT = (
     '''\
@@ -209,8 +266,8 @@ def _parts_from(log: str) -> Tuple[Dict[int, str], int, Optional[str]]:
     that follow it, which is where the store puts the rest: the last token of each,
     while it is plain base64 and not the start of another part or a marker.
     """
-    lines = log.splitlines()
-    digest = _DIGEST.search(log)
+    lines = _mend(log.splitlines())
+    digest = _DIGEST.search("\n".join(lines))
     parts: Dict[int, str] = {}
     damaged: Dict[int, str] = {}
     totals = set()

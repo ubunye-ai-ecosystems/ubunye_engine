@@ -126,3 +126,49 @@ def test_a_small_record_is_one_part():
     text = base64.b64encode(json.dumps({"a": 1}).encode()).decode()
     log = f"x {package.RECORD_PART} 1/1 {len(text)} {text}\n"
     assert package.read_record(log) == {"a": 1}
+
+
+@pytest.mark.parametrize("prefix", ["", "2026-09-29T13:43:54Z INFO "])
+def test_a_line_cut_inside_a_part_header_is_mended(tmp_path, prefix):
+    """What Glue's CloudWatch did (F-035): "...ODky" / "UB" / "UNYE-RECORD-PART 9/14 600 ...".
+
+    The buffer flushed inside the marker itself, so the part had no header. Every cut
+    point in the header, in the part number and in the digest line must read back.
+    """
+    record = _big_record()
+    log = _entry_log(tmp_path, record)
+    header = next(ln for ln in log.splitlines() if f"{package.RECORD_PART} 3/" in ln)
+    header = header[: header.index(" ", len(package.RECORD_PART) + 5) + 1]  # "...PART 3/N 600 "
+    for at in range(1, len(header)):
+        cut = "\n".join(
+            piece
+            for ln in log.splitlines()
+            for piece in (
+                [prefix + ln[:at], prefix + ln[at:]]
+                if f"{package.RECORD_PART} 3/" in ln
+                else [prefix + ln]
+            )
+        )
+        assert package.read_record(cut) == record, (at, header[:at])
+    digest_line = f"{package.RECORD_DIGEST} "
+    for at in range(1, len(digest_line) + 64):
+        cut = "\n".join(
+            piece
+            for ln in log.splitlines()
+            for piece in (
+                [prefix + ln[:at], prefix + ln[at:]]
+                if package.RECORD_DIGEST in ln
+                else [prefix + ln]
+            )
+        )
+        assert package.read_record(cut) == record, ("digest", at)
+
+
+def test_a_mended_header_never_steals_from_the_part_before(tmp_path):
+    """A continuation of one character that looks like the start of a marker ("U")."""
+    record = {"k": "U" * 1500}
+    log = _entry_log(tmp_path, record)
+    lines = log.splitlines()
+    i = next(k for k, ln in enumerate(lines) if f"{package.RECORD_PART} 1/" in ln)
+    lines[i : i + 1] = [lines[i][:-1], lines[i][-1:]]  # the part's last character alone
+    assert package.read_record("\n".join(lines)) == record
