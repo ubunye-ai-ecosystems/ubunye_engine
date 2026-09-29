@@ -2,7 +2,8 @@
 
 `CONFIG.expectations` states what an output must look like. The engine checks
 every output after the transform and **before anything is written**, on Spark
-and on pandas alike.
+and on pandas alike. It can also state what an input must look like: see
+[Input contracts](#input-contracts).
 
 ```yaml
 CONFIG:
@@ -38,6 +39,7 @@ CONFIG:
 | `matches: {column, pattern}` | the value matches the regular expression | yes |
 | `unique: col` or `[col, ...]` | no two rows share the value(s) | no |
 | `row_count: {min, max}` | the number of rows is in range | no |
+| `columns: {col: type, ...}` | each column exists with that type; see [Input contracts](#input-contracts) | no |
 
 A missing value passes every rule except `not_null`, as in SQL. When a value must
 be present and valid, write both rules. In a float column NaN counts as missing, like
@@ -117,9 +119,57 @@ ExpectationError: Expectations failed, so nothing was written:
   read and the count is counted as it is then. The output side is counted in the
   same pass as the other rules.
 
+## Input contracts
+
+A source can change under you. When `price` arrived as text, pandas computed
+`qty * price` as `"11.011.0"` and the run succeeded. Name the **input** under
+`expectations`, and its rules run right after it is read, **before the
+transform**:
+
+```yaml
+  expectations:
+    orders:                                  # an input, not an output
+      rules:
+        - columns: {order_id: int64, qty: int64, price: float64}
+          extra: allow                       # default; forbid refuses other columns
+        - not_null: order_id
+```
+
+```text
+ExpectationError: An input broke its expectations, so the transform did not run
+and nothing was written:
+  orders: columns (columns): price: expected float64, found string
+```
+
+The `columns` rule:
+
+- **Type names are the run record's**, the same on Spark and pandas: `int8`,
+  `int16`, `int32`, `int64`, `float32`, `float64`, `bool`, `string`, `binary`,
+  `date`, `timestamp`, `timestamp_ntz`, `decimal(p,s)`, `list<...>`,
+  `map<...,...>`, `struct<name:type,...>`. Spark's `double` is `float64`, `bigint`
+  is `int64`; `ubunye validate` says so if you write the other name.
+- **Types match exactly.** `int32` is not `int64`: a narrower or wider type is a
+  changed source, and it changes what the task writes. To accept more than one,
+  list them: `qty: [int32, int64]`.
+- **Nulls are not part of the type.** A column of `int64` with gaps is `int64`.
+- A column that is missing, has another type or (with `extra: forbid`) is not
+  declared is named, each on its own. The result's `detail` holds them all.
+- It reads the schema only; no row is read. If a `columns` rule with severity
+  `fail` breaks, the other rules on that frame are not run.
+
+Any rule can go on an input: `not_null`, `between`, `unique`, and so on. They cost
+one pass over the input; on Spark that reads the source again, since inputs are
+not held (ADR 009). The results are in the run record with `side: input`.
+
+An input cannot quarantine rows (yet), and cannot have a `reconcile` (that goes on
+the output). A name that is both an input and an output cannot have expectations:
+rename one. `columns` works on an output too, to pin what the task writes.
+
 ## Checked when the config loads
 
-`ubunye validate` refuses an expectation that names an output that does not exist,
+`ubunye validate` refuses an expectation that names no input or output, or a name
+that is both, an input with a quarantine or a reconcile, a `columns` type that is
+not one of the names above,
 a quarantine output that does not exist or is the output itself, two outputs
 sharing one quarantine output, a rule with no kind or two kinds, a `quarantine`
 rule with no `quarantine:` output, a `matches` pattern that is not a valid

@@ -553,6 +553,59 @@ def _package(obj: Any) -> str:
     return (getattr(type(obj), "__module__", "") or "").split(".")[0]
 
 
+def _written_kind(t: Any) -> str:
+    """An Arrow column type as the record names it once the pandas side writes it.
+
+    The same top level steps as ``pandas_io.to_arrow``: a category is its values,
+    an all-null column is text, and every timestamp is an instant (``timestamp``).
+    """
+    import pyarrow as pa
+
+    if pa.types.is_dictionary(t):
+        t = t.value_type
+    if pa.types.is_null(t):
+        return "string"
+    if pa.types.is_timestamp(t):
+        return "timestamp"
+    return arrow_kind(t)
+
+
+def frame_kinds(frame: Any) -> Dict[str, str]:
+    """Each column's type, by the names the run record uses (ADR 006).
+
+    Read from the schema: a Spark frame is not computed. A pandas column of
+    Python objects is inferred by Arrow, as when it is written; one holding
+    values of mixed types is named ``mixed (object)``.
+    """
+    package = _package(frame)
+    if package == "pyspark":
+        from ubunye.adapters.spark.content_hash import canonical_schema
+
+        return dict(canonical_schema(frame))
+
+    from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
+
+    if isinstance(frame, PandasDataFrameAdapter):
+        frame, package = frame.native, "pandas"
+    if package == "pyarrow":
+        return {f.name: _written_kind(f.type) for f in frame.schema}
+    if package == "pandas":
+        import pyarrow as pa
+
+        if any(name is not None for name in frame.index.names):
+            frame = frame.reset_index()
+        kinds: Dict[str, str] = {}
+        for column in frame.columns:
+            try:
+                field = pa.Schema.from_pandas(frame[[column]], preserve_index=False)[0]
+                kinds[str(column)] = _written_kind(field.type)
+            except (pa.ArrowInvalid, pa.ArrowTypeError, pa.ArrowNotImplementedError):
+                kinds[str(column)] = f"mixed ({frame[column].dtype})"
+        return kinds
+    port_schema = getattr(frame, "schema", {}) or {}
+    return {str(k): str(v) for k, v in dict(port_schema).items()}
+
+
 def fingerprint(frame: Any) -> Fingerprint:
     """The fingerprint of whatever frame a run produced, or an honest failure.
 

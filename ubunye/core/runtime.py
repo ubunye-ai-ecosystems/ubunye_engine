@@ -224,6 +224,8 @@ class Engine:
         self._secrets = SecretResolver()
         # Per-step timings of the current run, for the run record.
         self._timings: List[Dict[str, Any]] = []
+        # Input contract results from the last read_inputs(), for the notebook's record.
+        self._input_checks: List[Dict[str, Any]] = []
         self._manage_backend = manage_backend
 
     @property
@@ -288,6 +290,7 @@ class Engine:
                 try:
                     sources = self._read_inputs(ctx, chain, inputs_cfg)
                     state["inputs"] = self._to_ports(sources)
+                    self._check_inputs(cfg, sources, state)
                     from ubunye import llm
 
                     budget = llm.budget.Budget.from_env()
@@ -317,14 +320,21 @@ class Engine:
 
         Returns a dict mapping input name to the backend's own frame type (a
         ``pandas.DataFrame`` on pandas) — suitable for interactive inspection
-        before calling :meth:`apply_transforms`.
+        before calling :meth:`apply_transforms`. The inputs' expectations (input
+        contracts) are checked here, as in :meth:`run`; their results go into the
+        record of a later ``write_outputs(..., as_run=True, inputs=...)``.
         """
         inputs_cfg = cfg.get("CONFIG", {}).get("inputs", {}) or {}
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         self._validate_io_configs(inputs_cfg, outputs_cfg)
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        return self._to_natives(self._read_inputs(ctx, chain, inputs_cfg))
+        sources = self._read_inputs(ctx, chain, inputs_cfg)
+        state: Dict[str, Any] = {}
+        self._input_checks = []
+        self._check_inputs(cfg, sources, state)
+        self._input_checks = list(state.get("expectations") or [])
+        return self._to_natives(sources)
 
     def apply_transforms(self, sources: Dict[str, Any], cfg: dict) -> Dict[str, Any]:
         """Apply configured transforms to *sources*.
@@ -361,6 +371,8 @@ class Engine:
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
         state: Dict[str, Any] = {"outputs": None}
+        if inputs is not None and self._input_checks:
+            state["expectations"] = list(self._input_checks)
         held: List[Any] = []
         try:
             if not as_run:
@@ -377,6 +389,42 @@ class Engine:
         finally:
             self._release(held)
 
+    @staticmethod
+    def _expectation_specs(cfg: dict, side: str) -> Dict[str, Any]:
+        """``CONFIG.expectations`` for the inputs (input contracts) or the outputs."""
+        section = cfg.get("CONFIG") or {}
+        raw = section.get("expectations") or {}
+        if not raw:
+            return {}
+        from ubunye.config.schema import ExpectationSet
+
+        inputs = section.get("inputs") or {}
+        return {
+            name: ExpectationSet.model_validate(spec)
+            for name, spec in raw.items()
+            if (name in inputs) == (side == "inputs")
+        }
+
+    def _check_inputs(self, cfg: dict, sources: Dict[str, Any], state: Dict[str, Any]) -> None:
+        """Input contracts: check each input right after it is read (F-018).
+
+        Before the transform, so a source that changed shape stops the run before
+        the transform can compute something wrong from it. Results go into
+        ``state["expectations"]``; a broken ``fail`` rule raises ExpectationError.
+        """
+        specs = self._expectation_specs(cfg, "inputs")
+        if not specs:
+            return
+        from ubunye.core import expectations
+        from ubunye.core.errors import ExpectationError
+
+        try:
+            results = expectations.check_inputs(self._to_natives(sources), specs)
+        except ExpectationError as exc:
+            state["expectations"] = list(exc.results)
+            raise
+        state["expectations"] = [r.as_dict() for r in results]
+
     def _check_expectations(
         self,
         cfg: dict,
@@ -392,15 +440,14 @@ class Engine:
         ``state["expectations"]`` for the hooks. *inputs* are the frames the
         transform received, for a ``reconcile``.
         """
-        raw = (cfg.get("CONFIG") or {}).get("expectations") or {}
-        if not raw:
+        specs = self._expectation_specs(cfg, "outputs")
+        if not specs:
             return outputs
-        from ubunye.config.schema import ExpectationSet
         from ubunye.core import expectations
-
-        specs = {name: ExpectationSet.model_validate(spec) for name, spec in raw.items()}
         from ubunye.core.errors import ExpectationError
 
+        # The input contracts' results, checked before the transform, come first.
+        before = list(state.get("expectations") or [])
         try:
             checked, results = expectations.apply(
                 self._to_natives(outputs),
@@ -408,9 +455,9 @@ class Engine:
                 self._to_natives(inputs) if inputs is not None else None,
             )
         except ExpectationError as exc:
-            state["expectations"] = list(exc.results)
+            state["expectations"] = before + list(exc.results)
             raise
-        state["expectations"] = [r.as_dict() for r in results]
+        state["expectations"] = before + [r.as_dict() for r in results]
         # A quarantine output is cut from its output's rows: it has the same basis.
         basis = state.get("hash_basis")
         if isinstance(basis, dict):

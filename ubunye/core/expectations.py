@@ -17,6 +17,9 @@ pandas). Three principles, from the data contract example they replace:
 - **Nothing is lost silently.** A ``reconcile`` compares an output with an input
   the transform received: its row count, and a column's sum, within a tolerance
   (F-017). Quarantined rows count as carried over; they were set aside, not lost.
+- **Check the source before trusting it.** Expectations may also name an input:
+  its rules run right after it is read, before the transform (F-018). The
+  ``columns`` rule checks each column's type by the run record's names.
 
 A null passes every rule except ``not_null``, as in SQL. In a float column NaN counts
 as missing too, on every backend (F-045): pandas stores a missing float as NaN, so it
@@ -43,9 +46,9 @@ FAILED_RULES_COLUMN = "_ubunye_failed_rules"
 
 @dataclass
 class RuleResult:
-    """What one rule found on one output."""
+    """What one rule found on one output, or on one input (``side``)."""
 
-    output: str
+    output: str  # the output's name, or the input's when side is "input"
     rule: str
     kind: str
     severity: str
@@ -53,13 +56,19 @@ class RuleResult:
     failed: int  # rows breaking it (duplicate rows for unique; 1 or 0 for row_count)
     total: int  # rows checked (input rows for a reconcile of rows)
     passed: bool
-    #: What was found, in words, where a count alone does not say it (reconcile).
+    #: What was found, in words, where a count alone does not say it (reconcile,
+    #: columns).
     detail: Optional[str] = None
+    #: "input" for an input contract, checked before the transform (F-018).
+    side: str = "output"
 
     def as_dict(self) -> Dict[str, Any]:
         d = asdict(self)
-        if d["detail"] is None:  # only a reconcile has one; records stay as they were
+        # Left out when they say nothing new, so records stay as they were.
+        if d["detail"] is None:
             del d["detail"]
+        if d["side"] == "output":
+            del d["side"]
         return d
 
 
@@ -115,6 +124,8 @@ def _breaks(nw: Any, rule: ExpectationRule, floats: frozenset = frozenset()) -> 
 
 def _columns_of(rule: ExpectationRule) -> List[str]:
     spec = getattr(rule, rule.kind)
+    if isinstance(spec, dict):  # columns: the rule itself reports a missing column
+        return []
     if isinstance(spec, str):
         return [spec]
     if isinstance(spec, list):
@@ -133,7 +144,7 @@ _TEXT_NUMBER_HINT = (
 )
 
 
-def _check_columns(nw: Any, name: str, df: Any, spec: ExpectationSet) -> None:
+def _check_columns(nw: Any, name: str, df: Any, spec: ExpectationSet, side: str = "output") -> None:
     """Every rule names a column the output has, of a type the rule can check.
 
     Checked before any counting, so a wrong column gives one clear error, not an
@@ -146,8 +157,12 @@ def _check_columns(nw: Any, name: str, df: Any, spec: ExpectationSet) -> None:
             if column not in available:
                 raise ExpectationError(
                     f"{name}: rule '{rule.name}' ({rule.kind}) names column '{column}', "
-                    "which the output does not have.",
-                    context={"Output": name, "Rule": rule.name, "Columns": ", ".join(available)},
+                    f"which the {side} does not have.",
+                    context={
+                        side.title(): name,
+                        "Rule": rule.name,
+                        "Columns": ", ".join(available),
+                    },
                     hint="Check the column name in CONFIG.expectations, or the transform's output.",
                 )
             dtype = schema[column]
@@ -332,21 +347,74 @@ def _reconcile(
     return results
 
 
+def _shape(name: str, frame: Any, spec: ExpectationSet, side: str) -> Dict[str, RuleResult]:
+    """The ``columns`` rules' results, from the frame's schema (no row is read).
+
+    Types are compared by the run record's names (ADR 006), exactly: ``int32``
+    is not ``int64``. List the types a column may have to accept more than one.
+    Nulls are not part of the type.
+    """
+    rules = [r for r in spec.rules if r.columns is not None]
+    if not rules:
+        return {}
+    from ubunye.lineage.content_hash import frame_kinds
+
+    found = frame_kinds(frame)
+    results: Dict[str, RuleResult] = {}
+    for rule in rules:
+        wanted = rule.columns or {}
+        problems = []
+        for column, types in wanted.items():
+            if column not in found:
+                problems.append(f"{column}: expected {' or '.join(types)}, missing")
+            elif found[column] not in types:
+                problems.append(f"{column}: expected {' or '.join(types)}, found {found[column]}")
+        checked = len(wanted)
+        if rule.extra == "forbid":
+            extra = [c for c in found if c not in wanted]
+            problems += [f"{c}: not expected (extra: forbid), found {found[c]}" for c in extra]
+            checked += len(extra)
+        results[rule.name] = RuleResult(
+            output=name,
+            rule=rule.name,
+            kind="columns",
+            severity=rule.severity,
+            column=None,
+            failed=len(problems),
+            total=checked,
+            passed=not problems,
+            detail="; ".join(problems) if problems else None,
+            side=side,
+        )
+    return results
+
+
 def check_output(
     name: str,
     frame: Any,
     spec: ExpectationSet,
     measured: Optional[Dict[str, Dict[str, Any]]] = None,
+    side: str = "output",
 ) -> Tuple[Any, Optional[Any], List[RuleResult]]:
     """Check one output: (clean frame, quarantined frame or None, results).
 
     ``measured`` is :func:`measure_inputs` for the inputs the output's
     ``reconcile`` names. Their checks count the output before any row is
-    quarantined, so a quarantined row counts as carried over.
+    quarantined, so a quarantined row counts as carried over. ``side`` is
+    "input" for an input contract (F-018).
+
+    ``columns`` rules run first, from the schema alone. If one with severity
+    fail breaks, the other rules are not run: they would check a frame of the
+    wrong shape. A set of nothing but ``columns`` rules never reads a row.
     """
     nw = _nw()
+    shape = _shape(name, frame, spec, side)
+    wrong_shape = any(not r.passed and r.severity == "fail" for r in shape.values())
+    only_shape = all(r.kind == "columns" for r in spec.rules) and not spec.reconcile
+    if wrong_shape or only_shape:
+        return frame, None, [shape[r.name] for r in spec.rules if r.name in shape]
     df = nw.from_native(frame)
-    _check_columns(nw, name, df, spec)
+    _check_columns(nw, name, df, spec, side)
     measured = measured if measured is not None else measure_inputs(None, {name: spec})
     sum_columns: List[str] = []
     for check in spec.reconcile:
@@ -384,7 +452,8 @@ def check_output(
             failed[rule.name] = 1 if outside else 0
 
     results = [
-        RuleResult(
+        shape.get(r.name)
+        or RuleResult(
             output=name,
             rule=r.name,
             kind=r.kind,
@@ -393,6 +462,7 @@ def check_output(
             failed=failed[r.name],
             total=total,
             passed=failed[r.name] == 0,
+            side=side,
         )
         for r in spec.rules
     ]
@@ -507,21 +577,8 @@ def apply(
             else:
                 outputs[spec.quarantine] = _empty_quarantine(clean)
 
-        for r in found:
-            if r.passed:
-                continue
-            if r.detail:
-                line = f"{name}: {r.rule} ({r.kind}): {r.detail}"
-            else:
-                line = f"{name}: {r.rule} ({r.kind}) broken by {r.failed} of {r.total} rows"
-            if r.severity == "fail":
-                problems.append(line)
-            elif r.severity == "warn":
-                log.warning("expectation warning: %s", line)
-            else:
-                log.info("quarantined: %s", line)
-
-        total = found[0].total if found else 0
+        problems += _report(name, found)
+        total = next((r.total for r in found if r.kind not in ("columns", "reconcile")), 0)
         if spec.max_quarantine_rate is not None and quarantined is not None and total:
             n = _row_count(quarantined)
             if n / total > spec.max_quarantine_rate:
@@ -538,6 +595,55 @@ def apply(
             "quarantine or warn if this is expected.",
         )
     return outputs, results
+
+
+def _report(name: str, found: List[RuleResult]) -> List[str]:
+    """Log each broken warn or quarantine rule; return a line per broken fail rule."""
+    problems: List[str] = []
+    for r in found:
+        if r.passed:
+            continue
+        if r.detail:
+            line = f"{name}: {r.rule} ({r.kind}): {r.detail}"
+        else:
+            line = f"{name}: {r.rule} ({r.kind}) broken by {r.failed} of {r.total} rows"
+        if r.severity == "fail":
+            problems.append(line)
+        elif r.severity == "warn":
+            log.warning("expectation warning: %s", line)
+        else:
+            log.info("quarantined: %s", line)
+    return problems
+
+
+def check_inputs(
+    inputs: Dict[str, Any], expectations: Dict[str, ExpectationSet]
+) -> List[RuleResult]:
+    """Check every input that has expectations, before the transform (F-018).
+
+    ``expectations`` holds the input contracts only (keyed by input name). A
+    ``columns`` rule reads the schema alone; any other rule costs one pass over
+    the input (on Spark, a read of the source: inputs are not held, ADR 009).
+    Raises :class:`ExpectationError` if a ``fail`` rule is broken: the transform
+    does not run and nothing is written.
+    """
+    results: List[RuleResult] = []
+    problems: List[str] = []
+    for name in sorted(expectations):
+        if name not in inputs:
+            continue
+        _, _, found = check_output(name, inputs[name], expectations[name], side="input")
+        results += found
+        problems += _report(name, found)
+    if problems:
+        raise ExpectationError(
+            "An input broke its expectations, so the transform did not run and nothing "
+            "was written:\n  " + "\n  ".join(problems),
+            results=[r.as_dict() for r in results],
+            hint="The source has changed. Fix it, or change the input's expectations in "
+            "CONFIG.expectations if the change is meant.",
+        )
+    return results
 
 
 def _row_count(frame: Any) -> int:

@@ -240,3 +240,104 @@ def test_a_task_that_drops_orders_writes_nothing_on_spark(spark, tmp_path):
     with pytest.raises(ExpectationError, match="2 lost"):
         ubunye.run_task(str(task), spark=spark)
     assert not (tmp_path / "out").exists()
+
+
+# --- input contracts (F-018): column types by the run record's names ---------------
+
+TYPED = (
+    "i8 TINYINT, i16 SMALLINT, i32 INT, i64 BIGINT, f32 FLOAT, f64 DOUBLE, b BOOLEAN, "
+    "s STRING, bin BINARY, d DATE, t TIMESTAMP, dec DECIMAL(10,2), l ARRAY<BIGINT>, "
+    "st STRUCT<a: INT, b: STRING>"
+)
+
+
+def test_spark_and_pandas_name_the_same_parquet_columns_the_same_way(spark, tmp_path):
+    import datetime as dt
+    from decimal import Decimal
+
+    from ubunye.adapters import pandas_io
+    from ubunye.lineage.content_hash import frame_kinds
+
+    row = (
+        1,
+        2,
+        3,
+        4,
+        1.5,
+        2.5,
+        True,
+        "x",
+        bytearray(b"a"),
+        dt.date(2024, 1, 2),
+        dt.datetime(2024, 1, 2, 10, 15),
+        Decimal("1.25"),
+        [1],
+        (1, "a"),
+    )
+    path = (tmp_path / "typed").as_posix()
+    spark.createDataFrame([row], TYPED).write.parquet(path)
+    on_spark = frame_kinds(spark.read.parquet(path))
+    on_pandas = frame_kinds(pandas_io.read_frame("parquet", path).native)
+    assert on_spark == on_pandas
+    assert on_spark["i32"] == "int32" and on_spark["dec"] == "decimal(10,2)"
+    assert on_spark["st"] == "struct<a:int32,b:string>"
+
+
+def test_a_columns_contract_gives_the_same_verdict_on_spark_and_pandas(spark):
+    spec = ExpectationSet(
+        rules=[{"columns": {"id": "int64", "qty": "float64", "extra_col": "string"}}]
+    )
+    rows = [(1, "1.5"), (2, None)]
+    frames = {
+        "pandas": pd.DataFrame(rows, columns=["id", "qty"]),
+        "spark": spark.createDataFrame(rows, "id BIGINT, qty STRING"),
+    }
+    found = {}
+    for engine, frame in frames.items():
+        with pytest.raises(ExpectationError) as err:
+            expectations.check_inputs({"orders": frame}, {"orders": spec})
+        found[engine] = err.value.results
+    assert found["spark"] == found["pandas"]
+    assert found["spark"][0]["detail"] == (
+        "qty: expected float64, found string; extra_col: expected string, missing"
+    )
+
+
+def test_a_retyped_source_stops_a_spark_task_before_the_transform(spark, tmp_path):
+    import textwrap
+
+    import ubunye
+
+    root = tmp_path.as_posix()
+    spark.createDataFrame(
+        [(1, 2, "11.0")], "order_id BIGINT, qty BIGINT, price STRING"
+    ).write.parquet(f"{root}/orders")
+    task = tmp_path / "uc" / "pkg" / "enrich"
+    task.mkdir(parents=True)
+    (task / "config.yaml").write_text(textwrap.dedent(f"""\
+        CONFIG:
+          inputs:
+            orders: {{format: s3, path: "{root}/orders", file_format: parquet}}
+          outputs:
+            enriched: {{format: s3, path: "{root}/out", file_format: parquet, mode: overwrite}}
+          expectations:
+            orders:
+              rules:
+                - columns: {{order_id: int64, qty: int64, price: float64}}
+        """))
+    (task / "transformations.py").write_text(textwrap.dedent("""\
+        from pathlib import Path
+
+        from ubunye.core.interfaces import Task
+
+
+        class Enrich(Task):
+            def transform(self, sources):
+                Path(__file__).with_name("transform_ran").write_text("yes")
+                orders = sources["orders"]
+                return {"enriched": orders.withColumn("total", orders.qty * orders.price)}
+        """))
+    with pytest.raises(ExpectationError, match="price: expected float64, found string"):
+        ubunye.run_task(str(task), spark=spark)
+    assert not (task / "transform_ran").exists()
+    assert not (tmp_path / "out").exists()

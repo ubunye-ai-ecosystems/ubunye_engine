@@ -471,8 +471,9 @@ def _print_evidence(ctx: RunContext) -> None:
         for e in ctx.expectations:
             mark = "ok" if e.get("passed") else e.get("severity", "?")
             colour = typer.colors.GREEN if e.get("passed") else typer.colors.YELLOW
+            frame = f"input {e['output']}" if e.get("side") == "input" else e["output"]
             typer.secho(
-                f"    {mark:<10} {e['output']}.{e['rule']:<28} {e['failed']}/{e['total']}",
+                f"    {mark:<10} {frame}.{e['rule']:<28} {e['failed']}/{e['total']}",
                 fg=colour,
             )
             if e.get("detail"):

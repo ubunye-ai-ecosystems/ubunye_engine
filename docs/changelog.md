@@ -197,6 +197,20 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Added
 
+- **Input contracts: expectations can name an input, checked before the transform**
+  (F-018). Its rules run right after it is read. A new rule, `columns: {price:
+  float64, qty: int64}` (with `extra: allow|forbid`), checks each column's type by the
+  names the run record uses, on Spark and pandas alike, from the schema alone. Types
+  match exactly (`int32` is not `int64`; list several to accept them); nulls are not
+  part of the type. A mismatch stops the run before the transform, naming each
+  column with the type expected and found. Before, a source that wrote `price` as
+  text made pandas compute `"11.011.0"` and the run succeeded; the E-05 cases
+  (column dropped, renamed, retyped) now stop with, for example, "price: expected
+  float64, found string". Results carry `side: input` in the record. `ubunye
+  validate` refuses a name that is both an input and an output, an input with a
+  quarantine or reconcile, and an unknown type name (with the right one for
+  `double`, `long` and friends). `columns` also works on an output.
+
 - **`reconcile`: an output can declare that nothing is lost on the way from an input**
   (F-017). Under `CONFIG.expectations.<output>`, `reconcile: [{input: orders, rows:
   {max_lost: 0}, sum: {column: amount, tolerance: 0.01}}]`. Bounds are a number or a

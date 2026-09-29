@@ -10,7 +10,8 @@ the schema changed, and does `ubunye gate` against the good run catch it?
 Usage: python tests/experiments/e03_e05_rows_and_schema.py <ubunye executable> [--contracts]
 
 With --contracts the task declares what must hold: E-03 reconciles enriched with
-orders (no order lost, F-017). The run should then stop before writing.
+orders (no order lost, F-017), and E-05 gives orders an input contract (the
+columns and their types, F-018). The run should then stop before writing.
 """
 
 from __future__ import annotations
@@ -35,6 +36,13 @@ RECONCILE = """\
         - input: orders
           rows: {max_lost: 0}
           sum: {column: price, tolerance: 0.01}
+"""
+# E-05 with --contracts: the orders source must keep its columns and types.
+CONTRACT = """\
+  expectations:
+    orders:
+      rules:
+        - columns: {order_id: int64, customer_id: int64, qty: int64, price: float64}
 """
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -185,7 +193,7 @@ def main() -> None:
             print("   ", ln.strip()[:170])
     if CONTRACTS:
         with open(os.path.join(task, "config.yaml"), "w") as fh:
-            fh.write(config(work))
+            fh.write(config(work, CONTRACT))
 
     print("\n== E-05: the orders source changes after a good run")
     drifts = {
@@ -205,6 +213,10 @@ def main() -> None:
         gcode, glines = gate(work)
         print(f"\n-- {label}")
         print("   run exit", code, "|", (err[0].strip()[:160] if err else "wrote output"))
+        for ln in out.splitlines():
+            if "(columns):" in ln:
+                print("   ", ln.strip()[:170])
+                break
         print("   record:", json.dumps(rec))
         print("   gate exit", gcode)
         for ln in glines:

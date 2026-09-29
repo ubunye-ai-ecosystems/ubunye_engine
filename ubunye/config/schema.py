@@ -290,9 +290,76 @@ class RowCountSpec(BaseModel):
     max: Optional[int] = None
 
 
-EXPECTATION_KINDS = ("not_null", "unique", "between", "one_of", "matches", "row_count")
+EXPECTATION_KINDS = (
+    "not_null",
+    "unique",
+    "between",
+    "one_of",
+    "matches",
+    "row_count",
+    "columns",
+)
 #: Kinds judged per row; only these can quarantine rows.
 ROW_KINDS = ("not_null", "between", "one_of", "matches")
+
+#: The type names a ``columns`` rule accepts: the run record's names (ADR 006).
+SIMPLE_TYPES = (
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "float32",
+    "float64",
+    "bool",
+    "string",
+    "binary",
+    "date",
+    "timestamp",
+    "timestamp_ntz",
+)
+_NESTED_TYPE = re.compile(r"^(decimal\(\d+,\d+\)|list<.+>|map<.+,.+>|struct<.+>)$")
+#: Names from other systems, and what the record calls them.
+_TYPE_HINTS = {
+    "double": "float64",
+    "float": "float32 (Spark float) or float64 (Spark double, pandas float)",
+    "real": "float32",
+    "long": "int64",
+    "bigint": "int64",
+    "int": "int32",
+    "integer": "int32",
+    "smallint": "int16",
+    "short": "int16",
+    "tinyint": "int8",
+    "byte": "int8",
+    "str": "string",
+    "text": "string",
+    "varchar": "string",
+    "object": "string",
+    "boolean": "bool",
+    "datetime": "timestamp",
+    "timestamp_ltz": "timestamp",
+}
+
+
+def canonical_type(name: str) -> str:
+    """A declared column type as the record's name, or ValueError saying what it means."""
+    text = re.sub(r"\s+", "", str(name))
+    simple = text.lower()
+    if simple in SIMPLE_TYPES:
+        return simple
+    if simple.startswith("decimal(") and _NESTED_TYPE.match(simple):
+        return simple
+    if _NESTED_TYPE.match(text):
+        return text
+    hint = _TYPE_HINTS.get(simple)
+    if hint:
+        raise ValueError(f"'{name}' is not a type name here; write {hint}")
+    close = difflib.get_close_matches(simple, SIMPLE_TYPES, n=1)
+    also = f"; did you mean {close[0]}?" if close else ""
+    raise ValueError(
+        f"'{name}' is not a type name; use one of {', '.join(SIMPLE_TYPES)}, "
+        f"decimal(p,s), list<...>, map<...,...> or struct<name:type,...>{also}"
+    )
 
 
 class ExpectationRule(BaseModel):
@@ -317,11 +384,35 @@ class ExpectationRule(BaseModel):
     one_of: Optional[OneOfSpec] = None
     matches: Optional[MatchesSpec] = None
     row_count: Optional[RowCountSpec] = None
+    #: ``columns``: each named column exists and has this type (or one of a list
+    #: of types). The names are the run record's (``int64``, ``float64``,
+    #: ``string``, ...). Nulls are not part of the type.
+    columns: Optional[Dict[str, List[str]]] = None
+    #: With ``columns``: ``allow`` (default) other columns, or ``forbid`` them.
+    extra: Optional[Literal["allow", "forbid"]] = None
 
     @field_validator("unique", mode="before")
     @classmethod
     def _unique_as_list(cls, v: Any) -> Any:
         return [v] if isinstance(v, str) else v
+
+    @field_validator("columns", mode="before")
+    @classmethod
+    def _types_as_lists(cls, v: Any) -> Any:
+        if not isinstance(v, dict):
+            return v
+        if not v:
+            raise ValueError("'columns' needs at least one column")
+        out: Dict[str, List[str]] = {}
+        for column, types in v.items():
+            names = [types] if isinstance(types, str) else list(types or [])
+            if not names:
+                raise ValueError(f"'columns': give '{column}' a type")
+            try:
+                out[str(column)] = [canonical_type(t) for t in names]
+            except ValueError as exc:
+                raise ValueError(f"'columns.{column}': {exc}") from None
+        return out
 
     @property
     def kind(self) -> str:
@@ -349,6 +440,8 @@ class ExpectationRule(BaseModel):
                 f"'{kinds[0]}' is about the whole output, not a row, so it cannot "
                 "quarantine rows; use severity fail or warn"
             )
+        if self.extra is not None and kinds[0] != "columns":
+            raise ValueError("'extra' goes with a 'columns' rule")
         if not self.name:
             column = (self.column or "").replace(", ", "_")
             self.name = f"{column}_{kinds[0]}" if column else kinds[0]
@@ -495,8 +588,10 @@ class TaskConfig(BaseModel):
     inputs: Dict[str, IOConfig]
     transform: TransformConfig = Field(default_factory=TransformConfig)
     outputs: Dict[str, IOConfig]
-    #: Checks on outputs, by output name, run after the transform and before any
-    #: output is written. See ``ubunye.core.expectations``.
+    #: Checks by output name, run after the transform and before any output is
+    #: written; or by input name, run on the input right after it is read and
+    #: before the transform (an input contract, F-018). See
+    #: ``ubunye.core.expectations``.
     expectations: Dict[str, ExpectationSet] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -524,8 +619,27 @@ class TaskConfig(BaseModel):
                 "give each its own quarantine output"
             )
         for name, spec in self.expectations.items():
+            if name in self.inputs and name in self.outputs:
+                errors.append(
+                    f"expectations.{name}: '{name}' is both an input and an output, so "
+                    "it is not clear which one to check; rename one of them"
+                )
+                continue
+            if name in self.inputs:
+                if spec.quarantine:
+                    errors.append(
+                        f"expectations.{name}: '{name}' is an input, and an input cannot "
+                        "quarantine rows (yet); check it with fail or warn, or quarantine "
+                        "on an output"
+                    )
+                if spec.reconcile:
+                    errors.append(
+                        f"expectations.{name}: reconcile goes on an output and names "
+                        f"the input ('input: {name}')"
+                    )
+                continue
             if name not in self.outputs:
-                errors.append(f"expectations.{name}: there is no output named '{name}'")
+                errors.append(f"expectations.{name}: there is no input or output named '{name}'")
             if spec.quarantine and spec.quarantine not in self.outputs:
                 errors.append(
                     f"expectations.{name}.quarantine: there is no output named "
