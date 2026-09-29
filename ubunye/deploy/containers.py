@@ -90,19 +90,32 @@ def plan_k8s(
 
 
 _K8S_RUN = r"""
-import json, subprocess, sys
+import json, subprocess, sys, time
 manifest, timeout, wait = json.loads(sys.argv[1]), sys.argv[2], sys.argv[3]
 name, ns = manifest["metadata"]["name"], manifest["metadata"]["namespace"]
 subprocess.run(["kubectl", "apply", "-f", "-"], input=json.dumps(manifest), text=True, check=True)
 if wait != "wait":
     sys.exit(0)
-done = subprocess.run(["kubectl", "wait", "-n", ns, f"job/{name}", "--for=condition=complete",
-                       f"--timeout={timeout}s"], capture_output=True, text=True)
+# Follow the Job to Complete OR Failed. `kubectl wait --for=condition=complete` alone
+# sat out the whole timeout after a Job had already failed (F-037).
+deadline, state = time.time() + int(timeout), "timed out"
+while time.time() < deadline:
+    types = subprocess.run(
+        ["kubectl", "get", "-n", ns, f"job/{name}", "-o",
+         'jsonpath={.status.conditions[?(@.status=="True")].type}'],
+        capture_output=True, text=True).stdout.split()
+    if "Failed" in types:
+        state = "failed"
+        break
+    if "Complete" in types:
+        state = "complete"
+        break
+    time.sleep(5)
+print(time.strftime("%H:%M:%S"), "job", name, state, file=sys.stderr)
 logs = subprocess.run(["kubectl", "logs", "-n", ns, f"job/{name}"], capture_output=True, text=True)
 print(logs.stdout)
 print(logs.stderr, file=sys.stderr)
-if done.returncode != 0:
-    print(done.stderr, file=sys.stderr)
+if state != "complete":
     sys.exit(1)
 """
 

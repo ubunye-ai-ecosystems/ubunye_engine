@@ -184,3 +184,44 @@ def test_container_jobs_run_several_tasks_in_one_launch():
         "uc/pkg/clean,uc/pkg/monitor",
     ]
     assert aca.job == "ubunye-clean-monitor"
+
+
+@pytest.mark.parametrize("condition, code", [("Failed", 1), ("Complete", 0)])
+def test_a_k8s_job_is_followed_to_failed_as_well_as_complete(monkeypatch, condition, code):
+    """F-037: `kubectl wait --for=condition=complete` sat out the whole timeout (30
+    minutes on kind) after R1's Job had already failed. Kubernetes says a Job ended with
+    a Complete or a Failed condition; the deploy stops at either, and fails on Failed.
+    """
+    import time as time_module
+
+    calls = []
+    clock = [0.0]
+
+    def fake_run(argv, input=None, capture_output=False, text=False, check=False):
+        calls.append(argv)
+        out = ""
+        if argv[1] == "wait":  # the old way: never returns for a failed Job
+            clock[0] += 1800
+            return subprocess.CompletedProcess(argv, 1, stdout="", stderr="timed out")
+        if argv[1] == "get":
+            out = condition if len([c for c in calls if c[1] == "get"]) > 2 else ""
+        if argv[1] == "logs":
+            out = "the job's log"
+        return subprocess.CompletedProcess(argv, 0, stdout=out, stderr="")
+
+    def fake_sleep(seconds):
+        clock[0] += seconds
+
+    plan = containers.plan_k8s("uc", "pkg", "t", image="img:1", timeout_s=1800)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(time_module, "sleep", fake_sleep)
+    monkeypatch.setattr(time_module, "time", lambda: clock[0])
+    monkeypatch.setattr(sys, "argv", plan.commands[0][2:])
+    try:
+        exec(containers._K8S_RUN, {"__name__": "__main__"})
+        exit_code = 0
+    except SystemExit as done:
+        exit_code = done.code
+    assert exit_code == code
+    assert clock[0] < 60, "waited out the timeout instead of stopping at the Job's end"
+    assert ["kubectl", "logs", "-n", "default", f"job/{plan.job}"] in calls
