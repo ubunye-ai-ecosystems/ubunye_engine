@@ -32,6 +32,77 @@ class LabelReviews(Task):
 Calls run where the task's Python runs. On Spark that is the driver: collect the
 column you want to label, or keep the frame small.
 
+## Check each answer, ask again for the bad ones
+
+`complete_many` gives back text. A model asked for a format, such as
+`SENTIMENT | ASPECT`, will miss it now and then: a small local model missed it 20
+times in 300. Parse every answer, and ask again only for the ones that fail, a set
+number of times. Copy this into your task:
+
+<!-- llm-reask:begin -->
+```python
+SENTIMENTS = {"positive", "negative", "neutral"}
+
+
+def sentiment_aspect(text):
+    """'positive | battery life' -> ('positive', 'battery life'); ValueError if not."""
+    parts = [p.strip() for p in text.strip().split("|")]
+    if len(parts) != 2 or parts[0].lower() not in SENTIMENTS or not parts[1]:
+        raise ValueError(f"not 'SENTIMENT | ASPECT': {text!r}")
+    return parts[0].lower(), parts[1]
+
+
+def complete_parsed(port, prompts, parse, *, tries=2, reminder=None, **options):
+    """Ask every prompt; ask again, up to `tries` more times, only where `parse` fails.
+
+    Returns (values, failed): values[i] is parse(answer), or None where every try
+    failed, and failed lists those positions.
+    """
+    values = [None] * len(prompts)
+    todo = list(range(len(prompts)))
+    for attempt in range(tries + 1):
+        asked = [prompts[i] + (reminder if attempt and reminder else "") for i in todo]
+        answers = port.complete_many(asked, **options)
+        failed = []
+        for i, answer in zip(todo, answers):
+            try:
+                values[i] = parse(answer.text)
+            except ValueError:
+                failed.append(i)
+        todo = failed
+        if not todo:
+            break
+    return values, todo
+```
+<!-- llm-reask:end -->
+
+In the task:
+
+```python
+values, failed = complete_parsed(
+    self.model, prompts, sentiment_aspect, tries=2, max_tokens=20,
+    reminder="\n\nAnswer with one line: SENTIMENT | ASPECT.",
+)
+df["sentiment"] = [v[0] if v else None for v in values]
+df["aspect"] = [v[1] if v else None for v in values]
+```
+
+Then decide what a row that failed every try means: drop it, keep it as unknown, or
+fail the run with `raise ValueError(f"{len(failed)} answers never parsed")`.
+
+It works with the rest of the engine, with no extra setting:
+
+- Only the failed prompts are sent again. Each extra call counts against the budget
+  like any other, so `UBUNYE_LLM_MAX_CALLS` and `UBUNYE_LLM_MAX_USD` still cap it.
+- Every call, first or again, is in the run record's `llm_calls`.
+- Record and replay: the run asks the same things in the same order every time, so
+  replay gives back the recorded run call for call. That holds with no `reminder`
+  too, when the same prompt is sent twice: the second ask is replayed the second
+  recorded answer.
+- `reminder` changes the prompt on a second try. At `temperature=0` a model asked
+  the very same prompt often gives the very same wrong answer; a reminder gives it a
+  reason to change.
+
 ## Progress on a long batch
 
 A long `complete_many` writes how far it is to stderr:

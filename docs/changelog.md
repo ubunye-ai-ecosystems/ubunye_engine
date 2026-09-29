@@ -203,6 +203,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   at most every 10 seconds and every 10% of the calls, whichever is rarer, and one at
   the end. A batch under 20 prompts or under 10 seconds writes nothing. The spend
   shows when a budget keeps count. Sequential and concurrent batches both report.
+- **Docs: check each model answer, ask again for the bad ones** (F-009). A newcomer
+  asked for `SENTIMENT | ASPECT` and 20 of 300 answers missed the format. The LLM
+  page now has a short recipe, `complete_parsed`: parse each answer, ask again only
+  where the parse fails, up to a cap, with an optional reminder. It needs no new
+  engine feature: the extra calls count against the budget, are in the run record,
+  and replay call for call. A test runs the recipe from the page as written.
 
 - **`ubunye deploy` runs several tasks in one launch** (glue, dataproc, k8s,
   container-apps, emr-serverless): repeat `-t`, as in `-t clean -t monitor`. They run in
