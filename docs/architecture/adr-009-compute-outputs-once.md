@@ -73,9 +73,21 @@ input and output step in the record has `hash_basis`:
 | `recomputed` | The frame was computed again for the hash: an output that could not be held, or any Spark input |
 
 A backend that cannot hold a frame (Spark Connect or serverless may refuse, a
-streaming frame, a test double) returns `None`, or raises and the engine logs it;
-the run never fails for it. A quarantine output has the basis of the output it was
-cut from. A record written before this has no `hash_basis`.
+streaming frame, a test double) returns `None`, and the run goes on as before. A
+backend that hands back the frame it was given has not held it, and the engine
+treats it as `None`. A quarantine output has the basis of the output it was cut
+from. A record written before this has no `hash_basis`.
+
+**A job that fails while it is held fails the task, once.** Holding is the first
+computation of the output, so a failing transform (a UDF that raises, a service that
+returns 500) fails there. The backend raises that error and the engine lets it end
+the task, as the writer would. It does not fall back: the fallback computes the same
+failing plan again, so every side effect of the transform happened twice before the
+same error (the skeptic measured 6,000 UDF calls against 3,000 before this). The
+Spark backend falls back only on a platform refusal (`NotImplementedError`, or an
+error that says `NOT_SUPPORTED`, `NOT_IMPLEMENTED`, `UNSUPPORTED` or "not supported"
+and is not a failed job); any other error is raised. It also checks that the plan it
+returns is a `LogicalRDD`, the held rows, and returns `None` if not.
 
 **One switch.** `UBUNYE_MATERIALISE_OUTPUTS=0` (also `false`, `no`, `off`) turns
 holding off, read when each run starts. Every Spark output is then `recomputed`, and

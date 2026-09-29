@@ -32,6 +32,8 @@ def spark() -> SparkSession:
         SparkSession.builder.master("local[2]")
         .config("spark.sql.session.timeZone", "UTC")
         .config("spark.ui.enabled", "false")
+        # A Python UDF counts its calls below; the Arrow worker is not needed.
+        .config("spark.sql.execution.pythonUDF.arrow.enabled", "false")
         .getOrCreate()
     )
 
@@ -86,10 +88,15 @@ def _cached_rdds(spark: SparkSession) -> int:
     return len(spark.sparkContext._jsc.sc().getRDDStorageInfo())
 
 
-def test_the_record_hashes_the_rows_that_were_written(spark, tmp_path):
+# Both ways a Spark run is made: a notebook's session (the Databricks backend) and
+# `ubunye run` (the Spark backend). Only the first was tested, so a Spark backend
+# that returned its frame unheld passed every test (skeptic attack 8).
+@pytest.mark.parametrize("via", ["session", "cli-backend"])
+def test_the_record_hashes_the_rows_that_were_written(spark, tmp_path, via):
     task = _task(tmp_path, spark)
     before = _cached_rdds(spark)
-    ubunye.run_task(str(task), spark=spark, lineage=True, lineage_dir=".ubunye/lineage", dt="1")
+    how = {"spark": spark} if via == "session" else {"backend": "spark"}
+    ubunye.run_task(str(task), lineage=True, lineage_dir=".ubunye/lineage", dt="1", **how)
     rec = _record(tmp_path)
     for step in rec["outputs"]:
         written = fingerprint_spark(spark.read.parquet(str(tmp_path / step["name"])))
@@ -135,3 +142,55 @@ def test_a_lost_block_fails_loudly_instead_of_recomputing(spark):
 def test_a_streaming_frame_is_not_held(spark):
     stream = spark.readStream.format("rate").load()
     assert materialise.materialise(stream) is None
+
+
+def _failing_task(root: Path, spark: SparkSession, calls: Path) -> Path:
+    # One input file, so one partition: the calls before the failure repeat exactly.
+    spark.range(300).coalesce(1).write.mode("overwrite").parquet(str(root / "in"))
+    task = root / "uc" / "pkg" / "f"
+    task.mkdir(parents=True)
+    r = root.as_posix()
+    (task / "config.yaml").write_text(textwrap.dedent(f"""            MODEL: etl
+            VERSION: "1.0.0"
+            CONFIG:
+              inputs:
+                src: {{format: s3, path: "{r}/in", file_format: parquet}}
+              transform: {{}}
+              outputs:
+                out: {{format: s3, path: "{r}/out", file_format: parquet, mode: overwrite}}
+            """))
+    (task / "transformations.py").write_text(
+        textwrap.dedent(f"""            from pyspark.sql import functions as F
+            from ubunye.core.interfaces import Task
+
+
+            def call_service(i):
+                # Stands in for a paid API call: one character per call.
+                with open(r"{calls}", "a") as f:
+                    f.write("x")
+                if i == 299:
+                    raise ValueError("the service returned 500")
+                return i
+
+
+            class T(Task):
+                def transform(self, sources):
+                    udf = F.udf(call_service, "long")
+                    return {{"out": sources["src"].withColumn("v", udf("id"))}}
+            """)
+    )
+    return task
+
+
+def test_a_failing_transform_runs_once_when_its_output_is_held(spark, tmp_path):
+    counts = {}
+    for lineage in (False, True):
+        root = tmp_path / ("held" if lineage else "plain")
+        calls = root / "calls.txt"
+        root.mkdir()
+        task = _failing_task(root, spark, calls)
+        with pytest.raises(Exception, match="the service returned 500"):
+            ubunye.run_task(str(task), spark=spark, lineage=lineage, dt="1")
+        counts[lineage] = len(calls.read_text())
+    # Before the fix the held run failed, fell back and ran the plan again.
+    assert counts[True] == counts[False] > 0

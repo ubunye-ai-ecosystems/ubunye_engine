@@ -29,8 +29,14 @@ def materialise(df: Any) -> Optional[Any]:
     """``df`` computed once and held in executor memory and disk, or ``None``.
 
     ``None`` when it cannot be done here: a streaming frame, a frame without
-    ``localCheckpoint`` (a mock), or a session that refuses it. The caller then
-    goes on as before, and the run record says the hash was recomputed.
+    ``localCheckpoint`` (a mock), a platform that refuses it (serverless, an old
+    Connect server), or a result that is not actually held. The caller then goes
+    on as before, and the run record says the hash was recomputed.
+
+    When the computation itself fails (the transform raised, a UDF's service
+    returned an error), that error is raised here. Falling back would run the
+    same failing plan a second time, doubling every side effect of the transform
+    (paid API calls, rows posted) before failing with the same error.
     """
     if getattr(df, "isStreaming", False) or not hasattr(df, "localCheckpoint"):
         return None
@@ -42,16 +48,72 @@ def materialise(df: Any) -> Optional[Any]:
         return None
     try:
         try:
-            return df.localCheckpoint(eager=True, storageLevel=level)
+            held = df.localCheckpoint(eager=True, storageLevel=level)
         except TypeError:  # pyspark before 4.0 takes no storage level
-            return df.localCheckpoint(eager=True)
-    except Exception as exc:  # noqa: BLE001 (never fail a run for this)
+            held = df.localCheckpoint(eager=True)
+    except Exception as exc:  # noqa: BLE001 (sorted below)
+        if not _refused(exc):
+            raise
         log.warning(
-            "Could not compute the output once and hold it (%s); every check, the "
+            "This platform cannot hold the output once (%s); every check, the "
             "write and the run record's hash will each compute it.",
             _first_line(exc),
         )
         return None
+    if not _is_held(held):
+        log.warning(
+            "localCheckpoint returned a frame that still recomputes its plan; "
+            "every check, the write and the run record's hash will each compute it."
+        )
+        return None
+    return held
+
+
+# What a platform says when it will not hold a frame, as opposed to a job that
+# failed while computing it. Serverless compute and older Spark Connect servers
+# refuse localCheckpoint with one of these; a failing transform never does.
+_REFUSALS = ("NOT_SUPPORTED", "NOT_IMPLEMENTED", "UNSUPPORTED", "not supported")
+
+
+def _refused(exc: BaseException) -> bool:
+    """True when the platform refused to hold the frame, False when the job failed."""
+    if _job_failed(exc):
+        return False
+    if isinstance(exc, NotImplementedError) or type(exc).__name__ == "PySparkNotImplementedError":
+        return True
+    return _says_refused(exc)
+
+
+def _says_refused(exc: BaseException) -> bool:
+    first = _first_line(exc)
+    return any(word in first for word in _REFUSALS)
+
+
+def _job_failed(exc: BaseException) -> bool:
+    """A Spark job ran and failed: a Python worker error or a SparkException."""
+    if type(exc).__name__ in ("PythonException", "SparkException"):
+        return True
+    java = getattr(exc, "java_exception", None)  # classic Py4JJavaError
+    try:
+        return java is not None and "SparkException" in str(java.getClass().getName())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _is_held(held: Any) -> bool:
+    """True unless the frame's plan is visibly not the held rows.
+
+    A checkpointed frame's plan is a ``LogicalRDD`` over the held blocks. Where
+    the plan cannot be seen (Spark Connect has no ``_jdf``), the result is trusted.
+    """
+    jdf = getattr(held, "_jdf", None)
+    if jdf is None:
+        return held is not None
+    try:
+        plan = jdf.queryExecution().logical()
+        return str(plan.getClass().getSimpleName()) == "LogicalRDD"
+    except Exception:  # noqa: BLE001 (cannot inspect: trust the checkpoint)
+        return True
 
 
 def release(df: Any) -> None:
@@ -71,6 +133,6 @@ def release(df: Any) -> None:
         log.debug("release of a held output failed: %s", _first_line(exc))
 
 
-def _first_line(exc: Exception) -> str:
+def _first_line(exc: BaseException) -> str:
     lines = [ln.strip() for ln in str(exc).splitlines() if ln.strip()]
     return (lines[0] if lines else type(exc).__name__)[:200]

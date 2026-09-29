@@ -25,9 +25,10 @@ class LazyBackend(Backend):
     name = "fake-lazy"
     CAPABILITIES = Capabilities(lazy=True, distributed=True)
 
-    def __init__(self, can_hold: bool = True, raises: bool = False) -> None:
+    def __init__(self, can_hold: bool = True, raises: bool = False, same: bool = False) -> None:
         self.can_hold = can_hold
         self.raises = raises
+        self.same = same
         self.held: List[Any] = []
         self.released: List[Any] = []
         self.events: List[str] = []
@@ -40,9 +41,11 @@ class LazyBackend(Backend):
 
     def materialise(self, frame: Any) -> Any:
         if self.raises:
-            raise RuntimeError("PERSIST TABLE is not supported on serverless compute")
+            raise RuntimeError("Job aborted: the transform's UDF raised on row 2999")
         if not self.can_hold:
             return None
+        if self.same:
+            return frame
         once = frame.copy()
         self.held.append(once)
         self.events.append("hold")
@@ -81,6 +84,7 @@ class Recorder(Hook):
 
 WRITTEN: Dict[str, Any] = {}
 FRAMES: Dict[str, Any] = {}
+APPLIED: List[int] = []
 
 
 class Reader:
@@ -97,6 +101,7 @@ class Writer:
 
 class Transform:
     def apply(self, inputs, cfg, backend):
+        APPLIED.append(1)
         src = inputs["src"]
         out = {"a": src.assign(x=1), "b": src.assign(y=2)}
         if cfg.get("twice"):
@@ -131,6 +136,7 @@ def _engine(backend: LazyBackend, hooks: list) -> Engine:
     reg.register_writer("w", Writer)  # type: ignore[arg-type]
     reg.register_transform("t", Transform)  # type: ignore[arg-type]
     WRITTEN.clear()
+    APPLIED.clear()
     return Engine(
         backend=backend,
         registry=reg,
@@ -278,14 +284,38 @@ def test_a_release_that_raises_does_not_fail_the_run():
 # --- fallback --------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("kind", ["cannot", "raises"])
+@pytest.mark.parametrize("kind", ["cannot", "same"])
 def test_a_backend_that_cannot_hold_runs_as_before_and_says_so(kind):
-    backend = LazyBackend(can_hold=kind != "cannot", raises=kind == "raises")
+    # "same": the frame handed back unheld, which would recompute (skeptic attack 8).
+    backend = LazyBackend(can_hold=kind != "cannot", same=kind == "same")
     rec = Recorder(backend)
     _engine(backend, hooks=[rec]).run(_cfg())
     assert WRITTEN["out/a"] is FRAMES["a"]
     assert rec.basis == {"a": "recomputed", "b": "recomputed"}
     assert backend.released == []
+
+
+def test_a_job_that_fails_while_held_ends_the_task_without_a_second_attempt():
+    # Falling back would compute the failing plan again: every side effect of the
+    # transform (a paid API call per row) would happen twice (skeptic attack 5).
+    backend = LazyBackend(raises=True)
+    rec = Recorder(backend)
+    with pytest.raises(RuntimeError, match="Job aborted"):
+        _engine(backend, hooks=[rec]).run(_cfg())
+    assert rec.failed
+    assert WRITTEN == {}  # the writer never ran the plan a second time
+    assert APPLIED == [1]
+
+
+def test_the_run_record_hook_asks_for_every_output_to_be_held(tmp_path):
+    # The real hook, not the Recorder double: MonitorHook must say it reads outputs.
+    from ubunye.lineage.recorder import LineageRecorder
+    from ubunye.telemetry.hooks.monitors import MonitorHook
+
+    backend = LazyBackend()
+    _engine(backend, hooks=[MonitorHook(LineageRecorder(base_dir=str(tmp_path)))]).run(_cfg())
+    assert len(backend.held) == 2
+    assert WRITTEN["out/a"] is backend.held[0] or WRITTEN["out/a"] is backend.held[1]
 
 
 def test_the_switch_turns_it_off(monkeypatch):

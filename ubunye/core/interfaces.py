@@ -85,6 +85,12 @@ class Backend(ABC):
         were written (ADR 009). Later actions on the returned frame must never
         compute the plan again: a lost copy has to fail, not recompute.
 
+        Return ``None`` when this platform cannot hold it; the engine then goes on
+        as before and records the hash as recomputed. Raise only when computing
+        the frame failed: the engine lets that error end the task, since falling
+        back would compute the same failing plan again. Returning ``frame``
+        itself counts as not held.
+
         The default is ``None``: nothing is held, and each consumer computes the
         frame as before. A backend whose frames are already in memory (pandas)
         needs nothing here. The engine calls :meth:`release` on what this returns

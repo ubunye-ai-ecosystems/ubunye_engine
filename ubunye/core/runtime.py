@@ -450,12 +450,14 @@ class Engine:
             needed = recorded or name in expected or uses[id(frame)] > 1
             if needed and allowed:
                 if id(frame) not in done:
-                    once = None
+                    # An error here is the job failing while it computes the
+                    # output; it propagates, as it would from the writer. Falling
+                    # back would compute the same failing plan again (ADR 009).
                     with self._step(chain, ctx, "Materialise", {"output": name}):
-                        try:
-                            once = self.backend.materialise(_unwrap(frame))
-                        except Exception as exc:  # noqa: BLE001 (never fail a run for this)
-                            logger.warning("Could not hold output '%s': %s", name, exc)
+                        raw = _unwrap(frame)
+                        once = self.backend.materialise(raw)
+                    if once is raw:  # handed back unheld: it would recompute
+                        once = None
                     done[id(frame)] = once
                     if once is not None:
                         held.append(once)

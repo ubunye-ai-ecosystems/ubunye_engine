@@ -80,3 +80,25 @@ written files, quarantine too, held rows released, a lost block fails loudly) an
 
 Still open around it: an input's hash is a second read of the source (F-046), and an
 output that overwrites its own input deletes it on a plain run (F-047).
+
+## Skeptic review (2026-09-29) and what changed
+An adversarial review ran every attack on live Spark 4.2 against the fix and 08fcf8b.
+The record matched the written rows in every case it tried (quarantine, one frame
+under two names, notebook `write()`, a 3 task pipeline, `overwrite_partitions`, CSV,
+Delta, overwriting its own input, the CLI path, `--rerun`). It found two bugs:
+
+1. **The tests could not catch a broken fix.** A `SparkBackend.materialise` that
+   returned the frame unheld passed every test, because every integration test used
+   the notebook path (`DatabricksBackend`), and the record then said `materialised`
+   for rows that were not written. Fixed: the engine treats a frame handed back as
+   given as not held; the Spark adapter returns `None` unless the plan is a
+   `LogicalRDD`; the live record test runs through both backends; a unit test uses the
+   real `MonitorHook(LineageRecorder)`. Each mutant now fails a test ("recomputed" not
+   "materialised", or a digest that differs from the files); the `reads_outputs`
+   mutant fails the unit tier.
+2. **A failing transform ran twice.** The fallback caught the transform's own error
+   and ran the plan again, doubling side effects. Fixed: fall back only on a platform
+   refusal, raise everything else (ADR 009). Pinned by
+   `test_a_failing_transform_runs_once_when_its_output_is_held`: the old code makes
+   600 calls where a plain run makes 300; the fix makes 300.
+
