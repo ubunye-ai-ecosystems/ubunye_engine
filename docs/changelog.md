@@ -70,6 +70,18 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Added
 
+- **A real-world example: a staple food price monitor for African markets**
+  (`examples/real-world/food_prices_africa`). WFP market prices, African retail, one
+  price per kg, a monthly price per country and food, and alerts where a staple rose by
+  half on a year before across at least three markets (on 2025-2026 data: Mali paddy
+  rice +144%, Ethiopia groundnuts +122%, Chad wheat flour +78% across 54 markets). A
+  small WFP sample ships with it, so the first run needs no account and no Java; the
+  two steps give the same rows on pandas and Spark (tested, golden digests).
+- **A guide to writing portable transforms** (`docs/guides/portable-transforms.md`):
+  the places the same Narwhals code gave different numbers on pandas and Spark, each
+  found on real data, each with a fix (rounding modes, float sums, a lost cast,
+  `str.replace`, casting text, time zones, null group keys).
+
 - **`ubunye prove`: the proving ground.** Collect one workload's run records from many
   environments (`observe`, from a stored run or a record file such as a cloud run's
   artifact), record the ones that did not run and why (`skip`), and compare them all with

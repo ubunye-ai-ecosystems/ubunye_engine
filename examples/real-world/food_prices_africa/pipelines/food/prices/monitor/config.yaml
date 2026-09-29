@@ -1,0 +1,36 @@
+MODEL: etl
+VERSION: "1.0.0"
+
+# Step 2 of the African staple food price monitor: a monthly price per kilogram per
+# country and food, how it moved against the same month a year before, and an alert
+# where a staple rose past the threshold. Reads what step 1 wrote.
+CONFIG:
+  inputs:
+    prices_per_kg:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/prices_per_kg"
+      file_format: parquet
+  transform:
+    params:
+      # A staple whose monthly price per kg rose by this share or more against the
+      # same month a year before is an alert (0.5 = up 50% or more).
+      rise_threshold: 0.5
+      # ...and only when that month's price rests on at least this many markets.
+      min_markets: 3
+      staples: ["cereals and tubers", "pulses and nuts", "oil and fats"]
+  outputs:
+    monthly:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/monthly"
+      file_format: parquet
+      mode: overwrite
+    alerts:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/alerts"
+      file_format: parquet
+      mode: overwrite
+  expectations:
+    monthly:
+      rules:
+        - between: {column: price_per_kg, min: 0.000001}
+        - unique: [countryiso3, commodity, currency, year, month]
