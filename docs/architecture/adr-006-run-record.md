@@ -71,8 +71,15 @@ the same identity, so `ubunye lineage list` finds every run.
 
 ## Consequences
 
-- Hashing every row costs one extra scan of each output. On Spark it runs where
-  the data is; only three numbers come back.
+- Hashing every row costs one pass over each output. On Spark it runs where the
+  data is; only three numbers come back. Until ADR 009 that pass also computed the
+  output a second time (the transform, its joins, its source reads), and could hash
+  rows that were never written (F-039, F-040). Since ADR 009 a recorded Spark output
+  is computed once and held, and the hash reads the held rows; each output step's
+  `hash_basis` says which it was. Measured (E-06 job, 5,000,000 rows, dev box, Spark
+  4.2 local, median of 3): `--lineage` 1.83 times the plain job (was 2.32), 17 Spark
+  jobs (was 18), the 5 million row source read 3 times (was 5). The rest of the cost
+  is the hash itself, which grows with the rows (F-041).
 - Records written before 0.7.0 have no `hash_method`. `lineage compare` calls
   them "not comparable" with new records rather than "changed", and calls two
   missing hashes "unknown" rather than "unchanged".
@@ -91,13 +98,19 @@ transform, an input or the machine could each have moved. Version 2
 | `inputs[*].data_hash`, `row_count`, `schema_hash` | every input hashed exactly like the outputs (`rows-v1`) |
 | `timings` | one entry per read, transform and write, with seconds; kept when the run fails |
 | `inputs[*].hash_seconds`, `outputs[*].hash_seconds` | how long that data hash took; it runs after the writes, so it is in no timing (F-014) |
+| `inputs[*].hash_basis`, `outputs[*].hash_basis` | `materialised`: the digest is of the rows that were written (a held Spark output, a pandas frame); `recomputed`: the frame was computed again for the hash (a Spark input, or an output that could not be held). ADR 009 |
 | `inputs[*].hash_reused_from`, `outputs[*].hash_reused_from` | set when the same frame was already hashed for another step of the run, which it names (`output:<name>`); `hash_seconds` is then 0 |
 | `expectations` | every `CONFIG.expectations` rule checked, passed or not; kept when the run fails |
 
 `ubunye lineage compare` reports each of these as changed or unchanged, and
 names the packages whose versions moved. `ubunye lineage trace` prints them.
 
-Hashing inputs costs one more scan of each input. It is on by default; a
+Hashing inputs costs one more scan of each input. On Spark that scan reads the
+source again, after the writes: it is not the rows the transform read, so a source
+that changes between the read and the hash (another job appends, a file is replaced,
+the task overwrites its own input) gives an input digest of the later state. Inputs
+are not held (ADR 009); every Spark input step says `hash_basis: recomputed`
+(F-046). It is on by default; a
 recorder built with `LineageRecorder(hash_inputs=False)` skips it for inputs too
 large to read twice, and those inputs then show `-` for their row count.
 

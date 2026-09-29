@@ -50,6 +50,18 @@
             "number",
             "null"
           ]
+        },
+        "hashBasis": {
+          "description": "materialised: the hash is of the rows written; recomputed: the frame was computed again for the hash (ADR 009).",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "materialised",
+            "recomputed",
+            null
+          ]
         }
       }
     }

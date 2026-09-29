@@ -75,6 +75,27 @@ class Backend(ABC):
         """
         return frame
 
+    def materialise(self, frame: Any) -> Optional[Any]:
+        """The frame computed once and held, or ``None`` when this backend cannot.
+
+        A lazy backend computes a frame again for every action on it. When an
+        output has more than one consumer (the expectation checks, the writer, the
+        run record's hash), the engine asks for it to be computed once here, and
+        hands the frame returned to every consumer, so they all see the rows that
+        were written (ADR 009). Later actions on the returned frame must never
+        compute the plan again: a lost copy has to fail, not recompute.
+
+        The default is ``None``: nothing is held, and each consumer computes the
+        frame as before. A backend whose frames are already in memory (pandas)
+        needs nothing here. The engine calls :meth:`release` on what this returns
+        when the task ends.
+        """
+        return None
+
+    def release(self, frame: Any) -> None:
+        """Free a frame :meth:`materialise` returned. Must not raise."""
+        return None
+
     @classmethod
     def create(cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None) -> Any:
         """Build this backend for a run: how the registry constructs it by name.

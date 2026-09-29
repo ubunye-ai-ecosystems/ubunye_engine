@@ -49,6 +49,22 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **On Spark, the run record hashes the rows that were written (F-040), and a checked
+  or recorded output is computed once (F-039, F-043).** The record hashed each output
+  at task end by computing it again, so anything that differs per computation (a
+  `current_timestamp()` column, a UDF that calls a service, a changed source) gave a
+  digest of rows never written: 0 of 3 runs matched the written files, now 3 of 3.
+  The checks had the same flaw, and every check and the write paid for the transform
+  again. Now each output that the record, its expectations or a second output name
+  will act on is computed once (`localCheckpoint`, memory and disk) and every consumer
+  gets that copy; it is released when the task ends. E-06 job at 5M rows: the source
+  is read 3 times with `--lineage` (was 5) and 2 times with expectations (was 5). A
+  plain run is unchanged. Each input and output in the record now says
+  `hash_basis`: `materialised` (the rows written) or `recomputed` (computed again:
+  every Spark input, and an output that could not be held, as on Spark Connect).
+  `UBUNYE_MATERIALISE_OUTPUTS=0` turns holding off. The cost is executor memory and
+  local disk for the held outputs, and a lost executor fails the run instead of
+  recomputing. ADR 009.
 - **Expectations give the same verdict on pandas and Spark when a float column holds
   NaN (F-045).** pandas counted NaN as null and Spark did not, so `not_null` and
   `between` broke on different rows and a `fail` rule could stop a run on one backend

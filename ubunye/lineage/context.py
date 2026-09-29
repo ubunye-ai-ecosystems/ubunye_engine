@@ -90,6 +90,12 @@ class StepRecord:
     #: Set when this frame was already hashed for another step of the run (the
     #: same frame written twice): that step, as "output:<name>" or "input:<name>".
     hash_reused_from: Optional[str] = None
+    #: What data_hash was computed from (ADR 009): "materialised" when it is the
+    #: rows the writer wrote (a Spark output computed once and held, or a frame in
+    #: memory), "recomputed" when the hash computed the frame a second time (an
+    #: input, which is read again, or an output that could not be held), so a
+    #: step whose values differ per computation can differ from what was written.
+    hash_basis: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -108,6 +114,7 @@ class StepRecord:
             hash_error=d.get("hash_error"),
             hash_seconds=d.get("hash_seconds"),
             hash_reused_from=d.get("hash_reused_from"),
+            hash_basis=d.get("hash_basis"),
         )
 
     @staticmethod

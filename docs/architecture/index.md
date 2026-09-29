@@ -13,6 +13,7 @@ purpose: the code and its tests are the detail.
 | [006](adr-006-run-record.md) | The run record is correct before it is sold: every row, any order, same on every engine | 0.7.0 |
 | [007](adr-007-one-time-zone.md) | One time zone for every backend, UTC unless the task says | unreleased |
 | [008](adr-008-rerun-safety.md) | A rerun is safe: one live run per batch, appends land once | unreleased |
+| [009](adr-009-compute-outputs-once.md) | Each output is computed once; checks, write and run record get that copy | unreleased |
 
 ## The rule behind all of them
 

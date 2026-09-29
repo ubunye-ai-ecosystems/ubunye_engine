@@ -398,6 +398,8 @@ def _print_steps(steps: List[StepRecord]) -> None:
             typer.echo(f"      data     : unavailable ({step.hash_error})")
         if getattr(step, "hash_seconds", None) is not None:
             typer.echo(f"      hashed in: {step.hash_seconds:.3f}s")
+        if getattr(step, "hash_basis", None):
+            typer.echo(f"      hash from: {step.hash_basis}")
         if getattr(step, "hash_reused_from", None):
             typer.echo(f"      hash of  : {step.hash_reused_from} (same frame)")
 

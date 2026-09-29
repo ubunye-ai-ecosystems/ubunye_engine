@@ -20,10 +20,10 @@ from ubunye.telemetry.monitors import load_monitors, safe_call
 
 #: What the engine knows beyond the outputs; given only to a monitor whose
 #: ``task_end`` accepts it, so older monitors keep working unchanged.
-EVIDENCE = ("inputs", "expectations", "timings", "llm_calls", "llm_budget")
+EVIDENCE = ("inputs", "expectations", "timings", "llm_calls", "llm_budget", "hash_basis")
 
 
-def _evidence(monitor: Any, state: Dict[str, Any]) -> Dict[str, Any]:
+def _evidence(monitor: Any, state: Dict[str, Any], keys: tuple = EVIDENCE) -> Dict[str, Any]:
     method = getattr(monitor, "task_end", None)
     if method is None:
         return {}
@@ -32,7 +32,7 @@ def _evidence(monitor: Any, state: Dict[str, Any]) -> Dict[str, Any]:
     except (TypeError, ValueError):
         return {}
     takes_any = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
-    return {k: state.get(k) for k in EVIDENCE if takes_any or k in params}
+    return {k: state.get(k) for k in keys if takes_any or k in params}
 
 
 def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
@@ -77,6 +77,11 @@ class MonitorHook(Hook):
     def __init__(self, monitor: Any) -> None:
         self.monitor = monitor
 
+    @property
+    def reads_outputs(self) -> bool:  # type: ignore[override]
+        """Whether the monitor says it acts on the output frames (the lineage recorder)."""
+        return bool(getattr(self.monitor, "reads_outputs", False))
+
     @contextmanager
     def task(self, ctx, cfg: Dict[str, Any], state: Dict[str, Any]) -> Iterator[None]:
         yield from _wrap_monitor_task(self.monitor, ctx, cfg, state)
@@ -90,6 +95,11 @@ class LegacyMonitorsHook(Hook):
             self.monitors = load_monitors(cfg)
         except Exception:
             self.monitors = []
+
+    @property
+    def reads_outputs(self) -> bool:  # type: ignore[override]
+        """Whether a monitor from ``CONFIG.monitors`` acts on the output frames."""
+        return any(getattr(m, "reads_outputs", False) for m in self.monitors)
 
     @contextmanager
     def task(self, ctx, cfg: Dict[str, Any], state: Dict[str, Any]) -> Iterator[None]:
@@ -128,4 +138,6 @@ class LegacyMonitorsHook(Hook):
                     outputs=outputs,
                     status="success",
                     duration_sec=dur,
+                    # Only what a record needs to be honest about its hashes.
+                    **_evidence(m, state, ("hash_basis",)),
                 )
