@@ -127,6 +127,6 @@ output digest are the same before and after. With `--lineage`, the remaining sca
   once. Plan disk for the largest outputs, or switch it off.
 - A lost executor during the write of a held output fails the run
   (`CHECKPOINT_RDD_BLOCK_ID_NOT_FOUND`). Spark retries tasks, not lost checkpoints.
-- An output that overwrites its own input now succeeds when held, because the rows
-  are computed before Spark deletes the source. Unheld, Spark deletes the source and
-  then fails reading it (F-047, open).
+- An output that overwrites its own input is refused on Spark before anything is
+  read (F-047). Holding would compute the rows before the delete, but a lost block
+  during the write would still lose the source, so holding is not the fix.

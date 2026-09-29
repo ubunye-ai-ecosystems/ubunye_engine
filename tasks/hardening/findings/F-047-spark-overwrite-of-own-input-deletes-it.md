@@ -1,6 +1,6 @@
 # F-047: On Spark, an output that overwrites its own input deletes the input, then fails
 
-**Status:** open (made safe on the paths ADR 009 holds; a plain run still loses the data)
+**Status:** fixed (refused before anything is read, on every lazy backend)
 **Severity:** major (data loss, with an error, but after the delete)
 **Source:** engine-fixer, while choosing the mechanism for F-040 (2026-09-29)
 **Promise:** 5 (nothing is lost silently); here it is lost loudly
@@ -34,3 +34,24 @@ A plain run is refused before anything is deleted (`ubunye validate` can see tha
 output overwrites a path or table an input reads), or the output is held first so the
 source is read in full before it is deleted. Not fixed here: F-040 is about the
 record, and this changes what a plain run does.
+
+## Fix
+Refused before the run starts. `check_task` (the pre-run check behind `ubunye run`,
+`ubunye validate --backend` and `ubunye plan`) reports any output whose mode deletes
+(`overwrite`, `overwrite_partitions`) and whose path is a folder an input of the same
+task reads: the same folder, a parent, or a folder inside it, with trailing slashes,
+`file:` and globs normalised. Only a lazy backend is checked (pandas reads into memory
+first, so its overwrite is safe), and Delta outputs pass, since a Delta overwrite
+reads a fixed snapshot. A path that is not rendered yet (`{{ ... }}`) is not judged.
+
+Holding the output first (what ADR 009 does for recorded runs) was rejected as the
+fix: the rows are computed before the delete, but an executor lost during the write
+fails with `CHECKPOINT_RDD_BLOCK_ID_NOT_FOUND` after the delete, the same loss in a
+narrower window. A refusal loses nothing and says what to do instead.
+
+Pinned by `tests/integration/test_self_overwrite_spark.py` (live Spark, both backends:
+refused, and the 1,000 input rows still read back; with the rule off the same test
+fails with `FAILED_READ_FILE.FILE_NOT_EXIST`) and `TestSelfOverwrite` in
+`tests/unit/core/test_capabilities.py`. No config in the repo is flagged (21 checked:
+12 rendered, 9 raw templates).
+

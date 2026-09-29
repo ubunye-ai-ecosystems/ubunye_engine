@@ -15,6 +15,11 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Changed
 
+- **On Spark, a task that overwrites the folder it reads is refused before it starts**
+  (F-047). Spark deleted the input's files and then failed reading them, so the run
+  failed and the source was gone. `ubunye validate --backend spark` reports it too.
+  Write to a new path, or use Delta, whose overwrite reads a fixed snapshot. pandas
+  runs are not affected.
 - **A Spark session the engine creates works in UTC** (`spark.sql.session.timeZone`),
   like the pandas backend, unless the task sets the key (ADR 007). Before, it took the
   machine's zone: on a laptop in Johannesburg, truncating `2024-01-02 10:15 UTC` to a day

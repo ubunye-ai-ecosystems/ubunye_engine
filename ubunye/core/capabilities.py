@@ -25,6 +25,8 @@ Feature names a backend can declare (connectors refer to the same names):
 
 from __future__ import annotations
 
+import os
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable, Dict, FrozenSet, List, Mapping, Optional
 
@@ -177,4 +179,78 @@ def check_task(
         problems += _connector_problems(
             caps, f"output '{name}'", ocfg, writer, backend_name, is_output=True, io_check=io_check
         )
+    if caps.lazy:
+        problems += self_overwrites(config)
     return problems
+
+
+#: Write modes that delete what is at the output's path before writing.
+_DELETING_MODES = frozenset({"overwrite", "overwrite_partitions"})
+_GLOB = re.compile(r"[*?\[{]")
+
+
+def self_overwrites(config: Dict[str, Any]) -> List[str]:
+    """Outputs that would delete, before the write, files an input still has to read (F-047).
+
+    On a lazy backend the transform runs during the write. An ``overwrite`` of a
+    folder the task reads (the same folder, or one inside the other) deletes the
+    input's files first, then the write reads files that are gone: the run fails
+    and the source is lost. Delta outputs are left alone, since a Delta overwrite
+    reads a fixed snapshot of the table. A backend that reads into memory first
+    (pandas) never gets here: only a lazy backend is checked.
+    """
+    reads = []
+    for name, icfg in sorted((config.get("inputs") or {}).items()):
+        root = _local_root(icfg.get("path"))
+        if root:
+            reads.append((name, icfg.get("path"), root))
+    problems: List[str] = []
+    for name, ocfg in sorted((config.get("outputs") or {}).items()):
+        mode = str(ocfg.get("mode") or "").lower()
+        if mode not in _DELETING_MODES or _is_delta(ocfg):
+            continue
+        out = _local_root(ocfg.get("path"))
+        if not out:
+            continue
+        for iname, ipath, root in reads:
+            if _overlaps(out, root):
+                problems.append(
+                    f"output '{name}' ({mode}) writes to '{ocfg.get('path')}', which "
+                    f"input '{iname}' reads ('{ipath}'). The overwrite deletes the input's "
+                    "files before the write has read them, so the run fails and the source "
+                    "is lost. Write to a new path, or use Delta (file_format: delta), whose "
+                    "overwrite reads a fixed snapshot."
+                )
+    return problems
+
+
+def _is_delta(cfg: Dict[str, Any]) -> bool:
+    return "delta" in (
+        str(cfg.get("format") or "").lower(),
+        str(cfg.get("file_format") or "").lower(),
+    )
+
+
+def _local_root(path: Any) -> Optional[str]:
+    """The folder a path names, compared as text: no scheme case, no trailing slash, no glob."""
+    if not isinstance(path, str) or not path.strip() or "{{" in path or "{%" in path:
+        return None  # not rendered yet: nothing is known about it
+    p = path.strip().replace("\\", "/")
+    glob = _GLOB.search(p)
+    if glob:
+        p = p[: glob.start()].rsplit("/", 1)[0]
+        if not p.strip("/"):
+            return None  # a glob from the root names no one folder
+    scheme, sep, rest = p.partition("://")
+    if not sep:  # a local path, or "file:/x"
+        scheme, rest = "", p[5:] if p.lower().startswith("file:") else p
+    elif scheme.lower() == "file":
+        scheme = ""
+    if not scheme:
+        rest = os.path.normcase(os.path.abspath(rest)).replace("\\", "/")
+        return rest.rstrip("/") or "/"
+    return f"{scheme.lower()}://{rest.rstrip('/')}"
+
+
+def _overlaps(a: str, b: str) -> bool:
+    return a == b or a.startswith(b + "/") or b.startswith(a + "/")

@@ -224,16 +224,19 @@ def test_one_frame_under_two_names_is_computed_once():
     assert WRITTEN["out/a"] is WRITTEN["out/b"] is backend.held[0]
 
 
-def test_an_output_that_overwrites_its_input_is_held_too():
-    # Held rows are computed before the overwrite deletes the source. Unheld,
-    # Spark deletes the files and then fails reading them (F-047).
+def test_an_output_that_overwrites_its_input_is_refused_before_anything_is_held():
+    # Holding it would compute the rows before the delete, but a lost block during
+    # the write would still lose the source. So a lazy backend refuses it first,
+    # before any input is read (F-047).
+    from ubunye.core.errors import BackendCapabilityError
+
     backend = LazyBackend()
     rec = Recorder(backend)
     cfg = _cfg()
     cfg["CONFIG"]["outputs"]["a"]["path"] = "in/src"
-    _engine(backend, hooks=[rec]).run(cfg)
-    assert len(backend.held) == 2
-    assert rec.basis == {"a": "materialised", "b": "materialised"}
+    with pytest.raises(BackendCapabilityError, match="source is lost"):
+        _engine(backend, hooks=[rec]).run(cfg)
+    assert backend.held == [] and WRITTEN == {} and APPLIED == []
 
 
 # --- release -------------------------------------------------------------------
