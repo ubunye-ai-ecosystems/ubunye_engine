@@ -1,6 +1,6 @@
 # F-039: On Spark, `--lineage` costs 1.7 times the job at 1M rows and 4.4 times at 50M, and computes every output twice
 
-**Status:** open
+**Status:** item 1 fixed on fix/f040-spark-persist (2026-09-29, ADR 009), awaiting skeptic review and merge into hardening/real-world; items 2 and 3 open (F-041, and the hash definition)
 **Severity:** major
 **Source:** scale-runner, experiment E-06 (2026-09-29)
 **Promise:** 7 (the core stays small) and the scale requirement; ADR 006 states a smaller cost than the real one
@@ -59,3 +59,26 @@ supports: `--lineage` within 1.5 times the plain job at 5M rows and above. Towar
 it: hash each output once, from the rows the writer writes (persist for the write
 and the hash, or hash in the write's own pass), which also closes F-040; then
 F-041. At the least, ADR 006 states the cost as it is.
+
+## After item 1 (ADR 009)
+A recorded output is computed once and held; the writer and the hash read the held
+rows. Dev box (Windows, 16 GB, Spark 4.2 local, `local[*]`), E-06 job at 5,000,000
+rows, 3 runs each, `devbox-f040-before.jsonl` and `devbox-f040-after.jsonl`:
+
+| | before | after |
+|---|---|---|
+| Spark jobs, `--lineage` | 18 | 17 |
+| `events` (5M rows) read from the source, `--lineage` | 5 times | 3 times (the writes: 2, the input hash: 1) |
+| wall s, plain, median (min to max) | 15.46 (14.68 to 16.09) | 17.47 (15.68 to 18.08) |
+| wall s, `--lineage` | 35.88 (28.09 to 51.29) | 31.93 (31.72 to 34.69) |
+| `--lineage` / plain | 2.32x | 1.83x |
+| record `hash_seconds` (inputs + outputs) | 12.27, 14.55, 20.96 | 12.36, 11.53, 11.89 |
+
+(The "input records read" total in the JSON lines counts reads of the held blocks
+too, so the source scans are counted per job: a job that read 5,000,000 records.)
+
+The target of 1.5x at 5M is not met. What is left is the input hash, a second read of
+`events` (F-046), and the hash's own cost per row (F-041). Every output digest is the
+same before and after (`sha256:b412fee5...`, `sha256:82f89588...`). The box was noisy:
+one old Ubunye run took 26.85 s against 14.95 and 17.61; read the job and scan counts
+as the result and the times as a direction.
