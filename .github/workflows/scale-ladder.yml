@@ -34,6 +34,7 @@ jobs:
           - { backend: pandas, rows: 1000000 }
           - { backend: pandas, rows: 5000000 }
           - { backend: pandas, rows: 20000000 }
+          - { backend: pandas, rows: 50000000 }
           - { backend: spark, rows: 1000000 }
           - { backend: spark, rows: 5000000 }
           - { backend: spark, rows: 20000000 }
@@ -72,7 +73,17 @@ jobs:
         # Exit status is not the result: a size that runs out of memory is a result,
         # recorded in the JSON lines, so the artifact is uploaded whatever happens.
         run: |
-          python tests/experiments/e06_scale.py \
+          # tests/experiments/e06_only.txt, when not empty, names the rungs to run,
+          # one "backend-rows" or "backend-rows:variants" per line; the others stop.
+          only=tests/experiments/e06_only.txt
+          rung="${{ matrix.backend }}-${{ matrix.rows }}"
+          variants=plain,ubunye,lineage
+          if [ -s "$only" ]; then
+            line=$(grep -E "^${rung}(:|$)" "$only" || true)
+            if [ -z "$line" ]; then echo "not selected in $only"; exit 0; fi
+            case "$line" in *:*) variants="${line#*:}";; esac
+          fi
+          python tests/experiments/e06_scale.py --variants "$variants" \
             --backend "${{ matrix.backend }}" --rows "${{ matrix.rows }}" \
             --repeats "${{ inputs.repeats || '3' }}" --work "${RUNNER_TEMP}/e06" \
             --out "e06-${{ matrix.backend }}-${{ matrix.rows }}.jsonl" \
@@ -81,6 +92,7 @@ jobs:
       - name: Summary
         if: always()
         run: |
+          ls e06-*.jsonl >/dev/null 2>&1 || exit 0
           python tests/experiments/e06_scale.py --summary e06-*.jsonl | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4

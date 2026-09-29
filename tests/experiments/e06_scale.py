@@ -18,7 +18,8 @@ record: step timings and ``hash_seconds``. The outputs of every run are checked
 (row counts), and the first run of each variant is hashed in full, so the three
 variants are known to write the same rows. One JSON line per run goes to ``--out``.
 
-``--summary FILE...`` turns result files into the median and spread table.
+``--summary FILE...`` turns result files into the median and spread table;
+``--csv OUT FILE...`` flattens them to one CSV row per run.
 """
 
 from __future__ import annotations
@@ -38,7 +39,21 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 USECASE, PACKAGE, TASK = "uc", "pkg", "job"
-VARIANTS = ("plain", "ubunye", "lineage")
+VARIANTS = ("plain", "ubunye", "lineage", "expect")
+# ``expect`` (opt in): ``ubunye run`` of a copy of the task with CONFIG.expectations,
+# every rule passing, no --lineage. Asks what the checks cost and what they collect.
+DEFAULT_VARIANTS = "plain,ubunye,lineage"
+EXPECTATIONS = """  expectations:
+    detail:
+      rules:
+        - not_null: id
+        - unique: id
+        - between: {column: qty, min: 1}
+        - row_count: {min: 1}
+    summary:
+      rules:
+        - not_null: region_name
+"""
 CHUNK = 1_000_000
 # The console script a user runs (``python -m ubunye`` is the cloud entry point).
 UBUNYE = shutil.which("ubunye", path=sysconfig.get_path("scripts")) or "ubunye"
@@ -139,12 +154,13 @@ def generate(data: Path, rows: int) -> float:
 
 
 def make_task(root: Path, backend: str) -> None:
-    task = root / USECASE / PACKAGE / TASK
-    task.mkdir(parents=True, exist_ok=True)
     fn = "pandas_job" if backend == "pandas" else "spark_job"
-    (task / "transformations.py").write_text(TRANSFORM.format(fn=fn))
-    (task / "config.yaml").write_text(config(root))
-    shutil.copy(HERE / "e06_logic.py", task / "e06_logic.py")
+    for name, text in ((TASK, config(root)), (TASK + "_expect", config(root) + EXPECTATIONS)):
+        task = root / USECASE / PACKAGE / name
+        task.mkdir(parents=True, exist_ok=True)
+        (task / "transformations.py").write_text(TRANSFORM.format(fn=fn))
+        (task / "config.yaml").write_text(text)
+        shutil.copy(HERE / "e06_logic.py", task / "e06_logic.py")
 
 
 # --------------------------------------------------------------------------- #
@@ -156,7 +172,8 @@ def command(variant: str, backend: str, root: Path) -> list:
     if variant == "plain":
         return [sys.executable, str(HERE / "e06_logic.py"), backend, str(root)]
     cmd = [UBUNYE, "run", "-d", str(root), "-u", USECASE]
-    cmd += ["-p", PACKAGE, "-t", TASK, "--backend", backend, "-dt", "1"]
+    task = TASK + "_expect" if variant == "expect" else TASK
+    cmd += ["-p", PACKAGE, "-t", task, "--backend", backend, "-dt", "1"]
     return cmd + (["--lineage"] if variant == "lineage" else [])
 
 
@@ -420,6 +437,7 @@ def ladder(args: argparse.Namespace) -> None:
 
 
 def summary(paths: list) -> None:
+    """Median (min to max) wall time per variant, the ratio to plain, and checks."""
     rows = []
     for path in paths:
         with open(path, encoding="utf-8") as fh:
@@ -427,24 +445,24 @@ def summary(paths: list) -> None:
     groups: dict = {}
     for r in rows:
         groups.setdefault((r["backend"], r["rows"]), {}).setdefault(r["variant"], []).append(r)
+    shown = [v for v in VARIANTS if any(v in by for by in groups.values())]
 
     def med(xs):
         return statistics.median(xs) if xs else float("nan")
 
-    print(
-        "| backend | rows | plain s (min-max) | ubunye s (min-max) | lineage s (min-max) "
-        "| ubunye / plain | lineage / plain | hash s (lineage) | peak MB plain / ubunye / "
-        "lineage | same rows |"
-    )
-    print("|---|---|---|---|---|---|---|---|---|---|")
+    head = ["backend", "rows"] + [f"{v} s (min-max)" for v in shown]
+    head += [f"{v} / plain" for v in shown if v != "plain"]
+    head += ["hash s (lineage)", "peak MB " + " / ".join(shown), "same rows"]
+    print("| " + " | ".join(head) + " |")
+    print("|" + "---|" * len(head))
     for (backend, n), by in sorted(groups.items()):
         cells, meds, peaks = [], {}, []
-        for v in VARIANTS:
+        for v in shown:
             ok = [r for r in by.get(v, []) if r["rc"] == 0]
             bad = [r for r in by.get(v, []) if r["rc"] != 0]
+            meds[v] = None
             if not ok:
-                cells.append(f"failed ({len(bad)} of {len(by.get(v, []))})")
-                meds[v] = None
+                cells.append(f"failed ({len(bad)} of {len(bad)})" if bad else "not run")
                 peaks.append("n/a")
                 continue
             w = [r["wall_s"] for r in ok]
@@ -452,34 +470,65 @@ def summary(paths: list) -> None:
             note = f" ({len(bad)} failed)" if bad else ""
             cells.append(f"{med(w):.2f} ({min(w):.2f}-{max(w):.2f}){note}")
             peaks.append(f"{med([r['peak_rss_mb']['tree'] for r in ok]):.0f}")
-        ratio = []
-        for v in ("ubunye", "lineage"):
-            if meds.get(v) and meds.get("plain"):
-                ratio.append(f"{meds[v] / meds['plain']:.2f}x")
-            else:
-                ratio.append("n/a")
+        for v in shown:
+            if v == "plain":
+                continue
+            ok = meds.get(v) and meds.get("plain")
+            cells.append(f"{meds[v] / meds['plain']:.2f}x" if ok else "n/a")
         hs = [
             r["record"]["hash_seconds"]
             for r in by.get("lineage", [])
             if r["rc"] == 0 and r.get("record")
         ]
-        hashes = {}
-        for v in VARIANTS:
+        hashes: dict = {}
+        counts = set()
+        for v in shown:
             for r in by.get(v, []):
                 for name, o in (r.get("outputs") or {}).items():
+                    counts.add((name, o.get("rows")))
                     if "data_hash" in o:
                         hashes.setdefault(name, set()).add(o["data_hash"])
-        counts = {
-            (name, o.get("rows"))
-            for v in VARIANTS
-            for r in by.get(v, [])
-            for name, o in (r.get("outputs") or {}).items()
-        }
-        same = all(len(s) == 1 for s in hashes.values()) and len(counts) == 2
-        print(
-            f"| {backend} | {n:,} | {cells[0]} | {cells[1]} | {cells[2]} | {ratio[0]} | "
-            f"{ratio[1]} | {med(hs):.2f} | {' / '.join(peaks)} | {'yes' if same else 'NO'} |"
-        )
+        same = all(len(h) == 1 for h in hashes.values()) and len(counts) == 2
+        cells += [f"{med(hs):.2f}" if hs else "n/a", " / ".join(peaks), "yes" if same else "NO"]
+        print(f"| {backend} | {n:,} | " + " | ".join(cells) + " |")
+
+
+def flat(paths: list, out: str) -> None:
+    import csv
+
+    cols = [
+        "backend", "rows", "variant", "repeat", "host", "rc", "wall_s",
+        "peak_python_mb", "peak_java_mb", "peak_tree_mb", "record_duration_s",
+        "hash_s", "hash_s_by_step", "spark_jobs", "spark_driver_result_bytes",
+        "spark_max_job_result_bytes", "spark_records_read", "detail_rows",
+        "summary_rows", "detail_hash", "summary_hash",
+    ]  # fmt: skip
+    with open(out, "w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(cols)
+        for path in paths:
+            with open(path, encoding="utf-8") as src:
+                for line in src:
+                    if not line.strip():
+                        continue
+                    r = json.loads(line)
+                    rec, sp, o = r.get("record") or {}, r.get("spark") or {}, r.get("outputs") or {}
+                    steps = (rec.get("inputs") or []) + (rec.get("outputs") or [])
+                    by_step = ";".join(f"{s['name']}={s.get('hash_seconds')}" for s in steps)
+                    w.writerow(
+                        [
+                            r["backend"], r["rows"], r["variant"], r["repeat"], r.get("host"),
+                            r["rc"], r["wall_s"], r["peak_rss_mb"]["python"],
+                            r["peak_rss_mb"]["java"], r["peak_rss_mb"]["tree"],
+                            rec.get("duration_sec"), rec.get("hash_seconds"), by_step,
+                            sp.get("n_jobs"), sp.get("result_bytes"),
+                            sp.get("max_job_result_bytes"), sp.get("read_records"),
+                            (o.get("detail") or {}).get("rows"),
+                            (o.get("summary") or {}).get("rows"),
+                            (o.get("detail") or {}).get("data_hash"),
+                            (o.get("summary") or {}).get("data_hash"),
+                        ]
+                    )  # fmt: skip
 
 
 def main() -> None:
@@ -487,15 +536,18 @@ def main() -> None:
     p.add_argument("--backend", choices=("pandas", "spark"))
     p.add_argument("--rows", type=int)
     p.add_argument("--repeats", type=int, default=3)
-    p.add_argument("--variants", default=",".join(VARIANTS))
+    p.add_argument("--variants", default=DEFAULT_VARIANTS)
     p.add_argument("--work", default="e06-work")
     p.add_argument("--out", default="e06-results.jsonl")
     p.add_argument("--host", default="")
     p.add_argument("--driver-memory", default="6g")
     p.add_argument("--timeout", type=float, default=3600)
     p.add_argument("--summary", nargs="*")
+    p.add_argument("--csv", nargs="+", metavar=("OUT", "FILE"))
     args = p.parse_args()
-    if args.summary:
+    if args.csv:
+        flat(args.csv[1:], args.csv[0])
+    elif args.summary:
         summary(args.summary)
     else:
         ladder(args)
