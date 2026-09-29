@@ -431,16 +431,95 @@ class TestALostLeaseIsNotASuccess:
         monkeypatch.setattr(runs, "HEARTBEAT_EVERY", 0.05)
         lease = RunLease(tmp_path, TASK, {}, "mine").acquire()
         try:
-            text = lease.path.read_text("utf-8")
-            lease.path.unlink()  # a takeover renamed it away for a moment
+            # Read and remove through the engine's own patient helpers: on Windows a
+            # plain read that meets the heartbeat's replace is refused (F-048).
+            text = runs._patient(lease.path.read_text, encoding="utf-8")
+            runs._patient(lease.path.unlink)  # a takeover renamed it away for a moment
             time.sleep(0.2)
             lease._create(text)  # and put it back
-            before = json.loads(lease.path.read_text("utf-8"))["heartbeat"]
+            before = lease._read()["heartbeat"]
             time.sleep(0.3)
             assert lease._beat.is_alive()
-            assert json.loads(lease.path.read_text("utf-8"))["heartbeat"] > before
+            assert lease._read()["heartbeat"] > before
         finally:
             lease.release()
+
+    def test_a_reader_never_meets_the_heartbeat_mid_replace(self, tmp_path, monkeypatch):
+        # F-048: another run reads the lease in a tight loop while its heartbeat
+        # replaces it every millisecond. On Windows the old reader called the lease
+        # unreadable about 8 times a second; a second run then refused with "Run ?".
+        monkeypatch.setattr(runs, "HEARTBEAT_EVERY", 0.001)
+        lease = RunLease(tmp_path, TASK, {}, "mine").acquire()
+        other = RunLease(tmp_path, TASK, {}, "other")
+        seen: dict = {}
+        try:
+            stop = time.monotonic() + 1.5
+            while time.monotonic() < stop:
+                held = other._read()
+                key = "missing" if held is None else held.get("run_id", "unreadable")
+                seen[key] = seen.get(key, 0) + 1
+                assert other._dead(held) is False
+            assert lease._beat.is_alive()
+        finally:
+            lease.release()
+        assert set(seen) == {"mine"}, seen
+
+
+class TestPatient:
+    """The one helper every lease read, stat, rename and removal goes through (F-048)."""
+
+    def test_a_brief_permission_error_is_retried(self, monkeypatch):
+        monkeypatch.setattr(runs, "_BUSY_PAUSE", 0)
+        calls = []
+
+        def busy_twice():
+            calls.append(1)
+            if len(calls) < 3:
+                raise PermissionError("a replace is under way")
+            return "read"
+
+        assert runs._patient(busy_twice) == "read"
+        assert len(calls) == 3
+
+    def test_a_lasting_permission_error_is_raised(self, monkeypatch):
+        monkeypatch.setattr(runs, "BUSY_FOR", 0.05)
+
+        def denied():
+            raise PermissionError("denied for good")
+
+        started = time.monotonic()
+        with pytest.raises(PermissionError):
+            runs._patient(denied)
+        assert time.monotonic() - started < 1
+
+    def test_a_missing_lease_is_missing_at_once(self, tmp_path):
+        calls = []
+
+        def gone():
+            calls.append(1)
+            return (tmp_path / "none.json").read_text()
+
+        with pytest.raises(FileNotFoundError):
+            runs._patient(gone)
+        assert calls == [1]
+        assert RunLease(tmp_path, TASK, {}, "r")._read() is None
+
+    def test_a_lease_busy_for_a_moment_is_read_not_called_unreadable(self, tmp_path, monkeypatch):
+        lease = RunLease(tmp_path, TASK, {}, "mine").acquire()
+        lease.release()
+        lease.path.parent.mkdir(parents=True, exist_ok=True)
+        lease.path.write_text(json.dumps({"run_id": "mine"}), encoding="utf-8")
+        real = Path.read_text
+        refused = [2]
+
+        def read_text(self, *a, **k):
+            if self == lease.path and refused[0]:
+                refused[0] -= 1
+                raise PermissionError(13, "Permission denied", str(self))
+            return real(self, *a, **k)
+
+        monkeypatch.setattr(Path, "read_text", read_text)
+        assert lease._read() == {"run_id": "mine"}
 
 
 class TestJudgedDeadButAlive:

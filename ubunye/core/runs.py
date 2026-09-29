@@ -207,17 +207,38 @@ def _remove(files: List[str]) -> List[str]:
     return removed
 
 
+#: How long a lease file operation retries a ``PermissionError`` (F-048).
+BUSY_FOR = 2.0
+_BUSY_PAUSE = 0.01
+
+
+def _patient(op: Any, *args: Any, **kwargs: Any) -> Any:
+    """Run a file operation, retrying a ``PermissionError`` for up to :data:`BUSY_FOR`
+    seconds, then raising it.
+
+    On Windows a lease file is refused for a moment while another thread or process
+    replaces it (a read, a stat, a rename), and a replace is refused while a reader has
+    the file open. Both pass in milliseconds. Every other error, a missing file
+    included, is raised at once: a lease that is gone is gone (F-048)."""
+    deadline = time.monotonic() + BUSY_FOR
+    while True:
+        try:
+            return op(*args, **kwargs)
+        except PermissionError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(_BUSY_PAUSE)
+
+
 def _write_atomic(path: Path, text: str) -> bool:
     tmp = path.with_name(f"{path.stem}.{uuid.uuid4().hex[:8]}.tmp")
     tmp.write_text(text, encoding="utf-8")
-    for _ in range(40):
-        try:
-            os.replace(tmp, path)
-            return True
-        except PermissionError:  # Windows: a reader has it open for a moment
-            time.sleep(0.05)
-    tmp.unlink(missing_ok=True)
-    return False
+    try:
+        _patient(os.replace, tmp, path)
+        return True
+    except PermissionError:  # held open for longer than a moment
+        tmp.unlink(missing_ok=True)
+        return False
 
 
 class RunLease:
@@ -284,11 +305,11 @@ class RunLease:
             # is the one judged dead: another run may have taken it over just before.
             stale = self.path.with_name(f"{self.path.stem}.dead-{uuid.uuid4().hex[:8]}.json")
             try:
-                os.replace(self.path, stale)
+                _patient(os.replace, self.path, stale)
             except (FileNotFoundError, PermissionError):
                 continue
             try:
-                text = stale.read_text(encoding="utf-8")
+                text = _patient(stale.read_text, encoding="utf-8")
                 taken = json.loads(text or "{}")
             except (OSError, ValueError):
                 text, taken = "", {}
@@ -548,13 +569,12 @@ class RunLease:
             self._beat.join()  # never unlink while a beat could still write
         if self._owner() is not True:
             return
-        for _ in range(40):
-            try:
-                self.path.unlink(missing_ok=True)
-                self._done_mark(self.run_id).unlink(missing_ok=True)
-                return
-            except PermissionError:  # Windows: a reader has it open for a moment
-                time.sleep(0.05)
+        try:
+            _patient(self.path.unlink, missing_ok=True)
+            _patient(self._done_mark(self.run_id).unlink, missing_ok=True)
+            return
+        except PermissionError:  # held open for longer than a moment
+            pass
         logger.warning("Could not remove the lease %s; the next run takes it over.", self.path)
 
     # --- outputs ----------------------------------------------------------------------
@@ -695,9 +715,12 @@ class RunLease:
         return True
 
     def _read(self, path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
-        """The lease: None if there is none, {} if it cannot be read right now."""
+        """The lease: None if there is none, {} if it cannot be read right now.
+
+        A read that meets the heartbeat's replace is retried, not called unreadable
+        (F-048)."""
         try:
-            return json.loads((path or self.path).read_text(encoding="utf-8"))
+            return json.loads(_patient((path or self.path).read_text, encoding="utf-8"))
         except FileNotFoundError:
             return None
         except (ValueError, OSError):
@@ -759,7 +782,7 @@ class RunLease:
             # Alive, but not inspectable (access denied): maybe a reused pid. Judge by
             # the lease's age, as for another host.
         try:
-            touched = self.path.stat().st_mtime
+            touched = _patient(self.path.stat).st_mtime
         except FileNotFoundError:
             return False
         return self._disk_now() - touched > HEARTBEAT_TIMEOUT

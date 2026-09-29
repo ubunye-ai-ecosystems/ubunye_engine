@@ -57,6 +57,14 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **On Windows, reading a run lease while its heartbeat replaces it no longer fails
+  (F-048).** Windows refuses a read for a moment while a file is being replaced. The
+  engine then called a live run's lease unreadable, and a second run of the same
+  batch was refused as "Run ?" instead of naming the run that holds it (11 to 20
+  times in 3 seconds against a fast heartbeat; now 0). Every lease read, stat,
+  rename and removal now retries a `PermissionError` for up to 2 seconds through one
+  helper. A missing lease is still missing at once. A flaky lease test is fixed the
+  same way.
 - **On Spark, the run record hashes the rows that were written (F-040), and a checked
   or recorded output is computed once (F-039, F-043).** The record hashed each output
   at task end by computing it again, so anything that differs per computation (a
