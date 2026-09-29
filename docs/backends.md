@@ -65,6 +65,9 @@ stops in the first second, not halfway through.
 
 The pandas backend reads and writes exactly as Spark does: see
 [Anywhere with spark-submit](deployment/anywhere.md#no-spark-at-all-the-pandas-backend).
+Its frames have Arrow backed columns, which makes a big `merge` slower on pandas 3;
+[Big merges on Arrow columns](deployment/anywhere.md#big-merges-on-arrow-columns)
+says when that matters and the three lines that fix it.
 
 ## One transform for every engine
 

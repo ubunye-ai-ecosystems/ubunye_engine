@@ -76,6 +76,57 @@ Timestamps written as text are read in `spark.sql.session.timeZone` from your
 backend uses UTC on every machine, while Spark would use the machine's own zone.
 Set it once and the two backends agree.
 
+### Big merges on Arrow columns
+
+Arrow backed columns cost you speed in one place: `merge`. On pandas 3, a merge
+on an `int64[pyarrow]` key is about 2.8 times slower than the same merge on a
+NumPy `int64` key. Filters, new columns, `groupby`, reads and writes run at the
+same speed. Measured on 5,000,000 rows joined to 900 (median of 3, dev box,
+pandas 3.0.6, pyarrow 25):
+
+| Merge on `region` | Seconds |
+|---|---|
+| Arrow keys, as the transform gets them | 0.97 |
+| NumPy keys (`pd.read_parquet`) | 0.29 |
+| Arrow keys, converted with the snippet below first | 0.33 |
+
+In the scale test's own transform (finding F-042) the merge took 0.98 s against
+0.35 s, 2.8 times; alone, as above, 3.3 times. On pandas 2.3 the two took about
+the same time (0.93 and 0.97 s). Memory goes the other way: at 50,000,000 rows the
+whole job peaked at 9.1 GB with Arrow columns and 12.2 GB with NumPy ones. So this is a trade, and most tasks never notice.
+
+If a merge is most of your task's time, convert the join keys yourself, in your
+transform, when they are whole numbers with no nulls:
+
+<!-- numpy-keys:begin -->
+```python
+def numpy_keys(frame, keys):
+    """Whole number join keys with no nulls as NumPy int64; the rest as they are."""
+    return frame.astype({k: "int64" for k in keys if not frame[k].hasnans})
+```
+<!-- numpy-keys:end -->
+
+```python
+class Detail(Task):
+    def transform(self, sources):
+        events = numpy_keys(sources["events"], ["region"])
+        regions = numpy_keys(sources["regions"], ["region"])
+        return {"detail": events.merge(regions, on="region")}
+```
+
+It works on pandas 2 and 3, and on both `int64[pyarrow]` and pandas' own nullable
+`Int64`. The values do not change, and a key with a null is left alone, so it stays
+a whole number column. The written data and its hash in the run record are the
+same either way. Convert both sides of the merge: with only one side converted
+the rows are still right, but do not count on the speed.
+
+The engine does not do this for you, on purpose. Your transform gets the frames
+as they were read ([ADR 004](../architecture/adr-004-native-frames.md)), with the
+types Spark would give: a whole number column with a null stays a whole number
+column. NumPy has no whole number that can be null, so it would turn that column
+into floats. Only your transform knows which keys never have nulls, so the choice
+is yours.
+
 ### It writes data the way Spark does
 
 A path the pandas backend writes looks exactly like one Spark writes: a folder

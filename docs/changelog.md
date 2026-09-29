@@ -239,6 +239,21 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 - Docs: `transform.params` (dropped by mistake in 0.7.1), CSV quotes and line breaks
   on the connector page, replay call for call, and gating on a number (an
   expectation on a metrics output).
+- **A docs map in the README, so on PyPI too** (F-010). A newcomer guessed docs
+  addresses such as `/expectations/` and got 404s: the README linked only the docs
+  home. It now links the main pages directly (install, quickstart, config,
+  expectations, the run record, backends, CLI, Python API, language model steps,
+  examples, connectors, deployment, errors, changelog). A unit test maps every docs
+  link in the README to its page in `docs/` and the `mkdocs.yml` nav, so a renamed
+  page fails the tests instead of turning into a 404.
+- **Docs: big merges on the pandas backend** (F-042). The pandas backend hands a
+  transform Arrow backed frames, and on pandas 3 a merge on Arrow whole number keys is
+  about 2.8 times slower than on NumPy keys (memory goes the other way: 9.1 GB
+  against 12.2 GB peak at 50M rows). The pandas backend page now says so and shows a
+  three line `numpy_keys` helper for a transform to convert join keys with no nulls
+  (0.97 s merge becomes 0.33 s at 5M rows). The engine keeps Arrow types on purpose:
+  a whole number column with a null must stay whole numbers. A unit test runs the
+  snippet from the page.
 
 ### Changed
 

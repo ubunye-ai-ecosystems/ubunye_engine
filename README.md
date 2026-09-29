@@ -9,7 +9,8 @@
 <h3 align="center">One framework. Every pipeline. Any environment.</h3>
 
 <p align="center">
-  <a href="https://ubunye-ai-ecosystems.github.io/ubunye_engine">Docs</a> •
+  <a href="https://ubunye-ai-ecosystems.github.io/ubunye_engine/">Docs</a> •
+  <a href="#docs">Docs map</a> •
   <a href="#quickstart">Quickstart</a> •
   <a href="#why-ubunye">Why Ubunye</a> •
   <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/discussions">Community</a>
@@ -92,6 +93,31 @@ Realistic end to end examples live in
 
 ---
 
+## Docs
+
+The full docs live at
+[ubunye-ai-ecosystems.github.io/ubunye_engine](https://ubunye-ai-ecosystems.github.io/ubunye_engine/).
+These are the pages most people need:
+
+| You want to | Read |
+|---|---|
+| Install it | [Installation](https://ubunye-ai-ecosystems.github.io/ubunye_engine/getting_started/install/) |
+| Run a first task | [Quickstart](https://ubunye-ai-ecosystems.github.io/ubunye_engine/getting_started/quickstart/) |
+| Write a `config.yaml` | [Config overview](https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/overview/), then [Inputs and outputs](https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/io/) |
+| Check the data a task writes | [Expectations](https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/expectations/) |
+| Read what a run did (the run record) | [Lineage commands](https://ubunye-ai-ecosystems.github.io/ubunye_engine/cli/#ubunye-lineage) and [the run record](https://ubunye-ai-ecosystems.github.io/ubunye_engine/architecture/adr-006-run-record/) |
+| Run on pandas or Spark | [Execution backends](https://ubunye-ai-ecosystems.github.io/ubunye_engine/backends/) |
+| Look up a command | [CLI reference](https://ubunye-ai-ecosystems.github.io/ubunye_engine/cli/) |
+| Call it from Python or a notebook | [Python API](https://ubunye-ai-ecosystems.github.io/ubunye_engine/api/) |
+| Add a language model step | [Language model steps](https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/llm/) |
+| Copy a working example | [Examples](https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/) |
+| Read from or write to a system | [Connectors](https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/overview/) |
+| Deploy it | [Deployment](https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/) |
+| Understand an error | [Errors](https://ubunye-ai-ecosystems.github.io/ubunye_engine/errors/) |
+| See what changed | [Changelog](https://ubunye-ai-ecosystems.github.io/ubunye_engine/changelog/) |
+
+---
+
 ## Why Ubunye
 
 We've all been there. You join a new team, open the repo, and find five Spark projects — each structured differently, each with its own way of handling configs, credentials, and deployment. One uses a JSON file, another has everything hardcoded, a third has a 300-line bash script that "Dave wrote and it just works."
@@ -145,7 +171,7 @@ pipelines/
 
 **Data drift detection** — monitor feature distributions between runs, flag when things shift.
 
-Check out the [Patterns](https://ubunye-ai-ecosystems.github.io/ubunye_engine) section in our docs for full examples.
+Check out the [Examples](https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/) and the [RAG document pipeline](https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/rag/) guide in our docs.
 
 ---
 
@@ -198,7 +224,7 @@ yet run.
 | `binary` | ✓ | | Binary files (images, PDFs) |
 | `rest_api` | ✓ | ✓ | REST APIs with pagination and auth |
 
-Want to add one? See the [plugin guide](https://ubunye-ai-ecosystems.github.io/ubunye_engine).
+Want to add one? See the [plugin guide](https://ubunye-ai-ecosystems.github.io/ubunye_engine/connectors/plugin_guide/).
 
 ---
 
