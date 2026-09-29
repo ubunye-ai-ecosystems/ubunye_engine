@@ -21,3 +21,9 @@ runs the deploy's Kubernetes program against a fake kubectl whose Job reaches
 The program polls the Job's true conditions every 5 seconds and stops at `Complete`
 (success) or `Failed` (exit 1), then prints the Job's log as before, so a failed run's
 record and error still come back. The timeout still bounds a Job that never ends.
+
+## Follow-up (skeptic review)
+The poll ignored `kubectl get`'s exit code, so a Job deleted by hand, an RBAC refusal
+or an expired token still waited the whole timeout and hid the error. Now three failed
+reads in a row stop the deploy (exit 1) with kubectl's own error. Test:
+`test_a_k8s_job_that_kubectl_cannot_read_fails_fast_and_says_why` (fails on the old code).

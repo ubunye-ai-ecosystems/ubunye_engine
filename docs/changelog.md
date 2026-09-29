@@ -30,7 +30,8 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 - **`ubunye deploy k8s` stops when the Job fails**, not when its timeout runs out. It
   waited only for `Complete`, so a failed Job held the command for the whole
   `--timeout` (30 minutes by default). It now stops at `Complete` or `Failed` and
-  prints the Job's log either way (F-037).
+  prints the Job's log either way. When kubectl cannot read the Job three times in a row
+  (deleted, RBAC, an expired token) it stops and prints kubectl's error (F-037).
 - **Expectations on a Spark output no longer need pyarrow.** The one row of counts was
   collected through Arrow, and the images `ubunye deploy dockerfile dataproc` and
   `container` write have no pyarrow, so a task with expectations died on Dataproc,

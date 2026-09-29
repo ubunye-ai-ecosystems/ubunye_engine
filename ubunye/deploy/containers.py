@@ -98,12 +98,24 @@ if wait != "wait":
     sys.exit(0)
 # Follow the Job to Complete OR Failed. `kubectl wait --for=condition=complete` alone
 # sat out the whole timeout after a Job had already failed (F-037).
-deadline, state = time.time() + int(timeout), "timed out"
+deadline, state, errors = time.time() + int(timeout), "timed out", 0
 while time.time() < deadline:
-    types = subprocess.run(
+    got = subprocess.run(
         ["kubectl", "get", "-n", ns, f"job/{name}", "-o",
          'jsonpath={.status.conditions[?(@.status=="True")].type}'],
-        capture_output=True, text=True).stdout.split()
+        capture_output=True, text=True)
+    if got.returncode != 0:
+        # The Job was deleted, or kubectl lost access (RBAC, an expired token): say so,
+        # and stop after three tries in a row rather than wait out the timeout.
+        errors += 1
+        if errors >= 3:
+            print("kubectl cannot read the job:", got.stderr.strip(), file=sys.stderr)
+            state = "unreadable"
+            break
+        time.sleep(5)
+        continue
+    errors = 0
+    types = got.stdout.split()
     if "Failed" in types:
         state = "failed"
         break

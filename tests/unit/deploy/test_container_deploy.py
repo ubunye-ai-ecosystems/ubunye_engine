@@ -225,3 +225,31 @@ def test_a_k8s_job_is_followed_to_failed_as_well_as_complete(monkeypatch, condit
     assert exit_code == code
     assert clock[0] < 60, "waited out the timeout instead of stopping at the Job's end"
     assert ["kubectl", "logs", "-n", "default", f"job/{plan.job}"] in calls
+
+
+def test_a_k8s_job_that_kubectl_cannot_read_fails_fast_and_says_why(monkeypatch, capsys):
+    """Skeptic review of F-037: a deleted Job, an RBAC refusal or an expired token made
+    every `kubectl get` fail; the loop ignored it and waited the whole timeout, silently.
+    """
+    import time as time_module
+
+    clock = [0.0]
+    gets = []
+
+    def fake_run(argv, input=None, capture_output=False, text=False, check=False):
+        if argv[1] == "get":
+            gets.append(argv)
+            err = 'Error from server (NotFound): jobs.batch "x" not found'
+            return subprocess.CompletedProcess(argv, 1, stdout="", stderr=err)
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    plan = containers.plan_k8s("uc", "pkg", "t", image="img:1", timeout_s=1800)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(time_module, "sleep", lambda s: clock.__setitem__(0, clock[0] + s))
+    monkeypatch.setattr(time_module, "time", lambda: clock[0])
+    monkeypatch.setattr(sys, "argv", plan.commands[0][2:])
+    with pytest.raises(SystemExit) as done:
+        exec(containers._K8S_RUN, {"__name__": "__main__"})
+    assert done.value.code == 1
+    assert clock[0] < 60 and len(gets) == 3
+    assert "NotFound" in capsys.readouterr().err
