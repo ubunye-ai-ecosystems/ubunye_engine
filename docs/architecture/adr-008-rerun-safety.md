@@ -73,10 +73,8 @@ table and information date, and with repairs made from what was actually written
 - Appends are taken back on the pandas backend only. On Spark use `overwrite`,
   `overwrite_partitions` or Delta for batches that must land once; plain Spark
   appends are named after a crash, not repaired.
-- A second run of a batch that already **finished** appends again. The lease is gone
-  once a run ends, so it cannot know. E-01 caught this once in 20 (a kill that landed
-  after the run completed). Skipping or replacing a finished batch is a product
-  decision, recorded as finding F-031.
+- A run of a batch that already **finished** is covered by the addendum below (F-031),
+  not by the lease, which is gone once a run ends.
 - It does not make a whole run exactly-once for outputs other than appends: an
   `overwrite` output was already safe (E-01, E-02: correct in every trial), since it is
   replaced in one step.
@@ -104,3 +102,53 @@ table and information date, and with repairs made from what was actually written
 - **Behaviour change:** a run that fails now removes the appends it wrote; a run of a
   batch that is already running is refused rather than run.
 - A `.ubunye/leases/` folder appears next to `.ubunye/lineage/`.
+
+## Addendum: a finished batch (F-031, 2026-09-29)
+
+E-01 caught a second full run of a finished batch appending it again. Three answers
+were on the table: skip it (Pramen's default for a date already done), refuse it, or
+replace it.
+
+**Decision: refuse by default; `--rerun` replaces.**
+
+- A run of a *named* batch (`dt` or a `--var`; `mode` and `dtf` alone name nothing)
+  that succeeds leaves `<key>.finished.json` beside its lease: the run, the outputs
+  it wrote and the append files it claimed. An overwrite is noted too, since it wrote
+  the batch. A later run of that batch, whose task has an append output, is refused
+  (`BatchFinished`, a `RunLeaseHeld`: one line, exit 1).
+- **Resuming a pipeline is asked for by name.** `run --resume` (`run_pipeline(...,
+  resume=True)`) skips the tasks that finished the batch and runs the rest. Skipping
+  by default was tried and rejected: in an hourly pipeline (same `dt`, `t1` appends,
+  `t2` overwrites) it dropped `t1`'s new rows and exited 0 (skeptic round 6).
+- **The note is written before anything is replaced.** If it cannot be written (a
+  reader has it open), the run keeps its lease as it is and removes nothing; the next
+  run of the batch writes the note first, then removes the replaced files, or waits.
+- `--rerun` (`rerun=True`) replaces the batch. The finished run's claimed files are
+  listed in the new lease as `replaces` and removed only after the new run has
+  committed: done mark, then the new note, then removal. A crash before the done mark
+  keeps the old batch (the new files are taken back as usual); a crash after it is
+  finished by the next run, which removes the listed files. Files in use keep the
+  lease, as for claims. A run whose lease was taken over before it saved `committed`
+  removes nothing and is not a success (skeptic round 5 proved the earlier order
+  deleted both runs' files).
+- Appends that were never claimed (Spark, JDBC, catalogs) cannot be replaced: with
+  `--rerun` they are appended again and the run says so, naming the outputs.
+
+**Why not skip.** A skip exits 0 and writes nothing. A job that runs `dt=today`
+every hour and appends new rows each time would then lose every run after the
+first, silently. A refusal fails loudly and loses nothing; its hint names both
+ways forward (`--rerun`, or a variable per run such as `--var hour=13`).
+
+**Why not replace by default.** The same hourly job would then delete the morning's
+rows at noon. Replacing is right for a backfill and wrong for that job, so it is
+asked for by name.
+
+**Not refused:** a run with no named batch (a snapshot job, where every run is the
+same key), a task whose outputs all overwrite (already safe), and batches finished
+before this change (they left no note). Cloud jobs on their own disks see no note,
+as they see no lease. Notes are small and are kept, one per task and batch; nothing
+removes them. `--rerun` replaces the files the finished run claimed wherever they
+are, even if the output's path has changed since. Files moved or compacted by
+something else since are not found, so `--rerun` then removes nothing and appends
+(the log says how many files it removed). `dtf` stays part of the batch key:
+dropping it would strand leases left by earlier versions.

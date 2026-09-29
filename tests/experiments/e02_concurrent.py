@@ -110,6 +110,9 @@ def main() -> None:
         # Pre-create the output once, so both runs overwrite an existing target.
         subprocess.run(cmd(root), capture_output=True)
         shutil.rmtree(os.path.join(root, "out", "events"), ignore_errors=True)
+        # And forget that the pre-run finished dt=2 (F-031): the two runs below must
+        # meet each other, not the note.
+        shutil.rmtree(os.path.join(root, ".ubunye", "leases"), ignore_errors=True)
 
         a = subprocess.Popen(cmd(root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         time.sleep(0.05 * n)  # a different overlap each pair

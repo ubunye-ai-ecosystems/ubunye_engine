@@ -470,6 +470,18 @@ def run(
         "Default: the platform's session if there is one, else spark.",
     ),
     var: Optional[List[str]] = var_option(),
+    rerun: bool = typer.Option(
+        False,
+        "--rerun",
+        help="Replace a batch (same -dt and --var) that a finished run already "
+        "appended. Without it such a run is refused: it would append the batch twice.",
+    ),
+    resume: bool = typer.Option(
+        False,
+        "--resume",
+        help="Finish a pipeline that stopped half way: skip the tasks that already "
+        "finished this batch (-dt and --var), run the rest.",
+    ),
 ):
     """Run one or more tasks within a package sequentially."""
     variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
@@ -557,10 +569,28 @@ def run(
                 task_name=f"{usecase}/{package}/{task}",
                 variables=variables,
                 lineage_dir=str(usecase_dir / lineage_dir) if lineage else None,
+                rerun=rerun,
             )
             try:
                 execute_user_task(backend, task_dir, cfg, context, extra_hooks=extra_hooks)
                 typer.secho(f"[OK] Run complete for {task}", fg=typer.colors.GREEN)
+            except runs.BatchFinished as e:
+                if not resume:
+                    typer.secho(
+                        f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True
+                    )
+                    if len(task_list) > 1:
+                        typer.secho(
+                            "To finish a pipeline that stopped half way, run it again with "
+                            "--resume: tasks that finished this batch are skipped.",
+                            err=True,
+                        )
+                    raise typer.Exit(code=1)
+                # --resume: the finished task keeps its batch and the rest run.
+                typer.secho(
+                    f"[SKIP] {task} already finished this batch (--resume); kept as it is.",
+                    fg=typer.colors.YELLOW,
+                )
             except runs.RunLeaseHeld as e:
                 # A refusal, not a crash: nothing ran, so no traceback.
                 typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)

@@ -38,7 +38,20 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   run's files are never touched. Appends that cannot be claimed (Spark, JDBC,
   catalogs) are named in the log and the dead run's record, never deleted.
   `UBUNYE_RUN_LEASE=off` turns it
-  off. Not covered: a second run of a batch that already finished appends again (F-031).
+  off.
+- **A batch that finished is not appended twice by accident (F-031).** A run of a
+  batch (`-dt` or a `--var`) whose task appends, and which a run already finished, is
+  refused in one line (was: it appended the batch again). `ubunye run --rerun`
+  (`rerun=True` in Python) replaces the batch instead: once the new run succeeds, the
+  files the finished run claimed are removed, so a rerun that fails loses nothing.
+  Appends that cannot be claimed (Spark, JDBC, catalogs) are appended again, and the
+  run says so. A run with no `-dt` and no `--var` (a snapshot job) and a task that
+  only overwrites are never refused. `ubunye run --resume` (`run_pipeline(...,
+  resume=True)`) finishes a pipeline that stopped half way: tasks that finished the
+  batch are skipped, the rest run.
+  **Behaviour change:** a scheduler that runs the
+  same appending batch twice now gets exit code 1 the second time; give each run its
+  own variable, or pass `--rerun` to replace.
 
 - **`ubunye prove report` treats two names of one time zone as one** (`UTC`,
   `Etc/UTC`, `GMT`, `Zulu`; other zones by their offsets over time). Databricks records

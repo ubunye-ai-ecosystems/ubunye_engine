@@ -314,7 +314,9 @@ def test_a_run_through_the_engine_holds_and_releases_the_lease(tmp_path):
     task = _task(tmp_path, "      mode: append\n")
     ubunye.run_task(str(task), backend="pandas", dt="2024-01-02")
     ubunye.run_task(str(task), backend="pandas", dt="2024-01-03")
-    assert list((tmp_path / ".ubunye" / "leases").rglob("*.json")) == []
+    leases = (tmp_path / ".ubunye" / "leases").rglob("*.json")
+    # Only the notes saying which run finished each batch stay (F-031).
+    assert [p for p in leases if not p.name.endswith(".finished.json")] == []
     assert len(pd.read_parquet(tmp_path / "out")) == 4  # two appends, each once
 
 

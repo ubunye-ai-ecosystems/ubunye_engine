@@ -210,7 +210,15 @@ def execute_user_task(
         task_path = context.task_name or "/".join(resolved.parts[-3:])
         root = resolved.parents[2] if len(resolved.parents) > 2 else resolved.parent
         lineage_dir = Path(context.lineage_dir) if context.lineage_dir else None
-        with runs.held(root, task_path, dict(context.variables or {}), context.run_id, lineage_dir):
+        with runs.held(
+            root,
+            task_path,
+            dict(context.variables or {}),
+            context.run_id,
+            lineage_dir,
+            appends=runs.append_outputs(cfg_dict["CONFIG"].get("outputs")),
+            rerun=context.rerun,
+        ):
             result = engine.run(cfg_dict)
 
     return result or {}

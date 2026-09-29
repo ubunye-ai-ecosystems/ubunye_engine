@@ -103,10 +103,14 @@ def write_config(root: str) -> None:
         fh.write(config(root))
 
 
-def run(root: str, dt: str) -> float:
+def run(root: str, dt: str, *, finished_ok: bool = False) -> float:
+    """Run to completion. ``finished_ok``: a refusal because the killed run had in fact
+    finished the batch (F-031) is the right answer, not a failure (returns -1)."""
     t0 = time.perf_counter()
     out = subprocess.run(cmd(root, dt), capture_output=True, text=True)
     if out.returncode != 0:
+        if finished_ok and "already finished this batch" in out.stderr:
+            return -1.0
         raise RuntimeError(out.stdout[-2000:] + out.stderr[-2000:])
     return time.perf_counter() - t0
 
@@ -180,7 +184,7 @@ def main() -> None:
             "debris": debris(root),
             "records": records(root),
         }
-        run(root, "2")
+        refused = run(root, "2", finished_ok=True) < 0
         snap = read(os.path.join(root, "out", "snapshot")).sort_values("id").reset_index(drop=True)
         events = read(os.path.join(root, "out", "events"))
         by_batch = events["batch"].value_counts().to_dict()
@@ -188,6 +192,7 @@ def main() -> None:
             "trial": n,
             "kill_after_s": round(after, 2),
             "killed": code == -9,
+            "rerun_refused_as_finished": refused,
             "after_kill": after_kill,
             "snapshot_ok": snap.equals(want_snapshot),
             "events_by_batch": by_batch,

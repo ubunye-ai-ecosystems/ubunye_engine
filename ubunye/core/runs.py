@@ -28,10 +28,17 @@ ever listed to decide what to delete, so another run's files are never touched.
 Appends a backend cannot claim (Spark, JDBC, catalog tables) are never deleted: the run
 says they may hold the batch, in its log and in the dead run's record.
 
+**A finished batch.** A run that appends a named batch (``dt`` or a ``--var``) and
+succeeds leaves a note beside the lease: which run finished it, and the files it
+claimed. A later run of the same batch is refused, since it would append the batch a
+second time (F-031). ``--rerun`` (``rerun=True``) replaces it instead: once the new run
+has succeeded, the files the finished run claimed are removed. Appends that were not
+claimed (Spark, JDBC, catalog tables) cannot be removed, so the run says it appends
+to them again.
+
 **Limits, said plainly.** The lease protects runs that share the usecase folder (one
 machine, or a shared disk). Two cloud jobs each with their own disk are not protected
-by it. A second run of a batch that already *finished* appends again (F-031).
-``UBUNYE_RUN_LEASE=off`` turns it off.
+by it. ``UBUNYE_RUN_LEASE=off`` turns it off.
 """
 
 from __future__ import annotations
@@ -77,8 +84,31 @@ class RunLeaseLost(UbunyeError, RuntimeError):
     """This run's lease was taken over; it must not write any more."""
 
 
+class BatchFinished(RunLeaseHeld):
+    """The batch was already appended by a run that finished; ``--rerun`` replaces it."""
+
+
 def enabled() -> bool:
     return os.environ.get("UBUNYE_RUN_LEASE", "on").strip().lower() not in ("off", "0", "false")
+
+
+def names_a_batch(variables: Optional[Dict[str, Any]]) -> bool:
+    """Whether the variables say which data a run is for (``dt`` or a ``--var``).
+
+    ``mode`` and ``dtf`` do not: a task run with neither may append a fresh snapshot
+    each time, and every such run is the same "batch", so it is never refused."""
+    return any(
+        v not in (None, "") for k, v in (variables or {}).items() if k not in ("mode", "dtf")
+    )
+
+
+def append_outputs(outputs: Optional[Dict[str, Any]]) -> List[str]:
+    """The outputs of a task config that append (a missing mode counts as append)."""
+    return sorted(
+        name
+        for name, ocfg in (outputs or {}).items()
+        if isinstance(ocfg, dict) and str(ocfg.get("mode") or "append").lower() == "append"
+    )
 
 
 def _now() -> str:
@@ -204,6 +234,7 @@ class RunLease:
         self.task_path = task_path
         self.run_id = run_id
         self.key = batch_key(task_path, variables)
+        self.named = names_a_batch(variables)
         self.leases_dir = Path(root) / ".ubunye" / "leases" / task_path
         self.path = self.leases_dir / f"{self.key}.json"
         self.lineage_dir = Path(lineage_dir) if lineage_dir else Path(root) / ".ubunye" / "lineage"
@@ -213,6 +244,7 @@ class RunLease:
         self._beat: Optional[threading.Thread] = None
         self.root = Path(root)
         self.left: Dict[str, List[str]] = {}
+        self.keep = False  # the note could not be written: leave the lease for the next run
         self.recovered: Dict[str, Any] = {}
         self._current_output: Optional[str] = None
 
@@ -304,17 +336,25 @@ class RunLease:
             except _InUse as busy:
                 # Hand the lease back to the dead run, with what is left, and refuse: a
                 # forgotten claim would let its batch land twice.
-                taken["outputs"] = {
-                    n: {**taken["outputs"][n], "claimed": c} for n, c in busy.left.items()
-                }
+                if busy.replaces:
+                    taken["replaces"] = busy.left
+                else:
+                    taken["outputs"] = {
+                        n: {**taken["outputs"][n], "claimed": c} for n, c in busy.left.items()
+                    }
                 if _write_atomic(self.path, json.dumps(taken)):
                     stale.unlink(missing_ok=True)
                 else:  # kept beside the lease: the next holder adopts it
                     _write_atomic(stale, json.dumps(taken))
                 raise RunLeaseHeld(
                     f"Run {str(taken.get('run_id', '?'))[:8]} of {self.task_path} died, and "
-                    "its appended files cannot be removed yet (in use): "
-                    + ", ".join(c for cs in busy.left.values() for c in cs),
+                    + (
+                        "its appended files cannot be removed yet (in use): "
+                        + ", ".join(c for cs in busy.left.values() for c in cs)
+                        if not busy.note
+                        else "the note of its finished batch cannot be written yet (in "
+                        f"use): {self._finished_path()}"
+                    ),
                     context={"Lease": str(self.path)},
                     hint="Close whatever has those files open and run again.",
                 ) from None
@@ -359,19 +399,148 @@ class RunLease:
             self._recover(doc)  # _InUse: the orphan is kept, the caller refuses
             orphan.unlink(missing_ok=True)
 
-    def commit(self) -> None:
+    def check_finished(self, appends: List[str], rerun: bool) -> None:
+        """Before anything is written: refuse to append a batch a finished run already
+        wrote, or, with ``rerun``, note its claimed files to remove once this run
+        succeeds (F-031). The lease is this run's by now."""
+        if not appends or not self.named:
+            return
+        last = self._read(self._finished_path())
+        if not last or not last.get("outputs"):
+            return
+        outputs = last["outputs"]
+        who = f"run {str(last.get('run_id', '?'))[:8]} (finished {last.get('finished_at', '?')})"
+        # What --rerun can replace (files the finished run claimed), and the outputs
+        # this run appends to that it cannot (written by Spark, JDBC, a catalog, or
+        # overwritten whole), where the batch would land again.
+        replaces = {n: list(o["claimed"]) for n, o in outputs.items() if o.get("claimed")}
+        again = [n for n in appends if not (outputs.get(n) or {}).get("claimed")]
+        if not rerun:
+            if again:
+                hint = (
+                    f"Output(s) {', '.join(again)} cannot be taken back by Ubunye (not "
+                    "written as claimed pandas part files), so --rerun would append the "
+                    "batch to them again. Remove that run's rows first, or write them "
+                    "with mode overwrite_partitions."
+                )
+            else:
+                hint = "To replace the batch, run again with --rerun (rerun=True in Python)."
+            raise BatchFinished(
+                f"{self.task_path} already finished this batch ({who}) and appends to "
+                f"{', '.join(appends)}: running it again would add the batch twice.",
+                context={"Finished": str(self._finished_path())},
+                hint=hint + " If each run adds new data to the same batch, give each run "
+                "its own variable, for example --var hour=13.",
+            )
+        with self._lock:
+            self._doc["replaces"] = replaces
+            if not self._save():
+                raise self._lost()
+        if replaces:
+            logger.warning(
+                "--rerun: replacing the batch written by %s; its %d file(s) are removed "
+                "once this run succeeds.",
+                who,
+                sum(len(c) for c in replaces.values()),
+            )
+        if again:
+            logger.warning(
+                "--rerun: output(s) %s hold the batch written by %s and cannot be taken "
+                "back (Spark, JDBC, a catalog table, or an overwrite), so this run appends "
+                "the batch to them again. Remove that run's rows first, or write the "
+                "output with mode overwrite_partitions.",
+                ", ".join(again),
+                who,
+            )
+
+    def commit(self) -> bool:
         """The run succeeded: its appends are the batch now, never to be taken back.
 
-        A separate marker file first: a reader holding the lease open (a scanner, on
-        Windows) can block rewriting the lease, never creating a new file."""
+        Returns False, having changed nothing that is not its own, if the lease is no
+        longer this run's. Order: a separate done marker (a reader holding the lease
+        open, a scanner on Windows, can block rewriting it, never creating a new file);
+        ``committed`` saved in the lease, which checks ownership after it writes; the
+        note that this run finished the batch; and only then the removal of the files
+        of the run it replaces (``--rerun``). A crash at any point leaves the lease
+        saying how far it got, and the next run finishes the job (``_recover``)."""
+        if self._owner() is False:
+            return False
         try:
             self._done_mark(self.run_id).write_text(_now(), encoding="utf-8")
         except OSError as exc:
             logger.warning("Could not mark run %s done: %s", self.run_id[:8], exc)
         with self._lock:
-            self._doc["outputs"] = {}
             self._doc["committed"] = True
+            if not self._save() and (
+                self._owner() is False or self._tombstone(self.run_id).exists()
+            ):
+                return False  # taken over: the run that took over decides
+            # Saved, or only unwritable for now (a reader has it open): the done
+            # marker says this run finished, and the lease on disk still lists what
+            # it replaces, so a crash from here on is finished by the next run.
+            doc = copy.deepcopy(self._doc)
+        if not self._note_finished(doc):
+            # Without the note a later run could append the batch again, or a later
+            # --rerun replace the wrong files. Keep the lease as it is (outputs and
+            # replaced files listed): the next run of the batch writes the note first,
+            # then removes the files (``_recover``).
+            logger.error(
+                "Could not note that run %s finished its batch (%s in use?). The lease is "
+                "kept so the next run of the batch records it before anything else.",
+                self.run_id[:8],
+                self._finished_path(),
+            )
+            self.keep = True
+            return True
+        with self._lock:
+            self._doc["outputs"] = {}
             self._save()
+        self._replace(doc.get("replaces") or {})
+        return True
+
+    def _note_finished(self, doc: Dict[str, Any]) -> bool:
+        """Say which run finished this batch, what it wrote, and the append files it
+        claimed. An overwrite is noted too: it wrote the batch, so an append of the
+        same batch afterwards would hold it twice."""
+        if not self.named:
+            return True
+        written = {
+            n: {"claimed": list(o.get("claimed") or []) if o.get("exact") else []}
+            for n, o in (doc.get("outputs") or {}).items()
+        }
+        if not written:
+            return True
+        note = {
+            "run_id": doc.get("run_id"),
+            "task": self.task_path,
+            "finished_at": _now(),
+            "outputs": written,
+        }
+        try:
+            return _write_atomic(self._finished_path(), json.dumps(note, indent=2))
+        except OSError:
+            return False
+
+    def _replace(self, replaces: Dict[str, List[str]]) -> None:
+        """Remove the files of the run this one replaced. Files in use stay listed in
+        the lease, which is kept, so the next run removes them (never forgotten)."""
+        if not replaces:
+            return
+        removed, left = self._take_back({n: {"claimed": c} for n, c in replaces.items()})
+        with self._lock:
+            if left:
+                self._doc["replaces"] = left
+            else:
+                self._doc.pop("replaces", None)
+            self._save()
+        logger.warning("Replaced the batch: removed %d file(s) of the earlier run.", len(removed))
+        if left:
+            logger.error(
+                "Could not remove %s (in use?). The lease is kept so the next run removes "
+                "them; close whatever holds them.",
+                ", ".join(c for cs in left.values() for c in cs),
+            )
+            self.left = left
 
     def release(self) -> None:
         self._stop.set()
@@ -534,6 +703,9 @@ class RunLease:
         except (ValueError, OSError):
             return {}
 
+    def _finished_path(self) -> Path:
+        return self.leases_dir / f"{self.path.stem}.finished.json"
+
     def _done_mark(self, run_id: str) -> Path:
         return self.leases_dir / f"{self.path.stem}.done-{run_id}"
 
@@ -620,10 +792,18 @@ class RunLease:
             or (done is not None and done.exists())
             or self._record_status(dead_id) == "success"
         ):
-            # It finished (its lease outlived it): its appends are the batch.
+            # It finished (its lease outlived it): its appends are the batch. If it died
+            # before noting that, or before removing the files of the run it replaced
+            # (--rerun), finish that for it.
+            replaced = dead.get("replaces") or {}
+            if dead.get("outputs") and not self._note_finished(dead):
+                raise _InUse(replaced, replaces=True, note=True)  # the note, then the files
+            removed, left = self._take_back({n: {"claimed": c} for n, c in replaced.items()})
+            if left:
+                raise _InUse(left, replaces=True)
             if done is not None:
                 done.unlink(missing_ok=True)
-            return {"run_id": dead_id, "removed": [], "unrepaired": []}
+            return {"run_id": dead_id, "removed": removed, "unrepaired": []}
         removed, left = self._take_back(outputs)
         if left:
             raise _InUse(left)
@@ -690,9 +870,11 @@ def _unrepaired(outputs: Dict[str, Any]) -> List[str]:
 
 
 class _InUse(Exception):
-    def __init__(self, left: Dict[str, List[str]]):
+    def __init__(self, left: Dict[str, List[str]], replaces: bool = False, note: bool = False):
         super().__init__("in use")
         self.left = left
+        self.replaces = replaces  # files of a replaced run, not the dead run's own
+        self.note = note  # the batch note could not be written (nothing was removed)
 
 
 def _drop_success_marker(folder: str) -> None:
@@ -767,10 +949,15 @@ class held:
         variables: Optional[Dict[str, Any]],
         run_id: str,
         lineage_dir: Optional[Path] = None,
+        *,
+        appends: Optional[List[str]] = None,
+        rerun: bool = False,
     ):
         self.lease = (
             RunLease(root, task_path, variables, run_id, lineage_dir) if enabled() else None
         )
+        self.appends = list(appends or [])
+        self.rerun = rerun
         self._token: Optional[contextvars.Token] = None
 
     def __enter__(self) -> Optional[RunLease]:
@@ -778,6 +965,11 @@ class held:
             return None
         try:
             self.lease.acquire()
+            try:
+                self.lease.check_finished(self.appends, self.rerun)
+            except BaseException:
+                self.lease.release()  # nothing was written: the batch stays as it is
+                raise
         except RunLeaseHeld:
             raise
         except OSError as exc:
@@ -818,7 +1010,18 @@ class held:
             else:
                 lost_it = exc_type is None and not self.lease.still_owned()
                 if exc_type is None and not lost_it:
-                    self.lease.commit()
-                self.lease.release()
+                    lost_it = not self.lease.commit()
+                if self.lease.left or self.lease.keep:
+                    # A replaced run's file, or the batch note, is in use: keep the lease (it lists the
+                    # file) for the next run to remove, as for a failed run's claims.
+                    self.lease._stop.set()
+                    try:
+                        with self.lease._lock:
+                            self.lease._doc["kept"] = True
+                            self.lease._save()
+                    except Exception:  # noqa: BLE001 (pid death also frees it)
+                        pass
+                else:
+                    self.lease.release()
                 if lost_it:
                     raise self.lease._lost()

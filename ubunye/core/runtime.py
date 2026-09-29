@@ -70,6 +70,8 @@ class EngineContext:
     #: Where run records are kept, when recorded: a dead run's record is marked
     #: ``interrupted`` there by the run that takes over its lease (ADR 008).
     lineage_dir: Optional[str] = None
+    #: Replace a batch a finished run already appended, rather than refuse (F-031).
+    rerun: bool = False
 
 
 class Registry:
