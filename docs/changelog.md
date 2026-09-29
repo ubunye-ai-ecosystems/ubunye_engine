@@ -148,7 +148,9 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   that order in the one job, so a task can read what the one before it wrote to the
   job's own disk; the first that fails stops the rest and fails the deploy, as does a
   task the job never reached. `--record-out glue.json` then writes one record per task
-  (`glue.clean.json`, `glue.monitor.json`). One task works as before. Before, a
+  (`glue.clean.json`, `glue.monitor.json`), also when the job failed: the records the
+  failed job printed are read, written and reported task by task before the deploy
+  exits 1. One task works as before. Before, a
   container job ran one task and its disk went with it, so a two step pipeline could
   not run on Kubernetes or Container Apps without shared storage (F-034).
 

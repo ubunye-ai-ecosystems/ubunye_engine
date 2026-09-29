@@ -353,3 +353,47 @@ def test_a_task_the_job_never_reached_fails_the_deploy(tmp_path, monkeypatch):
     result = runner.invoke(app, args)
     assert result.exit_code == 1
     assert "1 of 2 tasks did not run" in result.output
+
+
+def test_a_job_that_exits_1_still_gives_back_every_record(tmp_path, monkeypatch):
+    """A real failed launch: the platform's command exits 1 (the entry script raised).
+
+    The records the job printed must still be read, written one file per task, and
+    each task reported, before the deploy fails (skeptic review of F-034).
+    """
+    log = _envelope_log([_rec("t"), _rec("t2", status="failed")]) + "RuntimeError: boom\n"
+
+    def fake_run(argv, capture_output=False, text=False, check=False, **kw):
+        code = 1 if "batches" in argv else 0
+        return subprocess.CompletedProcess(argv, code, stdout=log if code else "", stderr="")
+
+    monkeypatch.setattr(cloud.subprocess, "run", fake_run)
+    monkeypatch.setattr(cloud, "_cli", lambda name: name)
+    monkeypatch.setattr(cloud, "_upload", lambda uri, data: None)
+    out = tmp_path / "rec.json"
+    args = ["deploy", "dataproc", "-d", str(_two_tasks(tmp_path)), "-u", "uc", "-p", "pkg",
+            "-t", "t", "-t", "t2", "--project", "p", "--region", "r", "--bucket", "b",
+            "--image", "i", "--record-out", str(out)]  # fmt: skip
+    result = runner.invoke(app, args)
+    assert result.exit_code == 1
+    assert json.loads((tmp_path / "rec.t.json").read_text())["status"] == "success"
+    assert json.loads((tmp_path / "rec.t2.json").read_text())["status"] == "failed"
+    assert "[OK] dataproc run success: uc/pkg/t" in result.output
+    assert "[FAIL] dataproc run failed: uc/pkg/t2" in result.output
+
+
+def test_a_job_that_exits_1_without_a_record_still_raises(tmp_path, monkeypatch):
+    def fake_run(argv, capture_output=False, text=False, check=False, **kw):
+        code = 1 if "batches" in argv else 0
+        return subprocess.CompletedProcess(argv, code, stdout="", stderr="quota exceeded")
+
+    monkeypatch.setattr(cloud.subprocess, "run", fake_run)
+    monkeypatch.setattr(cloud, "_cli", lambda name: name)
+    monkeypatch.setattr(cloud, "_upload", lambda uri, data: None)
+    args = ["deploy", "dataproc", "-d", str(_two_tasks(tmp_path)), "-u", "uc", "-p", "pkg",
+            "-t", "t", "-t", "t2", "--project", "p", "--region", "r", "--bucket", "b",
+            "--image", "i"]  # fmt: skip
+    result = runner.invoke(app, args)
+    assert result.exit_code != 0
+    assert isinstance(result.exception, cloud.DeployError)
+    assert "quota exceeded" in str(result.exception)

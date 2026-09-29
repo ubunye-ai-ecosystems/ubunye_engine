@@ -112,8 +112,25 @@ def _finish(plan: Any, dry_run: bool, record_out: Optional[Path], tasks: int = 1
             fg=typer.colors.YELLOW,
         )
         return
-    cloud.execute(plan)
-    records = package.unpack_records(package.read_record(plan.log))
+    from ubunye.core.errors import DeployError
+
+    failure: Optional[DeployError] = None
+    try:
+        cloud.execute(plan)
+    except DeployError as exc:
+        # A task failed inside the job: the job exits non-zero, but its log still
+        # holds the record of every task that ran. Report them, then fail.
+        if not plan.log:
+            raise
+        failure = exc
+    try:
+        records = package.unpack_records(package.read_record(plan.log))
+    except package.RecordIncomplete:
+        if failure is not None:
+            raise failure
+        raise
+    if failure is not None and not records:
+        raise failure
     if not records and record_out is not None:
         # Asked for the record and did not get it: never report that as success.
         typer.secho(
@@ -146,7 +163,11 @@ def _finish(plan: Any, dry_run: bool, record_out: Optional[Path], tasks: int = 1
             f"[FAIL] {plan.platform}: {tasks - len(records)} of {tasks} tasks did not run.",
             fg=typer.colors.RED,
         )
-    if not ok:
+    if failure is not None:
+        typer.secho(
+            f"[FAIL] {plan.platform}: the job failed: {failure.args[0]}", fg=typer.colors.RED
+        )
+    if not ok or failure is not None:
         raise typer.Exit(code=1)
 
 

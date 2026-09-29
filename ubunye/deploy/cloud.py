@@ -67,10 +67,13 @@ def _run(argv: List[str], capture: bool = False) -> str:
         sys.stdout.write(text)
     if done.returncode != 0:
         detail = (done.stderr or done.stdout or "").strip()[-2000:] if capture else ""
-        raise DeployError(
+        error = DeployError(
             f"`{' '.join(argv[:4])} ...` failed with exit code {done.returncode}.",
             context={"Output": detail} if detail else None,
         )
+        # A job that failed still printed its run record(s): keep the whole log.
+        error.log = text if capture else ""  # type: ignore[attr-defined]
+        raise error
     return text if capture else ""
 
 
@@ -90,13 +93,22 @@ def _upload(uri: str, data: bytes) -> None:
 
 
 def execute(plan: Plan) -> Plan:
-    """Upload, then run each command; the last command's output is the job's log."""
+    """Upload, then run each command; the last command's output is the job's log.
+
+    When the last command fails, ``plan.log`` still holds what it printed, and the
+    :class:`DeployError` is raised: the caller can read the records of a failed job.
+    """
     for uri, data in plan.uploads:
         _upload(uri, data)
     for argv in plan.commands[:-1]:
         _run(argv)
     if plan.commands:
-        plan.log = _run(plan.commands[-1], capture=True)
+        try:
+            plan.log = _run(plan.commands[-1], capture=True)
+        except DeployError as exc:
+            # The job ran and failed: its log (and records) is still the plan's log.
+            plan.log = getattr(exc, "log", "")
+            raise
     return plan
 
 

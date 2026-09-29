@@ -35,5 +35,14 @@ Tests: `tests/unit/deploy/test_cloud_deploy.py` (the entry script runs two real 
 the second reading the first's output; a failing first task stops the second; one file
 per task; a task never reached fails the deploy) and `test_container_deploy.py`.
 
+## Follow-up (skeptic review)
+On a real failure the platform's command exits 1, `cloud._run` raised inside
+`cloud.execute`, and `_finish` never read the log: no per-task files, no per-task
+[FAIL] line. The first tests mocked `execute` to return normally, which no real helper
+does on failure. Now the error keeps the job's log, `_finish` reads and writes the
+records, reports each task, then exits 1; with no record in the log, the original
+error is raised as before. Test: `test_a_job_that_exits_1_still_gives_back_every_record`
+(the last command exits 1; fails on the old code).
+
 ## Evidence
 R1 on all seven environments, one launch each: `docs/proving-ground/latest.md`.
