@@ -13,6 +13,7 @@ whole and provably intact, or refused.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import random
 import subprocess
@@ -124,7 +125,8 @@ def test_a_record_printed_by_an_older_engine_still_reads():
 
 def test_a_small_record_is_one_part():
     text = base64.b64encode(json.dumps({"a": 1}).encode()).decode()
-    log = f"x {package.RECORD_PART} 1/1 {len(text)} {text}\n"
+    digest = hashlib.sha256(json.dumps({"a": 1}).encode()).hexdigest()
+    log = f"{package.RECORD_DIGEST} {digest}\nx {package.RECORD_PART} 1/1 {len(text)} {text}\n"
     assert package.read_record(log) == {"a": 1}
 
 
@@ -172,3 +174,31 @@ def test_a_mended_header_never_steals_from_the_part_before(tmp_path):
     i = next(k for k, ln in enumerate(lines) if f"{package.RECORD_PART} 1/" in ln)
     lines[i : i + 1] = [lines[i][:-1], lines[i][-1:]]  # the part's last character alone
     assert package.read_record("\n".join(lines)) == record
+
+
+def test_parts_without_a_readable_digest_are_refused(tmp_path):
+    """Skeptic review of F-035: a digest line cut by a foreign line cannot be mended, and
+    continuation lines reordered by the store then gave a scrambled record as good.
+    Every release prints the digest, so parts without one are refused."""
+    record = {"status": "success", "k": "A" * 150 + "B" * 150 + "C" * 150 + "D" * 150}
+    lines = _entry_log(tmp_path, record).splitlines()
+    i = next(k for k, ln in enumerate(lines) if f"{package.RECORD_PART} 1/" in ln)
+    head, pay = lines[i][: lines[i].rindex(" ") + 1], lines[i][lines[i].rindex(" ") + 1 :]
+    lines[i : i + 1] = [head + pay[:200], pay[400:], pay[200:400]]  # rest arrives swapped
+    d = next(k for k, ln in enumerate(lines) if package.RECORD_DIGEST in ln)
+    lines[d : d + 1] = [lines[d][:40], "26/09/29 WARN TaskSetManager: lost task", lines[d][40:]]
+    with pytest.raises(package.RecordIncomplete, match="SHA-256"):
+        package.read_record("\n".join(lines))
+    no_digest = [
+        ln for ln in _entry_log(tmp_path, record).splitlines() if package.RECORD_DIGEST not in ln
+    ]
+    with pytest.raises(package.RecordIncomplete, match="SHA-256"):
+        package.read_record("\n".join(no_digest))
+
+
+def test_two_run_records_in_one_log_are_refused(tmp_path):
+    """An earlier execution's record in the same log must never pass as this run's."""
+    old = _entry_log(tmp_path, {"status": "success", "run": "OLD"})
+    new = _entry_log(tmp_path, {"status": "failed", "run": "NEW"})
+    with pytest.raises(package.RecordIncomplete, match="more than one"):
+        package.read_record(old + new)

@@ -33,3 +33,14 @@ cannot give a wrong record: each part says its length and the whole record its
 SHA-256; every rejected join still ends in RecordIncomplete, never a partial record.
 A guard test checks a part's last character that looks like a marker start ("U") is
 never taken from it.
+
+## Follow-up (skeptic review)
+The reader skipped the SHA-256 check when the digest line itself could not be read, so
+a digest line cut by a foreign line plus reordered continuation lines returned a
+scrambled record as good; and a log holding an earlier run's record first returned
+that one. Now parts without a whole digest are refused (every engine that prints parts
+prints the digest), more than one digest in a log is refused, and a piece such as
+`UBUNY` that starts both markers is tried as each (a cut inside the digest marker was
+never mended, which the old unchecked path hid). Tests:
+`test_parts_without_a_readable_digest_are_refused`,
+`test_two_run_records_in_one_log_are_refused` (both fail on the old code).

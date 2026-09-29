@@ -40,19 +40,30 @@ _WHOLE = {
 }
 
 
-def _marker_start(line: str) -> Tuple[Optional[str], str]:
-    """The marker a line starts to print but does not finish, and the piece printed."""
+def _marker_starts(line: str) -> List[Tuple[str, str]]:
+    """Each marker a line may start without finishing, with the piece printed.
+
+    A piece such as ``UBUNY`` starts both markers; each is tried in turn.
+    """
     for marker, whole in _WHOLE.items():
         at = line.find(marker)
         if at >= 0:
             piece = line[at:]
-            return (None, "") if whole.fullmatch(piece) else (marker, piece)
+            return [] if whole.fullmatch(piece) else [(marker, piece)]
     tokens = line.split()
     last = tokens[-1] if tokens else ""
-    for marker in _WHOLE:
-        if last and marker.startswith(last):
-            return marker, last
-    return None, ""
+    return [(marker, last) for marker in _WHOLE if last and marker.startswith(last)]
+
+
+def _join(piece: str, marker: str, nxt: str) -> Optional[str]:
+    """``piece`` and the next line as one whole marker line, skipping its prefix."""
+    tokens = nxt.split()
+    for k in range(len(tokens)):
+        rest = " ".join(tokens[k:])
+        for glue in ("", " "):
+            if _WHOLE[marker].fullmatch(piece + glue + rest):
+                return piece + glue + rest
+    return None
 
 
 def _mend(lines: List[str]) -> List[str]:
@@ -64,28 +75,24 @@ def _mend(lines: List[str]) -> List[str]:
     without a space, skipping any prefix the store put on that line, but only when
     the join makes a whole marker and the next line holds no marker of its own (so a
     part's last character that looks like the start of a marker is never taken). A
-    wrong join cannot pass: each part says its length and the record its SHA-256.
+    wrong join cannot pass: each part says its length, and a record is accepted only
+    with its SHA-256 line read whole and matching.
     """
     out: List[str] = []
     i = 0
     while i < len(lines):
         line = lines[i]
-        marker, piece = _marker_start(line)
-        if marker and i + 1 < len(lines) and not any(m in lines[i + 1] for m in _WHOLE):
-            tokens = lines[i + 1].split()
-            joined = None
-            for k in range(len(tokens)):
-                rest = " ".join(tokens[k:])
-                for glue in ("", " "):
-                    if _WHOLE[marker].fullmatch(piece + glue + rest):
-                        joined = piece + glue + rest
-                        break
+        if i + 1 < len(lines) and not any(m in lines[i + 1] for m in _WHOLE):
+            for marker, piece in _marker_starts(line):
+                joined = _join(piece, marker, lines[i + 1])
                 if joined:
+                    out += [line[: len(line) - len(piece)], joined]
+                    i += 2
                     break
-            if joined:
-                out += [line[: len(line) - len(piece)], joined]
-                i += 2
-                continue
+            else:
+                out.append(line)
+                i += 1
+            continue
         out.append(line)
         i += 1
     return out
@@ -271,7 +278,11 @@ def _parts_from(log: str) -> Tuple[Dict[int, str], int, Optional[str]]:
     while it is plain base64 and not the start of another part or a marker.
     """
     lines = _mend(log.splitlines())
-    digest = _DIGEST.search("\n".join(lines))
+    digests = set(_DIGEST.findall("\n".join(lines)))
+    if len(digests) > 1:
+        raise RecordIncomplete(
+            "the log holds more than one run record; cannot tell which is this run's"
+        )
     parts: Dict[int, str] = {}
     damaged: Dict[int, str] = {}
     totals = set()
@@ -303,7 +314,7 @@ def _parts_from(log: str) -> Tuple[Dict[int, str], int, Optional[str]]:
     for n, why in damaged.items():
         if n not in parts:
             raise RecordIncomplete(why + " and could not be completed from the log")
-    return parts, total, digest[1] if digest else None
+    return parts, total, digests.pop() if digests else None
 
 
 def read_record(log: str) -> Optional[Dict[str, Any]]:
@@ -324,7 +335,11 @@ def read_record(log: str) -> Optional[Dict[str, Any]]:
                 f"missing {missing[:10]}"
             )
         raw = base64.b64decode("".join(parts[n] for n in range(1, total + 1)))
-        if digest is not None and hashlib.sha256(raw).hexdigest() != digest:
+        if digest is None:
+            # Every engine that prints parts prints the digest with them. Without it a
+            # cut or reordered part could decode to a wrong record: never accept that.
+            raise RecordIncomplete("the record's SHA-256 line was not found whole in the log")
+        if hashlib.sha256(raw).hexdigest() != digest:
             raise RecordIncomplete("the record read from the log does not match its SHA-256")
         return json.loads(raw.decode("utf-8"))
     if RECORD_BEGIN not in log:

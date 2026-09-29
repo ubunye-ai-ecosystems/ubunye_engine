@@ -39,8 +39,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 - **A cloud run's record survives a log line cut inside its marker.** Glue's CloudWatch
   sent `UB` and `UNYE-RECORD-PART 9/14 ...` as two lines, so a part lost its header
   and a run that succeeded gave back no record. The reader now joins a marker cut in
-  two, whatever the cut point and log prefix; a wrong join still cannot pass the
-  parts' lengths and the record's SHA-256 (F-035).
+  two, whatever the cut point and log prefix. A record in parts is now accepted only
+  when its SHA-256 line is read whole and matches (before, a record whose digest line
+  was lost was taken unchecked, and reordered pieces could decode to a scrambled
+  record), and a log holding two different records is refused (F-035).
 - **A backend that cannot write partition folders is refused before the run** when an
   output sets `partitionBy`. The check looked for `partition_by`, which no config uses,
   so it never fired and the task failed at the write instead (F-032).
