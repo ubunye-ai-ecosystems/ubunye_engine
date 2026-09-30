@@ -542,11 +542,17 @@ def _split(
 
     breaks_any = reduce(lambda a, b: a | b, [_breaks(nw, r, floats) for r in quarantine_rules])
     clean = df.filter(~breaks_any)
+    # Each broken rule gives ",name", the rest "", and the leading comma is cut off.
+    # Not concat_str(ignore_nulls=True): on pandas Narwhals writes a separator after
+    # every present value but the last one given, so a row that broke only the first
+    # of two rules read "a_between," there and "a_between" on Spark (F-052).
     reasons = nw.concat_str(
-        [nw.when(_breaks(nw, r, floats)).then(nw.lit(r.name)) for r in quarantine_rules],
-        separator=",",
-        ignore_nulls=True,
-    )
+        [
+            nw.when(_breaks(nw, r, floats)).then(nw.lit("," + r.name)).otherwise(nw.lit(""))
+            for r in quarantine_rules
+        ],
+        separator="",
+    ).str.slice(1)
     quarantined = df.filter(breaks_any).with_columns(reasons.alias(FAILED_RULES_COLUMN))
     return nw.to_native(clean), nw.to_native(quarantined)
 

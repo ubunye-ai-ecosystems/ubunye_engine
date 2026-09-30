@@ -87,6 +87,25 @@ def test_quarantine_splits_the_same_rows_with_the_same_reasons(spark):
     assert rows(out_spark["bad"])[0][-1] == "qty_between,method_one_of,card_matches"
 
 
+def test_a_row_that_broke_only_some_rules_has_the_same_reasons_on_both(spark):
+    """F-052: pandas wrote "a_between," where Spark wrote "a_between"."""
+    rows = [(0, 5, 5), (5, 0, 5), (0, 0, 0), (5, 5, 5)]
+    pandas_frame = pd.DataFrame(rows, columns=["a", "b", "c"])
+    spark_frame = spark.createDataFrame(rows, ["a", "b", "c"])
+    spec = ExpectationSet(
+        rules=[
+            {"between": {"column": c, "min": 1}, "severity": "quarantine"} for c in ("a", "b", "c")
+        ],
+        quarantine="bad",
+    )
+    out_pandas, _ = expectations.apply({"out": pandas_frame}, {"out": spec})
+    out_spark, _ = expectations.apply({"out": spark_frame}, {"out": spec})
+    reasons = ["a_between", "a_between,b_between,c_between", "b_between"]
+    col = expectations.FAILED_RULES_COLUMN
+    assert sorted(out_pandas["bad"][col]) == reasons
+    assert sorted(r[col] for r in out_spark["bad"].collect()) == reasons
+
+
 def test_a_fail_rule_refuses_the_run_on_spark_too(spark):
     _, spark_frame = _both(spark)
     spec = ExpectationSet(rules=[{"not_null": "id"}])

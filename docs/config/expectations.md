@@ -55,7 +55,7 @@ Each rule is named after its column and kind (`quantity_between`), or give it a
 | `severity` | Effect |
 |---|---|
 | `fail` (default) | The run stops. **Nothing is written**, for any output. |
-| `quarantine` | The breaking rows move to the `quarantine:` output, with a `_ubunye_failed_rules` column naming every rule each row broke (`quantity_between,paymentMethod_one_of`). The rest are written. Only per-row rules can quarantine. |
+| `quarantine` | The breaking rows move to the `quarantine:` output, with a `_ubunye_failed_rules` column naming every rule each row broke, and only those, in the order they are declared (`quantity_between,paymentMethod_one_of`), the same on every backend. The rest are written. Only per-row rules can quarantine. |
 | `warn` | The rows stay; the breach is logged. |
 
 The quarantine output is always written, empty when no row broke a rule, so a

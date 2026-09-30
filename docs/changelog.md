@@ -107,6 +107,15 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A quarantined row's reasons read the same on pandas and Spark (F-052).** On
+  pandas, a row that broke only the first of two quarantine rules got
+  `_ubunye_failed_rules` = `price_between,` (a stray comma); Spark wrote
+  `price_between`. So the quarantine output, and the run's digest, differed between the
+  two engines. Narwhals' `concat_str(ignore_nulls=True)` on pandas writes a separator
+  after every present value except the last one given. The reasons are now built
+  without it. **Behaviour change** on pandas only, and only for rows that did not break
+  the last quarantine rule: their reasons lose the trailing comma. Found by the Olist
+  example (R2).
 - **On Windows, reading a run lease while its heartbeat replaces it no longer fails
   (F-048).** Windows refuses a read for a moment while a file is being replaced. The
   engine then called a live run's lease unreadable, and a second run of the same

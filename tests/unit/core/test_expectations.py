@@ -120,6 +120,30 @@ def test_quarantine_moves_breaking_rows_and_names_every_rule_they_broke():
     assert all(not r.passed for r in results)
 
 
+def test_the_reasons_name_only_the_rules_a_row_broke_with_no_stray_comma():
+    """F-052: on pandas a row that broke only the first of two rules read "a_between,".
+
+    Narwhals' concat_str(ignore_nulls=True) on pandas writes the separator after every
+    present value but the last one given, whether or not a later one is present.
+    Spark's concat_ws does not, so the same run hashed differently on the two engines.
+    """
+    frame = pd.DataFrame({"a": [0, 5, 0, 5], "b": [5, 0, 0, 5], "c": [5, 5, 0, 5]})
+    spec = ExpectationSet(
+        quarantine="bad",
+        rules=[
+            rule(between={"column": "a", "min": 1}, severity="quarantine"),
+            rule(between={"column": "b", "min": 1}, severity="quarantine"),
+            rule(between={"column": "c", "min": 1}, severity="quarantine"),
+        ],
+    )
+    out, _ = expectations.apply({"out": frame}, {"out": spec})
+    assert list(out["bad"][expectations.FAILED_RULES_COLUMN]) == [
+        "a_between",
+        "b_between",
+        "a_between,b_between,c_between",
+    ]
+
+
 def test_no_quarantined_row_still_writes_an_empty_quarantine_output():
     clean = ROWS[ROWS["qty"] > 0]
     spec = ExpectationSet(
