@@ -107,6 +107,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **The smallest doubles and floats are written as Java writes them (F-082, E-09).**
+  Where the shortest text of a number has one digit, Java's `Double.toString` and
+  `Float.toString` write the closest two digits instead: `4.9E-324`, not `5.0E-324`;
+  `1.4E-45`, not `1.0E-45`. The run record's hash and the pandas json and csv writers
+  used Python's shortest text, so a table holding such a number had a different
+  rows-v1 digest on pandas than on live Spark 3.5 and 4. Other digests do not change.
 - **CSV `inferSchema`: a whole number past 64 bits with small ones is `decimal(19,0)`,
   as live Spark types it (F-067 follow-up, E-09).** The port widened it to
   `decimal(20,0)` whenever a smaller number was present; Spark does that only for a

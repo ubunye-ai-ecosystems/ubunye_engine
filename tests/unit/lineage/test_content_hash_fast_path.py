@@ -314,6 +314,63 @@ def test_nan_is_still_not_null():
     assert fingerprint_arrow(with_nan).data_hash != fingerprint_arrow(with_null).data_hash
 
 
+class TestJavaTwoDigitRule:
+    """E-09 (live Spark 3.5 and 4): Java writes 4.9E-324 and 1.4E-45, not 5.0E-324 and 1.0E-45."""
+
+    def test_double_and_float_text(self):
+        assert ch.java_double(5e-324) == "4.9E-324"
+        assert ch.java_double(-5e-324) == "-4.9E-324"
+        assert ch.java_double(1e23) == "1.0E23"
+        assert ch.java_double(1e-5) == "1.0E-5"
+        assert ch.java_double(0.1) == "0.1"
+        assert ch.java_float(1e-45) == "1.4E-45"
+        assert ch.java_float(3.4028235e38) == "3.4028235E38"
+        assert ch.java_float(0.1) == "0.1"
+
+    def test_the_special_numbers_digest_is_sparks(self):
+        # The digest live Spark 3.5 and 4 gave for this table (CI, E-09).
+        import decimal
+
+        D = decimal.Decimal
+        table = pa.table(
+            {
+                "f": [
+                    float("nan"),
+                    float("inf"),
+                    float("-inf"),
+                    -0.0,
+                    0.0,
+                    5e-324,
+                    1.7976931348623157e308,
+                    None,
+                ],
+                "f32": pa.array(
+                    [float("nan"), float("inf"), -0.0, 0.1, 3.4028235e38, 1e-45, 1.0, None],
+                    pa.float32(),
+                ),
+                "dec": pa.array(
+                    [
+                        D("12345678901234567890.123456789012345678"),
+                        D("-0.000000000000000001"),
+                        D(0),
+                        None,
+                        D("99999999999999999999.999999999999999999"),
+                        D(1),
+                        D(-1),
+                        D("0.5"),
+                    ],
+                    pa.decimal128(38, 18),
+                ),
+                "i64": pa.array(
+                    [2**63 - 1, -(2**63), 0, None, 1, -1, 2**53 + 1, 2**31], pa.int64()
+                ),
+            }
+        )
+        assert fingerprint_arrow(table).data_hash == (
+            "sha256:65d216a011cab4fe9074b4594277fb7979154ec2b2450685060e426d5b5e189b"
+        )
+
+
 class TestManySmallChunks:
     """F-076: a table of many small chunks (a folder of small files) is hashed in few slices."""
 

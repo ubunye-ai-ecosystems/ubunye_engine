@@ -1038,12 +1038,8 @@ def _shortest_floats(table: Any) -> Any:
 
     for i, field in enumerate(table.schema):
         if pa.types.is_float32(field.type) or pa.types.is_float16(field.type):
-            import numpy as np
 
-            values = [
-                None if v is None else float(str(np.float32(v)))
-                for v in table.column(i).to_pylist()
-            ]
+            values = [_java_float_value(v) for v in table.column(i).to_pylist()]
             table = table.set_column(i, pa.field(field.name, pa.float64()), pa.array(values))
     return table
 
@@ -1108,7 +1104,6 @@ def _write_part(
 
 def _java_double(x: Any) -> Optional[str]:
     """A float as Java's ``Double.toString`` writes it, which is what Spark writes."""
-    import decimal
     import math
 
     if x is None:
@@ -1117,15 +1112,20 @@ def _java_double(x: Any) -> Optional[str]:
         return "NaN"
     if math.isinf(x):
         return "Infinity" if x > 0 else "-Infinity"
-    if x == 0:
-        return "-0.0" if math.copysign(1.0, x) < 0 else "0.0"
-    text = repr(x)
-    if 1e-3 <= abs(x) < 1e7:
-        return text if "." in text else text + ".0"
-    sign, digits, exponent = decimal.Decimal(text).as_tuple()
-    ds = "".join(map(str, digits)).rstrip("0") or "0"
-    power = len(digits) + int(exponent) - 1
-    return f"{'-' if sign else ''}{ds[0]}.{ds[1:] or '0'}E{power}"
+    from ubunye.lineage.content_hash import java_double
+
+    return java_double(x)  # one rule for the files and the run record (E-09)
+
+
+def _java_float_value(v: Any) -> Any:
+    """A float32 as the float64 of Java's Float.toString text (None, NaN, inf kept)."""
+    import math
+
+    from ubunye.lineage.content_hash import java_float
+
+    if v is None or not math.isfinite(v):
+        return v
+    return float(java_float(v))
 
 
 def _csv_column(col: Any, field: Any, sep: str) -> Any:
@@ -1138,12 +1138,8 @@ def _csv_column(col: Any, field: Any, sep: str) -> Any:
         if pa.types.is_float64(t):
             values = [_java_double(v) for v in col.to_pylist()]
         else:  # float32 and float16: Java's Float.toString is numpy's shortest form
-            import numpy as np
 
-            values = [
-                None if v is None else _java_double(float(str(np.float32(v))))
-                for v in col.to_pylist()
-            ]
+            values = [_java_double(_java_float_value(v)) for v in col.to_pylist()]
         return pa.array(values, pa.string()).fill_null("")
     text = pc.cast(col, pa.string())
     if pa.types.is_string(t) or pa.types.is_large_string(t):

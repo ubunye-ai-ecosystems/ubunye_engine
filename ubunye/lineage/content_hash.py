@@ -102,17 +102,43 @@ def lanes(line: str) -> Tuple[int, int]:
 # --------------------------------------------------------------------------- #
 
 
-def java_double(x: float) -> str:
-    """A finite float as Java's ``Double.toString`` writes it."""
+def java_double(x: float, shortest: Optional[str] = None, same: Any = None) -> str:
+    """A finite float as Java's ``Double.toString`` writes it.
+
+    Java writes the shortest decimal that reads back as ``x``, like Python's
+    ``repr``, with one exception: when that has a single digit, Java picks the
+    decimal of one or two digits closest to ``x`` (JDK 19 spec, and the older
+    algorithm too for these values). So ``Double.MIN_VALUE`` is ``4.9E-324``,
+    not ``5.0E-324``, which made the run record's digest differ from Spark's
+    (E-09, live Spark 3.5 and 4). ``shortest`` and ``same`` let
+    :func:`java_float` reuse this for ``float``.
+    """
     if x == 0:
         return "-0.0" if math.copysign(1.0, x) < 0 else "0.0"
-    text = repr(x)
+    text = shortest or repr(x)
     if 1e-3 <= abs(x) < 1e7:
+        # One digit here is always the closest too (the gaps between floats are far
+        # smaller than the digit), so the shortest text stands.
         return text if "." in text else text + ".0"
     sign, digits, exponent = decimal.Decimal(text).as_tuple()
     ds = "".join(map(str, digits)).rstrip("0") or "0"
     power = len(digits) + int(exponent) - 1
+    if len(ds) == 1:
+        # The closest decimal of two digits, if it still reads back as x.
+        near = "%.1e" % abs(x)
+        if (same or (lambda t: float(t) == abs(x)))(near):
+            mantissa, _, exp = near.partition("e")
+            ds = mantissa.replace(".", "").rstrip("0") or "0"
+            power = int(exp)
     return f"{'-' if sign else ''}{ds[0]}.{ds[1:] or '0'}E{power}"
+
+
+def java_float(x: float) -> str:
+    """A finite ``float`` (32 bit) as Java's ``Float.toString`` writes it (see java_double)."""
+    import numpy as np
+
+    f = np.float32(x)
+    return java_double(float(f), shortest=str(f), same=lambda t: np.float32(float(t)) == np.abs(f))
 
 
 def _float_text(x: float) -> str:
@@ -142,9 +168,7 @@ def value_text(value: Any, kind: str = "") -> str:
         return str(value)
     if isinstance(value, float):
         if kind == "float32" and math.isfinite(value):
-            import numpy as np
-
-            value = float(str(np.float32(value)))  # Java's Float.toString
+            return java_float(value)  # Java's Float.toString
         return _float_text(value)
     if isinstance(value, str):
         return json.dumps(value, ensure_ascii=False)

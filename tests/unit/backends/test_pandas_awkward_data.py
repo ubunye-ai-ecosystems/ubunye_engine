@@ -340,6 +340,27 @@ class TestNamesThatDifferOnlyByCase:
         assert list(frame.native.columns) == names
 
 
+class TestJavaNumberTextInFiles:
+    """E-09: the json and csv writers write the smallest numbers as Java does."""
+
+    @pytest.mark.parametrize("fmt", ["json", "csv"])
+    def test_min_double_and_min_float(self, tmp_path, fmt):
+        from ubunye.core.write_modes import ResolvedWriteMode
+
+        table = pa.table({"d": [5e-324], "f": pa.array([1e-45], pa.float32())})
+        out = tmp_path / "out"
+        PandasBackend().execute_write(
+            table.to_pandas(types_mapper=pd.ArrowDtype),
+            ResolvedWriteMode(mode="overwrite", save_mode="overwrite"),
+            connector="s3",
+            file_format=fmt,
+            path=str(out),
+        )
+        (part,) = out.glob("part-*")
+        text = part.read_text(encoding="utf-8")
+        assert "4.9E-324" in text and "1.4E-45" in text
+
+
 NY = "America/New_York"
 # 02:30 on 2024-03-10 does not exist in New York (clocks go 02:00 -> 03:00);
 # 01:30 on 2024-11-03 happens twice (EDT, then EST).
