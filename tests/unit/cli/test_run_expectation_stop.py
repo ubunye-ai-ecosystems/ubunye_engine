@@ -65,6 +65,25 @@ def test_a_broken_expectation_exits_1_with_the_message_and_no_traceback(tmp_path
     assert not (task / "out").exists()
 
 
+def test_an_expectation_error_about_the_engine_keeps_its_traceback(tmp_path, monkeypatch):
+    """Skeptic review: narwhals missing (or a reconcile given no inputs) is raised as an
+    ExpectationError too, but it is not a verdict on the data: no rule results."""
+    from ubunye.core import expectations
+    from ubunye.core.errors import ExpectationError
+
+    def no_narwhals():
+        raise ExpectationError("Expectations need the 'narwhals' package, which is not installed.")
+
+    monkeypatch.setattr(expectations, "_nw", no_narwhals)
+    task = _task(tmp_path)
+    where = ["run", "-d", str(tmp_path), "-u", "uc", "-p", "pkg", "-t", "t", "--backend", "pandas"]
+    result = CliRunner().invoke(app, where)
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, ExpectationError)
+    assert not (task / "out").exists()
+
+
 def test_any_other_error_still_shows_its_traceback(tmp_path):
     task = _task(tmp_path)
     (task / "transformations.py").write_text(

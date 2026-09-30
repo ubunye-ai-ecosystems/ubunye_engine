@@ -31,3 +31,14 @@ its traceback (a bug in a transform needs one). The Python API still raises the
 Test: `tests/unit/cli/test_run_expectation_stop.py` (the first test fails before: the
 exception was the `ExpectationError`, not a clean exit; the second pins that other
 errors still propagate).
+
+## Skeptic review (2026-09-30)
+
+The first fix caught every `ExpectationError`, but two are raised for engine-side
+problems, not bad data: narwhals missing (`expectations._nw`) and a reconcile given no
+input frames (a notebook or Engine caller bug). Those lost their traceback. Now only
+an `ExpectationError` that carries rule results (a verdict on the data: failed rules,
+an input contract, a reconcile, too much quarantined) stops quietly; any other keeps
+its traceback. Test:
+`tests/unit/cli/test_run_expectation_stop.py::test_an_expectation_error_about_the_engine_keeps_its_traceback`
+(fails before, passes after).

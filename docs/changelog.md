@@ -113,7 +113,9 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   message, then about 60 lines of traceback through the engine, which read as a
   crash. It now prints `[ERROR] Run stopped for <task>: <message>` and exits with
   code 1, as a refused run does. Any other error still shows its traceback. Found
-  writing Tutorial 2 (Olist).
+  writing Tutorial 2 (Olist). After review, only an error that carries rule results
+  (a verdict on the data) stops quietly: an `ExpectationError` about the engine
+  (narwhals not installed, a reconcile given no inputs) keeps its traceback.
 - **A failed run's record says why it failed (F-054).** The record has an `error`
   field; OpenLineage sends it as the failed run's `errorMessage`, and `ubunye prove`
   shows it as the reason. Nothing filled it: every failed run said `status: error`,

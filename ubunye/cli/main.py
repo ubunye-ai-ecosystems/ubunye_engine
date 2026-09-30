@@ -597,6 +597,13 @@ def run(
                 typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
                 raise typer.Exit(code=1)
             except ExpectationError as e:
+                if not e.results:
+                    # Not a verdict on the data (no rule results): narwhals missing,
+                    # inputs not passed to a reconcile. Keep the traceback.
+                    typer.secho(
+                        f"[ERROR] Run failed for {task}: {e}", fg=typer.colors.RED, err=True
+                    )
+                    raise
                 # The data broke a declared rule: the engine did its job and wrote
                 # nothing. The message says which rule and how many rows; a traceback
                 # through the engine would read as a crash (F-055).
