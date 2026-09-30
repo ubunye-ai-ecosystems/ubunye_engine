@@ -10,7 +10,7 @@
   "environments": {
     "aws-glue": {
       "backend": "spark",
-      "config_hash": "sha256:2248a9cd00c3b40a5760e7b8663e53a07028267823add2355a356ecc1ae838a9",
+      "config_hash": "sha256:4281364616c756310afef7fddb0719c43c944f99e4bfe2429cd18957734baff8",
       "cost": {
         "basis": "unknown",
         "currency": "USD"
@@ -24,7 +24,7 @@
         "rows": "PASS",
         "schema": "PASS"
       },
-      "duration_seconds": 29.51926990599999,
+      "duration_seconds": 25.802525915999993,
       "engine_packages": {
         "pandas": "2.2.2",
         "pyarrow": "17.0.0"
@@ -51,11 +51,11 @@
         "runtime": "Glue 5.0 (Spark 3.5), 2 x G.1X"
       },
       "provenance": {
-        "observed_at": "2026-09-30T06:24:02Z",
-        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36677778001"
+        "observed_at": "2026-09-30T11:41:18Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709026536"
       },
       "reason": "",
-      "run_id": "3b680fa8-1fae-4f53-bd5d-939664c7f5ad",
+      "run_id": "36ba1516-a748-4640-b459-b8f5377bccd0",
       "status": "executed",
       "verdict": "PASS"
     },
@@ -75,7 +75,7 @@
         "rows": "PASS",
         "schema": "PASS"
       },
-      "duration_seconds": 6.802615594002418,
+      "duration_seconds": 7.786879487999954,
       "engine_packages": {
         "pyspark": "3.5.9"
       },
@@ -101,17 +101,17 @@
         "runtime": "Azure Container Apps job"
       },
       "provenance": {
-        "observed_at": "2026-09-30T06:27:33Z",
-        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36677778001"
+        "observed_at": "2026-09-30T11:44:45Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709026536"
       },
       "reason": "",
-      "run_id": "2f1e362c-4c70-491b-96f8-476b94ad564c",
+      "run_id": "c30a42ce-2a16-4048-b4bb-0c662c623a0f",
       "status": "executed",
       "verdict": "PASS"
     },
     "databricks": {
       "backend": "databricks",
-      "config_hash": "sha256:7b7fb46398edcd3b4a011b13df618fe909061e5c19e80b274427b166f8800248",
+      "config_hash": "sha256:fede1d06ad264040ea178deca8e407b54ec590451899d0493fa20848dc1ddb11",
       "cost": {
         "basis": "unknown",
         "currency": "USD"
@@ -125,7 +125,7 @@
         "rows": "PASS",
         "schema": "PASS"
       },
-      "duration_seconds": 14.200868799999967,
+      "duration_seconds": 12.814004257000022,
       "engine_packages": {
         "pandas": "1.5.3",
         "pyarrow": "14.0.1"
@@ -151,17 +151,17 @@
         "runtime": "Databricks serverless (notebook job)"
       },
       "provenance": {
-        "observed_at": "2026-09-30T06:23:22Z",
-        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36677778001"
+        "observed_at": "2026-09-30T11:39:34Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709026536"
       },
       "reason": "",
-      "run_id": "1b048baf-8fb4-4b29-b4a2-77deb46b02db",
+      "run_id": "408fbf69-fc68-4c09-87f5-ffbaaf4b1829",
       "status": "executed",
       "verdict": "PASS"
     },
     "gcp-dataproc": {
       "backend": "spark",
-      "config_hash": "sha256:327109b5cfc3c0a6a17809e9cd4f221f7a189571d88042c707fea5659159e33a",
+      "config_hash": "sha256:b4ecc1bc9d952f86e75d9131fb12fa5f0fba2bbda38bf9601574414fb5f752fb",
       "cost": {
         "basis": "unknown",
         "currency": "USD"
@@ -175,7 +175,7 @@
         "rows": "PASS",
         "schema": "PASS"
       },
-      "duration_seconds": 27.106232610999996,
+      "duration_seconds": 22.955460957000014,
       "engine_packages": {
         "pyspark": "3.5.3"
       },
@@ -201,11 +201,11 @@
         "runtime": "Dataproc Serverless 2.2 (Spark 3.5)"
       },
       "provenance": {
-        "observed_at": "2026-09-30T06:25:26Z",
-        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36677778001"
+        "observed_at": "2026-09-30T11:42:27Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709026536"
       },
       "reason": "",
-      "run_id": "3b92bc74-11b2-4831-a052-0cb6536c3932",
+      "run_id": "c0321573-14d9-42a5-8642-96a8d820540b",
       "status": "executed",
       "verdict": "PASS"
     },
@@ -225,7 +225,7 @@
         "rows": "PASS",
         "schema": "PASS"
       },
-      "duration_seconds": 4.623877616000016,
+      "duration_seconds": 5.250140105000014,
       "engine_packages": {
         "pyspark": "3.5.9"
       },
@@ -250,11 +250,11 @@
         "runtime": "kind on GitHub Actions"
       },
       "provenance": {
-        "observed_at": "2026-09-30T06:25:33Z",
-        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36677778001"
+        "observed_at": "2026-09-30T11:42:45Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709026536"
       },
       "reason": "",
-      "run_id": "f64d147c-2d2a-40d4-897e-d3d248fdcdaf",
+      "run_id": "e38be536-d6e4-411f-b5da-f2cd75c564d2",
       "status": "executed",
       "verdict": "PASS"
     },
@@ -274,7 +274,7 @@
         "rows": "PASS",
         "schema": "PASS"
       },
-      "duration_seconds": 0.08006049699999096,
+      "duration_seconds": 0.06935808100000429,
       "engine_packages": {
         "pandas": "3.0.6",
         "pyarrow": "25.0.1",
@@ -300,11 +300,11 @@
         "runtime": "GitHub Actions ubuntu-latest"
       },
       "provenance": {
-        "observed_at": "2026-09-30T06:22:12Z",
-        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36677778001"
+        "observed_at": "2026-09-30T11:36:49Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709026536"
       },
       "reason": "",
-      "run_id": "74d1e504-247a-402d-bc94-78f8bb31f9af",
+      "run_id": "27e41dc3-2cf9-42db-b8e6-6fc9121c3660",
       "status": "executed",
       "verdict": "PASS"
     },
@@ -324,7 +324,7 @@
         "rows": "PASS",
         "schema": "PASS"
       },
-      "duration_seconds": 5.703168794999996,
+      "duration_seconds": 4.532447625999993,
       "engine_packages": {
         "pandas": "3.0.6",
         "pyarrow": "25.0.1",
@@ -350,16 +350,16 @@
         "runtime": "GitHub Actions ubuntu-latest"
       },
       "provenance": {
-        "observed_at": "2026-09-30T06:22:38Z",
-        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36677778001"
+        "observed_at": "2026-09-30T11:37:16Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709026536"
       },
       "reason": "",
-      "run_id": "0008a307-a752-41d1-8884-abef7d8f6cde",
+      "run_id": "aea0a16d-a6fc-46af-a7a6-ce81df8aa5dc",
       "status": "executed",
       "verdict": "PASS"
     }
   },
-  "generated_at": "2026-09-30T06:28:23Z",
+  "generated_at": "2026-09-30T11:45:30Z",
   "reference": "spark-local",
   "summary": {
     "FAIL": 0,
