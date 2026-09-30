@@ -815,6 +815,15 @@ def read_frame(
             context={"Backend": "pandas", "path": local, "file_format": fmt},
         ) from exc
 
+    dupes = case_duplicates(table.column_names)
+    if dupes:
+        raise SourceReadError(
+            f"The data at {path} has columns whose names differ only by case: {dupes}.",
+            context={"Backend": "pandas", "path": local, "file_format": fmt},
+            hint="Spark refuses such data by default (spark.sql.caseSensitive is false: "
+            "'Found duplicate column(s) in the data schema'), so the pandas backend does "
+            "too. Rename the columns at the source, or read with a schema.",
+        )
     frame = PandasDataFrameAdapter(to_pandas(table))
     # The files read, for the run record's source version (F-046); never read again.
     frame.source_files = [os.path.abspath(f) for f in files]
@@ -854,6 +863,18 @@ def no_columns(rows: int) -> Any:
     return pa.Table.from_batches([pa.RecordBatch.from_struct_array(empty)])
 
 
+def case_duplicates(names: Sequence[str]) -> List[str]:
+    """Names that appear more than once, ignoring case, as Spark compares them (F-069).
+
+    Spark's default ``spark.sql.caseSensitive=false`` refuses a read or a write of
+    data whose column names differ only by case.
+    """
+    from collections import Counter
+
+    counts = Counter(str(n).lower() for n in names)
+    return sorted({str(n) for n in names if counts[str(n).lower()] > 1})
+
+
 def to_arrow(df: Any, timezone: str) -> Any:
     """What a task returned, as an Arrow table with the types Spark writes.
 
@@ -866,9 +887,12 @@ def to_arrow(df: Any, timezone: str) -> Any:
 
     frame = df.native if isinstance(df, PandasDataFrameAdapter) else df
     if isinstance(frame, pd.DataFrame):
-        if frame.columns.duplicated().any():
-            dupes = sorted({str(c) for c in frame.columns[frame.columns.duplicated()]})
-            raise _refuse(f"The frame has duplicate column names {dupes}.")
+        dupes = case_duplicates([str(c) for c in frame.columns])
+        if dupes:
+            raise _refuse(
+                f"The frame has duplicate column names {dupes} (names that differ only "
+                "by case count as the same, as Spark counts them)."
+            )
         if any(name is not None for name in frame.index.names):
             frame = frame.reset_index()
         if len(frame.columns) == 0:
@@ -877,6 +901,9 @@ def to_arrow(df: Any, timezone: str) -> Any:
             return no_columns(len(frame))
         table = pa.Table.from_pandas(frame, preserve_index=False)
     elif isinstance(frame, pa.Table):
+        dupes = case_duplicates(frame.column_names)
+        if dupes:
+            raise _refuse(f"The table has duplicate column names {dupes}.")
         table = frame
     else:
         raise _refuse(

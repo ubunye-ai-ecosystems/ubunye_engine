@@ -336,6 +336,64 @@ def test_json_empty_string_in_a_number_field(spark, pandas_backend, tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# Column names
+# --------------------------------------------------------------------------- #
+
+
+def test_awkward_column_names_read_the_same(spark, pandas_backend, tmp_path):
+    """E-08 shape 10: unicode, spaces, dots, reserved words; parquet and CSV."""
+    import pyarrow.parquet as pq
+
+    names = ["naïve", "名前", "with space", "a.b", "select", "from", "Größe", "tab\tname"]
+    path = str(tmp_path / "names.parquet")
+    pq.write_table(pa.table({n: pa.array([i], pa.int64()) for i, n in enumerate(names)}), path)
+    spark_df, frame = _read_both(spark, pandas_backend, "parquet", path)
+    assert_same(spark_df, frame)
+    _same_digest(spark_df, frame)
+
+
+def _refused(action) -> bool:
+    try:
+        action()
+    except Exception:  # noqa: BLE001
+        return True
+    return False
+
+
+@pytest.mark.parametrize("fmt", ["parquet", "json"])
+def test_names_that_differ_only_by_case_are_refused(spark, pandas_backend, tmp_path, fmt):
+    """F-069: Spark (caseSensitive false) refuses the read; so does pandas."""
+    import pyarrow.parquet as pq
+
+    path = str(tmp_path / f"case.{fmt}")
+    if fmt == "parquet":
+        pq.write_table(pa.table({"Col": [1], "col": [2]}), path)
+    else:
+        Path(path).write_bytes(b'{"Col":1,"col":2}\n')
+    assert _refused(lambda: spark.read.format(fmt).load(path).collect())
+    assert _refused(lambda: pandas_backend.read_frame(fmt, path))
+
+
+def test_a_frame_with_names_that_differ_only_by_case_is_not_written(
+    spark, pandas_backend, tmp_path
+):
+    """F-069: Spark refuses to write such a frame; so does pandas."""
+    from ubunye.core.write_modes import ResolvedWriteMode
+
+    df = spark.createDataFrame([(1, 2)], "Col INT, col INT")
+    assert _refused(lambda: df.write.parquet(str(tmp_path / "spark")))
+    assert _refused(
+        lambda: pandas_backend.execute_write(
+            pd.DataFrame({"Col": [1], "col": [2]}),
+            ResolvedWriteMode(mode="overwrite", save_mode="overwrite"),
+            connector="s3",
+            file_format="parquet",
+            path=str(tmp_path / "pandas"),
+        )
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Empty inputs
 # --------------------------------------------------------------------------- #
 

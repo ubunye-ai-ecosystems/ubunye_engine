@@ -292,6 +292,47 @@ class TestEmptyInputsWithASchema:
             PandasBackend().read_frame("parquet", str(tmp_path / "nope"), schema="id BIGINT")
 
 
+class TestNamesThatDifferOnlyByCase:
+    """F-069: Spark (caseSensitive false) refuses columns that differ only by case."""
+
+    def test_a_parquet_file_is_refused(self, tmp_path):
+        import pyarrow.parquet as pq
+
+        from ubunye.core.errors import SourceReadError
+
+        pq.write_table(pa.table({"Col": [1], "col": [2]}), tmp_path / "c.parquet")
+        with pytest.raises(SourceReadError, match="differ only by case"):
+            PandasBackend().read_frame("parquet", str(tmp_path / "c.parquet"))
+
+    def test_json_keys_are_refused(self, tmp_path):
+        from ubunye.core.errors import SourceReadError
+
+        with pytest.raises(SourceReadError, match="differ only by case"):
+            _read_bytes(tmp_path, "json", b'{"a":1,"A":2}\n')
+
+    def test_a_frame_is_not_written(self, tmp_path):
+        from ubunye.core.errors import SinkWriteError
+        from ubunye.core.write_modes import ResolvedWriteMode
+
+        with pytest.raises(SinkWriteError, match="duplicate column names"):
+            PandasBackend().execute_write(
+                pd.DataFrame({"Col": [1], "col": [2]}),
+                ResolvedWriteMode(mode="overwrite", save_mode="overwrite"),
+                connector="s3",
+                file_format="parquet",
+                path=str(tmp_path / "out"),
+            )
+        assert not (tmp_path / "out").exists()
+
+    def test_other_awkward_names_are_fine(self, tmp_path):
+        import pyarrow.parquet as pq
+
+        names = ["naïve", "名前", "with space", "a.b", "select", "Größe", "tab\tname"]
+        pq.write_table(pa.table({n: [i] for i, n in enumerate(names)}), tmp_path / "n.parquet")
+        frame = PandasBackend().read_frame("parquet", str(tmp_path / "n.parquet"))
+        assert list(frame.native.columns) == names
+
+
 NY = "America/New_York"
 # 02:30 on 2024-03-10 does not exist in New York (clocks go 02:00 -> 03:00);
 # 01:30 on 2024-11-03 happens twice (EDT, then EST).

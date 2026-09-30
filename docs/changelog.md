@@ -107,6 +107,11 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **Columns whose names differ only by case are refused on pandas, as on Spark
+  (F-069, E-08).** A parquet file with `Col` and `col`, JSON keys `a` and `A`, or a
+  transform that returns both, ran on pandas and failed on Spark, whose default
+  (`spark.sql.caseSensitive` false) refuses such data on read and on write. The pandas
+  backend now refuses them too, before anything is written, and says why.
 - **An empty file or folder read with a schema is zero rows on pandas (F-068, E-08).**
   A zero byte file, or a folder holding only `_SUCCESS`, read with `schema:` stopped
   the run ("Path does not exist or holds no data files"). Spark reads zero rows with
