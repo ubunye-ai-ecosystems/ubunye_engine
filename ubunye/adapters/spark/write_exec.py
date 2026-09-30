@@ -90,6 +90,16 @@ def apply(
         )
         return
 
+    if resolved.save_mode == "append" and path and not table:
+        # A path append under a run lease: Spark writes into a staging folder of this
+        # run, and each file is claimed before it is moved in (ADR 008).
+        from ubunye.adapters.spark import claimed_append
+
+        if claimed_append.append(
+            df, spark, path=path, file_format=file_format, partition_by=parts, opts=opts
+        ):
+            return
+
     _save()
 
 

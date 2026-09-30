@@ -795,7 +795,9 @@ class Engine:
             # Rerun safety (ADR 008): the lease knows which output is being written. A
             # backend that claims its files (pandas) has its appends taken back exactly
             # if the run fails or dies; other appends are named, never guessed at. A
-            # missing mode counts as append: most writers default to it.
+            # Spark path append on a local disk marks itself exact when it claims
+            # (``runs.staging``). A missing mode counts as append: most writers default
+            # to it.
             runs.writing(
                 name,
                 appends=str(ocfg.get("mode") or "append").lower() == "append",

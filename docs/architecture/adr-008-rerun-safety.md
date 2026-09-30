@@ -32,12 +32,13 @@ table and information date, and with repairs made from what was actually written
 - **Only claimed files are ever removed.** A backend that names the files it appends
   *claims* each one in the lease before it lands. The pandas backend does: one part
   file with a fresh UUID in its name (one per partition folder for a partitioned
-  append, F-012), each moved into place in one step. A run that
+  append, F-012), each moved into place in one step. So does Spark for a path on a
+  local or shared disk (F-070, addendum below). A run that
   fails removes its claimed files; the run that takes over a dead run removes that
-  run's. No folder is ever listed to decide what to delete, so another run's files are
-  never touched.
-- **What cannot be claimed is named, never deleted.** Spark, JDBC and catalog appends
-  are not claimed. If such a run fails or dies after appending, the log and the dead
+  run's. No output folder is ever listed to decide what to delete, so another run's
+  files are never touched.
+- **What cannot be claimed is named, never deleted.** JDBC, catalog and Delta
+  appends, and Spark appends to object storage, are not claimed. If such a run fails or dies after appending, the log and the dead
   run's record say which outputs may hold part or all of the batch. A missing `mode`
   counts as append, since most writers default to it.
 - **A claim is never forgotten.** A claimed file that cannot be removed (a reader has
@@ -71,9 +72,12 @@ table and information date, and with repairs made from what was actually written
 - The lease protects runs that share the usecase folder: one machine, or a shared
   disk. Cloud jobs that each start on their own disk are not protected by it; a lease in
   object storage (a conditional write) is the next step.
-- Appends are taken back on the pandas backend only. On Spark use `overwrite`,
-  `overwrite_partitions` or Delta for batches that must land once; plain Spark
-  appends are named after a crash, not repaired.
+- Appends are taken back on the pandas backend, and on Spark for plain file formats
+  on a path Spark resolves to the local file system (F-070). A Spark append to object
+  storage (`s3a://`, `abfss://`, `gs://`, `dbfs:/`), HDFS, a Delta or catalog table,
+  or JDBC is named after a crash, not repaired: use `overwrite`,
+  `overwrite_partitions`, `merge` or Delta's `replace_where` for batches that must land
+  once (F-071, F-072, F-073).
 - A run of a batch that already **finished** is covered by the addendum below (F-031),
   not by the lease, which is gone once a run ends.
 - It does not make a whole run exactly-once for outputs other than appends: an
@@ -144,8 +148,9 @@ replace it.
   lease, as for claims. A run whose lease was taken over before it saved `committed`
   removes nothing and is not a success (skeptic round 5 proved the earlier order
   deleted both runs' files).
-- Appends that were never claimed (Spark, JDBC, catalogs) cannot be replaced: with
-  `--rerun` they are appended again and the run says so, naming the outputs.
+- Appends that were never claimed (JDBC, catalog and Delta tables, Spark on object
+  storage) cannot be replaced: with `--rerun` they are appended again and the run says
+  so, naming the outputs.
 
 **Why not skip.** A skip exits 0 and writes nothing. A job that runs `dt=today`
 every hour and appends new rows each time would then lose every run after the
@@ -165,3 +170,60 @@ are, even if the output's path has changed since. Files moved or compacted by
 something else since are not found, so `--rerun` then removes nothing and appends
 (the log says how many files it removed). `dtf` stays part of the batch key:
 dropping it would strand leases left by earlier versions.
+
+## Addendum: Spark path appends are claimed (F-070, 2026-09-30)
+
+A Spark `append` to a folder of files was named after a crash, never taken back. On
+live Spark 4.2 a run killed after its append was appended again by the rerun, a run
+that failed after its append left it there, and `--rerun` appended a finished batch a
+second time (9 of 10 new integration cases fail on the old code).
+
+**Why Spark cannot claim its own files.** Spark names each file
+`part-NNNNN-<job uuid>.c000<ext>` with a job UUID it makes inside the write
+(`InsertIntoHadoopFsRelationCommand`, the same in Spark 3.5.8 and 4.0.1). No option
+sets it. When the files appear in the output depends on the committer: at job commit
+with `FileOutputCommitter` v1, at each task commit with v2, and a failed v2 job leaves
+files behind. So no claim can be made before Spark's files land in the output.
+
+**Decision: Spark writes into a staging folder the lease names, then the files are
+claimed and moved in.**
+
+1. The run records a new folder beside the output, `.<name>.ubunye-<uuid>`, in the
+   lease, and marks the output as claimed exactly. The folder does not exist yet.
+2. Spark writes the batch into that folder (partition folders included).
+3. The data files in it are this run's by construction: the run named the folder and
+   nothing else writes there. Their names are claimed in the lease, all in one save.
+4. Each is moved into the output in one rename (same disk), and checked as landed.
+   `_SUCCESS` is touched in the output, as Spark's own append leaves it.
+5. The staging folder is removed. A run that fails, or the run that takes over a dead
+   one, removes the staging folder named in the lease and the claimed files, nothing
+   else.
+
+**Why this is not inferring ownership.** The rule is unchanged: the writer states
+what is its own. What is listed is a folder this run named and recorded before it
+existed, not the output. The output folder is never listed. A file already in the
+output with the same name as one of the run's files is refused before anything is
+claimed, so a claim can never name a file that is not this run's.
+
+**Which appends.** A run lease is held; the format is `parquet`, `csv`, `json`,
+`orc`, `avro` or `text`; and Spark resolves the path to the local file system (a
+laptop, a VM disk, a shared mount; a path with no scheme on a cluster whose default
+file system is HDFS is not local). Everything else goes to Spark directly, as before,
+and is named after a crash. What Spark itself skips is not moved: `.crc` checksums,
+`_SUCCESS`, and Parquet summary files, which describe the staging folder only.
+
+**What it costs.** One rename per file and one lease save for all the claims. Spark
+writes the same data either way.
+
+**Not covered, filed:** Delta appends (F-071: Delta's `txnAppId` and `txnVersion`
+make a write idempotent, but they also skip a deliberate `--rerun` and a rerun after
+the rows were removed by hand, silently); JDBC appends (F-072); Spark appends to
+object storage and HDFS (F-073: a rename there is a copy, and a take back needs the
+Hadoop file system, which a run that takes over may not have started).
+
+**Proof:** `tests/integration/test_spark_append_claims.py` (E-01 and E-02 ported to
+Spark: a real kill of a child process after the append and before the claims, a
+foreign file in the folder, `--rerun`, four formats partitioned, a failed run, two
+runs at once). On the old code 9 of 10 fail (the batch twice, or a failed run's
+append left); on the new code 10 of 10 pass. Two runs at once was already safe (the
+lease refused the second) and passes on both.

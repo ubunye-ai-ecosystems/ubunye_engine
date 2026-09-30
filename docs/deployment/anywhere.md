@@ -177,6 +177,9 @@ this does:
   system, since Windows and macOS disks ignore case.
 - `append` claims every new file before it lands, so a failed or killed run has
   exactly its own files taken back ([ADR 008](../architecture/adr-008-rerun-safety.md)).
+  Spark does the same for a path on a local or shared disk: it writes the batch into
+  a hidden folder beside the output (`.<name>.ubunye-<id>`), and the files are
+  claimed, then moved in. On object storage a Spark append is not claimed.
 
 Reading a partitioned folder, a value becomes an `int`, `bigint`, `decimal`,
 `double`, `timestamp`, `date` or text, as Spark infers it. That inference is why
