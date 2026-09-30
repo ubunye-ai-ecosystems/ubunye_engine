@@ -438,6 +438,19 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   rice +144%, Ethiopia groundnuts +122%, Chad wheat flour +78% across 54 markets). A
   small WFP sample ships with it, so the first run needs no account and no Java; the
   two steps give the same rows on pandas and Spark (tested, golden digests).
+- **A second real-world example: Olist sales, nine tables to an order fact table**
+  (`examples/real-world/olist_ecommerce`), and **Tutorial 2**
+  (`docs/tutorials/02-olist-multi-table.md`). Three steps: `clean` (input contracts on
+  the nine raw CSV files, typed outputs, categories in English, one point per zip
+  prefix, bad items, payments and reviews quarantined), `orders_fact` (one row per
+  order, reconciled with its inputs: every order in, one row out, payments and prices
+  add up) and `monthly` (sales and on-time rate per seller, sales per category). A
+  made up sample shaped like the real files ships with it (the Olist data is CC
+  BY-NC-SA 4.0, so it is downloaded at run time by `scripts/fetch_data.sh`, never
+  committed). The tutorial breaks the pipeline on purpose to show a contract, a
+  quarantine, a reconcile and a warning each catching its problem. Golden digests on
+  pandas in the unit tier, the same on Spark in the integration tier. The portable
+  transforms guide gains "days between two dates" (F-053).
 - **A guide to writing portable transforms** (`docs/guides/portable-transforms.md`):
   the places the same Narwhals code gave different numbers on pandas and Spark, each
   found on real data, each with a fix (rounding modes, float sums, a lost cast,

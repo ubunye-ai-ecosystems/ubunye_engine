@@ -73,6 +73,27 @@ Cutting a timestamp into a day or an hour depends on a time zone. Every Ubunye b
 uses UTC unless the task sets `spark.sql.session.timeZone` (ADR 007; before that, local
 Spark used the machine's zone, finding F-021). A task that means local days sets the key.
 
+## Days between two dates: count with whole numbers
+
+Narwhals cannot subtract two timestamps on Spark (`dt.total_seconds` and
+`dt.timestamp` are not implemented there), and on pandas `dt.ordinal_day()` fails on a
+column with a null in it (finding F-053), which a delivery date often has. The Olist
+example turns each date into a day number with whole number arithmetic on the year,
+month and day, which every engine does alike, and subtracts:
+
+```python
+def day_number(ts):
+    month = ts.dt.month().cast(nw.Int64)
+    y = ts.dt.year().cast(nw.Int64) - nw.when(month <= 2).then(1).otherwise(0)
+    march_based = nw.when(month >= 3).then(month - 3).otherwise(month + 9)
+    day_of_year = (march_based * 153 + 2) // 5 + ts.dt.day().cast(nw.Int64) - 1
+    return (y * 365 + y // 4 - y // 100 + y // 400 + day_of_year).cast(nw.Int64)
+```
+
+Two smaller traps met on the way: pandas 2 has no modulo (`%`) on Arrow backed
+integers (Ubunye's pandas backend reads into Arrow), and Narwhals has no
+`when().when()`: nest a second `when` inside `otherwise`.
+
 ## Null group keys: keep them on purpose
 
 Spark keeps rows whose group key is null as one group; plain pandas drops them. Narwhals
