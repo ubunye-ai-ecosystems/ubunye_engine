@@ -17,7 +17,8 @@ Feature names a backend can declare (connectors refer to the same names):
     ``read_frame`` / ``execute_write`` on paths, which the ``s3`` connector uses.
 ``records``
     ``frame_from_records`` / ``iter_records``: a frame from a list of dicts, and
-    each row of a frame as a dict. The ``rest_api`` connector uses it.
+    each row of a frame as a dict. The ``rest_api`` connector uses it. ``spark``
+    implies it (see :func:`provided`).
 ``partitioned_writes``
     Honours ``partitionBy`` on a path write.
 ``remote_paths``
@@ -91,6 +92,18 @@ def is_remote(path: str) -> bool:
     return ("://" in path and not path.startswith("file://")) or path.startswith("dbfs:")
 
 
+def provided(caps: Capabilities) -> FrozenSet[str]:
+    """The features a backend provides, with what one implies.
+
+    ``spark`` implies ``records``: a backend with a SparkSession can build a frame
+    from records the Spark way (``Backend.frame_from_records`` falls back to it),
+    so a Spark backend written before ``records`` existed keeps running rest_api.
+    """
+    if SPARK in caps.features:
+        return caps.features | {RECORDS}
+    return caps.features
+
+
 IoCheck = Callable[[str, Dict[str, Any]], List[str]]
 
 
@@ -109,7 +122,7 @@ def _connector_problems(
         return []  # unknown connector: the engine reports it with the installed list
     problems = []
     needs = frozenset(getattr(connector, "REQUIRES", frozenset()))
-    missing = sorted(needs - caps.features)
+    missing = sorted(needs - provided(caps))
     if missing:
         problems.append(
             f"{where} uses the '{fmt}' connector, which needs {', '.join(missing)}; "

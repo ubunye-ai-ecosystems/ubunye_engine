@@ -155,7 +155,7 @@ class RestApiWriter(Writer):
         batch: List[Dict[str, Any]] = []
 
         try:
-            for record in backend.iter_records(df):
+            for record in rest_http.records_of(df, backend):
                 batch.append(record)
 
                 if len(batch) >= batch_size:

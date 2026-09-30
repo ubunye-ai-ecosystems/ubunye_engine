@@ -195,12 +195,28 @@ class Backend(ABC):
     # A connector that gets its data as Python records (``rest_api``: parsed
     # JSON) hands them to the backend, which builds its own frame, typed as
     # Spark's ``createDataFrame`` types them. The writer side asks for each row
-    # back as a dict. Same concrete-and-raising shape as the path seam above.
+    # back as a dict.
+    #
+    # A backend written before these methods existed, with a SparkSession
+    # (``self.spark``), gets the Spark route, as the connector used before F-015;
+    # so do the capability checks, where ``spark`` satisfies ``records``. Any
+    # other backend raises, as the path seam above does.
     # ---------------------------------------------------------------- #
+    def _session_or_none(self) -> Any:
+        try:
+            return getattr(self, "spark", None)
+        except Exception:  # noqa: BLE001 (a property that needs start() first)
+            return None
+
     def frame_from_records(
         self, records: List[Dict[str, Any]], *, schema: Optional[str] = None
     ) -> Any:
         """A frame from a list of dicts; ``schema`` is a Spark DDL string."""
+        spark = self._session_or_none()
+        if spark is not None:
+            from ubunye.adapters.spark import frame_io
+
+            return frame_io.frame_from_records(spark, records, schema=schema)
         raise NotImplementedError(
             f"{type(self).__name__} does not implement frame_from_records(); it cannot "
             "serve a records connector like 'rest_api'."
@@ -208,6 +224,10 @@ class Backend(ABC):
 
     def iter_records(self, frame: Any) -> Iterator[Dict[str, Any]]:
         """Each row of ``frame`` as a plain dict (nested values as dicts and lists)."""
+        if self._session_or_none() is not None:
+            from ubunye.adapters.spark import frame_io
+
+            return frame_io.iter_records(frame)
         raise NotImplementedError(
             f"{type(self).__name__} does not implement iter_records(); it cannot "
             "serve a records connector like 'rest_api'."

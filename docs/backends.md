@@ -165,6 +165,12 @@ class MyBackend(Backend):
 mine = "my_package.backend:MyBackend"
 ```
 
+To serve the REST connector, declare `records` and implement
+`frame_from_records(records, *, schema=None)` (a list of dicts, and a Spark DDL
+string or None, to your frame) and `iter_records(frame)` (each row as a dict). A
+backend with a SparkSession (`self.spark`) that declares `spark` needs neither:
+`spark` implies `records`, and the base class does both the Spark way.
+
 After `pip install`, `ubunye backends` lists it and `--backend mine` runs on it.
 If your constructor takes other arguments, override the `create` class method.
 If your engine should claim a session the platform already started, override

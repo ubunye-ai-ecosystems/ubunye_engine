@@ -81,6 +81,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
   `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
   both.
+- **A plugin Spark backend keeps running the REST connector** (F-015 review). The
+  F-015 fix made rest_api require the new `records` feature, so a third party
+  backend that declared `spark` (as on 0.7) was refused, and `RestApiWriter().write`
+  with no backend (`None`) crashed. Now `spark` implies `records`, the `Backend` base
+  builds and reads records the Spark way when it has a SparkSession, and the writer
+  falls back to the frame's `toLocalIterator`, as before.
 - **The pandas backend writes a map column to JSON as Spark does** (F-015 review): as
   an object, keeping its null values (`{"m":{"a":null,"b":"x"}}`). It wrote Arrow's
   pairs instead (`{"m":[["a",null],["b","x"]]}`), which Spark reads back as a

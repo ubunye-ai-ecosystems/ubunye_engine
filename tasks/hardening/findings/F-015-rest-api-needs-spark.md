@@ -109,3 +109,12 @@ fixed in its own commit on this branch.
    Test: `test_a_map_is_an_object_with_its_null_values` in
    `tests/unit/backends/test_pandas_writes_like_spark.py` (fails before, passes
    after).
+4. **A plugin Spark backend lost the REST connector.** On b6ff30b a third party
+   backend declaring `spark` ran rest_api, and the writer ignored its backend
+   argument. After the fix the plan refused it ("needs records"), a backend that
+   declares nothing hit `NotImplementedError`, and `None` hit `AttributeError`
+   (`third_party_backend.py`). Now `spark` implies `records` (`capabilities.provided`),
+   the `Backend` base does both methods the Spark way when `self.spark` exists, and
+   the writer falls back to `toLocalIterator`. After: plan problems `[]`, writer ok
+   with both. Tests: `tests/unit/connectors/test_rest_api_third_party_backends.py`
+   (5 fail before, pass after).

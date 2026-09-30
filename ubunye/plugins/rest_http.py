@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Type
 
-from ubunye.core.capabilities import RECORDS, Capabilities
+from ubunye.core.capabilities import RECORDS, Capabilities, provided
 from ubunye.core.errors import UbunyeError
 
 if TYPE_CHECKING:  # only for type checkers; requests is an optional dependency
@@ -54,7 +54,7 @@ def check_backend(backend: Any, error: Type[UbunyeError]) -> None:
     if not callable(caps_of):
         return
     caps = caps_of()
-    if isinstance(caps, Capabilities) and caps.declared and RECORDS not in caps.features:
+    if isinstance(caps, Capabilities) and caps.declared and RECORDS not in provided(caps):
         kind = type(backend).__name__
         raise error(
             f"The 'rest_api' connector needs a backend that builds frames from records, "
@@ -62,6 +62,23 @@ def check_backend(backend: Any, error: Type[UbunyeError]) -> None:
             context={"connector": "rest_api", "Backend": kind},
             hint="Run with --backend spark or --backend pandas.",
         )
+
+
+def records_of(frame: Any, backend: Any) -> Iterator[Dict[str, Any]]:
+    """The frame's rows as dicts: the backend's ``iter_records``, else Spark's way.
+
+    A backend that cannot say (``None``, or one written before ``iter_records``
+    with no SparkSession) gets what the writer did before F-015: the frame's own
+    ``toLocalIterator``, each row as a dict.
+    """
+    if backend is not None:
+        try:
+            return iter(backend.iter_records(frame))
+        except (NotImplementedError, AttributeError):
+            pass
+    from ubunye.adapters.spark import frame_io
+
+    return frame_io.iter_records(frame)
 
 
 def build_session(cfg: Dict[str, Any], error: Type[UbunyeError]) -> "requests.Session":

@@ -29,7 +29,10 @@ path connector requires `path_io`.
 Later (F-015): rest_api requires `records` instead, a feature added for it:
 `frame_from_records` builds a frame from a list of dicts and `iter_records`
 gives a frame's rows back as dicts. The spark, databricks and pandas backends
-declare it, so the REST connector runs on all three.
+declare it, so the REST connector runs on all three. `spark` implies `records`,
+and the `Backend` base builds and reads records the Spark way when the backend
+has a SparkSession, so a plugin Spark backend written before `records` keeps
+running rest_api unchanged.
 
 Before anything starts, the engine compares the two for every input and output
 and reports every problem at once. `ubunye validate --backend NAME` runs the same
