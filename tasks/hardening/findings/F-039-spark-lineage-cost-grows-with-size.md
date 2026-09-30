@@ -1,6 +1,6 @@
 # F-039: On Spark, `--lineage` costs 1.7 times the job at 1M rows and 4.4 times at 50M, and computes every output twice
 
-**Status:** item 1 fixed on fix/f040-spark-persist (2026-09-29, ADR 009), awaiting skeptic review and merge into hardening/real-world; items 2 and 3 open (F-041, and the hash definition)
+**Status:** open. Items 1 and 2 fixed (ADR 009, F-041); the 1.5x target is not met. Measured 2026-09-30 below; the next step is experiment E-07 (a native SHA-256 kernel).
 **Severity:** major
 **Source:** scale-runner, experiment E-06 (2026-09-29)
 **Promise:** 7 (the core stays small) and the scale requirement; ADR 006 states a smaller cost than the real one
@@ -82,3 +82,35 @@ The target of 1.5x at 5M is not met. What is left is the input hash, a second re
 same before and after (`sha256:b412fee5...`, `sha256:82f89588...`). The box was noisy:
 one old Ubunye run took 26.85 s against 14.95 and 17.61; read the job and scan counts
 as the result and the times as a direction.
+
+## Measured after the 2026-09-30 fixes
+Scale ladder on GitHub `ubuntu-latest` (4 vCPU), median of 3, at `hardening/real-world`
+11823f9 (run 36673389425), against 29 September (run 36632756146, before F-041). Ratio =
+`--lineage` wall time over the plain job's.
+
+| backend | rows | 29 Sep | now | record `hash_seconds`, 29 Sep | now |
+|---|---|---|---|---|---|
+| Spark | 1,000,000 | 1.74x | 1.63x | 8.0 | 6.0 |
+| Spark | 5,000,000 | 2.52x | **1.92x** | 16.7 | 12.8 |
+| Spark | 20,000,000 | 4.08x | 2.86x | 62.1 | 25.6 |
+| Spark | 50,000,000 | 4.80x | **3.78x** | 125.1 | 80.2 |
+| pandas | 1,000,000 | 5.72x | 5.70x | 3.2 | 3.3 |
+| pandas | 5,000,000 | 9.81x | **6.35x** | 15.7 | 9.6 |
+| pandas | 20,000,000 | 9.58x | 6.47x | 51.3 | 32.3 |
+| pandas | 50,000,000 | 9.67x | **4.90x** | 156.1 | 71.9 |
+
+Ubunye without `--lineage` is within 0.92x to 1.46x of plain at every size (the small
+sizes are start up).
+
+What moved it: outputs computed once (ADR 009), long half lane sums on Spark (F-041),
+hashing across cores on pandas (F-038). What is left is the `rows-v1` definition itself:
+`to_json` of every row and one SHA-256 per row, plus reading each input again to hash
+it (F-046 made that honest, not cheaper).
+
+## Next
+Experiment E-07: a native per row SHA-256 kernel that gives the same digest, as an
+optional extra (the pure Python path stays the default and the reference), measured
+on this ladder. Two cheaper options to measure first: keeping the pandas hash helpers
+alive for the whole run, and an opt-in that skips the input content hash when a pinned
+Delta version names the input exactly (it changes ADR 006's promise, so opt-in only).
+

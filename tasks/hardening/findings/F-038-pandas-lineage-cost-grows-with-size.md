@@ -204,3 +204,9 @@ Timings after the safety changes (same box, median of 3): `fingerprint_arrow`
 9 columns 4.03 s (was 4.15 s); 1,000,000 rows: 1.17 s and 1.37 s. E-06 at
 5,000,000 rows: `--lineage` 11.04 s, plain 4.74 s (2.33x), record hashing 6.45 s:
 the same as before within this box's noise.
+
+## On the scale ladder (2026-09-30)
+GitHub `ubuntu-latest`, median of 3, run 36673389425: `--lineage` / plain on pandas 6.35x at
+5M rows (was 9.81x), 4.90x at 50M (was 9.67x); record `hash_seconds` 9.6 s at 5M (was
+15.7), 71.9 s at 50M (was 156.1). The rest of the gap is tracked in F-039 and E-07.
+
