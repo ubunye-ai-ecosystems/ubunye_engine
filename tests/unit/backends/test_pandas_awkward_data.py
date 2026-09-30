@@ -80,7 +80,7 @@ class TestCsvLongRows:
             tmp_path,
             "csv",
             data,
-            options={"header": "true", "multiLine": "true", "encoding": "latin1"},
+            options={"header": "true", "multiLine": "true", "encoding": "ISO-8859-1"},
         )
         assert frame.native["t"].tolist() == [big]
 
@@ -464,5 +464,26 @@ class TestCsvBytesNotInTheEncoding:
 
     def test_the_declared_encoding_still_decides(self, tmp_path):
         data = "name,price\nCafé,€5\n".encode("cp1252")
-        frame = _read_bytes(tmp_path, "csv", data, options={"header": "true", "encoding": "cp1252"})
-        assert frame.native.iloc[0].tolist() == ["Café", "€5"]
+        frame = _read_bytes(
+            tmp_path, "csv", data, options={"header": "true", "encoding": "ISO-8859-1"}
+        )
+        # ISO-8859-1 reads cp1252's euro byte (0x80) as the control character U+0080.
+        assert frame.native.iloc[0].tolist() == ["Café", "\x805"]
+
+
+class TestEncodingNamesSpark4Accepts:
+    """E-09 (live Spark 4.2): encoding must be one of Spark 4's seven names."""
+
+    @pytest.mark.parametrize("fmt", ["csv", "json"])
+    @pytest.mark.parametrize("name", ["cp1252", "latin1", "utf8", "windows-1252", "utf-32le"])
+    def test_other_names_are_refused_as_spark_4_refuses_them(self, tmp_path, fmt, name):
+        from ubunye.core.errors import SourceReadError
+
+        with pytest.raises(SourceReadError, match="Spark 4 accepts"):
+            _read_bytes(tmp_path, fmt, b"a\n1\n", options={"encoding": name})
+
+    @pytest.mark.parametrize("name", ["UTF-8", "utf-8", "ISO-8859-1", "US-ASCII", "UTF-16"])
+    def test_the_seven_names_are_read(self, tmp_path, name):
+        data = "a\n1\n".encode(name)
+        frame = _read_bytes(tmp_path, "csv", data, options={"encoding": name})
+        assert frame.native["_c0"].tolist() == ["a", "1"]

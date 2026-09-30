@@ -107,6 +107,15 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **`encoding` takes the names Spark 4 takes (F-085, E-09).** Live Spark 4.2 refuses
+  any csv or json `encoding` but `UTF-8`, `ISO-8859-1`, `US-ASCII`, `UTF-16`,
+  `UTF-16LE`, `UTF-16BE` and `UTF-32` (`INVALID_PARAMETER_VALUE.CHARSET`; `cp1252`,
+  `latin1` and even `utf8` are refused). The pandas backend read them, so a task could
+  pass on a laptop and fail on Spark 4. It now refuses them too, before reading, and
+  says which names work. **Behaviour change** for tasks that used another name: use
+  `ISO-8859-1` for Latin-1, or convert the file. Spark 3.5 (and Spark 4 with
+  `spark.sql.legacy.javaCharsets`) takes any Java name; the pandas backend follows
+  Spark 4.
 - **A JSON value read into a text column keeps its source text, as Spark 4 reads it
   (F-084, E-09).** Live Spark 4.2 keeps the exact text of a number or object that
   lands in a text column when it reads JSON lines (`1.50` stays `1.50`, `1e2` stays

@@ -40,3 +40,9 @@ Unit: `tests/unit/backends/test_pandas_awkward_data.py::TestCsvBytesNotInTheEnco
 `test_awkward_data_parity.py::test_csv_bytes_not_in_the_encoding` and a seeded fuzz of
 cut, overlong and surrogate sequences, `test_csv_invalid_utf8_fuzz`. The fuzz is the
 check that Python's replacement matches Java's for each broken sequence.
+
+## After CI on live Spark (E-09, 2026-09-30)
+Spark 3.5 read all four cases as the pandas backend does. Spark 4.2 refused the
+`cp1252` and `latin1` encoding names outright (F-085), and the seeded fuzz of broken
+UTF-8 differed on both versions: Java's decoder gives one U+FFFD for a whole encoded
+surrogate (`ED A0 80`), Python three (F-086).

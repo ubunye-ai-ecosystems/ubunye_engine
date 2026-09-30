@@ -143,16 +143,31 @@ CP1252 = "name,price\nCafé,€5\nTea – green,€3\n".encode("cp1252")
     "data, options",
     [
         (CP1252, {"header": "true"}),
-        (CP1252, {"header": "true", "encoding": "cp1252"}),
-        ("name,city\nJosé,São Paulo\n".encode("latin-1"), {"header": "true", "encoding": "latin1"}),
+        (CP1252, {"header": "true", "encoding": "ISO-8859-1"}),
+        (
+            "name,city\nJosé,São Paulo\n".encode("latin-1"),
+            {"header": "true", "encoding": "iso-8859-1"},
+        ),
         (b'n\xe9me,v\n"a\nb\xff",1\n', {"header": "true", "multiLine": "true"}),
     ],
-    ids=["cp1252-read-as-utf8", "cp1252", "latin1", "bad-bytes-multiline"],
+    ids=["cp1252-read-as-utf8", "cp1252-read-as-iso-8859-1", "latin1", "bad-bytes-multiline"],
 )
 def test_csv_bytes_not_in_the_encoding(spark, pandas_backend, tmp_path, data, options):
     """F-061: a byte that is not valid in the encoding is U+FFFD, as Java decodes it."""
     path = _file(tmp_path, "enc.csv", data)
     assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
+
+
+@pytest.mark.parametrize("fmt", ["csv", "json"])
+@pytest.mark.parametrize("name", ["cp1252", "latin1", "utf8", "windows-1252"])
+def test_encoding_names_spark_4_refuses(spark, pandas_backend, tmp_path, fmt, name):
+    """F-085: Spark 4 takes seven encoding names only; pandas refuses the rest too."""
+    if int(spark.version.split(".")[0]) < 4:
+        pytest.skip("Spark 3.5 takes any Java charset name; pandas follows Spark 4")
+    path = _file(tmp_path, f"enc.{fmt}", b'{"a":1}\n' if fmt == "json" else b"a\n1\n")
+    options = {"encoding": name}
+    assert _refused(lambda: spark.read.format(fmt).options(**options).load(path).collect())
+    assert _refused(lambda: pandas_backend.read_frame(fmt, path, options=options))
 
 
 def _long_text(n: int) -> str:

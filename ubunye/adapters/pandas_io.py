@@ -120,6 +120,13 @@ def _data_files(local: str) -> List[str]:
     ]
 
 
+#: The encodings Spark 4 accepts for csv and json (``CharsetProvider``, compared
+#: in lower case; live Spark 4.2, E-09). Spark 3.5 took any Java charset name.
+SPARK_CHARSETS = frozenset(
+    {"us-ascii", "iso-8859-1", "utf-8", "utf-16be", "utf-16le", "utf-16", "utf-32"}
+)
+
+
 #: Spark's `mode` for csv and json: what to do with a malformed record.
 #: FAILFAST stops, DROPMALFORMED skips it, PERMISSIVE (Spark's default) keeps a
 #: CSV row with the wrong number of fields by cutting or padding it with null,
@@ -151,6 +158,15 @@ def read_problems(
         if str(key).lower() == "mode" and str(value).upper() not in PARSE_MODES:
             problems.append(
                 f"The {fmt} option mode '{value}' is not one of {', '.join(sorted(PARSE_MODES))}."
+            )
+        if str(key).lower() == "encoding" and str(value).lower() not in SPARK_CHARSETS:
+            problems.append(
+                f"The {fmt} option encoding '{value}' is not one Spark 4 accepts "
+                f"({', '.join(sorted(SPARK_CHARSETS))}); Spark 4 refuses it "
+                "(INVALID_PARAMETER_VALUE.CHARSET), so the pandas backend does too. "
+                "For a Windows file use 'ISO-8859-1' (cp1252's extra characters then read "
+                "as control characters), or convert the file to UTF-8. Spark 3.5, and "
+                "spark.sql.legacy.javaCharsets=true on Spark 4, accept any Java charset name."
             )
     if schema:
         try:
