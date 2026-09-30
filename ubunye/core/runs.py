@@ -513,7 +513,11 @@ class RunLease:
         # Spark on object storage, or overwritten whole), where the batch would land
         # again.
         replaces = {n: list(o["claimed"]) for n, o in outputs.items() if o.get("claimed")}
-        again = [n for n in appends if not (outputs.get(n) or {}).get("claimed")]
+        again = [
+            n
+            for n in appends
+            if not ((outputs.get(n) or {}).get("claimed") or (outputs.get(n) or {}).get("staged"))
+        ]
         if not rerun:
             if again:
                 hint = (
@@ -606,7 +610,12 @@ class RunLease:
         if not self.named:
             return True
         written = {
-            n: {"claimed": list(o.get("claimed") or []) if o.get("exact") else []}
+            n: {
+                "claimed": list(o.get("claimed") or []) if o.get("exact") else [],
+                # Written through a staging folder: every file it added is claimed,
+                # even when there were none (an empty batch).
+                **({"staged": True} if o.get("exact") and o.get("staging") else {}),
+            }
             for n, o in (doc.get("outputs") or {}).items()
         }
         if not written:
@@ -722,9 +731,22 @@ class RunLease:
 
     def landed(self, path: str) -> None:
         """After a claimed file was moved in. A run taken over meanwhile (frozen between
-        claim and move) removes it again: the run that took over did not see it."""
-        if self._owner() is False:
+        claim and move) removes it again: the run that took over did not see it.
+
+        One stat: a takeover marks the run it takes over (the tombstone) before it
+        takes anything back. Reading the whole lease here, once per file, made a
+        12,000 file append take 92 s (F-070 skeptic review); :meth:`all_landed` reads
+        it once after the last file."""
+        if self._tombstone(self.run_id).exists():
             _remove([path])
+            raise self._lost()
+
+    def all_landed(self, paths: List[str]) -> None:
+        """After the last claimed file of a write was moved in: the full ownership
+        check. A lease that is gone or another run's (displaced, not taken over) has
+        this write's files removed again."""
+        if self._owner() is False:
+            _remove(list(paths))
             raise self._lost()
 
     def still_owned(self) -> bool:
@@ -1016,12 +1038,20 @@ class RunLease:
 
 
 def _unrepaired(outputs: Dict[str, Any]) -> List[str]:
-    """Append outputs a backend could not claim files for, that may hold data."""
-    return sorted(
-        n
-        for n, o in outputs.items()
-        if o.get("appends") and (not o.get("exact") or not o.get("claimed") or o.get("unseen"))
-    )
+    """Append outputs a backend could not claim files for, that may hold data.
+
+    An output written through a staging folder (``staging``, Spark path appends) is
+    fully repaired even with no claims: nothing reaches the output unclaimed, so no
+    claims means nothing landed (a refusal, a kill before the claims, Spark failing).
+    An exact output with no staging and no claims is still named: a custom writer on
+    a claiming backend may have appended without claiming."""
+
+    def repaired(o: Dict[str, Any]) -> bool:
+        if o.get("unseen") or not o.get("exact"):
+            return False
+        return bool(o.get("staging") or o.get("claimed"))
+
+    return sorted(n for n, o in outputs.items() if o.get("appends") and not repaired(o))
 
 
 class _InUse(Exception):
@@ -1085,6 +1115,13 @@ def landed(path: str) -> None:
     lease = _CURRENT.get()
     if lease is not None:
         lease.landed(path)
+
+
+def all_landed(paths: List[str]) -> None:
+    """Called by a backend after the last claimed file of a write was moved in."""
+    lease = _CURRENT.get()
+    if lease is not None:
+        lease.all_landed(paths)
 
 
 def current() -> Optional[RunLease]:

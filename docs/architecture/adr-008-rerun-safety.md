@@ -188,13 +188,17 @@ files behind. So no claim can be made before Spark's files land in the output.
 **Decision: Spark writes into a staging folder the lease names, then the files are
 claimed and moved in.**
 
-1. The run records a new folder beside the output, `.<name>.ubunye-<uuid>`, in the
-   lease, and marks the output as claimed exactly. The folder does not exist yet.
-2. Spark writes the batch into that folder (partition folders included).
+1. The run records a new folder inside the output, `_ubunye-<12 hex>`, in the lease,
+   and marks the output as claimed exactly. The folder does not exist yet. The
+   output folder is made if it is missing, as Spark's append makes it.
+2. Spark writes the batch into that folder (partition folders included), in a job
+   group of its own.
 3. The data files in it are this run's by construction: the run named the folder and
    nothing else writes there. Their names are claimed in the lease, all in one save.
-4. Each is moved into the output in one rename (same disk), and checked as landed.
-   `_SUCCESS` is touched in the output, as Spark's own append leaves it.
+4. Each is moved up into the output in one rename (the same folder tree, so the same
+   disk), and checked as landed: one check of the takeover mark per file, and one
+   full read of the lease after the last. `_SUCCESS` is touched in the output, as
+   Spark's own append leaves it.
 5. The staging folder is removed. A run that fails, or the run that takes over a dead
    one, removes the staging folder named in the lease and the claimed files, nothing
    else.
@@ -209,11 +213,38 @@ claimed, so a claim can never name a file that is not this run's.
 `orc`, `avro` or `text`; and Spark resolves the path to the local file system (a
 laptop, a VM disk, a shared mount; a path with no scheme on a cluster whose default
 file system is HDFS is not local). Everything else goes to Spark directly, as before,
-and is named after a crash. What Spark itself skips is not moved: `.crc` checksums,
-`_SUCCESS`, and Parquet summary files, which describe the staging folder only.
+and is named after a crash; the log says in one line which output and why. What
+Spark itself skips is not moved: `.crc` checksums, `_SUCCESS`, and Parquet summary
+files, which describe the staging folder only.
 
-**What it costs.** One rename per file and one lease save for all the claims. Spark
-writes the same data either way.
+**Why inside the output.** The first version put the staging folder beside the
+output. The skeptic review proved three faults with it: an output that is a junction
+or mount on another disk could not be renamed into (WinError 17, EXDEV); an output
+folder name of about 235 characters or more made the staging name longer than 255;
+and a glob of the parent folder (`lake/*`, polars `**`) read the staged batch. Inside
+the output, with a leading `_`, it is on the same disk, 20 characters long, and
+skipped by Spark (`shouldFilterOutPathName`, partition discovery included: it has no
+`=`), pyarrow, pandas and Ubunye's own reader, as Spark's own `_temporary` is. A
+staging folder left in the output (a run interrupted in a way no lease could record)
+is named in a warning by the next append, never removed. A job that overwrites the
+whole output while an append is being written removes the staging folder with it;
+that append then fails and is taken back.
+
+**What it costs.** One rename and one stat per file, one lease save for all the
+claims and one full lease read at the end. Claiming 12,000 files takes 14.5 s on the
+dev box, most of it the file system (it was 76 s when each file re-read the lease,
+which grows with each claim; skeptic review). Spark writes the same data either way.
+
+**An interrupt.** Ctrl+C during Spark's write cancels the write's job group before
+the staging folder is removed. A task that was already writing when the cancel
+arrived may still put a file in the folder a moment later; that folder is then left
+in the output (skipped by readers, named by the next append).
+
+**No false alarms.** An output written through a staging folder counts as fully
+taken back even when it claimed nothing: nothing reaches the output unclaimed, so no
+claims means nothing landed (a name clash refused, a kill before the claims, Spark
+failing). An exact output with neither is still named, since a custom writer on a
+claiming backend may append without claiming.
 
 **Not covered, filed:** Delta appends (F-071: Delta's `txnAppId` and `txnVersion`
 make a write idempotent, but they also skip a deliberate `--rerun` and a rerun after
@@ -226,4 +257,10 @@ Spark: a real kill of a child process after the append and before the claims, a
 foreign file in the folder, `--rerun`, four formats partitioned, a failed run, two
 runs at once). On the old code 9 of 10 fail (the batch twice, or a failed run's
 append left); on the new code 10 of 10 pass. Two runs at once was already safe (the
-lease refused the second) and passes on both.
+lease refused the second) and passes on both. The skeptic review added four cases
+(readers of the output and its parent, flat and partitioned; an output on another
+disk; a 240 character output name): all four fail on the first version and pass now.
+Its crash matrix (7 kill points, flat and partitioned, each followed by another
+batch, a takeover, `--resume` and `--rerun`, with a foreign file and decoy staging
+folders) found no file deleted or doubled that the run did not own, before or after
+the move inside.

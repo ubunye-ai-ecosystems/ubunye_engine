@@ -112,17 +112,25 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   was appended again by the rerun, a run that failed after its append left it, and
   `--rerun` appended a finished batch a second time. Spark cannot say its file names
   before they land (it puts a job UUID of its own in each name), so a path append now
-  goes to a hidden folder beside the output that the run's lease names before it
-  exists (`.<name>.ubunye-<id>`). Once Spark has finished, the files there are
-  claimed in the lease, then moved in one rename each. A failed or killed run has
+  goes to a hidden folder inside the output that the run's lease names before it
+  exists (`_ubunye-<id>`, skipped by Spark, pyarrow, pandas and Ubunye's readers).
+  Once Spark has finished, the files there are claimed in the lease, then moved up in
+  one rename each. A failed or killed run has
   exactly those files and that folder taken back, and `--rerun` replaces the batch,
   as on pandas. The output folder is never listed to decide what is a run's, so a
   file another job put there is never removed. Applies to `parquet`, `csv`, `json`,
   `orc`, `avro` and `text` on a path Spark resolves to the local file system (a
   laptop or a shared disk). Delta, catalog tables, JDBC and object storage
   (`s3a://`, `abfss://`, `gs://`, `dbfs:/`) are written as before and named after a
-  crash (F-071, F-072, F-073). Live Spark 4.2: 9 of 10 new integration cases fail on
-  the old code, 10 of 10 pass.
+  crash (F-071, F-072, F-073), and the log says in one line which output was not
+  claimed and why. Live Spark 4.2: 9 of 10 new integration cases fail on the old
+  code, 10 of 10 pass. After the skeptic review: the staging folder moved from beside
+  the output to inside it (an output on another disk, a long folder name, and globs
+  of the parent folder broke); claiming 12,000 files takes 14.5 s (was 76 s, each file
+  re-read the growing lease; the pandas backend gains the same); a Spark append
+  refused or killed before it claimed anything is no longer reported as maybe holding
+  part of the batch; Ctrl+C cancels the Spark write's job group before its folder is
+  removed.
 - **On Windows, reading a run lease while its heartbeat replaces it no longer fails
   (F-048).** Windows refuses a read for a moment while a file is being replaced. The
   engine then called a live run's lease unreadable, and a second run of the same

@@ -1090,14 +1090,16 @@ def _commit(local: str, save_mode: str, write: Any) -> None:
                 os.makedirs(os.path.dirname(target), exist_ok=True)
                 os.replace(os.path.join(staging, part), target)
                 runs.landed(target)
+            runs.all_landed([os.path.join(local, part) for part in parts])
             _touch(os.path.join(local, "_SUCCESS"))
             return
         _touch(os.path.join(staging, "_SUCCESS"))
         if not exists:
             os.replace(staging, local)
             if save_mode == "append":
-                for part in parts:
-                    runs.landed(os.path.join(local, part))
+                # All landed in the one rename: one check, and if this run was
+                # taken over meanwhile, every one of them is removed again.
+                runs.all_landed([os.path.join(local, part) for part in parts])
             return
         old = staging + ".old"
         os.replace(local, old)

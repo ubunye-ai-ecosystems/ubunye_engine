@@ -136,7 +136,7 @@ def _task(root: Path, *, also_missing: bool = False, fmt: str = "parquet", by: s
 
 def _batches(spark: SparkSession, root: Path) -> dict:
     rows = spark.read.parquet(str(root / "out" / "events")).groupBy("batch").count().collect()
-    return {r["batch"]: r["count"] for r in rows}
+    return {str(r["batch"]): r["count"] for r in rows}  # a partition reads back as a date
 
 
 def _kill(task: Path, dt: str, at: str) -> None:
@@ -152,7 +152,11 @@ def _kill(task: Path, dt: str, at: str) -> None:
 
 
 def _debris(root: Path) -> list:
-    return sorted(p.name for p in (root / "out").iterdir() if ".ubunye-" in p.name)
+    """Staging folders left anywhere: beside the output (the first design) or in it."""
+    beside = [p.name for p in (root / "out").iterdir() if ".ubunye-" in p.name]
+    events = root / "out" / "events"
+    inside = [p.name for p in events.glob("_ubunye-*")] if events.exists() else []
+    return sorted(beside + inside)
 
 
 def test_a_run_killed_after_its_append_is_taken_back_and_the_batch_lands_once(spark, tmp_path):
@@ -234,6 +238,99 @@ def test_rerun_replaces_a_partitioned_batch_in_each_file_format(spark, tmp_path,
     assert sorted(p.name for p in events.iterdir() if p.is_dir()) == ["_part=0", "_part=1"]
     assert (events / "_SUCCESS").exists()
     assert _debris(tmp_path) == []
+
+
+@pytest.mark.parametrize("by", ["", "batch"], ids=["flat", "partitioned"])
+def test_readers_of_the_output_and_of_its_parent_never_see_a_staging_batch(spark, tmp_path, by):
+    # F-070 skeptic review: a staging folder beside the output was read by a glob of
+    # the parent (lake/*). Now it is inside the output as _ubunye-<id>, which Spark,
+    # pyarrow and Ubunye's own reader skip, partition discovery included.
+    import pyarrow.dataset as ds
+
+    task = _task(tmp_path, by=by)
+    ubunye.run_task(str(task), dt=DT1, spark=spark)
+    _kill(task, DT2, "before_claims")  # its staging folder stays, full of dt=2
+    events = tmp_path / "out" / "events"
+    left = _debris(tmp_path)
+    assert len(left) == 1 and left[0].startswith("_ubunye-") and (events / left[0]).is_dir()
+    assert list((events / left[0]).rglob("part-*"))  # it does hold the batch
+
+    assert _batches(spark, tmp_path) == {DT1: 3}
+    parent = spark.read.parquet(str(tmp_path / "out" / "*"))
+    assert parent.count() == 3
+    arrow = ds.dataset(str(events), format="parquet", partitioning="hive")
+    assert arrow.count_rows() == 3
+    from ubunye.backends.pandas_backend import PandasBackend
+
+    frame = PandasBackend().read_frame("parquet", str(events))
+    assert frame.count() == 3
+    assert "_ubunye" not in " ".join(frame.schema)
+
+
+def _other_filesystem(tmp_path: Path):
+    """A folder on another disk or file system than ``tmp_path``, or None."""
+    here = os.stat(tmp_path).st_dev
+    if sys.platform == "win32":
+        for letter in "DEFGHIJKLMNOPQRSTUVWXYZ":
+            root = f"{letter}:\\"
+            if os.path.isdir(root) and os.stat(root).st_dev != here:
+                try:
+                    d = Path(root) / f"ubunye-f070-{os.getpid()}-{tmp_path.name}"
+                    d.mkdir()
+                    return d
+                except OSError:
+                    continue
+        return None
+    shm = Path("/dev/shm")
+    if shm.is_dir() and os.stat(shm).st_dev != here:
+        d = shm / f"ubunye-f070-{os.getpid()}-{tmp_path.name}"
+        d.mkdir()
+        return d
+    return None
+
+
+def test_an_output_mounted_on_another_disk_is_appended_and_taken_back(spark, tmp_path):
+    # F-070 skeptic review: the output is a junction (Windows) or symlink to another
+    # disk. A staging folder beside it could not be renamed in (WinError 17, EXDEV).
+    other = _other_filesystem(tmp_path)
+    if other is None:
+        pytest.skip("no second disk or file system here")
+    try:
+        task = _task(tmp_path)
+        (tmp_path / "out").mkdir()
+        link = tmp_path / "out" / "events"
+        if sys.platform == "win32":
+            subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(link), str(other)],
+                check=True,
+                capture_output=True,
+            )
+        else:
+            os.symlink(other, link)
+        ubunye.run_task(str(task), dt=DT2, spark=spark)
+        ubunye.run_task(str(task), dt=DT2, spark=spark, rerun=True)
+        assert _batches(spark, tmp_path) == {DT2: 3}
+        assert _debris(tmp_path) == []
+    finally:
+        import shutil
+
+        if sys.platform == "win32":
+            os.rmdir(tmp_path / "out" / "events")  # the junction, not its target
+        shutil.rmtree(other, ignore_errors=True)
+
+
+def test_an_output_with_a_long_folder_name_is_appended(spark, tmp_path):
+    # F-070 skeptic review: `.<name>.ubunye-<id>` beside a 240 character folder name
+    # was over the 255 character limit. The staging name inside is 20 characters.
+    task = _task(tmp_path)
+    config = task / "config.yaml"
+    config.write_text(
+        config.read_text(encoding="utf-8").replace("out/events", "out/" + "e" * 240),
+        encoding="utf-8",
+    )
+    ubunye.run_task(str(task), dt=DT2, spark=spark)
+    ubunye.run_task(str(task), dt=DT2, spark=spark, rerun=True)
+    assert spark.read.parquet(str(tmp_path / "out" / ("e" * 240))).count() == 3
 
 
 def test_a_run_that_fails_after_its_append_removes_it(spark, tmp_path):

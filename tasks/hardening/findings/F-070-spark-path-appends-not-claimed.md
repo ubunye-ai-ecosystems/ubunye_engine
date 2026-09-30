@@ -44,7 +44,8 @@ until they have landed.
 
 ## Fix
 `ubunye/adapters/spark/claimed_append.py`, called from `write_exec.apply` for a path
-append. Spark writes into `.<name>.ubunye-<uuid>` beside the output, a folder the run
+append. Spark writes into `_ubunye-<uuid>` inside the output (beside it in the first
+version; see the skeptic review below), a folder the run
 records in its lease (`runs.staging`) before it exists; the output is then marked
 exact. When Spark is done, the data files in that folder (this run's by
 construction) are claimed in one lease save (`runs.claim_all`) and moved in, one
@@ -78,3 +79,68 @@ as Spark's `shouldFilterOutPathName` reads it.
   own disk. Spark's own append is broken there too (the job commit on the driver
   sees only the driver's disk). Here, files the driver cannot see are neither
   claimed nor moved. Not tested; use a shared mount or object storage.
+- An empty output folder is left behind when a first append to a new output fails
+  (the folder is made before Spark writes, so the staging folder can go inside it).
+
+## Skeptic review (2026-09-30)
+The skeptic reviewed a4beb70 (CI green on Spark 4 and 3.5) with a crash matrix (7
+kill points, flat and partitioned, each followed by another batch, a takeover,
+`--resume` and `--rerun`), two batches at once, name clashes, foreign files and decoy
+staging folders. It found no file deleted or doubled that the run did not own. It
+found seven other faults (scripts in the session scratchpad, `skeptic-f070/`); all
+are fixed in one commit:
+
+1. **An output on another disk failed.** An output folder that is a junction or
+   mount on another drive: the rename from a staging folder beside it failed
+   (WinError 17; EXDEV on Linux).
+2. **A long output name failed.** `.<name>.ubunye-<id>` beside an output folder named
+   with about 235 characters or more passed the 255 character limit (Spark: `Mkdirs
+   failed`).
+3. **Globs of the parent read the staged batch.** `lake/*`, `lake/*/*.parquet` and
+   polars `**` saw the staging folder beside the output.
+
+   Fix for 1 to 3: the staging folder is inside the output, `_ubunye-<12 hex>` (20
+   characters), made after the output folder (made if missing, as Spark's append
+   makes it). Spark, pyarrow, pandas and Ubunye's reader skip it, partition discovery
+   included (a leading `_` and no `=`). A take back still removes only the recorded
+   folder. A staging folder left in the output is named by the next append, never
+   removed. A job that overwrites the whole output during an append removes the
+   staging folder with it, and that append fails and is taken back.
+4. **Claiming was quadratic.** `landed()` read the whole lease once per file, and the
+   lease grows with each claim. Now one stat of the takeover mark per file (a
+   takeover writes it before taking anything back) and one full read after the last
+   file (`runs.all_landed`, which also catches a lease displaced without a mark). The
+   pandas backend uses the same; its first append to a new folder, which lands every
+   file in one rename, now has all of them removed if the run was taken over (it
+   removed only the first). Skeptic's `perf_probe.py` on the dev box, 12,000 files in
+   partition folders: 76.1 s before, 14.5 s after (14.3 and 14.6 in two runs; plain
+   renames of the same files 3.2 s, the rest is the probe's own file writes, the walk
+   and the claims).
+5. **False warnings.** An output was reported as "may hold part of the batch" when
+   its claim list was empty: a name clash refused, a kill before the claims, Spark
+   failing. An output written through a staging folder now counts as fully taken
+   back with no claims; the finished note marks it `staged`, so `--rerun` does not
+   warn either. An exact output without staging and without claims is still named (a
+   custom writer on a claiming backend may append without claiming).
+6. **A silent fallback.** When the claimed route does not apply (no lease, a format
+   that is not plain files, a path that is not local, Spark Connect), one info line
+   names the output and the reason.
+7. **Ctrl+C during Spark's write.** The JVM could keep writing into the staging
+   folder after it was removed. The write now runs in a job group of its own (the
+   caller's group is restored after), cancelled before the folder is removed. A task
+   already writing when the cancel arrives may still leave a file a moment later; the
+   folder is then left in the output, skipped by readers and named by the next
+   append. Not fully closed, said plainly.
+
+Before and after (a4beb70, then this commit):
+
+| proof | a4beb70 | now |
+|---|---|---|
+| `test_spark_append_claims.py` (14 cases) | 4 failed: readers flat and partitioned, output on T: through a junction, 240 character name | 14 passed |
+| `test_claimed_append.py` unit (34) | 17 failed | 34 passed |
+| `perf_probe.py`, 12,000 files | 76.1 s | 14.5 s |
+| crash matrix, 7 kill points x flat and partitioned | no foreign loss, no double | 14 of 14 end with each batch once, no staging folder left, the foreign files and both decoy staging folders (beside and inside) kept |
+
+On a4beb70 the unit failures include tests of the new behaviour (the reason a path
+is not local is now raised, not None; the staging folder's place); the faults above
+each have at least one test that fails for the fault itself.

@@ -178,8 +178,11 @@ this does:
 - `append` claims every new file before it lands, so a failed or killed run has
   exactly its own files taken back ([ADR 008](../architecture/adr-008-rerun-safety.md)).
   Spark does the same for a path on a local or shared disk: it writes the batch into
-  a hidden folder beside the output (`.<name>.ubunye-<id>`), and the files are
-  claimed, then moved in. On object storage a Spark append is not claimed.
+  a hidden folder inside the output (`_ubunye-<id>`, skipped by Spark, pyarrow,
+  pandas and Ubunye's readers, as Spark's own `_temporary` is), and the files are
+  claimed, then moved up into the output. On object storage a Spark append is not
+  claimed, and the log says so. A job that overwrites the whole output while an
+  append is being written removes that folder, and the append fails.
 
 Reading a partitioned folder, a value becomes an `int`, `bigint`, `decimal`,
 `double`, `timestamp`, `date` or text, as Spark infers it. That inference is why
