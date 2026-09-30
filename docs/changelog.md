@@ -107,6 +107,11 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A CSV byte that is not valid in its encoding no longer stops a pandas read
+  (F-061, E-08).** A Windows (cp1252) export read as UTF-8 failed with "can't decode
+  byte 0xe9". Spark decodes the Java way: such a byte becomes U+FFFD and the read goes
+  on. The pandas backend now does the same. Files that decode cleanly are read as
+  before, at the same cost.
 - **A CSV header with a repeated or blank name reads as on Spark (F-060, E-08).** On
   the pandas backend a header such as `id,amount,amount,,note` stopped the read
   ("duplicate field names"), and a blank name became a column called `""`. The names

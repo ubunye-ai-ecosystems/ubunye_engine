@@ -443,7 +443,15 @@ def _csv_source(path: str, encoding: str, dialect: _CsvDialect, opts: Dict[str, 
         # or data, quoted or not) and keeps one anywhere else. Left in, it became
         # part of the first column's name.
         data = data[3:]
-    text = data.decode(_text_encoding(encoding), errors="replace")
+    try:
+        text = data.decode(_text_encoding(encoding))
+    except UnicodeDecodeError:
+        # Spark decodes with Java's defaults: a byte that is not valid in the
+        # encoding becomes U+FFFD and the read goes on. pyarrow and Python stop
+        # instead (F-061), so the text is decoded here the Java way and handed on
+        # as UTF-8.
+        text = data.decode(_text_encoding(encoding), errors="replace")
+        data, encoding = text.encode("utf-8"), "utf8"
     d = dialect
     plain = not spark_csv.needs_spark_split(text, d.delimiter, d.quote, d.escape, d.multiline)
     parse = pcsv.ParseOptions(

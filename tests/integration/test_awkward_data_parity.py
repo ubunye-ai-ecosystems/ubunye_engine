@@ -88,3 +88,49 @@ def test_csv_header_names(spark, pandas_backend, tmp_path, data):
     path = _file(tmp_path, "h.csv", data)
     options = {"header": "true", "nullValue": "NA"}
     assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
+
+
+CP1252 = "name,price\nCafé,€5\nTea – green,€3\n".encode("cp1252")
+
+
+@pytest.mark.parametrize(
+    "data, options",
+    [
+        (CP1252, {"header": "true"}),
+        (CP1252, {"header": "true", "encoding": "cp1252"}),
+        ("name,city\nJosé,São Paulo\n".encode("latin-1"), {"header": "true", "encoding": "latin1"}),
+        (b'n\xe9me,v\n"a\nb\xff",1\n', {"header": "true", "multiLine": "true"}),
+    ],
+    ids=["cp1252-read-as-utf8", "cp1252", "latin1", "bad-bytes-multiline"],
+)
+def test_csv_bytes_not_in_the_encoding(spark, pandas_backend, tmp_path, data, options):
+    """F-061: a byte that is not valid in the encoding is U+FFFD, as Java decodes it."""
+    path = _file(tmp_path, "enc.csv", data)
+    assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
+
+
+def test_csv_invalid_utf8_fuzz(spark, pandas_backend, tmp_path):
+    """F-061: seeded runs of broken UTF-8 (cut, overlong, surrogate, stray bytes)."""
+    import random
+
+    rng = random.Random(61)
+    pieces = [
+        b"a",
+        b"b",
+        b" ",
+        b"\xc3\xa9",
+        b"\xe2\x82\xac",
+        b"\xe2\x82",
+        b"\xf0\x9f\x98",
+        b"\xf0\x9f\x98\x80",
+        b"\xc0\x80",
+        b"\xed\xa0\x80",
+        b"\xff",
+        b"\x80",
+        b"\xe9",
+    ]
+    lines = [b"id,txt"]
+    for i in range(300):
+        lines.append(str(i).encode() + b"," + b"".join(rng.choice(pieces) for _ in range(6)))
+    path = _file(tmp_path, "fuzz.csv", b"\n".join(lines) + b"\n")
+    assert_same(*_read_both(spark, pandas_backend, "csv", path, {"header": "true"}))

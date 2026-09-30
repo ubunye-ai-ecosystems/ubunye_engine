@@ -48,3 +48,23 @@ class TestCsvHeaderNames:
             "naïve",
             "with space",
         ]
+
+
+class TestCsvBytesNotInTheEncoding:
+    """F-061: Spark reads a byte that is not valid in the encoding as U+FFFD."""
+
+    def test_cp1252_bytes_read_as_utf8_become_replacement_characters(self, tmp_path):
+        data = "name,price\nCafé,€5\n".encode("cp1252")
+        frame = _read_bytes(tmp_path, "csv", data, options={"header": "true"})
+        assert frame.native.iloc[0].tolist() == ["Caf�", "�5"]
+
+    def test_bad_bytes_in_the_header_and_a_multiline_file(self, tmp_path):
+        data = b'n\xe9me,v\n"a\nb\xff",1\n'
+        frame = _read_bytes(tmp_path, "csv", data, options={"header": "true", "multiLine": "true"})
+        assert list(frame.native.columns) == ["n�me", "v"]
+        assert frame.native.iloc[0].tolist() == ["a\nb�", "1"]
+
+    def test_the_declared_encoding_still_decides(self, tmp_path):
+        data = "name,price\nCafé,€5\n".encode("cp1252")
+        frame = _read_bytes(tmp_path, "csv", data, options={"header": "true", "encoding": "cp1252"})
+        assert frame.native.iloc[0].tolist() == ["Café", "€5"]
