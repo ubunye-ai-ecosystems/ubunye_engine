@@ -43,13 +43,18 @@ def _evidence(monitor: Any, state: Dict[str, Any], keys: tuple = EVIDENCE) -> Di
     return {k: state.get(k) for k in keys if takes_any or k in params}
 
 
+def _error_text(exc: BaseException) -> str:
+    """Why a run failed, in one string: the exception's type and message (F-054)."""
+    return f"{type(exc).__name__}: {exc}"
+
+
 def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
     """Shared task-lifecycle contextmanager body for a single Monitor."""
     t0 = time.perf_counter()
     safe_call(monitor, "task_start", context=ctx, config=cfg)
     try:
         yield
-    except Exception:
+    except Exception as exc:
         safe_call(
             monitor,
             "task_end",
@@ -58,7 +63,7 @@ def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
             outputs=None,
             status="error",
             duration_sec=time.perf_counter() - t0,
-            **_evidence(monitor, state),
+            **_evidence(monitor, {**state, "error": _error_text(exc)}, EVIDENCE + ("error",)),
         )
         raise
     else:
@@ -126,7 +131,7 @@ class LegacyMonitorsHook(Hook):
 
         try:
             yield
-        except Exception:
+        except Exception as exc:
             dur = time.perf_counter() - t0
             for m in self.monitors:
                 safe_call(
@@ -137,6 +142,7 @@ class LegacyMonitorsHook(Hook):
                     outputs=None,
                     status="error",
                     duration_sec=dur,
+                    **_evidence(m, {"error": _error_text(exc)}, ("error",)),
                 )
             raise
         else:

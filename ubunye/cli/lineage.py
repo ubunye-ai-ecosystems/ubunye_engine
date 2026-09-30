@@ -433,6 +433,7 @@ def trace(
                 "task": ctx.task_path,
                 "run_id": ctx.run_id,
                 "status": ctx.status,
+                "error": ctx.error,
                 "inputs": record["inputs"],
                 "transform": "transformations.py",
                 "outputs": record["outputs"],
@@ -443,6 +444,8 @@ def trace(
     typer.echo()
     typer.secho(f"Lineage trace: {ctx.task_path}", bold=True)
     typer.echo(f"Run:     {ctx.run_id}  [{ctx.status}]  {ctx.started_at[:19]}")
+    if ctx.error:
+        typer.secho(f"Error:   {ctx.error}", fg=typer.colors.RED)
     typer.echo(f"Version: {ctx.model} v{ctx.version}")
     typer.echo()
     typer.secho("  INPUTS", fg=typer.colors.CYAN)

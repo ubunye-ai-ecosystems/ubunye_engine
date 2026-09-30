@@ -107,6 +107,13 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A failed run's record says why it failed (F-054).** The record has an `error`
+  field; OpenLineage sends it as the failed run's `errorMessage`, and `ubunye prove`
+  shows it as the reason. Nothing filled it: every failed run said `status: error`,
+  `error: null`. It now holds the error's type and message (`ExpectationError: An
+  input broke its expectations...`), with the values of secret-looking variables
+  masked, as step locations are. `lineage trace` prints it (and `--json` carries it).
+  Found by the Olist example (R2).
 - **A quarantined row's reasons read the same on pandas and Spark (F-052).** On
   pandas, a row that broke only the first of two quarantine rules got
   `_ubunye_failed_rules` = `price_between,` (a stray comma); Spark wrote

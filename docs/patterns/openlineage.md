@@ -41,7 +41,8 @@ never fails a run.**
 - **Standard facets**, which catalogues already display: `outputStatistics` (rows
   written), `dataQualityMetrics` (rows read), `dataQualityAssertions` (every
   [expectation](../config/expectations.md), passed or not), `errorMessage` on a
-  failed run.
+  failed run (the error's type and message, as the run record's `error` holds it,
+  with the values of secret-looking variables masked).
 - **The receipt**: a `ubunye_evidence` run facet (config, code and environment
   hashes, the environment, template variables, per-step timings, expectation
   results) and a `ubunye_hash` facet on each dataset (row count, schema hash,
