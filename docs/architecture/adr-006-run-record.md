@@ -109,10 +109,40 @@ Hashing inputs costs one more scan of each input. On Spark that scan reads the
 source again, after the writes: it is not the rows the transform read, so a source
 that changes between the read and the hash (another job appends, a file is replaced,
 the task overwrites its own input) gives an input digest of the later state. Inputs
-are not held (ADR 009); every Spark input step says `hash_basis: recomputed`
-(F-046). It is on by default; a
+are not held (ADR 009); every Spark input step says `hash_basis: recomputed`.
+It is on by default; a
 recorder built with `LineageRecorder(hash_inputs=False)` skips it for inputs too
 large to read twice, and those inputs then show `-` for their row count.
+
+**The record says whether an input's digest is of what was read (F-046).** The
+engine takes each input's source version right after the read (only in a recorded
+run), and the recorder takes it again right after that input's hash. Nothing is
+read from the data for it:
+
+| Source | Version |
+|---|---|
+| Delta (`delta` by path or table, `s3` with `file_format: delta`, a Delta catalog table) | the table version and its time, from the Delta log; a read pinned with `version_as_of` or `timestamp_as_of` is that version |
+| files (`s3`, `binary`, a pandas read) | the files the frame reads (Spark's file index, `inputFiles()`): count, bytes, latest modification time, and a hash of the sorted (relative path, size, time) list |
+| a SQL query, JDBC, a REST API, a catalog table that is not Delta, Spark Connect | `none`, with the reason |
+
+| Field | What it is |
+|---|---|
+| `inputs[*].source_version` | the version at the read |
+| `inputs[*].source_version_at_hash` | the version right after the hash (a `recomputed` input with a version only) |
+| `inputs[*].source_changed` | `true`: they differ, the digest is of a later state than the one read; `false`: they match, the digest is of what was read; missing: not known |
+| `inputs[*].source_note` | the same in one sentence |
+
+`hash_basis` keeps its meaning (how the digest was computed); `source_changed` is
+whether the source moved while it was. `lineage compare` calls such an input's hash
+"unknown", and `ubunye gate` warns and counts it as a possible cause of a changed
+output, never as proof the input was the same. The digest itself and the default
+(hash every input) do not change. Measured on live Spark: a Delta table appended to
+after the read is flagged, and its digest is of the new version (13 rows, not 10); a
+parquet file rewritten after the read is flagged; a file added to the folder after the
+read is not flagged, and rightly: Spark's file index keeps the files listed at the
+read, so the hash does not read the new file, and the digest equals the folder's hash
+before it was added. Taking a version costs about 0.6 ms per file on the dev box
+(1,000 files: 0.62 s, twice per input) and about 0.16 s for a Delta history.
 
 Monitors receive the new evidence (`inputs`, `expectations`, `timings`) only if
 their `task_end` accepts those arguments (or `**kwargs`), so monitors written

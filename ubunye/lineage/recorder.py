@@ -130,6 +130,23 @@ def _basis_of(frame: Any) -> str:
     return MATERIALISED if _package(frame) in ("pandas", "pyarrow") else RECOMPUTED
 
 
+def _check_source(step: StepRecord, frame: Any, io_cfg: Dict[str, Any]) -> None:
+    """Did the source move between the read and this input's hash? (F-046).
+
+    Only a recomputed input is checked: its hash read the source again. The
+    version is taken after the hash, so a change during the hash counts too.
+    """
+    from ubunye.lineage import source_version
+
+    before = step.source_version
+    if step.hash_basis == RECOMPUTED and source_version.comparable(before):
+        step.source_version_at_hash = source_version.capture(frame, io_cfg)
+        step.source_changed = source_version.changed(before, step.source_version_at_hash)
+    step.source_note = source_version.note(
+        step.hash_basis, before, step.source_version_at_hash, step.source_changed
+    )
+
+
 class LineageRecorder:
     """Monitor plugin that persists run lineage as structured JSON.
 
@@ -243,6 +260,7 @@ class LineageRecorder:
         llm_calls: Optional[List[Dict[str, Any]]] = None,
         llm_budget: Optional[Dict[str, Any]] = None,
         hash_basis: Optional[Dict[str, str]] = None,
+        source_versions: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Update the run record with final status, duration, and step hashes.
 
@@ -250,6 +268,11 @@ class LineageRecorder:
         output frame is the rows that were written (``"materialised"``) or will
         be computed again for the hash (``"recomputed"``). An output it does not
         name, and every input, gets the basis its frame type implies.
+
+        ``source_versions`` is each input's source version when it was read
+        (:mod:`ubunye.lineage.source_version`). A recomputed input's version is
+        taken again right after its hash; if it moved, the step says the digest
+        is of a later state than the one read (F-046).
         """
         run_id = context.run_id
         ctx = self._runs.get(run_id)
@@ -275,10 +298,12 @@ class LineageRecorder:
         ctx.inputs = []
         for name, io_cfg in inputs_cfg.items():
             step = StepRecord.from_io_cfg(name, "input", io_cfg)
+            step.source_version = (source_versions or {}).get(name)
             if self._hash_inputs and inputs and inputs.get(name) is not None:
                 _fingerprint_into(step, inputs[name], seen)
                 # An input is never held: on Spark its hash reads the source again.
                 step.hash_basis = _basis_of(inputs[name])
+                _check_source(step, inputs[name], io_cfg)
             ctx.inputs.append(step)
 
         # --- Build output StepRecords with optional DataFrame hashes ---

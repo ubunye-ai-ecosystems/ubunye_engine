@@ -96,7 +96,8 @@ in executor memory and local disk. It is on by default.
 
 **Inputs are not held.** The input hash is still a separate scan of the source, so a
 source that changes between the read and the hash gives an input digest of the later
-state; every Spark input step says `recomputed` (F-046).
+state; every Spark input step says `recomputed`. The record now checks the source's
+version at the read and after the hash, and says when the two differ (F-046, ADR 006).
 
 ## Measured (E-06 job, 5,000,000 rows, dev box, Spark 4.2 local, 3 runs each)
 

@@ -416,6 +416,24 @@ ubunye lineage show \
     --run-id <run_id>
 ```
 
+Each input also says whether its data hash is of what the run read. On Spark an
+input is hashed at the end of the task by reading its source again, so the record
+takes the source's version when the input is read and again right after the hash:
+
+```json
+"source_version": {"kind": "delta", "version": 3, "timestamp": "2026-09-30T01:02:03"},
+"source_version_at_hash": {"kind": "delta", "version": 4, "timestamp": "2026-09-30T01:05:40"},
+"source_changed": true,
+"source_note": "The source changed between the read and the hash (Delta version 3 -> Delta version 4). This digest is of the later state, not of what the task read."
+```
+
+A file input's version is its files (`files`, `bytes`, `latest_modified`,
+`listing_hash`), from Spark's own file index; nothing is read. A SQL query, JDBC, or
+a catalog table that is not Delta has `"kind": "none"` and the reason. On pandas the
+input is in memory, so the version is recorded but not checked again.
+`lineage trace` prints the note, and `lineage compare` and `ubunye gate` do not treat
+such an input's hash as evidence. See [the run record](architecture/adr-006-run-record.md).
+
 ### `lineage list`
 
 List recent runs for a task (newest first).

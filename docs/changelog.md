@@ -15,6 +15,16 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Changed
 
+- **The run record says whether an input's hash is of what the run read** (F-046). On
+  Spark an input is hashed at task end by reading its source again; if another job
+  changed it in between, the hash described a later state and nothing said so. Each
+  input now records its source version when it is read and again after its hash
+  (`source_version`, `source_version_at_hash`): a Delta table's version, or a file
+  input's files with sizes and times, taken without reading data. When they differ,
+  `source_changed: true` and `source_note` say the hash is of the later state;
+  `lineage trace` prints the note, `lineage compare` calls that hash unknown, and
+  `ubunye gate` warns instead of calling a changed output nondeterministic. The hash
+  and its default are unchanged; old records load as before.
 - **A Spark run record's hash takes about 45% less time** (F-041). The per row SHA-256
   lanes are summed as 32 bit halves in `long` instead of as decimals; the digest is
   the same. A table past about 2.1 billion rows falls back to the decimal sums.
