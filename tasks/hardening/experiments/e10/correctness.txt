@@ -1,0 +1,26 @@
+﻿{
+ "tables": 66,
+ "rows": 200829,
+ "lane_calls": 992,
+ "mismatch": {
+  "c": 0,
+  "duckdb": 0,
+  "polars_hash": 0,
+  "datafusion": 0,
+  "numba": 0,
+  "c_plain": 0,
+  "numba_parallel": 0,
+  "duckdb_4threads": 0,
+  "e10_native_threads": 0
+ },
+ "features": {
+  "nulls": 63,
+  "non_ascii": 47,
+  "nested": 36,
+  "map": 12,
+  "chunked": 18,
+  "multi_slice": 19
+ },
+ "sha_ni": 1
+}
+RESULT: all identical
