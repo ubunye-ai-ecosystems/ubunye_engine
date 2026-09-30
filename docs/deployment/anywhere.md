@@ -205,6 +205,31 @@ ignored: an unknown reader option (`dateFormat`, for example), a nested schema
 type, or a cloud path such as `s3a://`. The error says which option or path and
 what to do instead.
 
+### The run record uses helper processes
+
+With `--lineage`, every input and output is hashed, every row (ADR 006). A table of
+500,000 rows or more is hashed by helper processes: fresh Pythons, started from
+`sys.executable`, that load only the hash code. They are gone when the hash is done.
+
+- **How many:** the usable cores, at most 4. `UBUNYE_HASH_WORKERS` sets the cap; it
+  is never more than the cores this process may use (its CPU affinity and, on
+  Linux, a cgroup v2 `cpu.max` quota). `1` turns helpers off. Hashes running at the
+  same time in one process (threads) share the cap.
+- **Memory:** each helper holds about 105 to 125 MB resident while it works
+  (measured on Windows with a venv, where each helper is the venv launcher plus
+  Python). Four helpers add about 0.5 GB on top of the run.
+- **In a container** with a memory limit, count that in, or set
+  `UBUNYE_HASH_WORKERS=2` (or `1`). The CPU quota is read for you; a memory limit
+  is not.
+- **No helpers** in a frozen app (PyInstaller and the like) or when
+  `sys.executable` is not a Python interpreter; the hash then runs in the calling
+  process, as it does for smaller tables.
+- **Safe to fail:** a helper that fails, gives no answer within its deadline, or
+  runs other hash code or another pyarrow than the caller is stopped, and the
+  calling process hashes the table itself. The digest is the same either way.
+  Ctrl+C stops every helper at once. The reason is logged at debug level
+  (`ubunye.lineage.content_hash`).
+
 ## Scheduling
 
 Any scheduler that can run a command can own the timetable. For Airflow, the

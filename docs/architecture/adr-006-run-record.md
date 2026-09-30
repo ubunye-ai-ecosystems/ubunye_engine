@@ -86,8 +86,12 @@ the same identity, so `ubunye lineage list` finds every run.
   sums add up to the same digest one process gives: every row is still hashed.
   If any helper fails, the calling process hashes the whole table itself.
   `UBUNYE_HASH_WORKERS` caps the helpers. It defaults to the number of cores, at
-  most 4; each helper holds about 75 MB while it works. `1` (or `0`, or anything
-  that is not a number) hashes in the calling process only, as it did before.
+  most 4, and is never more than the usable cores; hashes running at once in one
+  process share the cap. `1` (or `0`, or anything that is not a number) hashes in
+  the calling process only, as it did before. A helper checks it runs the
+  caller's hash code (by its SHA-256) and the caller's pyarrow, or gives no
+  answer; a helper past its deadline is stopped. Memory, containers and frozen
+  apps: see [Deploying anywhere](../deployment/anywhere.md).
 - Records written before 0.7.0 have no `hash_method`. `lineage compare` calls
   them "not comparable" with new records rather than "changed", and calls two
   missing hashes "unknown" rather than "unchanged".

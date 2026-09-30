@@ -10,6 +10,13 @@ reference.
 from __future__ import annotations
 
 import datetime as dt
+import gc
+import logging
+import os
+import subprocess
+import sys
+import threading
+import time
 
 import pytest
 
@@ -25,11 +32,15 @@ from .test_content_hash_fast_path import _reference, tables  # noqa: E402
 
 
 def _serial(table, monkeypatch):
-    monkeypatch.setenv(ch.HASH_WORKERS_ENV, "1")
+    before = os.environ.get(ch.HASH_WORKERS_ENV)
+    os.environ[ch.HASH_WORKERS_ENV] = "1"
     try:
         return fingerprint_arrow(table)
     finally:
-        monkeypatch.delenv(ch.HASH_WORKERS_ENV)
+        if before is None:
+            del os.environ[ch.HASH_WORKERS_ENV]
+        else:
+            os.environ[ch.HASH_WORKERS_ENV] = before
 
 
 @pytest.fixture
@@ -37,6 +48,7 @@ def parallel(monkeypatch):
     """Helpers for any table of 2 rows or more, and a record of every parallel result."""
     monkeypatch.setattr(ch, "_PARALLEL_MIN_ROWS", 2)
     monkeypatch.setattr(ch, "_ROWS_PER_WORKER", 1)
+    monkeypatch.setattr(ch, "_cores", lambda: 8)
     monkeypatch.setenv(ch.HASH_WORKERS_ENV, "3")
     seen = []
     real = ch._parallel_lanes
@@ -143,3 +155,202 @@ def test_one_worker_starts_no_process(monkeypatch):
     monkeypatch.setattr(ch, "_parallel_lanes", boom)
     table = pa.table({"x": list(range(10))})
     assert fingerprint_arrow(table) == _reference(table)
+
+
+# --------------------------------------------------------------------------- #
+# Skeptic review: process safety. Every helper a test starts is recorded and
+# killed at the end, and a watchdog kills them after WATCHDOG_S, so a test of the
+# old code fails on time instead of hanging.
+# --------------------------------------------------------------------------- #
+
+WATCHDOG_S = 20.0
+_SLEEPER = "import time\ntime.sleep(120)\n"
+_ECHO = "import shutil, sys\nshutil.copyfileobj(sys.stdin.buffer, sys.stdout.buffer)\n"
+
+
+@pytest.fixture
+def popens(monkeypatch):
+    """Every Popen made while the test runs, with its keyword arguments."""
+    made = []
+    real = subprocess.Popen
+
+    class Recorded(real):  # type: ignore[misc, valid-type]
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            made.append((self, kwargs))
+
+    monkeypatch.setattr(subprocess, "Popen", Recorded)
+    yield made
+    for proc, _ in made:
+        if proc.poll() is None:
+            proc.kill()
+        try:
+            proc.wait(timeout=10)
+        except Exception:
+            pass
+        for stream in (proc.stdin, proc.stdout):
+            try:
+                if stream is not None:
+                    stream.close()
+            except Exception:
+                pass
+
+
+def _watched(fn, popens):
+    """Run ``fn`` with a watchdog that kills the recorded helpers; (result, seconds)."""
+
+    def kill_all():
+        for proc, _ in popens:
+            if proc.poll() is None:
+                proc.kill()
+
+    timer = threading.Timer(WATCHDOG_S, kill_all)
+    timer.daemon = True
+    timer.start()
+    t0 = time.monotonic()
+    try:
+        return fn(), time.monotonic() - t0
+    finally:
+        timer.cancel()
+
+
+def _wide(n):
+    return pa.table({"x": np.arange(n), "s": pa.array(np.arange(n).astype(str))})
+
+
+def test_a_helper_that_never_answers_is_stopped_at_the_deadline(parallel, popens, monkeypatch):
+    monkeypatch.setattr(ch, "_WORKER_BOOT", _SLEEPER)
+    monkeypatch.setattr(ch, "_DEADLINE_FLOOR_S", 2.0)
+    monkeypatch.setattr(ch, "_DEADLINE_PER_CELL_S", 0.0)
+    table = _wide(50)
+    got, secs = _watched(lambda: fingerprint_arrow(table), popens)
+    assert secs < 12, f"took {secs:.1f} s: no deadline"
+    assert got == _reference(table)
+    assert parallel == [None]
+    assert popens and all(p.poll() is not None for p, _ in popens)
+
+
+def test_a_helper_that_echoes_its_input_cannot_deadlock(parallel, popens, monkeypatch):
+    monkeypatch.setattr(ch, "_WORKER_BOOT", _ECHO)
+    table = _wide(300_000)  # megabytes: far more than a pipe holds
+    got, secs = _watched(lambda: fingerprint_arrow(table), popens)
+    assert secs < WATCHDOG_S - 5, f"took {secs:.1f} s: stdin and stdout deadlocked"
+    assert got == _reference(table)
+    assert parallel == [None]
+
+
+def test_ctrl_c_stops_every_helper_at_once(parallel, popens, monkeypatch):
+    import _thread
+
+    monkeypatch.setattr(ch, "_WORKER_BOOT", _SLEEPER)
+    table = _wide(50)
+    timer = threading.Timer(1.5, _thread.interrupt_main)
+    timer.daemon = True
+    t0 = time.monotonic()
+    timer.start()
+    with pytest.raises(KeyboardInterrupt):
+        _watched(lambda: fingerprint_arrow(table), popens)
+    secs = time.monotonic() - t0
+    timer.cancel()
+    assert secs < 10, f"Ctrl+C took {secs:.1f} s to land"
+    assert popens and all(p.poll() is not None for p, _ in popens), "helpers left running"
+
+
+def test_a_frozen_app_starts_no_helper(parallel, popens, monkeypatch):
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    table = _wide(50)
+    assert fingerprint_arrow(table) == _reference(table)
+    assert popens == []
+
+
+def test_a_program_that_is_not_python_is_not_started(parallel, popens, monkeypatch, tmp_path):
+    app = tmp_path / "myapp.exe"
+    app.write_bytes(b"not a python")
+    monkeypatch.setattr(sys, "executable", str(app))
+    table = _wide(50)
+    assert fingerprint_arrow(table) == _reference(table)
+    assert popens == []
+
+
+def test_a_helper_cannot_start_helpers_or_stop_in_a_prompt(parallel, popens, monkeypatch):
+    monkeypatch.setenv("PYTHONINSPECT", "1")
+    table = _wide(50)
+    assert fingerprint_arrow(table) == _reference(table)
+    assert parallel and parallel[-1] is not None
+    for _, kwargs in popens:
+        env = kwargs.get("env") or {}
+        assert env.get(ch.HASH_WORKERS_ENV) == "1"
+        assert "PYTHONINSPECT" not in env
+
+
+def test_a_failed_fallback_is_silent_and_logged(parallel, popens, monkeypatch, capfd, caplog):
+    monkeypatch.setattr(ch, "_WORKER_BOOT", "import sys\nsys.exit(0)\n")  # reads nothing
+    table = _wide(300_000)
+    with caplog.at_level(logging.DEBUG, logger=ch.__name__):
+        got, _ = _watched(lambda: fingerprint_arrow(table), popens)
+        gc.collect()
+    assert got == _reference(table)
+    assert capfd.readouterr().err == ""
+    assert any("helpers failed" in r.getMessage() for r in caplog.records)
+    assert all(p.stdin.closed and p.stdout.closed for p, _ in popens)
+
+
+def test_a_hash_file_changed_on_disk_is_not_used(popens, monkeypatch, tmp_path):
+    import importlib.util
+
+    copy = tmp_path / "content_hash.py"
+    copy.write_bytes(open(ch.__file__, "rb").read())
+    spec = importlib.util.spec_from_file_location("_ch_copy_f038", copy)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    monkeypatch.setitem(sys.modules, spec.name, mod)
+    spec.loader.exec_module(mod)
+    mod._PARALLEL_MIN_ROWS, mod._ROWS_PER_WORKER = 2, 1
+    monkeypatch.setattr(mod, "_cores", lambda: 8)
+    table = _wide(50)
+    monkeypatch.setenv(ch.HASH_WORKERS_ENV, "1")
+    serial = mod.fingerprint_arrow(table)
+    # A later build replaces the file: its lane sums differ by one.
+    text = copy.read_bytes()
+    marker = b"    return int(a), int(b)"
+    assert text.count(marker) == 1
+    copy.write_bytes(text.replace(marker, b"    return int(a) + 1, int(b)"))
+    monkeypatch.setenv(ch.HASH_WORKERS_ENV, "3")
+    got, _ = _watched(lambda: mod.fingerprint_arrow(table), popens)
+    assert popens, "the helpers were not tried"
+    assert got == serial
+
+
+def test_a_helper_with_another_pyarrow_is_not_used(parallel, popens, monkeypatch, caplog):
+    monkeypatch.setattr(pa, "__version__", "0.0.1")
+    table = _wide(50)
+    with caplog.at_level(logging.DEBUG, logger=ch.__name__):
+        assert fingerprint_arrow(table) == _reference(table)
+    assert parallel == [None]
+    assert any(str(ch._EXIT_PYARROW) in r.getMessage() for r in caplog.records)
+
+
+def test_the_setting_never_exceeds_the_usable_cores(monkeypatch):
+    monkeypatch.setattr(ch, "_cores", lambda: 2)
+    monkeypatch.setenv(ch.HASH_WORKERS_ENV, "64")
+    assert ch._worker_count(10_000_000) == 2
+
+
+def test_a_container_cpu_quota_is_read(tmp_path):
+    f = tmp_path / "cpu.max"
+    for text, want in (("200000 100000\n", 2), ("150000 100000\n", 2), ("max 100000\n", None)):
+        f.write_text(text)
+        assert ch._cgroup_cpus(str(f)) == want
+    assert ch._cgroup_cpus(str(tmp_path / "missing")) is None
+
+
+def test_concurrent_hashes_share_one_helper_budget(parallel, popens, monkeypatch):
+    assert ch._reserve(3, 3) == 3
+    try:
+        assert ch._reserve(3, 3) == 0  # the budget is in use: this hash runs here
+        table = _wide(50)
+        assert fingerprint_arrow(table) == _reference(table)
+        assert popens == []
+    finally:
+        ch._release(3)
+    assert ch._helpers_running == 0

@@ -147,3 +147,60 @@ parity test) that builds and hashes the lines in one call per slice. Other small
 steps: keep helpers alive for the whole run (saves about 0.5 s per large table
 after the first), and join each column's head and tail into the final line once
 instead of per column (fewer copies of every line; not measured).
+
+## Skeptic review (2026-09-30), fixed in a follow-up commit
+Digests were identical in every case the skeptic tried (t1: 30 awkward tables, 2, 3
+and 7 helpers, no difference). It proved six process safety problems. Each now has a
+test in `test_content_hash_parallel.py` that fails on 22f11fb and passes after
+(bounded: a watchdog kills the helpers at 20 s). Before and after, with the
+skeptic's scripts (`scratchpad/skeptic-f038`):
+
+1. **No timeout, a pipe deadlock, Ctrl+C blocked.** `sys.executable` = `findstr`
+   (it echoes stdin): the hash hung past 90 s (the parent wrote all of stdin before
+   reading stdout). A helper that never reads (`fakeapp`): Ctrl+Break landed after
+   23 s. Now each helper's stdin is written and its stdout drained on their own
+   threads (at most 256 bytes kept), the parent waits in 50 ms steps, helpers past
+   a deadline (60 s plus 20 microseconds a cell) are stopped, and Ctrl+C kills every
+   helper before it is raised. After: `findstr` falls back in 0.7 s; Ctrl+Break with
+   real helpers at 6,000,000 rows lands in 0.17 s, no helper left. Killing the venv
+   launcher also ends its Python (checked: no process left).
+2. **Frozen apps.** A PyInstaller style app reports itself as `sys.executable`;
+   started with `-c` it runs its own main again. The skeptic's `frozenapp.py`
+   (depth guard 2) on 22f11fb started itself 20 times: 4 copies at depth 1, 16 at
+   depth 2, each printing tracebacks. Now no helpers when `sys.frozen`
+   is set or the program's name is not `python*`/`pythonw*`/`pypy*` (or it is not
+   a file), and every helper gets `UBUNYE_HASH_WORKERS=1`, `PYTHONWARNINGS=ignore`
+   and no `PYTHONINSPECT`/`PYTHONSTARTUP`. After: `frozenapp.py` runs once
+   (depth 0 only in its log); `PYTHONINSPECT=1` and `PYTHONIOENCODING=utf-16` no
+   longer make the helpers fall back (the helper writes its answer as ASCII bytes).
+3. **Noisy, leaky fallback.** `cmd.exe` as `sys.executable` printed 20 lines of
+   `Exception ignored in: <_io.BufferedWriter>`; `PYTHONDEVMODE` showed unclosed
+   pipes. Now every pipe is closed in `finally`, errors there are swallowed, and
+   one debug line (`rows-v1: helpers failed (...); hashing here`, logger
+   `ubunye.lineage.content_hash`) says why. After: 0 stderr lines in every t5 case
+   that is not the probe's own output.
+4. **Helpers ran the file on disk.** Replace `content_hash.py` after import (t7):
+   the parallel digest changed with no error. Now the stream carries the SHA-256 of
+   the caller's file (read at import) and the caller's pyarrow version; a helper
+   that differs exits (codes 5 and 6) and the caller hashes itself. After: t7
+   gives the serial digest.
+5. **Resources.** `UBUNYE_HASH_WORKERS` was not held to the usable cores, and three
+   hashes in threads started 12 helpers (24 processes, 1,477 MB).
+   Now the cap is `min(setting or 4, usable cores)`, usable cores from
+   `os.process_cpu_count()` (3.13), else the affinity, else `os.cpu_count()`,
+   bounded by a cgroup v2 `cpu.max` quota; and a process wide budget of that size
+   is shared by concurrent hashes (a hash that gets fewer than 2 helpers runs in
+   its own process). After: t6 peaks at 8 processes (4 helpers) and 629 MB.
+   Memory measured again: each helper is about 105 to 125 MB resident on this
+   Windows venv (t2: 4 helpers add 470 MB to the parent's 200 MB); documented in
+   `docs/deployment/anywhere.md` with advice for containers.
+6. **Another pyarrow in the helper:** covered by 4.
+
+Also found: CI's mypy failed on 22f11fb (an unused `type: ignore` that is only used
+on Windows, and a `sum` over a list of optionals). Both gone.
+
+Timings after the safety changes (same box, median of 3): `fingerprint_arrow`
+5,000,000 rows, 4 helpers: `events` 2.98 s (was 3.57 s in the first run),
+9 columns 4.03 s (was 4.15 s); 1,000,000 rows: 1.17 s and 1.37 s. E-06 at
+5,000,000 rows: `--lineage` 11.04 s, plain 4.74 s (2.33x), record hashing 6.45 s:
+the same as before within this box's noise.

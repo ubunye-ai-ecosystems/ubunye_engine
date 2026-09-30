@@ -23,8 +23,16 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   the table is hashed in the calling process. E-06 job at 5,000,000 rows on the dev
   box (4 helpers, median of 3): the record's hashing took 6.0 s (was 17.2 s), the
   whole `--lineage` run 10.5 s (was 21.8 s), against 4.7 s for the plain job. Each
-  helper holds about 75 MB while it works. Not yet the 1.5 times bound E-06 asks for:
-  the SHA-256 of each row is still one Python call.
+  helper holds about 105 to 125 MB resident while it works; see
+  [Deploying anywhere](deployment/anywhere.md) for containers. Not yet the 1.5 times
+  bound E-06 asks for: the SHA-256 of each row is still one Python call.
+  Made safe after review: helpers are stopped on Ctrl+C and at a deadline, stdin
+  and stdout are served at once (a program that echoes cannot deadlock), no
+  helpers in a frozen app or when `sys.executable` is not Python, a helper never
+  starts helpers, a helper that runs other hash code (the file changed on disk)
+  or another pyarrow gives no answer, the cap never exceeds the usable cores (CPU
+  affinity, cgroup v2 quota) and is shared by concurrent hashes in one process,
+  and a fallback prints nothing (one debug log line) and leaks no pipe.
 - **A Spark run record's hash takes about 45% less time** (F-041). The per row SHA-256
   lanes are summed as 32 bit halves in `long` instead of as decimals; the digest is
   the same. A table past about 2.1 billion rows falls back to the decimal sums.
