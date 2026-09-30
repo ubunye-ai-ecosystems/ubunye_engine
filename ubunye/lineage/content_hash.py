@@ -33,7 +33,13 @@ import datetime as dt
 import decimal
 import hashlib
 import json
+import logging
 import math
+import os
+import re
+import sys
+import threading
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
@@ -525,13 +531,382 @@ def _slice_lanes(names: List[str], kinds: Dict[str, str], piece: Any) -> Tuple[i
     return _python_lanes(columns)
 
 
+#: The setting that caps the helper processes of the parallel hash (F-038).
+#: ``1`` (or ``0``) hashes in the calling process only.
+HASH_WORKERS_ENV = "UBUNYE_HASH_WORKERS"
+
+#: Helpers used when the setting is not given: one per usable core, at most this
+#: many. Each helper holds about 105 to 125 MB resident while it works (measured
+#: on Windows in a venv, where a helper is the venv launcher plus Python).
+_DEFAULT_MAX_WORKERS = 4
+
+#: A table smaller than this is hashed in the calling process: a helper costs about
+#: 0.5 s to start (Python, pyarrow, and Arrow's first cast), about what hashing
+#: this many rows costs in one process.
+_PARALLEL_MIN_ROWS = 500_000
+
+#: Each helper gets at least this many rows.
+_ROWS_PER_WORKER = 125_000
+
+#: The stream's schema metadata: the caller's canonical kinds, the digest of the
+#: caller's hash code, and its pyarrow version. A helper that differs in either
+#: exits without an answer, so it can never hash with other rules.
+_KINDS_KEY = b"ubunye.rows-v1.kinds"
+_SOURCE_KEY = b"ubunye.rows-v1.source"
+_PYARROW_KEY = b"ubunye.rows-v1.pyarrow"
+
+#: Helper exit codes (0 is an answer on stdout).
+_EXIT_FAILED, _EXIT_KINDS, _EXIT_SOURCE, _EXIT_PYARROW = 2, 3, 5, 6
+
+#: How long helpers may take before they are stopped and this process hashes the
+#: table itself: a floor, plus far more than one process needs per cell.
+_DEADLINE_FLOOR_S = 60.0
+_DEADLINE_PER_CELL_S = 20e-6
+
+_log = logging.getLogger(__name__)
+
+
+def _source_digest() -> Optional[str]:
+    """The SHA-256 of this file's bytes, read once at import (None if unreadable)."""
+    try:
+        with open(os.path.abspath(__file__), "rb") as fh:
+            return hashlib.sha256(fh.read()).hexdigest()
+    except Exception:
+        return None
+
+
+_SOURCE_DIGEST = _source_digest()
+
+#: Helpers alive in this process right now, across threads: concurrent hashes share
+#: one budget instead of each starting a full set.
+_budget_lock = threading.Lock()
+_helpers_running = 0
+
+
+def _cgroup_cpus(path: str = "/sys/fs/cgroup/cpu.max") -> Optional[int]:
+    """The CPUs a cgroup v2 quota allows (``"200000 100000"`` is 2), or None."""
+    try:
+        with open(path, encoding="ascii") as fh:
+            quota, period = fh.read().split()[:2]
+        if quota == "max":
+            return None
+        return max(1, math.ceil(int(quota) / int(period)))
+    except Exception:
+        return None
+
+
+def _cores() -> int:
+    """The CPUs this process may use: affinity, then a container's CPU quota."""
+    counter = getattr(os, "process_cpu_count", None)  # Python 3.13+
+    affinity = getattr(os, "sched_getaffinity", None)
+    count: Optional[int] = None
+    try:
+        if counter is not None:
+            count = counter()
+        elif affinity is not None:
+            count = len(affinity(0))
+    except OSError:
+        count = None
+    count = count or os.cpu_count() or 1
+    quota = _cgroup_cpus()
+    return max(1, min(count, quota) if quota else count)
+
+
+def _helper_cap() -> int:
+    """The most helpers this process runs at once, across every hash in it.
+
+    The setting (or 4), never more than the usable cores. A setting that is not a
+    number never starts processes.
+    """
+    raw = os.environ.get(HASH_WORKERS_ENV, "").strip()
+    if raw:
+        try:
+            wanted = int(raw)
+        except ValueError:
+            return 1
+    else:
+        wanted = _DEFAULT_MAX_WORKERS
+    return max(1, min(wanted, _cores()))
+
+
+def _worker_count(rows: int) -> int:
+    """How many helper processes hash a table of ``rows`` rows (1 means none)."""
+    if rows < _PARALLEL_MIN_ROWS:
+        return 1
+    return max(1, min(_helper_cap(), rows // _ROWS_PER_WORKER))
+
+
+def _reserve(wanted: int, cap: int) -> int:
+    """Take up to ``wanted`` helpers from the process wide budget of ``cap``."""
+    global _helpers_running
+    with _budget_lock:
+        granted = max(0, min(wanted, cap - _helpers_running))
+        if granted < 2:
+            return 0
+        _helpers_running += granted
+        return granted
+
+
+def _release(granted: int) -> None:
+    global _helpers_running
+    with _budget_lock:
+        _helpers_running -= granted
+
+
+def _python_executable() -> Optional[str]:
+    """``sys.executable`` if it is a Python that can run ``-c``, else None.
+
+    A frozen app (PyInstaller and the like) or an embedding host reports its own
+    program there; started with ``-c`` it would run the app again, not the helper.
+    """
+    if getattr(sys, "frozen", False):
+        return None
+    exe = sys.executable or ""
+    name = os.path.basename(exe).lower()
+    if name.endswith(".exe"):
+        name = name[:-4]
+    if not re.fullmatch(r"(python|pypy)[0-9.]*t?w?(_d)?", name) or not os.path.isfile(exe):
+        return None
+    return exe
+
+
+def _plain_type(t: Any) -> bool:
+    """False for a type the IPC round trip might not bring back the same (extensions)."""
+    import pyarrow as pa
+
+    if isinstance(t, pa.BaseExtensionType):
+        return False
+    return all(_plain_type(t.field(i).type) for i in range(t.num_fields))
+
+
+#: How a helper starts: drop the working folder from the path (a stray module there
+#: must not shadow the standard library), load this file by its path, run it.
+_WORKER_BOOT = (
+    "import sys\n"
+    "if not getattr(sys.flags, 'safe_path', False) and sys.path and sys.path[0] == '':\n"
+    "    del sys.path[0]\n"
+    "import importlib.util as u\n"
+    "s = u.spec_from_file_location('_ubunye_rows_v1', sys.argv[1])\n"
+    "m = u.module_from_spec(s)\n"
+    "sys.modules[s.name] = m\n"
+    "s.loader.exec_module(m)\n"
+    "sys.exit(m._worker_main())\n"
+)
+
+
+def _worker_main() -> int:
+    """A helper's work: an Arrow IPC stream on stdin, ``"<a> <b>"`` on stdout.
+
+    The stream holds the columns sorted by name and, in its schema metadata, the
+    caller's canonical kinds, code digest and pyarrow version. Any failure or
+    difference exits non zero with nothing on stdout; the caller then hashes the
+    table itself, so a digest never depends on whether the helpers ran.
+    """
+    try:
+        import pyarrow as pa
+
+        pa.set_cpu_count(1)  # one helper per core already
+        reader = pa.ipc.open_stream(sys.stdin.buffer)
+        meta = reader.schema.metadata or {}
+        if _SOURCE_DIGEST is None or meta.get(_SOURCE_KEY) != _SOURCE_DIGEST.encode("ascii"):
+            return _EXIT_SOURCE  # this file is not the code the caller runs
+        if meta.get(_PYARROW_KEY) != pa.__version__.encode("ascii"):
+            return _EXIT_PYARROW
+        kinds = dict(json.loads(meta[_KINDS_KEY].decode("utf-8")))
+        names = list(reader.schema.names)
+        # The kinds must be the caller's, or the lines (and the digest) could differ.
+        if any(arrow_kind(f.type) != kinds.get(f.name) for f in reader.schema):
+            return _EXIT_KINDS
+        total_a = total_b = 0
+        for batch in reader:
+            for start in range(0, batch.num_rows, _SLICE_ROWS):
+                a, b = _slice_lanes(names, kinds, batch.slice(start, _SLICE_ROWS))
+                total_a += a
+                total_b += b
+        out = sys.stdout.buffer
+        out.write(f"{total_a & _MASK} {total_b & _MASK}\n".encode("ascii"))
+        out.flush()
+        return 0
+    except BaseException:  # noqa: BLE001  (the caller falls back; say nothing)
+        return _EXIT_FAILED
+
+
+def _helper_env() -> Dict[str, str]:
+    """The caller's environment, made safe for a helper.
+
+    A helper never starts helpers, never stops in an interactive prompt, and does
+    not turn a warning into an error.
+    """
+    env = dict(os.environ)
+    env[HASH_WORKERS_ENV] = "1"
+    env["PYTHONWARNINGS"] = "ignore"
+    for key in ("PYTHONINSPECT", "PYTHONSTARTUP"):
+        env.pop(key, None)
+    return env
+
+
+def _deadline(rows: int, columns: int) -> float:
+    return _DEADLINE_FLOOR_S + rows * max(1, columns) * _DEADLINE_PER_CELL_S
+
+
+def _parallel_lanes(
+    table: Any, names: List[str], schema: List[Tuple[str, str]], workers: int
+) -> Optional[Tuple[int, int]]:
+    """The lane sums from up to ``workers`` helper processes, or None.
+
+    The rows are cut into one run per helper, each streamed to it as Arrow IPC. A
+    helper is a fresh Python that loads this file alone (not the ``ubunye``
+    package, so it starts in about 0.15 s) and runs :func:`_worker_main`: it
+    hashes every row of its run exactly as this process would and sends back two
+    numbers. Their sums are the table's, since addition does not care how rows
+    are grouped. Processes, not threads: the SHA-256 of a short line holds the GIL.
+    Fresh processes, not ``multiprocessing``: that would import the caller's
+    script again in every helper on Windows and macOS.
+
+    None (the caller then hashes the table itself) when the helpers cannot be
+    used, when any of them fails, or when they pass the deadline. Every helper is
+    stopped and every pipe closed before this returns, including on Ctrl+C.
+    """
+    exe = _python_executable()
+    if exe is None or _SOURCE_DIGEST is None:
+        _log.debug("rows-v1: no helpers (no Python interpreter to start); hashing here")
+        return None
+    granted = _reserve(workers, _helper_cap())
+    if not granted:
+        _log.debug("rows-v1: helper budget in use by another hash; hashing here")
+        return None
+    try:
+        return _run_helpers(exe, table, names, schema, granted)
+    finally:
+        _release(granted)
+
+
+def _run_helpers(
+    exe: str, table: Any, names: List[str], schema: List[Tuple[str, str]], workers: int
+) -> Optional[Tuple[int, int]]:
+    import subprocess
+
+    import pyarrow as pa
+
+    sub = table.select(names)
+    meta = {
+        _KINDS_KEY: json.dumps(sorted([list(p) for p in schema])).encode("utf-8"),
+        _SOURCE_KEY: (_SOURCE_DIGEST or "").encode("ascii"),
+        _PYARROW_KEY: pa.__version__.encode("ascii"),
+    }
+    sub = sub.replace_schema_metadata(meta)
+    command = [exe, "-c", _WORKER_BOOT, os.path.abspath(__file__)]
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    env = _helper_env()
+    rows = sub.num_rows
+    step = -(-rows // workers)
+    outs: List[bytearray] = [bytearray() for _ in range(workers)]
+    procs: List[Any] = []
+    threads: List[threading.Thread] = []
+    reason = ""
+
+    def feed(proc: Any, part: Any) -> None:
+        try:
+            with pa.ipc.new_stream(proc.stdin, part.schema) as writer:
+                for batch in part.to_batches(max_chunksize=_SLICE_ROWS):
+                    writer.write_batch(batch)
+        except BaseException:  # noqa: BLE001  (a dead helper; its exit code says so)
+            pass
+        finally:
+            _close(proc.stdin)
+
+    def drain(proc: Any, out: bytearray) -> None:
+        try:
+            while True:
+                chunk = proc.stdout.read1(65536)
+                if not chunk:
+                    return
+                if len(out) < 256:  # an answer is two numbers; never hold an echo
+                    out.extend(chunk[:256])
+        except BaseException:  # noqa: BLE001
+            pass
+
+    try:
+        for i in range(workers):
+            proc = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                env=env,
+                creationflags=flags,
+            )
+            procs.append(proc)
+            part = sub.slice(i * step, step)
+            threads.append(threading.Thread(target=feed, args=(proc, part), daemon=True))
+            threads.append(threading.Thread(target=drain, args=(proc, outs[i]), daemon=True))
+        for t in threads:
+            t.start()
+        # Short waits, so Ctrl+C reaches this thread; a deadline, so a helper that
+        # never answers cannot hold the run.
+        stop = time.monotonic() + _deadline(rows, len(names))
+        for proc in procs:
+            while proc.poll() is None:
+                if time.monotonic() > stop:
+                    reason = "deadline passed"
+                    return None
+                time.sleep(0.05)
+        for t in threads:
+            t.join(timeout=5)
+        codes = [p.returncode for p in procs]
+        if any(codes):
+            reason = f"exit codes {codes}"
+            return None
+        sums = []
+        for out in outs:
+            parts = bytes(out).split()
+            if len(parts) != 2:
+                reason = "an answer that is not two numbers"
+                return None
+            sums.append((int(parts[0]), int(parts[1])))
+        return sum(s[0] for s in sums), sum(s[1] for s in sums)
+    except Exception as exc:
+        reason = f"{type(exc).__name__}: {exc}"
+        return None
+    finally:
+        for proc in procs:
+            _stop(proc)
+        for t in threads:
+            t.join(timeout=1)
+        if reason:
+            _log.debug("rows-v1: helpers failed (%s); hashing here", reason)
+
+
+def _close(stream: Any) -> None:
+    try:
+        if stream is not None:
+            stream.close()
+    except BaseException:  # noqa: BLE001  (a broken pipe on close says nothing new)
+        pass
+
+
+def _stop(proc: Any) -> None:
+    """Kill a helper if it still runs, reap it, and close its pipes."""
+    try:
+        if proc.poll() is None:
+            proc.kill()
+        proc.wait(timeout=10)
+    except BaseException:  # noqa: BLE001
+        pass
+    _close(proc.stdin)
+    _close(proc.stdout)
+
+
 def fingerprint_arrow(table: Any) -> Fingerprint:
     """The ``rows-v1`` fingerprint of an Arrow table.
 
     Rows are taken in slices. Each slice's canonical lines are built by Arrow
     compute (:func:`_slice_lines`) and hashed from Arrow's buffer; a slice Arrow
-    cannot build is written and hashed the Python way. A test holds the result to
-    :func:`fingerprint_rows`, the row at a time reference, byte for byte.
+    cannot build is written and hashed the Python way. A large table is hashed by
+    helper processes, one per core (:func:`_parallel_lanes`, capped by
+    ``UBUNYE_HASH_WORKERS``); if any helper fails, this process hashes it all. A
+    test holds the result to :func:`fingerprint_rows`, the row at a time
+    reference, byte for byte.
     """
     schema = [(f.name, arrow_kind(f.type)) for f in table.schema]
     kinds = dict(schema)
@@ -540,10 +915,17 @@ def fingerprint_arrow(table: Any) -> Fingerprint:
     # A table with no columns has always summed to zero here (no members to zip);
     # kept, so no recorded digest moves.
     if names:
-        for piece in _slices(table, names):
-            a, b = _slice_lanes(names, kinds, piece)
-            total_a += a
-            total_b += b
+        sums = None
+        workers = _worker_count(table.num_rows)
+        if workers > 1 and all(_plain_type(f.type) for f in table.schema):
+            sums = _parallel_lanes(table, names, schema, workers)
+        if sums is not None:
+            total_a, total_b = sums
+        else:
+            for piece in _slices(table, names):
+                a, b = _slice_lanes(names, kinds, piece)
+                total_a += a
+                total_b += b
     return Fingerprint(
         schema_hash=schema_hash(schema),
         data_hash=data_hash(schema, table.num_rows, (total_a, total_b)),
