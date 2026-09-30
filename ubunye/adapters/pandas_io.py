@@ -28,12 +28,13 @@ so it satisfies ``DataFramePort`` exactly as a Spark DataFrame does.
 
 from __future__ import annotations
 
+import contextlib
 import glob
 import json
 import logging
 import os
 import re
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Iterator, List, Optional, Sequence
 
 from ubunye.adapters import ddl, pandas_partitions
 from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
@@ -318,14 +319,7 @@ def _read_csv(
         )
         read = pcsv.ReadOptions(encoding=encoding, column_names=names, skip_rows=1 if header else 0)
         try:
-            tables.append(
-                pcsv.read_csv(
-                    pa.BufferReader(data),
-                    read_options=read,
-                    parse_options=parse,
-                    convert_options=convert,
-                )
-            )
+            tables.append(_parse_csv(data, read, parse, convert))
         except pa.ArrowInvalid as exc:
             # PERMISSIVE (Spark's default) keeps a row with the wrong number of
             # fields: extra fields are dropped and missing ones are null. pyarrow
@@ -341,11 +335,7 @@ def _read_csv(
                 skip_header=header,
                 pad=str(opts.get("nullvalue", "")),
             )
-            tables.append(
-                pcsv.read_csv(
-                    evened, read_options=read, parse_options=parse, convert_options=convert
-                )
-            )
+            tables.append(_parse_csv(evened.getvalue(), read, parse, convert))
         if counts is not None:
             counts.append(tables[-1].num_rows)
 
@@ -356,6 +346,38 @@ def _read_csv(
     if infer:
         table = _narrow_ints(table)
     return _instants(table, timezone)
+
+
+def _parse_csv(data: bytes, read: Any, parse: Any, convert: Any) -> Any:
+    """pyarrow's CSV parse of ``data``, with no limit on the length of a row.
+
+    pyarrow parses in blocks of 1 MB and stops at a row longer than a block
+    ("straddling object straddles two block boundaries"). Spark has no such limit
+    (``maxCharsPerColumn`` is -1), so a file with such a row is parsed again as
+    one block (F-062).
+    """
+    import pyarrow as pa
+    import pyarrow.csv as pcsv
+
+    try:
+        return pcsv.read_csv(
+            pa.BufferReader(data), read_options=read, parse_options=parse, convert_options=convert
+        )
+    except pa.ArrowInvalid as exc:
+        if "straddl" not in str(exc):
+            raise
+    # A file in another encoding is parsed after it is turned into UTF-8, which
+    # takes up to three bytes for one (cp1252's euro sign).
+    size = len(data) * (1 if _text_encoding(read.encoding) == "utf-8" else 3) + 1
+    whole = pcsv.ReadOptions(
+        encoding=read.encoding,
+        column_names=read.column_names,
+        skip_rows=read.skip_rows,
+        block_size=max(read.block_size, min(size, 2**31 - 1)),
+    )
+    return pcsv.read_csv(
+        pa.BufferReader(data), read_options=whole, parse_options=parse, convert_options=convert
+    )
 
 
 # How far into a CSV file the escape check looks.
@@ -517,11 +539,27 @@ def safe_header(names: List[str], null_text: str = "") -> List[str]:
     return safe
 
 
+@contextlib.contextmanager
+def _no_field_limit() -> Iterator[None]:
+    """Python's csv module with no limit on a field's length, as Spark has none.
+
+    The module stops at 131,072 characters by default (F-062).
+    """
+    import csv
+
+    before = csv.field_size_limit()
+    csv.field_size_limit(2**31 - 1)  # the largest a C long holds on every platform
+    try:
+        yield
+    finally:
+        csv.field_size_limit(before)
+
+
 def _first_record(data: bytes, encoding: str, parse: Any) -> List[str]:
     """The first non blank record of a CSV file's bytes, as its fields."""
     import csv
 
-    with _text(data, encoding) as handle:
+    with _text(data, encoding) as handle, _no_field_limit():
         for row in csv.reader(handle, **_csv_dialect(parse)):
             if row:
                 return row
@@ -548,7 +586,7 @@ def _even_rows(
     dialect = _csv_dialect(parse)
     out = io.StringIO()
     writer = csv.writer(out, lineterminator=chr(10), **dialect)
-    with _text(data, encoding) as handle:
+    with _text(data, encoding) as handle, _no_field_limit():
         reader = csv.reader(handle, **dialect)
         for number, row in enumerate(reader):
             if not row:

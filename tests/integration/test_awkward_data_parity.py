@@ -109,6 +109,23 @@ def test_csv_bytes_not_in_the_encoding(spark, pandas_backend, tmp_path, data, op
     assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
 
 
+def _long_text(n: int) -> str:
+    """``n`` characters with line breaks (LF and CRLF), a NUL, a tab and non-ASCII."""
+    unit = "abc é€漢\n" + "q" * 40 + "\r\n" + "x\x00y\t"
+    return (unit * (n // len(unit) + 1))[:n]
+
+
+@pytest.mark.parametrize("multiline", ["false", "true"])
+def test_csv_values_longer_than_a_megabyte(spark, pandas_backend, tmp_path, multiline):
+    """F-062: no limit on a value's length (Spark's maxCharsPerColumn is -1)."""
+    big = "z" * 3_000_000
+    long = _long_text(1_200_000).replace('"', "")
+    data = f'id,t\n1,{big}\n2,"{long}"\n3,b\n'.encode()
+    path = _file(tmp_path, "long.csv", data)
+    options = {"header": "true", "multiLine": multiline}
+    assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
+
+
 def test_csv_invalid_utf8_fuzz(spark, pandas_backend, tmp_path):
     """F-061: seeded runs of broken UTF-8 (cut, overlong, surrogate, stray bytes)."""
     import random

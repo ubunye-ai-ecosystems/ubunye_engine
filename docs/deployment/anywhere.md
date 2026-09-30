@@ -52,6 +52,7 @@ copies Spark's defaults instead of pandas' own:
 | CSV with `header: "true"` | Columns named from the first line, every value as text. A blank name becomes `_c<position>`; a repeated name (ignoring case) gets its position added to each copy, so `a,a,,A` reads as `a0, a1, _c2, A3` |
 | CSV with `inferSchema: "true"` | `int` if every value fits, else `bigint`; `double`, `boolean`, `date`, `timestamp`; an empty column is text |
 | An empty CSV field | null, not an empty string |
+| A CSV value of any length | Read whole (Spark has no limit; pyarrow alone stopped past 1 MB) |
 | A CSV byte that is not valid in `encoding` (UTF-8 unless set) | The character U+FFFD, as Java decodes it; the read goes on |
 | Quotes in a CSV value | Spark's escape is a backslash, so `"Anna ""Annie"""` stays exactly as written, and `"a\"b"` is `a"b` (set `escape: '"'` for doubled quotes); a line of only spaces is skipped |
 | JSON | One object per line (`multiLine: "true"` for one big array); columns sorted by name; whole numbers are `bigint`; dates stay text |

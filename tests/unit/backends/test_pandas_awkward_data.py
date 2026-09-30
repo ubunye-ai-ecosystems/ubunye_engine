@@ -50,6 +50,41 @@ class TestCsvHeaderNames:
         ]
 
 
+class TestCsvLongRows:
+    """F-062: Spark has no limit on a value's length; pyarrow stopped past 1 MB."""
+
+    @pytest.mark.parametrize("multiline", ["false", "true"])
+    @pytest.mark.parametrize("quote", ["", '"'])
+    def test_a_three_megabyte_value(self, tmp_path, multiline, quote):
+        big = "x" * 3_000_000
+        data = f"id,t\n1,{quote}{big}{quote}\n2,b\n".encode()
+        frame = _read_bytes(
+            tmp_path, "csv", data, options={"header": "true", "multiLine": multiline}
+        )
+        assert frame.native["t"].tolist() == [big, "b"]
+
+    def test_a_long_value_in_a_ragged_file_and_a_long_header(self, tmp_path):
+        # A row with too few fields sends the file through Python's csv module,
+        # which stopped at 131,072 characters.
+        big = "z" * 300_000
+        data = f"id,{big}\n1,{big}\n2\n".encode()
+        frame = _read_bytes(tmp_path, "csv", data, options={"header": "true"})
+        assert list(frame.native.columns) == ["id", big]
+        assert frame.native[big].tolist()[0] == big
+        assert frame.native[big].isna().tolist() == [False, True]
+
+    def test_a_long_value_with_line_breaks_in_another_encoding(self, tmp_path):
+        big = ("é\n" * 800_000) + "end"
+        data = f'id,t\n1,"{big}"\n'.encode("latin-1")
+        frame = _read_bytes(
+            tmp_path,
+            "csv",
+            data,
+            options={"header": "true", "multiLine": "true", "encoding": "latin1"},
+        )
+        assert frame.native["t"].tolist() == [big]
+
+
 class TestCsvBytesNotInTheEncoding:
     """F-061: Spark reads a byte that is not valid in the encoding as U+FFFD."""
 
