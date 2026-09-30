@@ -107,6 +107,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **`ubunye prove observe -t a -t b` observes every task (F-056).** It took one
+  `-t` and click kept the last of several, silently: one observation, of the last
+  task, under the name meant for all. Several tasks now give one observation each,
+  named `<workload>-<task>` (as ubunye-infra's `proving/observe.sh` names them); one
+  task keeps the workload's name. A task given twice is refused, and so are several
+  tasks with `--record` or `--run-id`, which name one run.
 - **`ubunye run` stops on a broken expectation without a traceback (F-055).** An
   expectation that fails, an input contract or a reconcile, is the engine doing its
   job: nothing was written and the message names the rule. The CLI printed that

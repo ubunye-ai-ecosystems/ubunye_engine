@@ -274,7 +274,8 @@ foreach ($t in "clean", "orders_fact", "monthly") {
 ubunye prove report evidence --workload r2-olist-orders_fact --reference spark-local
 ```
 
-(`prove observe` takes one task at a time, hence the loop.) Every dimension should say
+(After the runs, one `ubunye prove observe --workload r2-olist ... -t clean -t
+orders_fact -t monthly` does the same three observations, named the same way.) Every dimension should say
 PASS, with the same digest on both engines: `6affe2f5382c` for `clean`,
 `6dcf270328d8` for `orders_fact`, `a0bd206029ca` for `monthly`. The repository's
 tests check these digests on pandas, and on Spark 3.5 and 4 in CI.

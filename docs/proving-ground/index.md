@@ -38,6 +38,10 @@ write valid Parquet differently; byte equality is not a promise Ubunye makes).
 ubunye prove observe --workload c01-portable-etl --env spark-local \
   -d pipelines -u proving -p c01 -t etl -o evidence
 
+# several tasks: one observation each, named <workload>-<task> (r2-olist-clean, ...)
+ubunye prove observe --workload r2-olist --env pandas-local \
+  -d pipelines -u olist -p sales -t clean -t orders_fact -t monthly -o evidence
+
 # a record from elsewhere (a cloud run's artifact)
 ubunye prove observe --workload c01-portable-etl --env aws-glue --kind cloud \
   --provider aws --runtime "Glue 5.0" --record glue.json -o evidence

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import typer
 
@@ -54,7 +54,12 @@ def observe(
     usecase_dir: Optional[Path] = typer.Option(None, "-d", "--usecase-dir"),
     usecase: Optional[str] = typer.Option(None, "-u", "--usecase"),
     package: Optional[str] = typer.Option(None, "-p", "--package"),
-    task: Optional[str] = typer.Option(None, "-t", "--task"),
+    task: Optional[List[str]] = typer.Option(
+        None,
+        "-t",
+        "--task",
+        help="A task. Give several (-t a -t b) to observe each as <workload>-<task>.",
+    ),
     run_id: str = typer.Option("latest", "--run-id", help="A stored run's id, or 'latest'."),
     kind: str = typer.Option("local", "--kind", help="local, cloud or managed."),
     provider: str = typer.Option("", "--provider", help="aws, gcp, azure, databricks, ..."),
@@ -70,7 +75,54 @@ def observe(
     cost_source: str = typer.Option("", "--cost-source", help="How the figure was obtained."),
     run_url: str = typer.Option("", "--run-url", help="Where a reader can check this run."),
 ) -> None:
-    """Turn a run record into an observation of WORKLOAD in ENV."""
+    """Turn a run record into an observation of WORKLOAD in ENV.
+
+    Several tasks (``-t a -t b``) give one observation each, named
+    ``<workload>-<task>``; before F-056 only the last was kept, silently.
+    """
+    tasks = list(task or [])
+    if len(set(tasks)) < len(tasks):
+        repeated = sorted({t for t in tasks if tasks.count(t) > 1})
+        typer.secho(
+            f"Task {', '.join(repeated)} given more than once.", fg=typer.colors.RED, err=True
+        )
+        raise typer.Exit(code=2)
+    if len(tasks) > 1 and (record is not None or run_id != "latest"):
+        typer.secho(
+            "--record and --run-id name one run: give one task with them.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    for one in tasks or [None]:
+        name = workload if len(tasks) <= 1 else f"{workload}-{one}"
+        _observe_one(
+            name, env, out, record, usecase_dir, usecase, package, one, run_id, kind,
+            provider, runtime, region, cost_amount, cost_currency, cost_basis, cost_source,
+            run_url,
+        )  # fmt: skip
+
+
+def _observe_one(
+    workload: str,
+    env: str,
+    out: Path,
+    record: Optional[Path],
+    usecase_dir: Optional[Path],
+    usecase: Optional[str],
+    package: Optional[str],
+    task: Optional[str],
+    run_id: str,
+    kind: str,
+    provider: str,
+    runtime: str,
+    region: str,
+    cost_amount: Optional[float],
+    cost_currency: str,
+    cost_basis: str,
+    cost_source: str,
+    run_url: str,
+) -> None:
     from ubunye.proving import observe_record
 
     doc = _record(record, usecase_dir, usecase, package, task, run_id)
