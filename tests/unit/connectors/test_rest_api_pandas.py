@@ -123,10 +123,20 @@ def test_an_explicit_schema_selects_and_types():
     assert frame["missing"].isna().all()
 
 
-def test_a_whole_number_in_a_double_column_is_refused_as_on_spark():
-    with served([{"price": 1}, {"price": 2.5}]) as api:
+def test_whole_numbers_in_a_double_column_read_as_decimals():
+    """Refused before (Spark's check takes no int for a double); now 1 is 1.0."""
+    schema = [{"name": "price", "type": "double"}, {"name": "rate", "type": "float"}]
+    with served([{"price": 1, "rate": 2}, {"price": 2.5, "rate": None}]) as api:
+        frame = _read({"url": f"{api.base}/all", "schema": schema})
+    assert frame["price"].tolist() == [1.0, 2.5]
+    assert frame["rate"].tolist()[0] == 2.0
+
+
+def test_a_whole_number_a_double_cannot_hold_is_still_refused():
+    big = 2**53 + 1  # float(big) != big: converting would change the value
+    with served([{"price": big}]) as api:
         cfg = {"url": f"{api.base}/all", "schema": [{"name": "price", "type": "double"}]}
-        with pytest.raises(SourceReadError, match="can not accept object 1"):
+        with pytest.raises(SourceReadError, match="can not accept object"):
             _read(cfg)
 
 

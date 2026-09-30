@@ -134,3 +134,11 @@ fixed in its own commit on this branch.
    before, passes after). Left as it was: the data hash of a table with no columns
    sums nothing on pandas (a deliberate old choice, so no recorded digest moves)
    while Spark hashes one `{}` line per row, so the two digests differ there.
+7. **A `double` schema column refused whole numbers on both backends** (Spark's
+   verifier takes no `int` for a double: `schema_cmp.py`, `DOUBLE <- 1` refused by
+   pyspark 4.2 and 3.5.8 alike). The reader now turns an exact whole number into a
+   float for `double` and `float` columns before the backend sees it, so both
+   backends get the same records; past 2**53 it is left and refused. Tests:
+   `test_whole_numbers_in_a_double_column_read_as_decimals` (fails before, passes
+   after), `test_a_whole_number_a_double_cannot_hold_is_still_refused`, and the
+   integration test `test_whole_numbers_in_a_double_column_read_the_same` (CI).

@@ -294,6 +294,35 @@ def _schema_ddl(schema_cfg: List[Dict[str, str]]) -> str:
     return ", ".join(parts)
 
 
+_DECIMAL_TYPES = frozenset({"double", "float"})
+
+
+def _whole_numbers_as_decimals(
+    records: List[Dict[str, Any]], schema_cfg: List[Dict[str, str]]
+) -> List[Dict[str, Any]]:
+    """A whole number in a ``double`` or ``float`` column, as that decimal number.
+
+    JSON writes ``1`` and ``1.0`` alike for many APIs, and Spark's schema check
+    refuses a Python ``int`` in a double column, so a price column of ``1`` and
+    ``2.5`` could not be read at all. Done here, before the backend, so both
+    backends get the same records. Only where it is exact: a number past 2**53
+    that a double cannot hold is left as it is, and the backend refuses it.
+    """
+    names = {c["name"] for c in schema_cfg if str(c.get("type", "")).lower() in _DECIMAL_TYPES}
+    if not names:
+        return records
+    out = []
+    for record in records:
+        if isinstance(record, dict) and any(type(record.get(n)) is int for n in names):
+            record = dict(record)
+            for n in names:
+                value = record.get(n)
+                if type(value) is int and int(float(value)) == value:
+                    record[n] = float(value)
+        out.append(record)
+    return out
+
+
 class RestApiReader(Reader):
     """Read records from a REST API endpoint into the backend's frame.
 
@@ -363,6 +392,8 @@ class RestApiReader(Reader):
 
         if not all_records:
             log.warning("RestApiReader: no records returned from %s", cfg["url"])
+        if schema_cfg:
+            all_records = _whole_numbers_as_decimals(all_records, schema_cfg)
 
         try:
             return backend.frame_from_records(all_records, schema=schema)

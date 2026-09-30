@@ -126,14 +126,14 @@ def test_no_records_give_the_same_empty_frame(backends):
         ([{"id": 1, "note": None}, {"id": 2, "note": None}], None, "CANNOT_DETERMINE_TYPE"),
         ([{"flag": True}, {"flag": 1}], None, "CANNOT_MERGE_TYPE"),
         ([{"x": {"a": 1}}, {"x": 5}], None, "CANNOT_MERGE_TYPE"),
-        ([{"price": 1}], [{"name": "price", "type": "double"}], "can not accept object"),
+        ([{"price": 2**53 + 1}], [{"name": "price", "type": "double"}], "can not accept object"),
     ],
     ids=[
         "long-and-double",
         "null-everywhere",
         "bool-and-long",
         "object-and-number",
-        "int-as-double",
+        "inexact-int-as-double",
     ],
 )
 def test_records_spark_refuses_are_refused_on_both(backends, records, schema, error):
@@ -143,6 +143,17 @@ def test_records_spark_refuses_are_refused_on_both(backends, records, schema, er
         for backend in (spark_backend, pandas_backend):
             with pytest.raises(SourceReadError, match=error):
                 RestApiReader().read(cfg, backend).count()
+
+
+def test_whole_numbers_in_a_double_column_read_the_same(backends):
+    spark_backend, pandas_backend = backends
+    schema = [{"name": "price", "type": "double"}, {"name": "rate", "type": "float"}]
+    with served([{"price": 1, "rate": 2}, {"price": 2.5, "rate": None}]) as api:
+        cfg = {"url": f"{api.base}/all", "schema": schema}
+        spark_df = RestApiReader().read(cfg, spark_backend)
+        pandas_frame = RestApiReader().read(cfg, pandas_backend)
+    _assert_same(spark_backend, spark_df, pandas_backend, pandas_frame)
+    assert [r["price"] for r in _rows(spark_backend, spark_df)] == [1.0, 2.5]
 
 
 def test_write_posts_the_same_payloads(backends):

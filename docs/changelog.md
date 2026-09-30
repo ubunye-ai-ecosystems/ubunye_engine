@@ -81,6 +81,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
   `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
   both.
+- **A REST field declared `double` or `float` takes whole numbers** (F-015 review).
+  Spark's schema check refuses a Python `int` in a double column, so a price field
+  of `1` and `2.5` could not be read at all, even with a schema, on either backend.
+  The reader now turns a whole number in such a column into the same decimal number
+  before the backend sees it, when a double holds it exactly (up to 2**53); a larger
+  one is still refused. **Behaviour change** on Spark: these records used to fail.
 - **REST records with no fields are rows on pandas, as on Spark** (F-015 review).
   `[{}, {}, {}]` gave an empty frame on pandas and three rows on Spark. A pandas
   frame with rows and no columns now keeps its rows on the way to Arrow too, so its

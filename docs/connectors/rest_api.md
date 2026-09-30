@@ -235,10 +235,12 @@ schema:
 
 Supported types: `string`, `integer`, `long`, `float`, `double`, `boolean`, `timestamp`, `date`, `binary`.
 
-A value must already have the column's kind, as Spark checks it: a `double` column
-refuses `1` (write `1.0`, or declare `long`), and `timestamp`, `date` and `binary`
-columns refuse text, which is all JSON can send. Read such a field as `string` and
-convert it in the transform.
+A value must have the column's kind, as Spark checks it. A whole number in a
+`double` or `float` column is read as that decimal number (`1` becomes `1.0`), on
+both backends, when a double holds it exactly; a whole number past 2**53 that a
+double cannot hold is refused. `timestamp`, `date` and `binary` columns refuse
+text, which is all JSON can send. Read such a field as `string` and convert it in
+the transform.
 
 ---
 
