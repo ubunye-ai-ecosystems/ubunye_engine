@@ -140,6 +140,7 @@ class SecretResolver:
         if not isinstance(secret, str):
             secret = str(secret)
         self._cache[value] = secret
+        _remember(secret)
         return secret
 
     def resolve(self, node: Any) -> Any:
@@ -308,3 +309,171 @@ def redact_variables(variables: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         for k, v in (variables or {}).items()
         if v is not None
     }
+
+
+# --------------------------------------------------------------------------- #
+# Masking secrets in free text: error messages, log lines, run records
+# --------------------------------------------------------------------------- #
+
+#: Every value a SecretResolver fetched in this process. An error raised later in
+#: the run may quote one; the run record must not keep it (F-054 review).
+_SEEN: set = set()
+
+#: Shorter values are not masked word for word: "abc" would shred the text.
+MIN_SECRET_LENGTH = 4
+
+
+def _remember(value: str) -> None:
+    if isinstance(value, str) and len(value) >= MIN_SECRET_LENGTH:
+        _SEEN.add(value)
+
+
+#: Header names whose value is a credential, however the text quotes them.
+_SECRET_HEADERS = frozenset({"authorization", "proxy-authorization", "x-api-key"})
+#: URL and JDBC parameter names that hold a secret but that `looks_secret` does not
+#: call secret on their own (a variable named `key` is usually not one).
+_SECRET_PARAMS = frozenset({"key", "sig"})
+# `Authorization: Bearer x`, `'authorization': 'Basic x'`, `X-Api-Key=x`.
+_HEADER_VALUE = re.compile(
+    r"(?i)(\b(?:proxy-)?authorization|\bx-api-key)(['\"]?\s*[:=]\s*['\"]?)"
+    r"((?:bearer|basic|token|digest|negotiate)\s+)?([^'\"\s,;}]+)"
+)
+
+
+def _secret_param(name: str) -> bool:
+    return looks_secret(name) or name.lower() in _SECRET_PARAMS
+
+
+def _base64_cores(value: str) -> List[str]:
+    """The part of ``value``'s base64 form that stays the same wherever it sits.
+
+    Base64 codes 3 bytes as 4 characters, so the characters that code the value
+    depend on where it starts (``user:password`` is coded differently from
+    ``password``) and on what follows. For each of the 3 starts, the characters
+    coded from the value alone are kept; standard and URL-safe alphabets.
+    """
+    import base64
+
+    raw = value.encode("utf-8")
+    cores = []
+    for lead in range(3):
+        coded = base64.b64encode(b"\0" * lead + raw).decode()
+        total = lead + len(raw)
+        start = (0, 2, 3)[lead]
+        end = (total // 3) * 4 + (total % 3)
+        core = coded[start:end]
+        if len(core) >= 6:
+            cores += [core, core.replace("+", "-").replace("/", "_")]
+    return cores
+
+
+def _forms(value: str) -> List[str]:
+    """``value`` as it may be written: itself, URL-encoded, and in base64."""
+    from urllib.parse import quote, quote_plus
+
+    return [value, quote(value, safe=""), quote(value), quote_plus(value), *_base64_cores(value)]
+
+
+def mask_text(text: Any, values: Optional[List[str]] = None) -> str:
+    """``text`` with secrets masked (``***``), for anything recorded, sent or logged.
+
+    - Every value in ``values`` of 4 characters or more, and its URL-encoded and
+      base64 forms, and the value broken across lines or spaces. A shorter value is
+      not masked word for word: it would shred the text.
+    - The password in ``scheme://user:password@host``.
+    - A secret-named parameter in a URL or a JDBC string (``?api_key=x``,
+      ``;password=x``, ``&sig=x``).
+    - The value of an ``Authorization``, ``Proxy-Authorization`` or ``X-Api-Key``
+      header, with or without ``Bearer`` / ``Basic``.
+
+    One implementation for the run record, OpenLineage, the REST connector's logs
+    and errors (F-050, F-054).
+    """
+    out = str(text)
+    wanted = sorted(
+        {str(v) for v in (values or []) if v is not None and len(str(v)) >= MIN_SECRET_LENGTH},
+        key=len,
+        reverse=True,
+    )
+    for value in wanted:
+        for form in _forms(value):
+            if form and form in out:
+                out = out.replace(form, REDACTED)
+        if len(value) >= 8 and value not in out:
+            # The value broken across a line or a space ("VarSec\nret-123!").
+            spread = r"\s*".join(re.escape(c) for c in value)
+            out = re.sub(spread, REDACTED, out)
+    out = _URL_PASSWORD.sub(lambda m: f"{m.group(1)}:{REDACTED}@", out)
+    out = _URL_PARAM.sub(
+        lambda m: (
+            f"{m.group(1)}{m.group(2)}={REDACTED}" if _secret_param(m.group(2)) else m.group(0)
+        ),
+        out,
+    )
+    return _HEADER_VALUE.sub(lambda m: f"{m.group(1)}{m.group(2)}{m.group(3) or ''}{REDACTED}", out)
+
+
+def _config_secrets(node: Any, parent: str = "") -> List[str]:
+    """Literal secret values in a config: under a secret-looking key, a header that
+    carries a credential, or an ``auth`` block's ``key`` / ``token`` / ``password``."""
+    found: List[str] = []
+    if isinstance(node, dict):
+        for k, v in node.items():
+            key = str(k)
+            if isinstance(v, (dict, list)):
+                found += _config_secrets(v, key)
+            elif isinstance(v, str) and not is_reference(v):
+                secret = (
+                    looks_secret(key)
+                    or key.lower() in _SECRET_HEADERS
+                    or (parent.lower() == "auth" and key.lower() in {"key", "token", "password"})
+                )
+                if secret:
+                    found.append(v)
+                    found += v.split()[1:]  # "Bearer <token>": the token alone too
+    elif isinstance(node, list):
+        for v in node:
+            found += _config_secrets(v, parent)
+    return found
+
+
+def known_secrets(
+    variables: Optional[Dict[str, Any]] = None, config: Optional[Dict[str, Any]] = None
+) -> List[str]:
+    """Every secret value this process knows of, longest first, for :func:`mask_text`.
+
+    The secret-looking variables (``--var db_password=...``), every value a
+    ``secret://`` reference resolved to, the literal secrets in the config, and the
+    environment variables with secret-looking names (a config may template one in
+    with ``{{ env.DB_PASSWORD }}``).
+    """
+    import os
+
+    found = set(secret_values(variables)) | set(_SEEN) | set(_config_secrets(config or {}))
+    found |= {v for k, v in os.environ.items() if looks_secret(k)}
+    return sorted((v for v in found if len(v) >= MIN_SECRET_LENGTH), key=len, reverse=True)
+
+
+def error_text(
+    exc: BaseException,
+    variables: Optional[Dict[str, Any]] = None,
+    config: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Why a run failed, safe to record: the error's type and message, secrets masked,
+    at most :data:`MAX_ERROR_CHARS` characters and then ``... (N more characters)``.
+
+    Masked first and cut after, so the cut cannot leave half a secret showing. Only
+    a head of the text is masked (16 times what is kept): a 5 MB message costs no
+    more than a 64 KB one.
+    """
+    text = f"{type(exc).__name__}: {exc}"
+    window = text[: MAX_ERROR_CHARS * 16]
+    masked = mask_text(window, known_secrets(variables, config))
+    more = len(masked) - MAX_ERROR_CHARS + (len(text) - len(window))
+    if more > 0:
+        return masked[:MAX_ERROR_CHARS] + f" ... ({more} more characters)"
+    return masked
+
+
+#: How much of a failed run's error the record keeps and OpenLineage sends.
+MAX_ERROR_CHARS = 4096

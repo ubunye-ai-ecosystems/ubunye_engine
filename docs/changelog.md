@@ -107,6 +107,57 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A failed expectation's hint names only what the rule can do (F-057).** Every
+  failure said "change the rule's severity to quarantine or warn", but a reconcile,
+  `unique`, `row_count` and `columns` cannot quarantine (the config refuses it). The
+  hint now depends on what broke: quarantine or warn for a rule on rows, a share
+  (`max_lost: "1%"`) or warn for a reconcile, warn for the others, and "the source
+  probably changed" when `max_quarantine_rate` is broken.
+- **`ubunye prove observe -t a -t b` observes every task (F-056).** It took one
+  `-t` and click kept the last of several, silently: one observation, of the last
+  task, under the name meant for all. Several tasks now give one observation each,
+  named `<workload>-<task>` (as ubunye-infra's `proving/observe.sh` names them); one
+  task keeps the workload's name. A task given twice is refused, and so are several
+  tasks with `--record` or `--run-id`, which name one run.
+- **`ubunye run` stops on a broken expectation without a traceback (F-055).** An
+  expectation that fails, an input contract or a reconcile, is the engine doing its
+  job: nothing was written and the message names the rule. The CLI printed that
+  message, then about 60 lines of traceback through the engine, which read as a
+  crash. It now prints `[ERROR] Run stopped for <task>: <message>` and exits with
+  code 1, as a refused run does. Any other error still shows its traceback. Found
+  writing Tutorial 2 (Olist). After review, only an error that carries rule results
+  (a verdict on the data) stops quietly: an `ExpectationError` about the engine
+  (narwhals not installed, a reconcile given no inputs) keeps its traceback.
+- **A failed run's record says why it failed (F-054).** The record has an `error`
+  field; OpenLineage sends it as the failed run's `errorMessage`, and `ubunye prove`
+  shows it as the reason. Nothing filled it: every failed run said `status: error`,
+  `error: null`. It now holds the error's type and message (`ExpectationError: An
+  input broke its expectations...`), with the values of secret-looking variables
+  masked, as step locations are. `lineage trace` prints it (and `--json` carries it).
+  Found by the Olist example (R2).
+- **A failed run's error keeps no secret (F-054, skeptic review).** The first fix
+  masked only secret-looking `--var` values word for word; the skeptic's probe found
+  the record, `lineage trace`, OpenLineage and `ubunye prove` still kept a password
+  from an environment variable in a JDBC URL, `user:password@` in a URL, `?api_key=`,
+  `Authorization: Bearer`, a resolved `secret://` value, and a `--var` secret
+  URL-encoded, in base64 or broken across a line. One function now masks all of them,
+  `ubunye.core.secrets.mask_text`, and the REST connector's log and error masking
+  (F-050) calls it too, so there is one implementation. The text is masked before any
+  monitor receives it. Values shorter than 4 characters are not masked word for word;
+  see [Secrets](config/secrets.md#a-failed-runs-error).
+- **A failed run's error is kept to about 4 KB (F-054, skeptic review).** A transform
+  that raised a 5 MB message wrote a 5 MB run record and would have sent 5 MB to
+  OpenLineage. The record (and OpenLineage's `errorMessage`) keeps the first 4,096
+  characters and says `... (N more characters)`; masking happens before the cut.
+- **A quarantined row's reasons read the same on pandas and Spark (F-052).** On
+  pandas, a row that broke only the first of two quarantine rules got
+  `_ubunye_failed_rules` = `price_between,` (a stray comma); Spark wrote
+  `price_between`. So the quarantine output, and the run's digest, differed between the
+  two engines. Narwhals' `concat_str(ignore_nulls=True)` on pandas writes a separator
+  after every present value except the last one given. The reasons are now built
+  without it. **Behaviour change** on pandas only, and only for rows that did not break
+  the last quarantine rule: their reasons lose the trailing comma. Found by the Olist
+  example (R2).
 - **On Windows, reading a run lease while its heartbeat replaces it no longer fails
   (F-048).** Windows refuses a read for a moment while a file is being replaced. The
   engine then called a live run's lease unreadable, and a second run of the same
@@ -415,6 +466,23 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   rice +144%, Ethiopia groundnuts +122%, Chad wheat flour +78% across 54 markets). A
   small WFP sample ships with it, so the first run needs no account and no Java; the
   two steps give the same rows on pandas and Spark (tested, golden digests).
+- **A second real-world example: Olist sales, nine tables to an order fact table**
+  (`examples/real-world/olist_ecommerce`), and **Tutorial 2**
+  (`docs/tutorials/02-olist-multi-table.md`). Three steps: `clean` (input contracts on
+  the nine raw CSV files, typed outputs, categories in English, one point per zip
+  prefix, bad items, payments and reviews quarantined), `orders_fact` (one row per
+  order, reconciled with its inputs: every order in, one row out, payments and prices
+  add up) and `monthly` (sales and on-time rate per seller, sales per category). A
+  made up sample shaped like the real files ships with it (the Olist data is CC
+  BY-NC-SA 4.0, so it is downloaded at run time by `scripts/fetch_data.sh`, never
+  committed). The tutorial breaks the pipeline on purpose to show a contract, a
+  quarantine, a reconcile and a warning each catching its problem. Golden digests on
+  pandas in the unit tier, the same on Spark in the integration tier. The portable
+  transforms guide gains "days between two dates" (F-053). Each step checks for
+  Narwhals 2.9 or later first and says so (`the example needs narwhals>=2.9
+  (Expr.floor)`), instead of failing inside the transform. The example needs the
+  release after 0.7.1; until then the tutorial and README install Ubunye from the
+  cloned repository (`pip install -e "../../..[pandas]"`).
 - **A guide to writing portable transforms** (`docs/guides/portable-transforms.md`):
   the places the same Narwhals code gave different numbers on pandas and Spark, each
   found on real data, each with a fix (rounding modes, float sums, a lost cast,

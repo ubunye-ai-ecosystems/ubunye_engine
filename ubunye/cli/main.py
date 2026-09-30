@@ -41,6 +41,7 @@ from ubunye.cli.test_cmd import test_app
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.core import runs
+from ubunye.core.errors import ExpectationError
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
@@ -594,6 +595,19 @@ def run(
             except runs.RunLeaseHeld as e:
                 # A refusal, not a crash: nothing ran, so no traceback.
                 typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
+                raise typer.Exit(code=1)
+            except ExpectationError as e:
+                if not e.results:
+                    # Not a verdict on the data (no rule results): narwhals missing,
+                    # inputs not passed to a reconcile. Keep the traceback.
+                    typer.secho(
+                        f"[ERROR] Run failed for {task}: {e}", fg=typer.colors.RED, err=True
+                    )
+                    raise
+                # The data broke a declared rule: the engine did its job and wrote
+                # nothing. The message says which rule and how many rows; a traceback
+                # through the engine would read as a crash (F-055).
+                typer.secho(f"[ERROR] Run stopped for {task}: {e}", fg=typer.colors.RED, err=True)
                 raise typer.Exit(code=1)
             except Exception as e:
                 typer.secho(f"[ERROR] Run failed for {task}: {e}", fg=typer.colors.RED, err=True)

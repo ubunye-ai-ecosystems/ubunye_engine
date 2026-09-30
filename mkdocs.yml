@@ -105,6 +105,7 @@ nav:
       - Overview: proving-ground/index.md
       - Latest results: proving-ground/latest.md
       - "Tutorial 1: pandas and Spark": tutorials/01-local-parity.md
+      - "Tutorial 2: nine tables, checked": tutorials/02-olist-multi-table.md
       - Writing portable transforms: guides/portable-transforms.md
       - Where it starts from: research/proving-ground/current-state.md
   - Project:

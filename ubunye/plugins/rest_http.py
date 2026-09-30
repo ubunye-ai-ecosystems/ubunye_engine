@@ -138,10 +138,14 @@ def secrets_of(cfg: Dict[str, Any]) -> List[str]:
 
 
 def redact(text: Any, secrets: List[str]) -> str:
-    """``text`` with every secret masked, and secret-named URL parameters too."""
-    from ubunye.core.secrets import redact_url, scrub
+    """``text`` with every secret masked, and secret-named URL parameters too.
 
-    return redact_url(scrub(str(text), secrets))
+    The core's :func:`ubunye.core.secrets.mask_text`: one implementation for the
+    connector's logs and errors and the run record.
+    """
+    from ubunye.core.secrets import mask_text
+
+    return mask_text(text, secrets)
 
 
 class _Redacting(logging.Filter):

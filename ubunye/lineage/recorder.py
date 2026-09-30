@@ -29,7 +29,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from ubunye.core.secrets import redact_variables, scrub, secret_values
+from ubunye.core.secrets import known_secrets, mask_text, redact_variables, scrub, secret_values
 from ubunye.lineage import evidence
 from ubunye.lineage.context import RunContext, StepRecord
 from ubunye.lineage.storage import FileSystemLineageStore, LineageStore, S3LineageStore
@@ -267,6 +267,7 @@ class LineageRecorder:
         llm_budget: Optional[Dict[str, Any]] = None,
         hash_basis: Optional[Dict[str, str]] = None,
         source_versions: Optional[Dict[str, Any]] = None,
+        error: Optional[str] = None,
     ) -> None:
         """Update the run record with final status, duration, and step hashes.
 
@@ -279,6 +280,10 @@ class LineageRecorder:
         (:mod:`ubunye.lineage.source_version`). A recomputed input's version is
         taken again right after its hash; if it moved, the step says the digest
         is of a later state than the one read (F-046).
+
+        ``error`` is why a failed run failed (the exception's type and message). It
+        is kept in the record, with the values of secret-looking variables masked,
+        so ``lineage show``, OpenLineage and ``ubunye prove`` can say why (F-054).
         """
         run_id = context.run_id
         ctx = self._runs.get(run_id)
@@ -324,6 +329,8 @@ class LineageRecorder:
         values = self._secret_values.pop(run_id, [])
         for step in ctx.inputs + ctx.outputs:
             step.location = scrub(step.location, values)
+        if error:
+            ctx.error = mask_text(error, values + known_secrets(None, config))
 
         if status == "success":
             # A run whose lease was taken over may have had its appends taken back by

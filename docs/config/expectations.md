@@ -55,7 +55,7 @@ Each rule is named after its column and kind (`quantity_between`), or give it a
 | `severity` | Effect |
 |---|---|
 | `fail` (default) | The run stops. **Nothing is written**, for any output. |
-| `quarantine` | The breaking rows move to the `quarantine:` output, with a `_ubunye_failed_rules` column naming every rule each row broke (`quantity_between,paymentMethod_one_of`). The rest are written. Only per-row rules can quarantine. |
+| `quarantine` | The breaking rows move to the `quarantine:` output, with a `_ubunye_failed_rules` column naming every rule each row broke, and only those, in the order they are declared (`quantity_between,paymentMethod_one_of`), the same on every backend. The rest are written. Only per-row rules can quarantine. |
 | `warn` | The rows stay; the breach is logged. |
 
 The quarantine output is always written, empty when no row broke a rule, so a
@@ -74,7 +74,14 @@ ExpectationError: Expectations failed, so nothing was written:
   or warn if this is expected.
 ```
 
-The error carries every rule's result, passed or not (`err.results`). A rule that
+The hint names only what the broken rules can do: quarantine or warn for a rule on
+rows; a share (`max_lost: "1%"`) or warn for a reconcile; warn for `unique`,
+`row_count` and `columns`, which cannot quarantine.
+
+`ubunye run` prints the message and exits with code 1, with no traceback: the data
+broke a rule, the engine did not crash. (An `ExpectationError` about the setup, such
+as narwhals not installed, still shows its traceback.) The error carries every rule's result, passed
+or not (`err.results`). A rule that
 breaks zero rows today and thousands tomorrow is the earliest warning that
 something upstream moved.
 

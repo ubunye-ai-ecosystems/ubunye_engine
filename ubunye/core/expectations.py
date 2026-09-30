@@ -542,11 +542,17 @@ def _split(
 
     breaks_any = reduce(lambda a, b: a | b, [_breaks(nw, r, floats) for r in quarantine_rules])
     clean = df.filter(~breaks_any)
+    # Each broken rule gives ",name", the rest "", and the leading comma is cut off.
+    # Not concat_str(ignore_nulls=True): on pandas Narwhals writes a separator after
+    # every present value but the last one given, so a row that broke only the first
+    # of two rules read "a_between," there and "a_between" on Spark (F-052).
     reasons = nw.concat_str(
-        [nw.when(_breaks(nw, r, floats)).then(nw.lit(r.name)) for r in quarantine_rules],
-        separator=",",
-        ignore_nulls=True,
-    )
+        [
+            nw.when(_breaks(nw, r, floats)).then(nw.lit("," + r.name)).otherwise(nw.lit(""))
+            for r in quarantine_rules
+        ],
+        separator="",
+    ).str.slice(1)
     quarantined = df.filter(breaks_any).with_columns(reasons.alias(FAILED_RULES_COLUMN))
     return nw.to_native(clean), nw.to_native(quarantined)
 
@@ -609,6 +615,7 @@ def apply(
     outputs = dict(outputs)
     results: List[RuleResult] = []
     problems: List[str] = []
+    too_much = False  # a max_quarantine_rate broken
     reconciled = {n: s for n, s in expectations.items() if n in outputs and s.reconcile}
     measured = dict(measured or {})
     unmeasured = {
@@ -642,6 +649,7 @@ def apply(
         if spec.max_quarantine_rate is not None and quarantined is not None and total:
             n = _row_count(quarantined)
             if n / total > spec.max_quarantine_rate:
+                too_much = True
                 problems.append(
                     f"{name}: {n} of {total} rows quarantined ({n / total:.1%}), more than "
                     f"max_quarantine_rate {spec.max_quarantine_rate:.1%}"
@@ -651,10 +659,44 @@ def apply(
         raise ExpectationError(
             "Expectations failed, so nothing was written:\n  " + "\n  ".join(problems),
             results=[r.as_dict() for r in results],
-            hint="Fix the data or the source, or change the rule's severity to "
-            "quarantine or warn if this is expected.",
+            hint=_failure_hint(results, too_much),
         )
     return outputs, results
+
+
+_ROW_KINDS = frozenset({"not_null", "between", "one_of", "matches"})
+
+
+def _failure_hint(results: List[RuleResult], too_much: bool) -> str:
+    """What to do next, naming only what the failed rules can do (F-057).
+
+    A reconcile, `unique`, `row_count` and `columns` cannot quarantine: the config
+    refuses it, so the hint must not suggest it.
+    """
+    kinds = {r.kind for r in results if not r.passed and r.severity == "fail"}
+    parts = []
+    if kinds & _ROW_KINDS:
+        parts.append(
+            "Fix the data or the source, or change the rule's severity to quarantine or "
+            "warn if this is expected."
+        )
+    if "reconcile" in kinds:
+        parts.append(
+            "A reconcile: look for a join or filter that loses rows, or a source that "
+            'changed; if the loss is expected, allow a share (max_lost: "1%") or set '
+            "severity: warn. A reconcile cannot quarantine."
+        )
+    if kinds & {"unique", "row_count", "columns"}:
+        parts.append(
+            "unique, row_count and columns: fix the data or the transform, or set "
+            "severity: warn if this is expected; these rules cannot quarantine."
+        )
+    if too_much:
+        parts.append(
+            "Too many rows were quarantined, which usually means the source changed: "
+            "look at the quarantine output, or raise max_quarantine_rate if it is expected."
+        )
+    return " ".join(parts) or "Fix the data or the source."
 
 
 def _report(name: str, found: List[RuleResult]) -> List[str]:

@@ -1,0 +1,65 @@
+MODEL: etl
+VERSION: "1.0.0"
+
+# Step 2 of the Olist sales pipeline: one row per order, with what was bought, what
+# was paid, how long delivery took and the review. Reads what step 1 wrote.
+CONFIG:
+  inputs:
+    orders:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/orders"
+      file_format: parquet
+    order_items:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/order_items"
+      file_format: parquet
+    payments:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/payments"
+      file_format: parquet
+    reviews:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/reviews"
+      file_format: parquet
+    customers:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/customers"
+      file_format: parquet
+
+  transform: {}
+
+  outputs:
+    orders_fact:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/orders_fact"
+      file_format: parquet
+      mode: overwrite
+    orders_fact_rejected:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/orders_fact_rejected"
+      file_format: parquet
+      mode: overwrite
+
+  expectations:
+    orders_fact:
+      quarantine: orders_fact_rejected
+      max_quarantine_rate: 0.05
+      # Nothing lost on the way: every order reaches the fact table once, and every
+      # real of items and payments is counted in it. Checked before anything is written.
+      reconcile:
+        - input: orders
+          rows: {max_lost: 0, max_gained: 0}
+        - input: order_items
+          sum: {column: items_price, input_column: price, tolerance: 0.01}
+        - input: payments
+          sum: {column: payments_total, input_column: payment_value, tolerance: 0.01}
+      rules:
+        - unique: order_id
+        - not_null: customer_unique_id
+        # Delivered before it was bought: the dates are wrong, set the order aside.
+        - between: {column: delivery_days, min: 0}
+          severity: quarantine
+        # Paid more (or less) than the items and freight by over one real: instalment
+        # interest, or a voucher. Worth knowing, not worth stopping for.
+        - between: {column: payment_gap, min: -1, max: 1}
+          severity: warn

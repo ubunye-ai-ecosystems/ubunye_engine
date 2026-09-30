@@ -1,0 +1,251 @@
+MODEL: etl
+VERSION: "1.0.0"
+
+# Step 1 of the Olist sales pipeline: the nine raw CSV files, checked, typed and
+# cleaned. Where the data lives is a variable, so the same task reads a laptop folder
+# or object storage unchanged:
+#   --var data_dir=s3://bucket/olist  --var out_dir=s3://bucket/olist-out
+CONFIG:
+  inputs:
+    raw_orders:
+      format: s3
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}/olist_orders_dataset.csv"
+      file_format: csv
+      options: {header: "true", inferSchema: "true"}
+    raw_items:
+      format: s3
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}/olist_order_items_dataset.csv"
+      file_format: csv
+      options: {header: "true", inferSchema: "true"}
+    raw_payments:
+      format: s3
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}/olist_order_payments_dataset.csv"
+      file_format: csv
+      options: {header: "true", inferSchema: "true"}
+    raw_reviews:
+      format: s3
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}/olist_order_reviews_dataset.csv"
+      file_format: csv
+      # Comments span lines and double their quotes (""). Spark's default escape is
+      # a backslash, which splits these rows in the wrong place (finding F-006).
+      options: {header: "true", inferSchema: "true", multiLine: "true", escape: '"'}
+    raw_customers:
+      format: s3
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}/olist_customers_dataset.csv"
+      file_format: csv
+      options: {header: "true", inferSchema: "true"}
+    raw_sellers:
+      format: s3
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}/olist_sellers_dataset.csv"
+      file_format: csv
+      options: {header: "true", inferSchema: "true"}
+    raw_products:
+      format: s3
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}/olist_products_dataset.csv"
+      file_format: csv
+      options: {header: "true", inferSchema: "true"}
+    raw_geolocation:
+      format: s3
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}/olist_geolocation_dataset.csv"
+      file_format: csv
+      options: {header: "true", inferSchema: "true"}
+    raw_categories:
+      format: s3
+      # This file starts with a byte order mark; both engines drop it (finding F-002).
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}/product_category_name_translation.csv"
+      file_format: csv
+      options: {header: "true", inferSchema: "true"}
+
+  transform:
+    params:
+      # A point outside this box is not in Brazil (the real file has some in Europe).
+      brazil: {lat_min: -33.75, lat_max: 5.27, lng_min: -73.99, lng_max: -34.79}
+
+  outputs:
+    orders:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/orders"
+      file_format: parquet
+      mode: overwrite
+    order_items:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/order_items"
+      file_format: parquet
+      mode: overwrite
+    order_items_rejected:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/order_items_rejected"
+      file_format: parquet
+      mode: overwrite
+    payments:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/payments"
+      file_format: parquet
+      mode: overwrite
+    payments_rejected:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/payments_rejected"
+      file_format: parquet
+      mode: overwrite
+    reviews:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/reviews"
+      file_format: parquet
+      mode: overwrite
+    reviews_rejected:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/reviews_rejected"
+      file_format: parquet
+      mode: overwrite
+    customers:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/customers"
+      file_format: parquet
+      mode: overwrite
+    sellers:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/sellers"
+      file_format: parquet
+      mode: overwrite
+    products:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/products"
+      file_format: parquet
+      mode: overwrite
+    geolocation:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/geolocation"
+      file_format: parquet
+      mode: overwrite
+
+  expectations:
+    # Input contracts: what each raw file must look like, checked right after it is
+    # read and before the transform runs. A column that is missing, renamed or of
+    # another type stops the run, naming the column, and nothing is written.
+    # A whole number column is int32 when every value fits (as in the sample) and
+    # int64 when not, so both are allowed where the real data may grow.
+    raw_orders:
+      rules:
+        - columns:
+            order_id: string
+            customer_id: string
+            order_status: string
+            order_purchase_timestamp: timestamp
+            order_approved_at: timestamp
+            order_delivered_carrier_date: timestamp
+            order_delivered_customer_date: timestamp
+            order_estimated_delivery_date: timestamp
+    raw_items:
+      rules:
+        - columns:
+            order_id: string
+            order_item_id: [int32, int64]
+            product_id: string
+            seller_id: string
+            shipping_limit_date: timestamp
+            price: float64
+            freight_value: float64
+    raw_payments:
+      rules:
+        - columns:
+            order_id: string
+            payment_sequential: [int32, int64]
+            payment_type: string
+            payment_installments: [int32, int64]
+            payment_value: float64
+    raw_reviews:
+      rules:
+        - columns:
+            review_id: string
+            order_id: string
+            review_score: [int32, int64]
+            review_creation_date: timestamp
+            review_answer_timestamp: timestamp
+    raw_customers:
+      rules:
+        - columns:
+            customer_id: string
+            customer_unique_id: string
+            customer_zip_code_prefix: [int32, int64]
+            customer_city: string
+            customer_state: string
+    raw_sellers:
+      rules:
+        - columns:
+            seller_id: string
+            seller_zip_code_prefix: [int32, int64]
+            seller_city: string
+            seller_state: string
+    raw_products:
+      rules:
+        - columns:
+            product_id: string
+            product_category_name: string
+    raw_geolocation:
+      rules:
+        - columns:
+            geolocation_zip_code_prefix: [int32, int64]
+            geolocation_lat: float64
+            geolocation_lng: float64
+    raw_categories:
+      rules:
+        - columns:
+            product_category_name: string
+            product_category_name_english: string
+
+    # Output rules, checked before anything is written.
+    orders:
+      rules:
+        - unique: order_id
+        - not_null: order_purchase_timestamp
+    order_items:
+      # A bad item is set aside with the rule it broke, not dropped, and not written.
+      quarantine: order_items_rejected
+      max_quarantine_rate: 0.05
+      reconcile:
+        - input: raw_items
+          rows: {max_lost: 0, max_gained: 0}
+          sum: {column: price, tolerance: 0.01}
+      rules:
+        - unique: [order_id, order_item_id]
+        - between: {column: price, min: 0.01}
+          severity: quarantine
+        - between: {column: freight_value, min: 0}
+          severity: quarantine
+    payments:
+      quarantine: payments_rejected
+      max_quarantine_rate: 0.05
+      reconcile:
+        - input: raw_payments
+          rows: {max_lost: 0, max_gained: 0}
+          sum: {column: payment_value, tolerance: 0.01}
+      rules:
+        - one_of:
+            column: payment_type
+            values: [credit_card, boleto, voucher, debit_card, not_defined]
+          severity: quarantine
+        - between: {column: payment_value, min: 0}
+          severity: quarantine
+    reviews:
+      quarantine: reviews_rejected
+      max_quarantine_rate: 0.05
+      reconcile:
+        - input: raw_reviews
+          rows: {max_lost: 0, max_gained: 0}
+      rules:
+        - not_null: order_id
+        - between: {column: review_score, min: 1, max: 5}
+          severity: quarantine
+    customers:
+      rules:
+        - unique: customer_id
+    sellers:
+      rules:
+        - unique: seller_id
+    products:
+      rules:
+        - unique: product_id
+        - not_null: category
+    geolocation:
+      rules:
+        - unique: zip_code_prefix
