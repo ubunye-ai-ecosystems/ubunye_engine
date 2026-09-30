@@ -29,7 +29,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from ubunye.core.secrets import redact_variables, scrub, secret_values
+from ubunye.core.secrets import known_secrets, mask_text, redact_variables, scrub, secret_values
 from ubunye.lineage import evidence
 from ubunye.lineage.context import RunContext, StepRecord
 from ubunye.lineage.storage import FileSystemLineageStore, LineageStore, S3LineageStore
@@ -330,7 +330,7 @@ class LineageRecorder:
         for step in ctx.inputs + ctx.outputs:
             step.location = scrub(step.location, values)
         if error:
-            ctx.error = scrub(error, values)
+            ctx.error = mask_text(error, values + known_secrets(None, config))
 
         if status == "success":
             # A run whose lease was taken over may have had its appends taken back by

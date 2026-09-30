@@ -43,9 +43,16 @@ def _evidence(monitor: Any, state: Dict[str, Any], keys: tuple = EVIDENCE) -> Di
     return {k: state.get(k) for k in keys if takes_any or k in params}
 
 
-def _error_text(exc: BaseException) -> str:
-    """Why a run failed, in one string: the exception's type and message (F-054)."""
-    return f"{type(exc).__name__}: {exc}"
+def _error_text(exc: BaseException, ctx: Any = None, cfg: Any = None) -> str:
+    """Why a run failed, in one string: the exception's type and message (F-054).
+
+    Masked before any monitor sees it: every secret the run knows of, and the
+    usual shapes of one (a URL password, ``;password=``, ``Authorization:``).
+    """
+    from ubunye.core.secrets import error_text
+
+    variables = dict(getattr(ctx, "variables", None) or {})
+    return error_text(exc, variables, cfg if isinstance(cfg, dict) else None)
 
 
 def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
@@ -63,7 +70,9 @@ def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
             outputs=None,
             status="error",
             duration_sec=time.perf_counter() - t0,
-            **_evidence(monitor, {**state, "error": _error_text(exc)}, EVIDENCE + ("error",)),
+            **_evidence(
+                monitor, {**state, "error": _error_text(exc, ctx, cfg)}, EVIDENCE + ("error",)
+            ),
         )
         raise
     else:
@@ -142,7 +151,7 @@ class LegacyMonitorsHook(Hook):
                     outputs=None,
                     status="error",
                     duration_sec=dur,
-                    **_evidence(m, {"error": _error_text(exc)}, ("error",)),
+                    **_evidence(m, {"error": _error_text(exc, ctx, cfg)}, ("error",)),
                 )
             raise
         else:

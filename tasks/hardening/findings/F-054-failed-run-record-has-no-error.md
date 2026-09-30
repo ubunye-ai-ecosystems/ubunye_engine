@@ -38,3 +38,34 @@ of secret-looking variables masked by the same `scrub` that masks step locations
 Test: `tests/unit/lineage/test_record_error.py` (fails before: `assert None is not
 None`; passes after), including a secret variable's value in the message that the
 record must not keep.
+
+## Skeptic review (2026-09-30)
+
+The first fix leaked. Its masking knew only secret-looking `--var` values, word for
+word. The skeptic's probe (`p1_error_leaks.py`) put secrets in a transform's error:
+
+| Case | before (45d435c) | after |
+|---|---|---|
+| `--var db_password`, word for word | masked | masked |
+| env var templated into `jdbc:...;password=` | kept | `password=***` |
+| `postgresql://admin:pw@db` (literal) | kept | `admin:***@db` |
+| `?api_key=` (literal) | kept | `api_key=***` |
+| `Authorization: Bearer x` (literal) | kept | `Bearer ***` |
+| a resolved `secret://env/...` value | kept | `***` |
+| `--var` secret URL-encoded | kept | `***` |
+| `--var` secret in base64 of `u:<secret>` | kept | `dTp***Q==` |
+| `--var` secret broken across a line | kept | `***` |
+| a 3 character `--var` value | kept | kept (documented: too short to mask word for word) |
+
+Fix: one function, `ubunye.core.secrets.mask_text(text, values)`, used by the run
+recorder, by the monitor hook (so every monitor's `task_end(error=...)` gets masked
+text) and by the REST connector's F-050 `redact`. The values it is given
+(`known_secrets`): secret-looking variables, every value a `SecretResolver` returned in
+the process, the config's literal secrets, and environment variables with
+secret-looking names. It masks each value, its URL-encoded and base64 forms (the part
+of the base64 that does not depend on the bytes around it), and the value split by
+whitespace; plus URL userinfo, secret-named URL and JDBC parameters (including `key`
+and `sig`), and `Authorization` / `Proxy-Authorization` / `X-Api-Key` header values.
+
+Tests: `tests/unit/core/test_mask_text.py` (27; every row above, on `mask_text` and
+through a real run). Before the fix the file does not import (`mask_text` missing).

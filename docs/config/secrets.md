@@ -77,6 +77,32 @@ A password written into a URL (`jdbc:postgresql://user:password@host/db`,
 `;password=...`, `?token=...`) is masked in every recorded location, as Spline learned
 to do after lineage leaked JDBC passwords.
 
+### A failed run's error
+
+A failed run's record keeps why it failed (the error's type and message), and
+OpenLineage sends it, `lineage trace` prints it and `ubunye prove` shows it. An error
+message can quote anything, so it is masked before any of them sees it, by one
+function (`ubunye.core.secrets.mask_text`, the same one the REST connector uses for
+its logs and errors). It masks:
+
+- every secret the run knows of: secret-looking `--var` values, every value a
+  `secret://` reference resolved to in this process, literal secrets in the config
+  (under a secret-looking key, an `Authorization` header, an `auth` block), and the
+  values of environment variables with secret-looking names (a config can template one
+  in with `{{ env.DB_PASSWORD }}`);
+- each of them URL-encoded, in base64 (also inside `user:password`, as Basic auth
+  codes it), and broken across a line or a space;
+- the usual shapes of a secret, known or not: `scheme://user:password@host`, a
+  secret-named parameter in a URL or a JDBC string (`?api_key=`, `&sig=`, `?key=`,
+  `;password=`), and the value of an `Authorization`, `Proxy-Authorization` or
+  `X-Api-Key` header.
+
+Limits: a value shorter than 4 characters is not masked word for word (it would
+shred the text), so a 3 character password in a message stays. An environment
+variable with a secret-looking name is masked even when it is not one (a path in
+`PASSWORD_STORE_DIR`). The Python API still raises the original exception to your
+code: only what is recorded, sent or printed is masked.
+
 The config hash is taken over the config as rendered, so a templated secret is part
 of it. The hash cannot be reversed for a long token, but a short password could be
 guessed against it: another reason to use `secret://`, which is hashed as the reference.

@@ -121,6 +121,16 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   input broke its expectations...`), with the values of secret-looking variables
   masked, as step locations are. `lineage trace` prints it (and `--json` carries it).
   Found by the Olist example (R2).
+- **A failed run's error keeps no secret (F-054, skeptic review).** The first fix
+  masked only secret-looking `--var` values word for word; the skeptic's probe found
+  the record, `lineage trace`, OpenLineage and `ubunye prove` still kept a password
+  from an environment variable in a JDBC URL, `user:password@` in a URL, `?api_key=`,
+  `Authorization: Bearer`, a resolved `secret://` value, and a `--var` secret
+  URL-encoded, in base64 or broken across a line. One function now masks all of them,
+  `ubunye.core.secrets.mask_text`, and the REST connector's log and error masking
+  (F-050) calls it too, so there is one implementation. The text is masked before any
+  monitor receives it. Values shorter than 4 characters are not masked word for word;
+  see [Secrets](config/secrets.md#a-failed-runs-error).
 - **A quarantined row's reasons read the same on pandas and Spark (F-052).** On
   pandas, a row that broke only the first of two quarantine rules got
   `_ubunye_failed_rules` = `price_between,` (a stray comma); Spark wrote
