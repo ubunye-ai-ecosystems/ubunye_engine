@@ -9,9 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-The first fixes from real use. Two newcomers were given only `pip install`, the
-public docs and a Kaggle dataset each (Olist e-commerce, 9 tables; Amazon Fine Food
-Reviews with a local LLM labelling step), and logged every place they got stuck.
+## [0.8.0] (2026-09-30)
+
+The hardening release. Ubunye was tested against real use: newcomers given only the
+public docs, real open data (Olist, WFP food prices), a scale ladder to 50 million
+rows, awkward data of ten shapes, and seven environments. Every fix below has a test
+that failed before it, and every engine fix was reviewed by an adversarial skeptic.
+The same three workloads (C01, R1, R2) give identical digests on pandas, Spark, AWS
+Glue, Azure Container Apps, Databricks, GCP Dataproc and Kubernetes (42 of 42 checks).
+
+### Upgrade notes (read these first)
+
+- **Digests change** for map columns (maps are now unordered: entries sorted by key,
+  null values kept) and for text holding control characters such as U+000B (the
+  escape is written in upper case, as Spark writes it). A `ubunye gate` against a
+  0.7 record may report these columns as changed once.
+- **Delta reads are pinned** to the version seen when the input is read, so every
+  output of a run sees one snapshot.
+- **New refusals, each before anything is written:** a Spark task that overwrites a
+  folder it reads; a lease or finished note that exists but cannot be read; charset
+  names Spark 4 refuses (it accepts UTF-8, ISO-8859-1, US-ASCII, UTF-16, UTF-16LE,
+  UTF-16BE and UTF-32); column names that differ only by case, on file reads and writes.
+- **Input contracts name timestamps by their real type** (`timestamp` or
+  `timestamp_ntz`), as Spark 3.4 and later do.
+- **New settings:** `UBUNYE_HASH_WORKERS`, `UBUNYE_SOURCE_VERSION_TIMEOUT`,
+  `UBUNYE_LLM_PROGRESS`.
+- **Recording a run costs** 1.9 times the plain job on Spark and 6.4 times on pandas
+  at 5 million rows (it was 2.5 and 9.8 times). The 1.5 times target is not met yet.
+
+It also carries the first fixes from real use. Two newcomers were given only
+`pip install`, the public docs and a Kaggle dataset each (Olist e-commerce, 9 tables;
+Amazon Fine Food Reviews with a local LLM labelling step), and logged every place
+they got stuck.
 
 ### Changed
 
