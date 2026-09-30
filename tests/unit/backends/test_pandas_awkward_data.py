@@ -85,6 +85,31 @@ class TestCsvLongRows:
         assert frame.native[big].tolist()[0] == big
         assert frame.native[big].isna().tolist() == [False, True]
 
+    @pytest.mark.parametrize("multiline", ["false", "true"])
+    def test_nul_characters_in_a_ragged_file(self, tmp_path, multiline):
+        # Python 3.10's csv module stops at NUL (CI, Spark 4 on Python 3.10).
+        data = b'i\x00d,t\n1,"x\x00y\nz"\n2\n3,a\x00,extra\n'
+        frame = _read_bytes(
+            tmp_path, "csv", data, options={"header": "true", "multiLine": multiline}
+        )
+        assert list(frame.native.columns) == ["i\x00d", "t"]
+        assert "a\x00" in frame.native["t"].dropna().tolist()  # ragged row cut, NUL kept
+        if multiline == "true":
+            assert frame.native["t"].tolist()[0] == "x\x00y\nz"
+
+    @pytest.mark.parametrize("multiline", ["false", "true"])
+    def test_nul_characters_in_a_file_split_the_spark_way(self, tmp_path, multiline):
+        # A backslash escape sends the file through the port of Spark's splitter,
+        # whose csv writer stopped at NUL on Python 3.10.
+        data = b'a,b\n1,"x\x00\\"y"\n2,z\n'
+        frame = _read_bytes(
+            tmp_path, "csv", data, options={"header": "true", "multiLine": multiline}
+        )
+        # (With multiLine off the port of univocity reads that NUL as its line
+        # marker, as the splitter's fuzz against Spark has it; not this test's point.)
+        expected = 'x\x00"y' if multiline == "true" else 'x\n"y'
+        assert frame.native["b"].tolist() == [expected, "z"]
+
     def test_a_long_value_with_line_breaks_in_another_encoding(self, tmp_path):
         big = ("é\n" * 800_000) + "end"
         data = f'id,t\n1,"{big}"\n'.encode("latin-1")

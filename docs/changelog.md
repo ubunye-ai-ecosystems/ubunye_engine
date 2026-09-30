@@ -107,6 +107,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A CSV with a NUL character reads on Python 3.10 too (F-062 follow-up, E-09 CI).**
+  Python 3.10's csv module stops at NUL ("line contains NUL" when reading, "need to
+  escape" when writing), where 3.11 and later take it. The pandas CSV reader uses the
+  module for the header, ragged rows and the port of Spark's splitter, so such a file
+  failed on 3.10 only. A private use character stands in for NUL there and is swapped
+  back; the read and its digest are the same on 3.10 and 3.13.
 - **JSON `+INF`, `-INF` and `+Infinity` read as doubles, as on Spark (F-089, skeptic
   review).** Spark's JSON parser (Jackson, with `allowNonNumericNumbers`) reads them as
   infinities; Python's reads only `NaN`, `Infinity` and `-Infinity`, so the pandas read

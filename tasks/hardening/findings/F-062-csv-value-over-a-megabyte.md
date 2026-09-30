@@ -37,3 +37,12 @@ its field limit raised for the read, then put back.
 Unit: `tests/unit/backends/test_pandas_awkward_data.py::TestCsvLongRows` (6 failed
 before, 6 pass after). Integration (CI): `test_csv_values_longer_than_a_megabyte`
 (3 MB and 1.2 MB values with LF, CRLF, NUL, tab and non-ASCII, multiLine on and off).
+
+## Python 3.10 (CI, Spark 4 on Python 3.10, 2026-09-30)
+`test_csv_values_longer_than_a_megabyte` failed on Python 3.10 only: "line contains
+NUL" (multiLine off) and "need to escape, but no escapechar set" (on). The value holds
+a NUL, and Python 3.10's csv module refuses NUL in its reader and writer (3.11 lifted
+that). The fix swaps NUL for a private use character the text does not hold before
+the module sees it (header, ragged rows, `spark_csv.respell`) and back after. Checked
+on CPython 3.10.20 on the dev box: the new unit tests failed before and pass after, and
+the CI case's file reads to the same rows and rows-v1 digest on 3.10 and 3.13.

@@ -578,10 +578,23 @@ def _text_encoding(encoding: str) -> str:
     return "utf-8" if encoding.lower().replace("-", "") == "utf8" else encoding
 
 
-def _text(data: bytes, encoding: str) -> Any:
+def _csv_module_text(data: bytes, encoding: str) -> Any:
+    """``data`` as text for Python's csv module, and the stand in for NUL, if any.
+
+    Python 3.10's csv module stops at a NUL character ("line contains NUL" when
+    reading, "need to escape" when writing); 3.11 and later take it. So a NUL is
+    swapped for a private use character the text does not hold, and swapped back
+    after (F-062 on Python 3.10).
+    """
     import io
 
-    return io.TextIOWrapper(io.BytesIO(data), encoding=_text_encoding(encoding), newline="")
+    from ubunye.adapters.spark_csv import nul_stand_in
+
+    text = data.decode(_text_encoding(encoding))
+    stand_in = nul_stand_in(text)
+    if stand_in:
+        text = text.replace("\0", stand_in)
+    return io.StringIO(text, newline=""), stand_in
 
 
 def safe_header(names: List[str], null_text: str = "") -> List[str]:
@@ -629,10 +642,11 @@ def _first_record(data: bytes, encoding: str, parse: Any) -> List[str]:
     """The first non blank record of a CSV file's bytes, as its fields."""
     import csv
 
-    with _text(data, encoding) as handle, _no_field_limit():
+    handle, stand_in = _csv_module_text(data, encoding)
+    with _no_field_limit():
         for row in csv.reader(handle, **_csv_dialect(parse)):
             if row:
-                return row
+                return [f.replace(stand_in, "\0") for f in row] if stand_in else row
     return []
 
 
@@ -656,7 +670,8 @@ def _even_rows(
     dialect = _csv_dialect(parse)
     out = io.StringIO()
     writer = csv.writer(out, lineterminator=chr(10), **dialect)
-    with _text(data, encoding) as handle, _no_field_limit():
+    handle, stand_in = _csv_module_text(data, encoding)
+    with _no_field_limit():
         reader = csv.reader(handle, **dialect)
         for number, row in enumerate(reader):
             if not row:
@@ -664,7 +679,10 @@ def _even_rows(
             if not (skip_header and number == 0):
                 row = (row + [pad] * width)[:width]  # pad with the null marker: read as null
             writer.writerow(row)
-    return io.BytesIO(out.getvalue().encode(text_encoding))
+    text = out.getvalue()
+    if stand_in:
+        text = text.replace(stand_in, "\0")
+    return io.BytesIO(text.encode(text_encoding))
 
 
 def _drop_malformed(opts: Dict[str, Any]) -> bool:
