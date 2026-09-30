@@ -49,7 +49,7 @@ copies Spark's defaults instead of pandas' own:
 | What you read | What you get (same as Spark) |
 |---|---|
 | CSV, no options | No header: the first line is data, columns are `_c0`, `_c1`, ... |
-| CSV with `header: "true"` | Columns named from the first line, every value as text |
+| CSV with `header: "true"` | Columns named from the first line, every value as text. A blank name becomes `_c<position>`; a repeated name (ignoring case) gets its position added to each copy, so `a,a,,A` reads as `a0, a1, _c2, A3` |
 | CSV with `inferSchema: "true"` | `int` if every value fits, else `bigint`; `double`, `boolean`, `date`, `timestamp`; an empty column is text |
 | An empty CSV field | null, not an empty string |
 | Quotes in a CSV value | Spark's escape is a backslash, so `"Anna ""Annie"""` stays exactly as written, and `"a\"b"` is `a"b` (set `escape: '"'` for doubled quotes); a line of only spaces is skipped |

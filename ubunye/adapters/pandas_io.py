@@ -305,6 +305,8 @@ def _read_csv(
             names = _first_record(data, encoding, parse)
             if not header:
                 names = [f"_c{n}" for n in range(len(names))]
+            else:
+                names = safe_header(names, str(opts.get("nullvalue", "")))
         convert = pcsv.ConvertOptions(
             # Text unless inference is on; an explicit schema is cast below.
             column_types=None if infer else {n: pa.string() for n in names},
@@ -480,6 +482,31 @@ def _text(data: bytes, encoding: str) -> Any:
     import io
 
     return io.TextIOWrapper(io.BytesIO(data), encoding=_text_encoding(encoding), newline="")
+
+
+def safe_header(names: List[str], null_text: str = "") -> List[str]:
+    """Column names from a CSV header, as Spark's ``CSVUtils.makeSafeHeader`` makes them.
+
+    A blank name (or the ``nullValue`` text) becomes ``_c<index>``. A name that
+    appears more than once, ignoring case (Spark's default
+    ``spark.sql.caseSensitive=false``), gets its index appended to every copy:
+    ``a,a,A`` becomes ``a0,a1,A2``. Left as they were, pyarrow refused the file
+    ("duplicate field names") and a blank name became a column called ``""``
+    (F-060).
+    """
+    from collections import Counter
+
+    counts = Counter(n.lower() for n in names if n)
+    dupes = {n for n, seen in counts.items() if seen > 1}
+    safe = []
+    for index, name in enumerate(names):
+        if not name or name == null_text:
+            safe.append(f"_c{index}")
+        elif name.lower() in dupes:
+            safe.append(f"{name}{index}")
+        else:
+            safe.append(name)
+    return safe
 
 
 def _first_record(data: bytes, encoding: str, parse: Any) -> List[str]:

@@ -107,6 +107,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A CSV header with a repeated or blank name reads as on Spark (F-060, E-08).** On
+  the pandas backend a header such as `id,amount,amount,,note` stopped the read
+  ("duplicate field names"), and a blank name became a column called `""`. The names
+  are now made as Spark's `makeSafeHeader` makes them: a blank name (or the `nullValue`
+  text) becomes `_c<position>`, and a name that appears more than once, ignoring case,
+  gets its position added to each copy (`a,a,,A` reads as `a0, a1, _c2, A3`).
 - **On Windows, reading a run lease while its heartbeat replaces it no longer fails
   (F-048).** Windows refuses a read for a moment while a file is being replaced. The
   engine then called a live run's lease unreadable, and a second run of the same
