@@ -85,6 +85,69 @@ class TestCsvLongRows:
         assert frame.native["t"].tolist() == [big]
 
 
+NY = "America/New_York"
+# 02:30 on 2024-03-10 does not exist in New York (clocks go 02:00 -> 03:00);
+# 01:30 on 2024-11-03 happens twice (EDT, then EST).
+DST_CSV = b"t\n2024-03-10 02:30:00\n2024-11-03 01:30:00\n2024-06-01 12:00:00\n"
+# Java's ZonedDateTime.of: a gap moves later by its length, a fold takes the earlier.
+DST_UTC = ["2024-03-10 07:30:00+00:00", "2024-11-03 05:30:00+00:00", "2024-06-01 16:00:00+00:00"]
+
+
+def _utc_text(series) -> list:
+    return [str(v.tz_convert("UTC")) for v in series]
+
+
+class TestDaylightSavingGapsAndFolds:
+    """F-063: a wall clock time in a gap or a fold is read the Java way, not refused."""
+
+    def test_inferred_timestamps(self, tmp_path):
+        frame = _read_bytes(
+            tmp_path,
+            "csv",
+            DST_CSV,
+            options={"header": "true", "inferSchema": "true"},
+            backend_kw={"timezone": NY},
+        )
+        assert _utc_text(frame.native["t"]) == DST_UTC
+
+    def test_an_explicit_schema(self, tmp_path):
+        frame = _read_bytes(
+            tmp_path,
+            "csv",
+            DST_CSV,
+            options={"header": "true"},
+            schema="t TIMESTAMP",
+            backend_kw={"timezone": NY},
+        )
+        assert _utc_text(frame.native["t"]) == DST_UTC
+
+    def test_a_naive_timestamp_a_transform_writes(self, tmp_path):
+        import datetime as dt
+
+        import pyarrow.parquet as pq
+
+        from ubunye.core.write_modes import ResolvedWriteMode
+
+        naive = [dt.datetime(2024, 3, 10, 2, 30), dt.datetime(2024, 11, 3, 1, 30)]
+        out = str(tmp_path / "out")
+        PandasBackend(timezone=NY).execute_write(
+            pd.DataFrame({"t": pd.to_datetime(naive)}),
+            ResolvedWriteMode(mode="overwrite", save_mode="overwrite"),
+            connector="s3",
+            file_format="parquet",
+            path=out,
+        )
+        written = pq.read_table(out).column("t").to_pylist()
+        assert [str(v) for v in written] == DST_UTC[:2]
+
+    def test_times_outside_daylight_saving_are_unchanged(self):
+        import datetime as dt
+
+        col = pa.array([dt.datetime(2024, 6, 1, 12), None], pa.timestamp("us"))
+        out = pandas_io.assume_zone(col, NY).cast(pa.timestamp("us", tz="UTC"))
+        assert [str(v) for v in out.to_pylist()] == ["2024-06-01 16:00:00+00:00", "None"]
+
+
 class TestCsvBytesNotInTheEncoding:
     """F-061: Spark reads a byte that is not valid in the encoding as U+FFFD."""
 

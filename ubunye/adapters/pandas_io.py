@@ -219,16 +219,45 @@ def _narrow_ints(table: Any) -> Any:
     return table
 
 
+def assume_zone(col: Any, timezone: str) -> Any:
+    """Wall clock timestamps as instants in ``timezone``, by Java's rule, as Spark reads them.
+
+    Spark turns a local time into an instant with ``ZonedDateTime.of``: a time in
+    a daylight saving gap (02:30 on the morning clocks go forward) moves later by
+    the gap, so it takes the offset before the change; a time that happens twice
+    (01:30 on the morning clocks go back) takes the earlier instant. pyarrow's
+    ``assume_timezone`` stopped at both (F-063).
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    try:
+        return pc.assume_timezone(col, timezone=timezone)
+    except pa.ArrowInvalid:
+        pass  # a time in a gap or a fold: the rule below
+    early = pc.assume_timezone(col, timezone=timezone, ambiguous="earliest", nonexistent="earliest")
+    late = pc.assume_timezone(col, timezone=timezone, ambiguous="earliest", nonexistent="latest")
+    # Only a time in a gap gives two answers: the last instant before the gap
+    # and the first after (the change itself). The offset a minute before the
+    # change is the offset before the gap. (A whole minute, not the last instant:
+    # pyarrow 25 finds the wrong offset for 06:59:59.999999999 in nanoseconds.)
+    unit = col.type.unit
+    before = pc.subtract(late, pa.scalar(60, pa.duration("s")).cast(pa.duration(unit)))
+    before_utc = before.cast(pa.timestamp(unit))  # the UTC wall clock of that instant
+    offset = pc.subtract(pc.local_timestamp(before), before_utc)
+    moved = pc.subtract(col, offset).cast(pa.timestamp(unit, tz=timezone))
+    return pc.if_else(pc.not_equal(early, late), moved, early)
+
+
 def _instants(table: Any, timezone: str) -> Any:
     """Wall-clock timestamps read as instants in ``timezone``, held in UTC."""
     import pyarrow as pa
-    import pyarrow.compute as pc
 
     for i, field in enumerate(table.schema):
         if pa.types.is_timestamp(field.type):
             col = table.column(i)
             if field.type.tz is None:
-                col = pc.assume_timezone(col, timezone=timezone)
+                col = assume_zone(col, timezone)
             col = col.cast(pa.timestamp("us", tz="UTC"))
             table = table.set_column(i, field.with_type(col.type), col)
     return table
@@ -251,7 +280,7 @@ def _cast(col: Any, target: Any, timezone: str) -> Any:
             null = pa.scalar(None, col.type)
             aware = pc.if_else(has_offset, col, null).cast(pa.timestamp("us", tz="UTC"))
             naive = pc.if_else(has_offset, null, col).cast(pa.timestamp("us"))
-            local = pc.assume_timezone(naive, timezone=timezone).cast(pa.timestamp("us", tz="UTC"))
+            local = assume_zone(naive, timezone).cast(pa.timestamp("us", tz="UTC"))
             return pc.coalesce(aware, local).cast(target)
     return col.cast(target)
 
@@ -826,9 +855,7 @@ def to_arrow(df: Any, timezone: str) -> Any:
             col, t = col.cast(pa.string()), pa.string()
         if pa.types.is_timestamp(t):
             if t.tz is None:
-                import pyarrow.compute as pc
-
-                col = pc.assume_timezone(col, timezone=timezone)
+                col = assume_zone(col, timezone)
             # Spark holds microseconds and cannot read nanosecond parquet.
             col = col.cast(pa.timestamp("us", tz="UTC"), safe=False)
             t = col.type

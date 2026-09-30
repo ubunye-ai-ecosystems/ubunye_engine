@@ -76,7 +76,10 @@ class Enrich(Task):
 Timestamps written as text are read in `spark.sql.session.timeZone` from your
 `ENGINE.spark_conf`, the same setting Spark uses. If it is not set, the pandas
 backend uses UTC on every machine, while Spark would use the machine's own zone.
-Set it once and the two backends agree.
+Set it once and the two backends agree. A wall clock time that the zone skips
+(02:30 on the night clocks go forward) is read an hour later, and one that happens
+twice (01:30 on the night clocks go back) is read as the first of the two, as Java
+and so Spark read them.
 
 ### Big merges on Arrow columns
 

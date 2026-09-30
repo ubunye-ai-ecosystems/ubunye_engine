@@ -126,6 +126,52 @@ def test_csv_values_longer_than_a_megabyte(spark, pandas_backend, tmp_path, mult
     assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
 
 
+# --------------------------------------------------------------------------- #
+# Time zones
+# --------------------------------------------------------------------------- #
+
+# In New York 02:xx on 2024-03-10 does not exist and 01:xx on 2024-11-03 happens
+# twice; Europe/London and Lord Howe (a 30 minute change) for good measure.
+DST_TEXT = (
+    "id,t\n"
+    "1,2024-03-10 02:30:00\n"
+    "2,2024-03-10 02:00:00\n"
+    "3,2024-03-10 02:59:59.999999\n"
+    "4,2024-11-03 01:30:00\n"
+    "5,2024-11-03 01:00:00\n"
+    "6,2024-03-31 01:30:00\n"
+    "7,2024-10-27 01:30:00\n"
+    "8,2024-06-01 12:00:00\n"
+)
+
+
+@pytest.mark.parametrize("zone", [ZONE, "Europe/London", "Australia/Lord_Howe"])
+@pytest.mark.parametrize("schema", [None, "id INT, t TIMESTAMP"])
+def test_csv_daylight_saving_gaps_and_folds(spark, tmp_path, zone, schema):
+    """F-063: wall clock times in a gap or a fold are read with Java's rule."""
+    path = _file(tmp_path, "dst.csv", DST_TEXT.encode())
+    options = {"header": "true", "inferSchema": "true"}
+    before = spark.conf.get("spark.sql.session.timeZone")
+    spark.conf.set("spark.sql.session.timeZone", zone)
+    try:
+        spark_df, frame = _read_both(
+            spark, PandasBackend(timezone=zone), "csv", path, options, schema
+        )
+        assert_same(spark_df, frame)
+    finally:
+        spark.conf.set("spark.sql.session.timeZone", before)
+
+
+def test_json_daylight_saving_with_a_schema(spark, pandas_backend, tmp_path):
+    """F-063: JSON text read into a TIMESTAMP column follows the same rule."""
+    lines = [
+        f'{{"id":{i},"t":"{t}"}}'
+        for i, t in enumerate(["2024-03-10T02:30:00", "2024-11-03T01:30:00", "2024-06-01T12:00:00"])
+    ]
+    path = _file(tmp_path, "dst.json", ("\n".join(lines) + "\n").encode())
+    assert_same(*_read_both(spark, pandas_backend, "json", path, {}, "id INT, t TIMESTAMP"))
+
+
 def test_csv_invalid_utf8_fuzz(spark, pandas_backend, tmp_path):
     """F-061: seeded runs of broken UTF-8 (cut, overlong, surrogate, stray bytes)."""
     import random

@@ -107,6 +107,13 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A timestamp in a daylight saving gap or fold no longer stops a pandas run
+  (F-063, E-08).** With a session zone such as `America/New_York`, the text
+  `2024-11-03 01:30:00` (it happens twice) or `2024-03-10 02:30:00` (it never
+  happens) stopped a CSV read with `inferSchema`, a read with a `TIMESTAMP` schema, and
+  a write of a naive timestamp. The pandas backend now follows Java's rule, as Spark
+  does: a time in a gap moves later by the gap (02:30 reads as 03:30), a time in a
+  fold takes the earlier offset. Times outside a change cost nothing extra.
 - **A CSV value over 1 MB no longer stops a pandas read (F-062, E-08).** pyarrow
   parses in 1 MB blocks and stopped at a longer row ("straddling object straddles two
   block boundaries"); Python's csv module, used for the header and for ragged rows,
