@@ -23,18 +23,27 @@ from ubunye.lineage.recorder import LineageRecorder
 
 
 class _Session:
+    """A Delta table's history: ``DESCRIBE HISTORY ... LIMIT n`` gives the n newest commits."""
+
     def __init__(self, versions=None, fail=None):
-        self.versions = list(versions or [])
+        latest = (list(versions or [0]) or [0])[0]
+        self.history = [(v, "WRITE") for v in range(latest + 1)]
         self.fail = fail
         self.queries = []
+
+    def commit(self, operation="WRITE"):
+        self.history.append((len(self.history), operation))
 
     def sql(self, text):
         self.queries.append(text)
         if self.fail:
             raise RuntimeError(self.fail)
-        version = self.versions.pop(0) if len(self.versions) > 1 else self.versions[0]
-        row = {"version": version, "timestamp": datetime(2026, 9, 30, 1, 2, 3)}
-        return type("R", (), {"collect": lambda self_: [row]})()
+        n = int(text.rsplit("LIMIT", 1)[1])
+        rows = [
+            {"version": v, "operation": op, "timestamp": datetime(2026, 9, 30, 1, 2, 3)}
+            for v, op in reversed(self.history[-n:])
+        ]
+        return type("R", (), {"collect": lambda self_: rows})()
 
 
 class SparkFrame:
@@ -56,7 +65,7 @@ PARQUET = {"format": "s3", "path": "/data/in", "file_format": "parquet"}
 
 def _stats(table):
     """A hadoop_stats stand-in that answers from ``table`` (path -> (size, ms))."""
-    return lambda frame, paths: {p: table.get(p) for p in paths}
+    return lambda frame, paths, **_: {p: table.get(p) for p in paths}
 
 
 # --- the files version -------------------------------------------------------------------
@@ -114,6 +123,7 @@ def test_a_pinned_delta_read_is_its_version_and_asks_nothing():
     cfg = {"format": "delta", "table": "db.t", "version_as_of": 4}
     version = sv.capture(SparkFrame(session=session), cfg)
     assert version["version"] == 4 and version["pinned"] is True
+    assert version["pinned_by"] == "config"
     assert session.queries == []
 
 
@@ -177,21 +187,48 @@ def test_a_source_that_moved_before_the_hash_is_flagged(tmp_path, monkeypatch):
     assert "not of what the task read" in step.source_note
 
 
-def test_a_source_that_did_not_move_says_the_digest_is_of_what_was_read(tmp_path, monkeypatch):
+def test_without_etags_unchanged_means_names_sizes_and_times_only(tmp_path, monkeypatch):
+    """Skeptic bug 1: a same size, same time rewrite passed as 'of what the task read'."""
     table = {FILES[0]: (1, 1), FILES[1]: (1, 1)}
     read = sv.capture(SparkFrame(FILES), PARQUET, hadoop_stats=_stats(table))
     monkeypatch.setattr(sv, "_hadoop_stats", _stats(table))
     step = _record(tmp_path, SparkFrame(FILES), read)
-    assert step.source_changed is False
-    assert "This digest is of what the task read" in step.source_note
+    assert step.source_changed is False and step.source_version["etags"] is False
+    assert "This digest is of what the task read" not in step.source_note
+    assert "sizes and modification times are unchanged" in step.source_note
+    assert "cannot be ruled out" in step.source_note
 
 
-def test_a_delta_table_appended_to_before_the_hash_is_flagged(tmp_path):
-    cfg = {"format": "delta", "path": "/d/t"}
-    read = sv.capture(SparkFrame(session=_Session([3])), cfg)
-    step = _record(tmp_path, SparkFrame(session=_Session([4])), read, cfg)
+def test_with_etags_a_same_size_same_time_rewrite_is_seen(tmp_path, monkeypatch):
+    read = sv.capture(
+        SparkFrame(FILES),
+        PARQUET,
+        hadoop_stats=_stats({FILES[0]: (1, 1, "e0"), FILES[1]: (1, 1, "e1")}),
+    )
+    assert read["etags"] is True
+    monkeypatch.setattr(
+        sv, "_hadoop_stats", _stats({FILES[0]: (1, 1, "e0"), FILES[1]: (1, 1, "e2")})
+    )
+    step = _record(tmp_path, SparkFrame(FILES), read)
+    assert step.source_changed is True
+    monkeypatch.setattr(
+        sv, "_hadoop_stats", _stats({FILES[0]: (1, 1, "e0"), FILES[1]: (1, 1, "e1")})
+    )
+    same = _record(tmp_path / "again", SparkFrame(FILES), read)
+    assert same.source_changed is False
+    assert "This digest is of what the task read" in same.source_note
+
+
+def test_an_unpinned_delta_table_appended_to_before_the_hash_is_flagged(tmp_path):
+    cfg = {"format": "hive", "db_name": "d", "tbl_name": "t"}  # a catalog table: not pinned
+    session = _Session([3])
+    frame = SparkFrame(session=session)
+    read = sv.capture(frame, cfg)
+    session.commit("WRITE")
+    step = _record(tmp_path, frame, read, cfg)
     assert step.source_changed is True
     assert step.source_version["version"] == 3 and step.source_version_at_hash["version"] == 4
+    assert step.source_version_at_hash["commits_since_read"] == ["WRITE"]
     assert "Delta version 3 -> Delta version 4" in step.source_note
 
 
@@ -323,3 +360,245 @@ def test_a_plain_run_takes_no_version(tmp_path, monkeypatch):
     monkeypatch.setattr(sv, "capture", lambda *a, **k: calls.append(a))
     ubunye.run_task(str(_task(tmp_path)), backend="pandas", dt="1")
     assert calls == []
+
+
+# --- skeptic review (2026-09-30): one test per confirmed bug ---------------------------------
+
+
+@pytest.mark.parametrize(
+    "cfg",
+    [
+        {"format": "delta", "path": "/d/t", "options": {"versionAsOf": 0}},
+        {"format": "delta", "path": "/d/t", "options": {"VERSIONASOF": "0"}},
+        {"format": "s3", "path": "/d/t", "file_format": "delta", "options": {"versionasof": 0}},
+    ],
+)
+def test_a_pin_in_options_is_a_pin_in_any_case(cfg):
+    """Skeptic bug 2: options.versionAsOf was ignored, so the latest version was recorded."""
+    session = _Session([5])
+    version = sv.capture(SparkFrame(session=session), cfg)
+    assert version["version"] == 0 and version["pinned"] is True
+    assert session.queries == []
+
+
+class _Reader:
+    """Enough of spark.read: records the options and returns a markable frame."""
+
+    def __init__(self, session):
+        self.session, self.given = session, {}
+
+    def format(self, name):
+        return self
+
+    def option(self, key, value):
+        self.given[key] = value
+        return self
+
+    def options(self, **kw):
+        self.given.update(kw)
+        return self
+
+    def schema(self, ddl):
+        return self
+
+    def load(self, path):
+        return SparkFrame(session=self.session)
+
+    table = load
+
+
+def _spark_with_reader(version):
+    session = _Session([version])
+    session.read = _Reader(session)
+    return session
+
+
+def test_the_delta_reader_pins_an_unpinned_read_to_the_version_it_saw():
+    """Skeptic bug 3: two outputs of one Delta input read two versions (10 and 13 rows)."""
+    from ubunye.adapters.spark.delta_pin import ATTR
+    from ubunye.plugins.readers.delta import DeltaReader
+
+    spark = _spark_with_reader(7)
+    backend = type("B", (), {"spark": spark})()
+    frame = DeltaReader().read({"path": "/d/t"}, backend)
+    assert spark.read.given["versionAsOf"] == "7"
+    assert getattr(frame, ATTR)["version"] == 7
+    version = sv.capture(frame, {"format": "delta", "path": "/d/t"})
+    assert version["pinned"] is True and version["pinned_by"] == "engine"
+
+
+def test_a_user_pin_is_left_as_written():
+    from ubunye.adapters.spark.delta_pin import ATTR
+    from ubunye.plugins.readers.delta import DeltaReader
+
+    spark = _spark_with_reader(7)
+    backend = type("B", (), {"spark": spark})()
+    cfg = {"path": "/d/t", "options": {"timestampasof": "2026-01-01"}}
+    frame = DeltaReader().read(cfg, backend)
+    assert "versionAsOf" not in spark.read.given
+    assert not hasattr(frame, ATTR) and spark.queries == []
+
+
+def test_a_delta_path_read_through_s3_is_pinned_too():
+    from ubunye.adapters.spark import frame_io
+    from ubunye.adapters.spark.delta_pin import ATTR
+
+    spark = _spark_with_reader(3)
+    frame = frame_io.read_frame(spark, "delta", "/d/t")
+    assert getattr(frame, ATTR)["version"] == 3
+    parquet = frame_io.read_frame(spark, "parquet", "/p")
+    assert not hasattr(parquet, ATTR)
+
+
+def test_a_pinned_read_is_not_changed_when_the_table_moves(tmp_path):
+    session = _Session([3])
+    frame = SparkFrame(session=session)
+    frame.ubunye_source_pin = {"version": 3, "timestamp": "t", "pinned_by": "engine"}
+    cfg = {"format": "delta", "path": "/d/t"}
+    read = sv.capture(frame, cfg)
+    session.commit("WRITE")
+    step = _record(tmp_path, frame, read, cfg)
+    assert step.source_changed is False
+    assert step.source_version_at_hash["latest_version"] == 4
+    assert "pinned to Delta version 3 (by the engine)" in step.source_note
+    assert "table was at version 4 by the hash" in step.source_note
+
+
+class _JPath:
+    def __init__(self, uri):
+        self.uri = uri
+
+    def getName(self):
+        return self.uri.rsplit("/", 1)[-1]
+
+    def getFileSystem(self, conf):
+        return _FS.current
+
+
+class _JStatus:
+    def __init__(self, uri, size=10, mtime=1000):
+        self.p, self.s, self.m = _JPath(uri), size, mtime
+
+    def getPath(self):
+        return self.p
+
+    def getLen(self):
+        return self.s
+
+    def getModificationTime(self):
+        return self.m
+
+    def getEtag(self):
+        raise RuntimeError("Method getEtag([]) does not exist")
+
+
+class _FS:
+    current = None
+
+    def __init__(self, error=None, missing=()):
+        self.error, self.missing = error, set(missing)
+        self.calls = {"getFileStatus": 0, "listStatus": 0}
+        _FS.current = self
+
+    def getFileStatus(self, jpath):
+        self.calls["getFileStatus"] += 1
+        if self.error:
+            raise RuntimeError(self.error)
+        if jpath.uri in self.missing:
+            raise RuntimeError("java.io.FileNotFoundException: " + jpath.uri)
+        return _JStatus(jpath.uri)
+
+    def listStatus(self, jpath):
+        self.calls["listStatus"] += 1
+        if self.error:
+            raise RuntimeError(self.error)
+        return [_JStatus(f) for f in _JVMFrame.files if f.startswith(jpath.uri + "/")]
+
+
+class _JVM:
+    class org:
+        class apache:
+            class hadoop:
+                class fs:
+                    Path = _JPath
+
+    class java:
+        class net:
+            URI = staticmethod(lambda s: s)
+
+
+class _JVMSession:
+    _jvm = _JVM()
+    _jsc = type("JSC", (), {"hadoopConfiguration": lambda self: None})()
+
+
+class _JVMFrame:
+    files: list = []
+    sparkSession = _JVMSession()
+
+    def inputFiles(self):
+        return list(_JVMFrame.files)
+
+
+def test_a_listing_error_is_no_version_not_missing_files():
+    """Skeptic bug 4: one 503 on the listing read as 'every file is missing': changed."""
+    _JVMFrame.files = ["s3a://b/in/a.parquet", "s3a://b/in/b.parquet"]
+    _FS()
+    before = sv.capture(_JVMFrame(), PARQUET)
+    assert before["kind"] == "files" and "missing" not in before
+    _FS(error="503 SlowDown (transient)")
+    after = sv.capture(_JVMFrame(), PARQUET)
+    assert after["kind"] == "none" and "listing failed" in after["reason"]
+    assert sv.changed(before, after) is None
+    _FS(missing={"s3a://b/in/b.parquet"})  # a definite "not found" is still missing
+    gone = sv.capture(_JVMFrame(), PARQUET)
+    assert gone["missing"] == 1 and sv.changed(before, gone) is True
+
+
+def test_few_files_are_asked_one_by_one_and_many_by_folder(monkeypatch):
+    """Skeptic bug 5 (ii): one file read from a big folder listed the whole folder."""
+    _JVMFrame.files = ["s3a://b/in/a.parquet"]
+    fs = _FS()
+    sv.capture(_JVMFrame(), PARQUET)
+    assert fs.calls == {"getFileStatus": 1, "listStatus": 0}
+    monkeypatch.setattr(sv, "PER_FILE_LIMIT", 1)
+    _JVMFrame.files = ["s3a://b/in/a.parquet", "s3a://b/in/b.parquet"]
+    fs = _FS()
+    v = sv.capture(_JVMFrame(), PARQUET)
+    assert fs.calls == {"getFileStatus": 0, "listStatus": 1} and v["files"] == 2
+
+
+def test_a_version_that_takes_too_long_is_no_version(monkeypatch):
+    """Skeptic bug 5 (iii): no bound on how long taking a version could take."""
+    monkeypatch.setenv("UBUNYE_SOURCE_VERSION_TIMEOUT", "0")
+    _JVMFrame.files = ["s3a://b/in/a.parquet"]
+    _FS()
+    v = sv.capture(_JVMFrame(), PARQUET)
+    assert v["kind"] == "none" and "took longer than 0 s" in v["reason"]
+
+
+def test_no_version_is_taken_when_inputs_are_not_hashed(tmp_path, monkeypatch):
+    """Skeptic bug 5 (i): hash_inputs=False still paid for the source versions."""
+    import ubunye
+    from ubunye.telemetry.hooks.monitors import MonitorHook
+
+    calls = []
+    monkeypatch.setattr(sv, "capture", lambda *a, **k: calls.append(a))
+    rec = LineageRecorder(base_dir=str(tmp_path / "rec"), hash_inputs=False)
+    ubunye.run_task(str(_task(tmp_path)), backend="pandas", dt="1", hooks=[MonitorHook(rec)])
+    assert calls == []
+    assert LineageRecorder(base_dir=str(tmp_path)).reads_inputs is True
+
+
+def test_an_optimize_since_the_read_is_not_a_change(tmp_path):
+    """Skeptic bug 6: OPTIMIZE (same rows) was called 'the source changed'."""
+    cfg = {"format": "unity", "table": "c.s.t"}  # a catalog Delta table: not pinned
+    session = _Session([2])
+    frame = SparkFrame(session=session)
+    read = sv.capture(frame, cfg)
+    session.commit("OPTIMIZE")
+    session.commit("VACUUM START")
+    step = _record(tmp_path, frame, read, cfg)
+    assert step.source_changed is False
+    assert step.source_version_at_hash["commits_since_read"] == ["OPTIMIZE", "VACUUM START"]
+    assert "change no rows: OPTIMIZE, VACUUM START" in step.source_note

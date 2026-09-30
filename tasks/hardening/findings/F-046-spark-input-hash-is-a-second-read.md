@@ -1,6 +1,6 @@
 # F-046: On Spark, an input's hash reads the source again, so it can describe a later state
 
-**Status:** fixed on fix/f046-input-source-version (2026-09-30): the record says when an input's digest is not of what was read; awaiting skeptic review and merge into hardening/real-world
+**Status:** fixed on fix/f046-input-source-version (2026-09-30): the record says when an input's digest is not of what was read; skeptic review answered in a second commit (6 bugs fixed, Delta reads pinned); awaiting merge into hardening/real-world
 **Severity:** minor for a source nothing else writes; major for a table another job appends to
 **Source:** engine-fixer, while fixing F-040 (2026-09-29)
 **Promise:** the run record's purpose (ADR 006: "what was read")
@@ -97,20 +97,85 @@ measured run.
 A future opt-in, not built: when an input has a strong source version (a Delta version,
 or better a pinned one), skip its content hash and record the version as its identity.
 That changes ADR 006's promise ("every input hashed like the outputs, every row"), so it
-must be the user's choice and the step must say which it has. A second option, also not
-built: pin a Delta input's read to the version taken at the read (`versionAsOf`), so the
-transform, the writes and the hash all see one snapshot and `source_changed` cannot
-happen for Delta; that changes what the reader reads, so it needs its own decision.
+must be the user's choice and the step must say which it has. A second option,
+pinning a Delta read to the version taken at the read (`versionAsOf`), was built after
+the skeptic review (see below): the lead decided it, since it also fixes outputs that
+read two versions.
+
+## Skeptic review (2026-09-30, fd89982, live Spark 4.2 + Delta 4.4)
+Six issues confirmed with scripts (`skeptic-f046/p1` to `p6` in the session scratchpad).
+Each is fixed in the second commit on this branch, with a test that fails on fd89982 and
+passes after (unit: 16 of 30 in `tests/unit/lineage/test_source_version.py` fail on
+fd89982; integration: 6 of 8 in `tests/integration/test_source_version_spark.py` fail
+on fd89982, the 2 that pass are unchanged file tests).
+
+1. **A same size, same time rewrite passed as "of what the task read".** p4: a CSV
+   rewritten (200 to 999, same size, mtime restored); the record said unchanged and "This
+   digest is of what the task read", but the digest was not the read one. Fix: the
+   listing includes the etag where Hadoop's `FileStatus` gives one (`EtagSource`, S3A and
+   ABFS on Hadoop 3.3+); the version says `etags: true|false`. Without etags the note says
+   "File names, sizes and modification times are unchanged since the read ... a file
+   rewritten with the same size and time cannot be ruled out". p4 after: that note.
+   `getFileChecksum` was not used (it reads the file).
+2. **A pin in `options` was ignored.** p2a: `options: {versionAsOf: 0}` recorded version 1
+   (latest) and then "changed" to 2. Fix: `versionAsOf` / `timestampAsOf` in `options`
+   count, in any case, for `format: delta` and `s3` with `file_format: delta`. p2a after:
+   version 0, `pinned_by: config`, unchanged, 10 rows.
+3. **Two outputs of one Delta input read two versions** (the real consistency bug). p3:
+   an append between the two outputs' computations gave `a_out` 10 rows and `b_out` 13,
+   and the input digest was of 13. Fix (lead's decision A): a Delta read that names no
+   version is pinned by the reader to the version the table is at when it is read
+   (`ubunye/adapters/spark/delta_pin.py`, used by the Delta reader and by `s3` with
+   `file_format: delta`). The frame carries the pin, so the record says `pinned: true,
+   pinned_by: engine`; a pinned read is `source_changed: false` by construction and the
+   table's latest version at the hash is recorded as `latest_version`, information only.
+   p3 after: 10 and 10, input 10 rows, `latest_version` 1. This changes what a Delta read
+   reads; ADR 006, ADR 009 and the connector docs say so.
+4. **A listing error read as "every file is missing".** p1: one 503 on `listStatus` made
+   `source_changed: true`. Fix: any error other than a definite `FileNotFoundException`
+   makes the version `none` ("listing failed: ..."), so the change is unknown. p1 after
+   (through the folder listing path, `p1b_listing_path.py`): `none`, `source_changed:
+   null`. A definite "not found" still counts as missing: it is an answer, not an error.
+5. **Cost.** (i) With `hash_inputs=False` versions were still taken: now only a hook that
+   `reads_inputs` (the recorder, when it hashes inputs) asks for them. (ii) One file read
+   from a folder of 10,000 listed the whole folder: now up to 1,000 files read are asked
+   one by one (`getFileStatus`), more than that are listed by folder. (iii) No bound: now
+   `UBUNYE_SOURCE_VERSION_TIMEOUT` (30 s) stops it and records `none` ("took longer
+   than"). p4/p5, dev box, local disk, before and after:
+
+   | Case | before (s) | after (s) |
+   |---|---|---|
+   | one file read from a folder of 10,000 | 2.55 | 0.005 |
+   | 1,000 files in 1,000 partition folders | 2.85 | 1.59 |
+   | 10,000 files in one folder (listed) | 4.15 | 4.28 |
+   | for scale: Spark building that 10,000 file frame | 51.1 | 53.5 |
+
+6. **OPTIMIZE called a change.** p2b: OPTIMIZE between the read and the hash (same rows)
+   gave `source_changed: true`. With pinning the read is pinned, so p2b after: unchanged,
+   30 rows, `latest_version` 3. For an unpinned Delta table (a catalog table read through
+   `hive` or `unity`) the recorder reads the history between the two versions and does
+   not call it a change when every commit is one that changes no rows (OPTIMIZE, VACUUM
+   START/END, SET/UNSET TBLPROPERTIES, ADD/DROP CONSTRAINT); the operations are recorded
+   (`commits_since_read`).
+
+Also: the OpenLineage facet carries `sourceVersionAtHash`, and `docs/schemas/ubunye_hash.json`
+types every field of `sourceVersion` and `sourceVersionAtHash`. mypy (`python -m mypy
+ubunye`, as CI runs it) failed on fd89982 on `PandasDataFrameAdapter.source_files`; fixed
+by declaring it on the class. The 8 errors left locally (runs.py unused ignores,
+secrets.py, mcp_server.py) are the same on b6ff30b.
 
 ## Open
 - A file added to a folder after the read is not reported (it does not change the
   digest). A fresh listing at hash time could say "the source has new files"; not done,
   since it is not about the digest.
-- For Delta, the version at the read is taken when the frame is built; the transform and
-  the outputs compute later and may see a later version too. `source_changed` covers the
-  input digest only.
-- Taking a files version grows with the file count (about 0.6 ms per file on the dev box,
-  twice per input); an input of 100,000 files would spend about 2 minutes. Not measured on
-  an object store.
+- A Delta catalog table read through `hive` or `unity`, and a `sql:` input, are not
+  pinned: two outputs of such an input can still see two versions. Only the record's
+  check covers them.
+- Pinning costs one `DESCRIBE HISTORY` per Delta read (about 0.16 s on the dev box), in
+  every run, recorded or not.
+- Without etags (local disk, HDFS), a rewrite with the same size and time is not seen;
+  the note says so. Etags are not tested on a real object store here.
+- Taking a files version over more than 1,000 files lists each folder; not measured on an
+  object store.
 - The CI integration tier must run `tests/integration/test_source_version_spark.py` on
-  Spark 4 and 3.5; the Delta test skips without Delta's jars.
+  Spark 4 and 3.5; the Delta tests skip without Delta's jars.

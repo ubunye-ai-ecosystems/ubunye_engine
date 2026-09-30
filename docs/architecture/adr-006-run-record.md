@@ -116,33 +116,58 @@ large to read twice, and those inputs then show `-` for their row count.
 
 **The record says whether an input's digest is of what was read (F-046).** The
 engine takes each input's source version right after the read (only in a recorded
-run), and the recorder takes it again right after that input's hash. Nothing is
-read from the data for it:
+run that hashes inputs), and the recorder checks it again right after that input's
+hash. Nothing is read from the data for it:
 
 | Source | Version |
 |---|---|
-| Delta (`delta` by path or table, `s3` with `file_format: delta`, a Delta catalog table) | the table version and its time, from the Delta log; a read pinned with `version_as_of` or `timestamp_as_of` is that version |
-| files (`s3`, `binary`, a pandas read) | the files the frame reads (Spark's file index, `inputFiles()`): count, bytes, latest modification time, and a hash of the sorted (relative path, size, time) list |
-| a SQL query, JDBC, a REST API, a catalog table that is not Delta, Spark Connect | `none`, with the reason |
+| Delta (`delta` by path or table, `s3` with `file_format: delta`) | the version the read is pinned to: by the config (`version_as_of`, `timestamp_as_of`, or `versionAsOf` / `timestampAsOf` in `options`, any case), or else by the engine, which pins the read to the version the table is at when it is read |
+| a Delta catalog table (`hive`, `unity`) | the table version and its time, from the Delta log (not pinned) |
+| files (`s3`, `binary`, a pandas read) | the files the frame reads (Spark's file index, `inputFiles()`): count, bytes, latest modification time, whether every file has a content tag (`etags`), and a hash of the sorted (relative path, size, time, etag) list |
+| a SQL query, JDBC, a REST API, a catalog table that is not Delta, Spark Connect, a listing that failed, a version that took longer than `UBUNYE_SOURCE_VERSION_TIMEOUT` (30 s) | `none`, with the reason |
 
 | Field | What it is |
 |---|---|
 | `inputs[*].source_version` | the version at the read |
-| `inputs[*].source_version_at_hash` | the version right after the hash (a `recomputed` input with a version only) |
-| `inputs[*].source_changed` | `true`: they differ, the digest is of a later state than the one read; `false`: they match, the digest is of what was read; missing: not known |
+| `inputs[*].source_version_at_hash` | the version right after the hash (a `recomputed` input with a version only); for a pinned Delta read, the table's `latest_version` then, as information; for an unpinned Delta table, `commits_since_read` |
+| `inputs[*].source_changed` | `true`: the digest is of a later state than the one read; `false`: see below; missing: not known |
 | `inputs[*].source_note` | the same in one sentence |
+
+`source_changed: false` means exactly what the note says:
+
+- a pinned Delta read: the digest is of what was read, by construction;
+- an unpinned Delta table: same version, or only commits that change no rows since
+  the read (OPTIMIZE, VACUUM, table properties, constraints);
+- files with content tags (S3A, ABFS on Hadoop 3.3 and later): same names, sizes, times
+  and tags, so the digest is of what was read;
+- files without them (a local disk, HDFS): same names, sizes and times only. A file
+  rewritten with the same size and time cannot be ruled out, and the note says so.
+
+A listing that fails (a throttle, a 503) is never read as missing files: the version is
+`none` and the change unknown. Only a definite "not found" counts as missing.
+
+**A Delta read is pinned.** A lazy Delta frame reads the latest version on every action,
+so before this one input could feed two outputs from two versions (10 rows and 13, when
+another job appended between them) and the input hash could read a third. A Delta read
+that names no version now carries `versionAsOf` for the version the table is at when it
+is read, so the transform, every output and the hash see one snapshot. This changes what
+a Delta read reads, on purpose: a run that saw a table move while it ran now gives
+outputs from one version, not a mix. A read the config pins is left as written. If the
+version cannot be read, the read is left unpinned, as before.
 
 `hash_basis` keeps its meaning (how the digest was computed); `source_changed` is
 whether the source moved while it was. `lineage compare` calls such an input's hash
 "unknown", and `ubunye gate` warns and counts it as a possible cause of a changed
 output, never as proof the input was the same. The digest itself and the default
 (hash every input) do not change. Measured on live Spark: a Delta table appended to
-after the read is flagged, and its digest is of the new version (13 rows, not 10); a
-parquet file rewritten after the read is flagged; a file added to the folder after the
-read is not flagged, and rightly: Spark's file index keeps the files listed at the
-read, so the hash does not read the new file, and the digest equals the folder's hash
-before it was added. Taking a version costs about 0.6 ms per file on the dev box
-(1,000 files: 0.62 s, twice per input) and about 0.16 s for a Delta history.
+after the read is not read (the digest is of version 0, 10 rows; `latest_version` 1);
+a parquet file rewritten after the read is flagged; a file added to the folder after
+the read is not flagged, and rightly: Spark's file index keeps the files listed at the
+read, so the hash does not read the new file. Cost (dev box, local disk): one file read
+from a folder of 10,000: 0.005 s; 1,000 files in 1,000 folders: 1.6 s; 10,000 files in
+one folder: 4.3 s (for scale: Spark took 54 s to build that frame); a Delta history
+about 0.16 s. Up to 1,000 files, each file read is asked for its status; above that,
+each folder is listed once.
 
 Monitors receive the new evidence (`inputs`, `expectations`, `timings`) only if
 their `task_end` accepts those arguments (or `**kwargs`), so monitors written

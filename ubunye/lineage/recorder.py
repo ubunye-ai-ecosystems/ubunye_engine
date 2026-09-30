@@ -140,8 +140,9 @@ def _check_source(step: StepRecord, frame: Any, io_cfg: Dict[str, Any]) -> None:
 
     before = step.source_version
     if step.hash_basis == RECOMPUTED and source_version.comparable(before):
-        step.source_version_at_hash = source_version.capture(frame, io_cfg)
-        step.source_changed = source_version.changed(before, step.source_version_at_hash)
+        step.source_version_at_hash, step.source_changed = source_version.check(
+            frame, io_cfg, before
+        )
     step.source_note = source_version.note(
         step.hash_basis, before, step.source_version_at_hash, step.source_changed
     )
@@ -164,6 +165,11 @@ class LineageRecorder:
     #: The recorder hashes the output frames at task end, so the engine computes
     #: each output once and hands it the rows that were written (ADR 009).
     reads_outputs = True
+
+    @property
+    def reads_inputs(self) -> bool:
+        """Whether inputs are hashed; if not, no source version is taken (F-046)."""
+        return self._hash_inputs
 
     def __init__(
         self,

@@ -90,6 +90,11 @@ class MonitorHook(Hook):
         """Whether the monitor says it acts on the output frames (the lineage recorder)."""
         return bool(getattr(self.monitor, "reads_outputs", False))
 
+    @property
+    def reads_inputs(self) -> bool:  # type: ignore[override]
+        """Whether the monitor hashes the input frames (the lineage recorder, by default)."""
+        return bool(getattr(self.monitor, "reads_inputs", False))
+
     @contextmanager
     def task(self, ctx, cfg: Dict[str, Any], state: Dict[str, Any]) -> Iterator[None]:
         yield from _wrap_monitor_task(self.monitor, ctx, cfg, state)

@@ -421,16 +421,22 @@ input is hashed at the end of the task by reading its source again, so the recor
 takes the source's version when the input is read and again right after the hash:
 
 ```json
-"source_version": {"kind": "delta", "version": 3, "timestamp": "2026-09-30T01:02:03"},
-"source_version_at_hash": {"kind": "delta", "version": 4, "timestamp": "2026-09-30T01:05:40"},
+"source_version": {"kind": "files", "files": 2, "bytes": 2030, "etags": false, "listing_hash": "sha256:..."},
+"source_version_at_hash": {"kind": "files", "files": 2, "bytes": 2034, "etags": false, "listing_hash": "sha256:..."},
 "source_changed": true,
-"source_note": "The source changed between the read and the hash (Delta version 3 -> Delta version 4). This digest is of the later state, not of what the task read."
+"source_note": "The source changed between the read and the hash (2 files, 2030 bytes -> 2 files, 2034 bytes). This digest is of the later state, not of what the task read."
 ```
 
-A file input's version is its files (`files`, `bytes`, `latest_modified`,
-`listing_hash`), from Spark's own file index; nothing is read. A SQL query, JDBC, or
-a catalog table that is not Delta has `"kind": "none"` and the reason. On pandas the
-input is in memory, so the version is recorded but not checked again.
+A file input's version is its files (`files`, `bytes`, `latest_modified`, `etags`,
+`listing_hash`), from Spark's own file index; nothing is read. Where the file system
+gives no content tags (a local disk, HDFS), an unchanged version means names, sizes
+and times only, and the note says so. A Delta read is pinned to one version (by the
+config, or by the engine when the config names none), so its note says the digest is
+of what was read and gives the table's `latest_version` at the hash as information.
+A SQL query, JDBC, a catalog table that is not Delta, or a listing that failed or took
+longer than `UBUNYE_SOURCE_VERSION_TIMEOUT` seconds (30) has `"kind": "none"` and the
+reason. On pandas the input is in memory, so the version is recorded but not checked
+again. With `LineageRecorder(hash_inputs=False)` no version is taken.
 `lineage trace` prints the note, and `lineage compare` and `ubunye gate` do not treat
 such an input's hash as evidence. See [the run record](architecture/adr-006-run-record.md).
 

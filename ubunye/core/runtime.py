@@ -287,7 +287,7 @@ class Engine:
                     self.backend.start()
                 try:
                     versions: Optional[Dict[str, Any]] = None
-                    if any(getattr(h, "reads_outputs", False) for h in chain.hooks):
+                    if any(getattr(h, "reads_inputs", False) for h in chain.hooks):
                         versions = state["source_versions"] = {}
                     sources = self._read_inputs(ctx, chain, inputs_cfg, versions)
                     state["inputs"] = self._to_ports(sources)

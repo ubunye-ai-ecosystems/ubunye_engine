@@ -70,7 +70,13 @@ class DeltaReader(Reader):
         if cfg.get("timestamp_as_of") is not None:
             options["timestampAsOf"] = cfg["timestamp_as_of"]
 
+        # No version named: pin to the one the table is at now, so the transform,
+        # every output and the run record see one snapshot (F-046).
+        from ubunye.adapters.spark import delta_pin
+
+        pin = delta_pin.pin_options(spark, table or f"delta.`{path}`", cfg, options)
+
         for key, value in options.items():
             reader = reader.option(key, str(value))
 
-        return reader.table(table) if table else reader.load(path)
+        return delta_pin.mark(reader.table(table) if table else reader.load(path), pin)
