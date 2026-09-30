@@ -127,6 +127,74 @@ def test_csv_values_longer_than_a_megabyte(spark, pandas_backend, tmp_path, mult
 
 
 # --------------------------------------------------------------------------- #
+# Nested and conflicting JSON
+# --------------------------------------------------------------------------- #
+
+
+def _deep(n: int) -> dict:
+    node: dict = {"leaf": n}
+    for i in range(n):
+        node = {"lvl": i, "child": node}
+    return node
+
+
+def _nested_lines() -> str:
+    import json
+
+    rows = []
+    for i in range(40):
+        row = {"id": i, "deep": _deep(30), "obj": {"z": 1, "a": {"y": [1, 2], "b": None}}}
+        if i % 2:
+            row["obj"] = {"m": "x"}
+            row["opt"] = None
+        if i % 3 == 0:
+            row[f"extra_{i % 4}"] = i
+        row["items"] = [{"sku": f"s{j}", "qty": j} if j % 2 else {"qty": j} for j in range(i % 4)]
+        rows.append(json.dumps(row))
+    return "\n".join(rows) + "\n"
+
+
+JSON_CASES = {
+    "nested-per-row-keys": _nested_lines(),
+    "number-and-text": '{"a":1}\n{"a":"x"}\n{"a":1.50}\n{"a":true}\n{"a":1e2}\n',
+    "object-and-text": '{"a":{"k":1,"n":null,"s":"q\\u000b\\u001f/"}}\n{"a":"x"}\n{"a":[1,{"b":2}]}\n',
+    "mixed-arrays": '{"a":[1,"x",{"q":1},[2],null,true]}\n{"a":[1.5,2]}\n',
+    "big-whole-numbers": (
+        '{"a":9223372036854775808,"b":123456789012345678901234567890,"c":1}\n'
+        '{"a":1,"b":2,"c":9223372036854775807}\n'
+        '{"d":' + "9" * 40 + "}\n"
+    ),
+    "long-and-double": '{"a":1}\n{"a":1.5}\n{"a":NaN}\n{"a":-Infinity}\n',
+    "decimal-and-double": '{"a":123456789012345678901234567890}\n{"a":0.5}\n',
+    "empty-names-and-objects": '{"":1,"a":1,"e":{},"l":[{}],"o":{"":2,"k":3},"n":[]}\n',
+    "empty-strings": '{"a":""}\n{"a":""}\n{"b":"","c":"x"}\n',
+    "array-lines": '[{"a":1},{"a":2,"b":"x"}]\n{"a":3}\n',
+    "unicode-key-order": '{"\\ud83d\\ude00":1,"\\uff21":2,"a":3,"B":4}\n',
+}
+
+
+@pytest.mark.parametrize("name", sorted(JSON_CASES))
+def test_json_inference(spark, pandas_backend, tmp_path, name):
+    """F-064: JSON typed as Spark's JsonInferSchema types it."""
+    path = _file(tmp_path, "in.json", JSON_CASES[name].encode("utf-8"))
+    assert_same(*_read_both(spark, pandas_backend, "json", path))
+
+
+def test_json_multiline_document(spark, pandas_backend, tmp_path):
+    import json
+
+    rows = [json.loads(line) for line in _nested_lines().splitlines()]
+    path = _file(tmp_path, "doc.json", json.dumps(rows, indent=2).encode())
+    assert_same(*_read_both(spark, pandas_backend, "json", path, {"multiLine": "true"}))
+
+
+def test_json_empty_string_in_a_number_field(spark, pandas_backend, tmp_path):
+    """F-064: "" merges as null; Spark reads it as null in a number column (partial row)."""
+    path = _file(tmp_path, "e.json", b'{"c":5,"d":"k"}\n{"c":"","d":"j"}\n')
+    assert_same(*_read_both(spark, pandas_backend, "json", path))
+
+
+# --------------------------------------------------------------------------- #
 # Time zones
 # --------------------------------------------------------------------------- #
 

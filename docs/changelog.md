@@ -107,6 +107,14 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **JSON on pandas is typed by Spark's rules (F-064, E-08).** The pandas reader let
+  pyarrow infer the types. Nested fields kept the order they were first seen (Spark
+  sorts them, so the schema hash differed), and a field that was a number in one
+  record and text in the next, an object in one and text in the next, or a whole
+  number past 64 bits stopped the read. The reader now uses a port of Spark's
+  `JsonInferSchema`: such a field is text (an object keeps its JSON text), a long
+  whole number is a `decimal`, bigint and double give double, empty names and empty
+  objects are dropped, and a line holding an array of objects is one row per object.
 - **A timestamp in a daylight saving gap or fold no longer stops a pandas run
   (F-063, E-08).** With a session zone such as `America/New_York`, the text
   `2024-11-03 01:30:00` (it happens twice) or `2024-03-10 02:30:00` (it never

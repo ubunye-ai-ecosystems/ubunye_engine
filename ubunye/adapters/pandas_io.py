@@ -634,14 +634,6 @@ def _skip(row: Any) -> str:
     return "skip"
 
 
-def _sorted_keys(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {k: _sorted_keys(value[k]) for k in sorted(value)}
-    if isinstance(value, list):
-        return [_sorted_keys(v) for v in value]
-    return value
-
-
 def _read_json(
     files: List[str],
     opts: Dict[str, Any],
@@ -650,6 +642,8 @@ def _read_json(
     counts: Optional[List[int]] = None,
 ) -> Any:
     import pyarrow as pa
+
+    from ubunye.adapters import spark_json
 
     encoding = str(opts.get("encoding", "utf-8"))
     rows: List[Dict[str, Any]] = []
@@ -665,21 +659,32 @@ def _read_json(
                     if not line.strip():
                         continue
                     try:
-                        rows.append(json.loads(line))
+                        record = json.loads(line)
                     except json.JSONDecodeError:
                         if not drop:
                             raise
-                        # DROPMALFORMED: skip the record, as Spark does
+                        continue  # DROPMALFORMED: skip the record, as Spark does
+                    # A line holding an array of objects is one row per object.
+                    rows.extend(record if isinstance(record, list) else [record])
         if counts is not None:
             counts.append(len(rows) - before)
     # Parsed with the json module, not pyarrow's reader: pyarrow turns ISO text
-    # into timestamps and keeps key order, and Spark does neither.
-    rows = [_sorted_keys(r) for r in rows]
-    names = sorted({k for r in rows for k in r})
-    table = pa.table({n: pa.array([r.get(n) for r in rows]) for n in names})
+    # into timestamps and keeps key order, and Spark does neither. Typed by a port
+    # of Spark's JSON inference (F-064).
     if schema is not None:
+        columns = {}
+        for f in schema:
+            values = [r.get(f.name) for r in rows]
+            if pa.types.is_string(f.type):
+                # Spark keeps the JSON text of a value that is not a string.
+                values = [spark_json.convert(v, spark_json.STRING) for v in values]
+            columns[f.name] = pa.array(values)
+        table = pa.table(columns) if columns else no_columns(len(rows))
         return _instants(_apply_schema(table, schema, timezone), timezone)
-    return _to_spark_types(table)
+    fields = spark_json.infer_schema(rows)
+    return pa.table(
+        {name: spark_json.column([r.get(name) for r in rows], kind) for name, kind in fields}
+    )
 
 
 def _read_parquet(files: List[str], schema: Any, counts: Optional[List[int]] = None) -> Any:

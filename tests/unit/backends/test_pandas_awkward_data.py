@@ -85,6 +85,70 @@ class TestCsvLongRows:
         assert frame.native["t"].tolist() == [big]
 
 
+def _types(frame) -> dict:
+    native = frame.native
+    return {c: native[c].dtype.pyarrow_dtype for c in native.columns}
+
+
+class TestJsonInference:
+    """F-064: JSON is typed by a port of Spark's JsonInferSchema."""
+
+    def test_nested_fields_are_sorted_by_name(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{"o":{"b":1,"z":{"y":1,"c":2}}}\n{"o":{"a":2}}\n')
+        inner = pa.struct([("c", pa.int64()), ("y", pa.int64())])
+        assert _types(frame)["o"] == pa.struct([("a", pa.int64()), ("b", pa.int64()), ("z", inner)])
+
+    def test_a_number_and_text_in_one_field_is_text(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{"a":1}\n{"a":"x"}\n{"a":1.50}\n{"a":true}\n')
+        assert _types(frame)["a"] == pa.string()
+        assert frame.native["a"].tolist() == ["1", "x", "1.5", "true"]
+
+    def test_an_object_and_text_in_one_field_keeps_the_objects_json(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{"a":{"k":1,"n":null,"s":"q\\u000b"}}\n{"a":"x"}\n')
+        assert frame.native["a"].tolist() == ['{"k":1,"n":null,"s":"q\\u000B"}', "x"]
+
+    def test_arrays_with_mixed_elements_are_arrays_of_text(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{"a":[1,"x",{"q":1},[2]]}\n')
+        assert _types(frame)["a"] == pa.list_(pa.string())
+        assert list(frame.native["a"].tolist()[0]) == ["1", "x", '{"q":1}', "[2]"]
+
+    def test_whole_numbers_past_64_bits_are_decimals(self, tmp_path):
+        data = b'{"a":9223372036854775808,"b":123456789012345678901234567890}\n{"a":1,"b":2}\n'
+        frame = _read_bytes(tmp_path, "json", data)
+        assert _types(frame) == {"a": pa.decimal128(20, 0), "b": pa.decimal128(30, 0)}
+        assert str(frame.native["a"][0]) == "9223372036854775808"
+
+    def test_a_number_past_38_digits_is_a_double(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{"a":' + b"9" * 40 + b"}\n")
+        assert _types(frame)["a"] == pa.float64()
+
+    def test_long_and_double_are_double(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{"a":1}\n{"a":1.5}\n{"a":NaN}\n')
+        assert _types(frame)["a"] == pa.float64()
+
+    def test_empty_names_and_empty_objects_are_dropped(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{"":1,"a":1,"e":{},"l":[{}],"o":{"":2,"k":3}}\n')
+        assert _types(frame) == {"a": pa.int64(), "o": pa.struct([("k", pa.int64())])}
+
+    def test_an_empty_string_merges_as_null(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{"a":""}\n{"a":""}\n{"b":"","c":5}\n{"c":""}\n')
+        assert _types(frame) == {"a": pa.string(), "b": pa.string(), "c": pa.int64()}
+        assert frame.native["a"].tolist()[:2] == ["", ""]
+        assert frame.native["a"].isna().tolist() == [False, False, True, True]
+        assert frame.native["c"].isna().tolist() == [True, True, False, True]
+
+    def test_arrays_of_objects_merge_their_keys(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{"a":[{"y":1},{"x":"s"}]}\n{"a":[]}\n')
+        assert _types(frame)["a"] == pa.list_(pa.struct([("x", pa.string()), ("y", pa.int64())]))
+
+    def test_names_sort_by_utf16_like_java(self):
+        from ubunye.adapters import spark_json
+
+        # U+FF21 sorts after U+1F600 by code point, before it by UTF-16 unit.
+        names = sorted(["\U0001f600", "Ａ", "a"], key=spark_json.java_order)
+        assert names == ["a", "\U0001f600", "Ａ"]
+
+
 NY = "America/New_York"
 # 02:30 on 2024-03-10 does not exist in New York (clocks go 02:00 -> 03:00);
 # 01:30 on 2024-11-03 happens twice (EDT, then EST).
