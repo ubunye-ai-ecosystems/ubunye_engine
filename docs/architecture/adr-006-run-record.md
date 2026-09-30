@@ -106,6 +106,9 @@ the same identity, so `ubunye lineage list` finds every run.
   caller's hash code (by its SHA-256) and the caller's pyarrow, or gives no
   answer; a helper past its deadline is stopped. Memory, containers and frozen
   apps: see [Deploying anywhere](../deployment/anywhere.md).
+- A table in many small Arrow chunks (a folder of many small files) is put into one
+  chunk before it is hashed; each slice has a fixed cost, so 5,000 chunks of 2 rows
+  took 1.9 s and now take 0.02 s (F-070). The digest does not change.
 - Records written before 0.7.0 have no `hash_method`. `lineage compare` calls
   them "not comparable" with new records rather than "changed", and calls two
   missing hashes "unknown" rather than "unchanged".

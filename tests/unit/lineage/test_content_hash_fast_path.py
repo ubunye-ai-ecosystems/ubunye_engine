@@ -312,3 +312,27 @@ def test_nan_is_still_not_null():
     with_nan = pa.table({"f": pa.array([math.nan], pa.float64())})
     with_null = pa.table({"f": pa.array([None], pa.float64())})
     assert fingerprint_arrow(with_nan).data_hash != fingerprint_arrow(with_null).data_hash
+
+
+class TestManySmallChunks:
+    """F-070: a table of many small chunks (a folder of small files) is hashed in few slices."""
+
+    def _table(self):
+        pieces = [
+            pa.table({"id": pa.array([2 * i, 2 * i + 1], pa.int64()), "v": [0.5, None]})
+            for i in range(2000)
+        ]
+        return pa.concat_tables(pieces)
+
+    def test_the_rows_are_put_together_before_hashing(self, monkeypatch):
+        table = self._table()
+        assert table.column(0).num_chunks == 2000
+        calls = []
+        real = ch._slice_lanes
+        monkeypatch.setattr(ch, "_slice_lanes", lambda *a: calls.append(1) or real(*a))
+        fingerprint_arrow(table)
+        assert len(calls) == 1  # was one slice per chunk: 2000
+
+    def test_the_digest_is_unchanged(self):
+        table = self._table()
+        assert fingerprint_arrow(table) == fingerprint_arrow(table.combine_chunks())

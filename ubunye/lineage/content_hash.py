@@ -511,7 +511,14 @@ def _arrow_lanes(lines: Any) -> Tuple[int, int]:
 
 
 def _slices(table: Any, names: List[str]) -> Iterator[Any]:
-    for batch in table.select(names).to_batches():
+    table = table.select(names)
+    batches = table.to_batches()
+    if len(batches) > 1 and table.num_rows < len(batches) * (_SLICE_ROWS // 8):
+        # Many small chunks (a folder of small files keeps one chunk per file):
+        # each slice costs about a millisecond whatever its size, so 5,000 files
+        # of 2 rows took 2.4 s to hash. Put the rows together first (F-070).
+        batches = table.combine_chunks().to_batches()
+    for batch in batches:
         for start in range(0, batch.num_rows, _SLICE_ROWS):
             yield batch.slice(start, _SLICE_ROWS)
 

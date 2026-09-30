@@ -107,6 +107,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **The run record hashes a folder of many small files quickly on pandas (F-070,
+  E-08).** A read of 5,000 small files keeps one Arrow chunk per file, and the hash
+  paid about a millisecond per chunk: 10,000 rows took 1.9 s to hash, most of a
+  `--lineage` run. Such a table is now put together first: 0.02 s. Same digest.
 - **Columns whose names differ only by case are refused on pandas, as on Spark
   (F-069, E-08).** A parquet file with `Col` and `col`, JSON keys `a` and `A`, or a
   transform that returns both, ran on pandas and failed on Spark, whose default
