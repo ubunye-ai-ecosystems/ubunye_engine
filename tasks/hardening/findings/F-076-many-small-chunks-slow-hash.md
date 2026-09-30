@@ -1,8 +1,8 @@
-# F-070: the pandas run record hash is slow on a folder of many small files
+# F-076: the pandas run record hash is slow on a folder of many small files
 
 **Status:** fixed on hardening/awkward-data (2026-09-30)
 **Severity:** minor (speed)
-**Source:** experiment E-08 (awkward data), shape 6 (many small files)
+**Source:** experiment E-09 (awkward data), shape 6 (many small files)
 **Promise:** none (cost of the record)
 
 ## What happens

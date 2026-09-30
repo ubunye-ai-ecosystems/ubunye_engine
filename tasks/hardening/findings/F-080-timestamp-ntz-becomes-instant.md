@@ -1,8 +1,8 @@
-# F-074: a timestamp without a time zone becomes an instant on the pandas round trip
+# F-080: a timestamp without a time zone becomes an instant on the pandas round trip
 
 **Status:** open (design question)
 **Severity:** major (silent: type and values shift by the session offset)
-**Source:** experiment E-08 (awkward data), shape 5 (time zones)
+**Source:** experiment E-09 (awkward data), shape 5 (time zones)
 **Promise:** 1 (same result anywhere)
 
 ## What happens

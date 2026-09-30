@@ -315,7 +315,7 @@ def test_nan_is_still_not_null():
 
 
 class TestManySmallChunks:
-    """F-070: a table of many small chunks (a folder of small files) is hashed in few slices."""
+    """F-076: a table of many small chunks (a folder of small files) is hashed in few slices."""
 
     def _table(self):
         pieces = [

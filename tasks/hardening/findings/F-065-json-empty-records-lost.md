@@ -2,7 +2,7 @@
 
 **Status:** fixed on hardening/awkward-data (2026-09-30)
 **Severity:** major (silent row loss)
-**Source:** experiment E-08 (awkward data), shape 3 (nested JSON) and 8 (empty inputs)
+**Source:** experiment E-09 (awkward data), shape 3 (nested JSON) and 8 (empty inputs)
 **Promise:** 5 (nothing is lost silently)
 
 ## What happens

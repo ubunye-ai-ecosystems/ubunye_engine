@@ -1,9 +1,9 @@
 # F-067: CSV inferSchema on pandas is pyarrow's, not Spark's
 
 **Status:** fixed on hardening/awkward-data (2026-09-30), numbers, booleans and the
-naive plus aware timestamp mix; the looser date and time forms are F-071
+naive plus aware timestamp mix; the looser date and time forms are F-077
 **Severity:** major (silent: a whole number past 64 bits loses digits)
-**Source:** experiment E-08 (awkward data), shapes 4 (messy CSV) and 9 (big numbers)
+**Source:** experiment E-09 (awkward data), shapes 4 (messy CSV) and 9 (big numbers)
 **Promise:** 1 (same result anywhere), 5 (nothing lost silently)
 
 ## What happens

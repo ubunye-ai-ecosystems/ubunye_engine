@@ -1,8 +1,8 @@
-# F-075: the pandas run record has no digest for an instant past year 9999
+# F-081: the pandas run record has no digest for an instant past year 9999
 
 **Status:** open (needs Spark's text for such a year, measured in CI)
 **Severity:** minor (no silent error: the record says why; the digest is missing)
-**Source:** experiment E-08 (awkward data), shape 5 (time zones)
+**Source:** experiment E-09 (awkward data), shape 5 (time zones)
 **Promise:** 1 (same result anywhere: the Spark record has a digest, the pandas one not)
 
 ## What happens

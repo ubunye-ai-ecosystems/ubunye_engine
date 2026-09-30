@@ -3,7 +3,7 @@
 **Status:** fixed on hardening/awkward-data (2026-09-30) for inputs with a schema;
 without a schema left open (see below)
 **Severity:** minor (a run Spark finishes with zero rows stops on pandas)
-**Source:** experiment E-08 (awkward data), shape 8 (empty inputs)
+**Source:** experiment E-09 (awkward data), shape 8 (empty inputs)
 **Promise:** 1 (same result anywhere)
 
 ## What happens

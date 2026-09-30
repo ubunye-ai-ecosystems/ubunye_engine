@@ -2,7 +2,7 @@
 
 **Status:** fixed on hardening/awkward-data (2026-09-30)
 **Severity:** major (a file Spark reads cannot be read on pandas)
-**Source:** experiment E-08 (awkward data), shape 4 (messy CSV) and 10 (names)
+**Source:** experiment E-09 (awkward data), shape 4 (messy CSV) and 10 (names)
 **Promise:** 1 (same result anywhere)
 
 ## What happens

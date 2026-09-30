@@ -516,7 +516,7 @@ def _slices(table: Any, names: List[str]) -> Iterator[Any]:
     if len(batches) > 1 and table.num_rows < len(batches) * (_SLICE_ROWS // 8):
         # Many small chunks (a folder of small files keeps one chunk per file):
         # each slice costs about a millisecond whatever its size, so 5,000 files
-        # of 2 rows took 2.4 s to hash. Put the rows together first (F-070).
+        # of 2 rows took 2.4 s to hash. Put the rows together first (F-076).
         batches = table.combine_chunks().to_batches()
     for batch in batches:
         for start in range(0, batch.num_rows, _SLICE_ROWS):

@@ -1,11 +1,11 @@
-"""Awkward data: the pandas backend against live Spark (experiment E-08).
+"""Awkward data: the pandas backend against live Spark (experiment E-09).
 
 Wide tables, long text, nested and conflicting JSON, messy CSV, time zones,
 many small files, empty inputs, special numbers and odd column names. Each case
 reads the same bytes on both engines and asks for the same columns, types and
 values (Spark decides), or, where Spark refuses the input, for the pandas
 backend to refuse it too. Findings F-060 onwards; see
-tasks/hardening/experiments/E-08-awkward-data.md.
+tasks/hardening/experiments/E-09-awkward-data.md.
 
 Marked integration (the Spark half needs a JVM). CI runs it on Spark 4 and 3.5.
 """
@@ -229,7 +229,7 @@ def _special_numbers():
 
 
 def test_parquet_special_numbers(spark, pandas_backend, tmp_path):
-    """E-08 shape 9: NaN, infinities, -0.0, 38 digit decimals, int64 limits."""
+    """E-09 shape 9: NaN, infinities, -0.0, 38 digit decimals, int64 limits."""
     import pyarrow.parquet as pq
 
     path = str(tmp_path / "special.parquet")
@@ -341,7 +341,7 @@ def test_json_empty_string_in_a_number_field(spark, pandas_backend, tmp_path):
 
 
 def test_awkward_column_names_read_the_same(spark, pandas_backend, tmp_path):
-    """E-08 shape 10: unicode, spaces, dots, reserved words; parquet and CSV."""
+    """E-09 shape 10: unicode, spaces, dots, reserved words; parquet and CSV."""
     import pyarrow.parquet as pq
 
     names = ["naïve", "名前", "with space", "a.b", "select", "from", "Größe", "tab\tname"]
@@ -523,7 +523,7 @@ def test_csv_invalid_utf8_fuzz(spark, pandas_backend, tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.xfail(strict=False, reason="F-071: Spark reads looser date and time forms")
+@pytest.mark.xfail(strict=False, reason="F-077: Spark reads looser date and time forms")
 @pytest.mark.parametrize(
     "text",
     [
@@ -540,7 +540,7 @@ def test_csv_looser_date_and_time_forms(spark, pandas_backend, tmp_path, text):
     assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
 
 
-@pytest.mark.xfail(strict=False, reason="F-072: Spark matches CSV columns by position")
+@pytest.mark.xfail(strict=False, reason="F-078: Spark matches CSV columns by position")
 def test_csv_folder_with_headers_in_different_orders(spark, pandas_backend, tmp_path):
     folder = tmp_path / "parts"
     folder.mkdir()
@@ -549,7 +549,7 @@ def test_csv_folder_with_headers_in_different_orders(spark, pandas_backend, tmp_
     assert_same(*_read_both(spark, pandas_backend, "csv", str(folder), {"header": "true"}))
 
 
-@pytest.mark.xfail(strict=False, reason="F-073: Spark takes one file's parquet schema")
+@pytest.mark.xfail(strict=False, reason="F-079: Spark takes one file's parquet schema")
 def test_parquet_folder_with_different_schemas(spark, pandas_backend, tmp_path):
     import pyarrow.parquet as pq
 
@@ -560,7 +560,7 @@ def test_parquet_folder_with_different_schemas(spark, pandas_backend, tmp_path):
     assert_same(*_read_both(spark, pandas_backend, "parquet", str(folder)))
 
 
-@pytest.mark.xfail(strict=False, reason="F-074: pandas writes a timestamp_ntz as an instant")
+@pytest.mark.xfail(strict=False, reason="F-080: pandas writes a timestamp_ntz as an instant")
 def test_timestamp_ntz_round_trip(spark, pandas_backend, tmp_path):
     import datetime as dt
 
@@ -587,7 +587,7 @@ def test_timestamp_ntz_round_trip(spark, pandas_backend, tmp_path):
     assert _rows(left) == _rows(right)
 
 
-@pytest.mark.xfail(strict=False, reason="F-075: pandas cannot hash an instant past year 9999")
+@pytest.mark.xfail(strict=False, reason="F-081: pandas cannot hash an instant past year 9999")
 def test_digest_of_instants_outside_python_years(spark, pandas_backend, tmp_path):
     import pyarrow.parquet as pq
 
@@ -617,7 +617,7 @@ class Touch(Task):
 
 
 def _e2e_inputs(root: Path) -> dict:
-    """Small versions of each E-08 shape: (file_format, path, options)."""
+    """Small versions of each E-09 shape: (file_format, path, options)."""
     import pyarrow.parquet as pq
 
     data = root / "data"
@@ -661,7 +661,7 @@ def _e2e_inputs(root: Path) -> dict:
 
 @pytest.fixture(scope="module")
 def e2e(tmp_path_factory, spark):
-    """Every E-08 shape run as a task on both engines, with --lineage."""
+    """Every E-09 shape run as a task on both engines, with --lineage."""
     import ubunye
     from ubunye.backends.databricks_backend import DatabricksBackend
     from ubunye.lineage.storage import FileSystemLineageStore
@@ -720,7 +720,7 @@ E2E_SHAPES = [
 
 @pytest.mark.parametrize("shape", E2E_SHAPES)
 def test_the_same_task_gives_the_same_run_record(e2e, shape):
-    """E-08: rows, schema hash and rows-v1 digest match, input and output."""
+    """E-09: rows, schema hash and rows-v1 digest match, input and output."""
     by_backend = e2e[shape]
     assert set(by_backend) == {"databricks", "pandas"}
     spark_run, pandas_run = by_backend["databricks"], by_backend["pandas"]

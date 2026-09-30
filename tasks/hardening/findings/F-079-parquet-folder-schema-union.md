@@ -1,8 +1,8 @@
-# F-073: a parquet folder whose files differ in columns reads differently
+# F-079: a parquet folder whose files differ in columns reads differently
 
 **Status:** open (design question)
 **Severity:** major (silent: columns present on one engine, missing on the other)
-**Source:** experiment E-08 (awkward data), shape 6 (many small files)
+**Source:** experiment E-09 (awkward data), shape 6 (many small files)
 **Promise:** 1 (same result anywhere), 5 (nothing lost silently)
 
 ## What happens

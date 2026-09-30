@@ -2,7 +2,7 @@
 
 **Status:** fixed on hardening/awkward-data (2026-09-30)
 **Severity:** major (a task passes on the laptop and fails on the cluster)
-**Source:** experiment E-08 (awkward data), shape 10 (column names)
+**Source:** experiment E-09 (awkward data), shape 10 (column names)
 **Promise:** 1 (same result anywhere)
 
 ## What happens

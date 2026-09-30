@@ -2,7 +2,7 @@
 
 **Status:** fixed on hardening/awkward-data (2026-09-30)
 **Severity:** major (crashes where Spark reads, and a silent schema difference)
-**Source:** experiment E-08 (awkward data), shape 3 (nested JSON) and 9 (big numbers)
+**Source:** experiment E-09 (awkward data), shape 3 (nested JSON) and 9 (big numbers)
 **Promise:** 1 (same result anywhere)
 
 ## What happens

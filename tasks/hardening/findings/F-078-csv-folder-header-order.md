@@ -1,8 +1,8 @@
-# F-072: a folder of CSV files with headers in different orders reads differently
+# F-078: a folder of CSV files with headers in different orders reads differently
 
 **Status:** open (design question: follow Spark and be wrong, or keep the right answer and differ)
 **Severity:** major (silent wrong values on one of the two engines)
-**Source:** experiment E-08 (awkward data), shape 6 (many small files)
+**Source:** experiment E-09 (awkward data), shape 6 (many small files)
 **Promise:** 1 (same result anywhere), 5 (nothing lost silently)
 
 ## What happens

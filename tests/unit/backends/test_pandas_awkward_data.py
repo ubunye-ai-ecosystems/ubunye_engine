@@ -1,7 +1,7 @@
-"""Awkward data on the pandas backend reads and writes the way Spark does (E-08).
+"""Awkward data on the pandas backend reads and writes the way Spark does (E-09).
 
-Each class is one finding from experiment E-08 (tasks/hardening/experiments/
-E-08-awkward-data.md). The expected values come from Spark's own source; the
+Each class is one finding from experiment E-09 (tasks/hardening/experiments/
+E-09-awkward-data.md). The expected values come from Spark's own source; the
 integration tier (tests/integration/test_awkward_data_parity.py) checks each case
 against a live Spark session.
 

@@ -2,7 +2,7 @@
 
 **Status:** fixed on hardening/awkward-data (2026-09-30)
 **Severity:** minor (silent: a different schema and run record hash, same values)
-**Source:** experiment E-08 (awkward data), shape 9 (special numbers)
+**Source:** experiment E-09 (awkward data), shape 9 (special numbers)
 **Promise:** 1 (same result anywhere)
 
 ## What happens
