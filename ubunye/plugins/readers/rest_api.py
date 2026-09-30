@@ -96,10 +96,12 @@ def _fetch_page(
     body: Optional[Dict[str, Any]],
     rate_cfg: Dict[str, Any],
     auth_cfg: Dict[str, Any],
+    secrets: Optional[List[str]] = None,
 ) -> Any:
     """One page: a request with rate limiting and retries, as parsed JSON.
 
-    Raises ``requests.HTTPError`` on an error status, once the retries run out.
+    Raises ``requests.HTTPError`` on an error status, once the retries run out,
+    with ``secrets`` masked in its message (F-050).
     """
     resp = rest_http.send(
         session,
@@ -110,6 +112,7 @@ def _fetch_page(
         rate_cfg=rate_cfg,
         auth_cfg=auth_cfg,
         retry_on_default=_DEFAULT_RETRY_ON,
+        secrets=secrets,
     )
     return resp.json()
 
@@ -190,10 +193,14 @@ def _paginate(
 
     pag_cfg: Dict[str, Any] = cfg.get("pagination") or {}
     pag_type: str = (pag_cfg.get("type") or "").lower()
+    secrets = rest_http.secrets_of(cfg)
+
+    def fetch(*args: Any) -> Any:
+        return _fetch_page(*args, secrets=secrets)
 
     # ---- No pagination: single request ----
     if not pag_type:
-        resp = _fetch_page(session, url, method, params, body, rate_cfg, auth_cfg)
+        resp = fetch(session, url, method, params, body, rate_cfg, auth_cfg)
         yield _extract_records(resp, root_key)
         return
 
@@ -207,7 +214,7 @@ def _paginate(
         page_count = 0
 
         while True:
-            resp = _fetch_page(session, url, method, current_params, body, rate_cfg, auth_cfg)
+            resp = fetch(session, url, method, current_params, body, rate_cfg, auth_cfg)
             records = _extract_records(resp, root_key)
             if not records:
                 break
@@ -226,7 +233,7 @@ def _paginate(
         page_count = 0
 
         while True:
-            resp = _fetch_page(session, url, method, current_params, body, rate_cfg, auth_cfg)
+            resp = fetch(session, url, method, current_params, body, rate_cfg, auth_cfg)
             records = _extract_records(resp, root_key)
             if records:
                 yield records
@@ -251,9 +258,7 @@ def _paginate(
         current_params = dict(params)
 
         while current_url:
-            resp = _fetch_page(
-                session, current_url, method, current_params, body, rate_cfg, auth_cfg
-            )
+            resp = fetch(session, current_url, method, current_params, body, rate_cfg, auth_cfg)
             records = _extract_records(resp, root_key)
             if records:
                 yield records
@@ -382,18 +387,22 @@ class RestApiReader(Reader):
 
         session = _build_session(cfg)
         all_records: List[Dict[str, Any]] = []
+        secrets = rest_http.secrets_of(cfg)
+        where = rest_http.redact(cfg["url"], secrets)
 
-        try:
-            for page in _paginate(cfg, session):
-                all_records.extend(page)
-                log.debug("Fetched %d records (total so far: %d)", len(page), len(all_records))
-        finally:
-            session.close()
+        # No secret in any log line while the requests run (urllib3 logs URLs).
+        with rest_http.masked(secrets, __name__):
+            try:
+                for page in _paginate(cfg, session):
+                    all_records.extend(page)
+                    log.debug("Fetched %d records (total so far: %d)", len(page), len(all_records))
+            finally:
+                session.close()
 
-        log.info("RestApiReader: fetched %d total records from %s", len(all_records), cfg["url"])
+        log.info("RestApiReader: fetched %d total records from %s", len(all_records), where)
 
         if not all_records:
-            log.warning("RestApiReader: no records returned from %s", cfg["url"])
+            log.warning("RestApiReader: no records returned from %s", where)
         if schema_cfg:
             all_records = _whole_numbers_as_decimals(all_records, schema_cfg)
 
@@ -403,7 +412,7 @@ class RestApiReader(Reader):
             # Spark's own type errors (PySparkTypeError is a TypeError,
             # PySparkValueError a ValueError) and the pandas backend's port of them.
             raise SourceReadError(
-                f"The records from {cfg['url']} do not fit one table: {exc}",
+                f"The records from {where} do not fit one table: {exc}",
                 context={"Format": "rest_api", "Records": len(all_records)},
                 hint="A field must hold one kind of value in every record, and not be "
                 "null in all of them. Declare it under schema: as string to take any "

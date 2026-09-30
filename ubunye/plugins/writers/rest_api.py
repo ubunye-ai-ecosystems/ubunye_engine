@@ -30,7 +30,7 @@ Success and failure counts are logged at INFO level.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
     import requests
@@ -58,10 +58,12 @@ def _post_batch(
     payload: Dict[str, Any],
     rate_cfg: Dict[str, Any],
     auth_cfg: Dict[str, Any],
+    secrets: Optional[List[str]] = None,
 ) -> None:
     """POST one batch with rate limiting and retries.
 
-    Raises ``requests.HTTPError`` on an error status, once the retries run out.
+    Raises ``requests.HTTPError`` on an error status, once the retries run out,
+    with ``secrets`` masked in its message (F-050).
     """
     rest_http.send(
         session,
@@ -72,6 +74,7 @@ def _post_batch(
         rate_cfg=rate_cfg,
         auth_cfg=auth_cfg,
         retry_on_default=_DEFAULT_RETRY_ON,
+        secrets=secrets,
     )
 
 
@@ -155,37 +158,41 @@ class RestApiWriter(Writer):
         success_count = 0
         failure_count = 0
         batch: List[Dict[str, Any]] = []
+        self._secrets = rest_http.secrets_of(cfg)
+        where = rest_http.redact(url, self._secrets)
 
-        try:
-            for record in rest_http.records_of(df, backend):
-                batch.append(record)
+        # No secret in any log line while the requests run (urllib3 logs URLs).
+        with rest_http.masked(self._secrets, __name__):
+            try:
+                for record in rest_http.records_of(df, backend):
+                    batch.append(record)
 
-                if len(batch) >= batch_size:
+                    if len(batch) >= batch_size:
+                        success_count, failure_count = self._flush_batch(
+                            session, url, batch, rate_cfg, auth_cfg, success_count, failure_count
+                        )
+                        batch = []
+
+                # Flush remaining rows
+                if batch:
                     success_count, failure_count = self._flush_batch(
                         session, url, batch, rate_cfg, auth_cfg, success_count, failure_count
                     )
-                    batch = []
 
-            # Flush remaining rows
-            if batch:
-                success_count, failure_count = self._flush_batch(
-                    session, url, batch, rate_cfg, auth_cfg, success_count, failure_count
-                )
-
-        finally:
-            session.close()
+            finally:
+                session.close()
 
         log.info(
             "RestApiWriter: posted to %s — %d batches succeeded, %d failed",
-            url,
+            where,
             success_count,
             failure_count,
         )
 
         if failure_count > 0:
             raise SinkWriteError(
-                f"RestApiWriter: {failure_count} batch(es) failed posting to {url}.",
-                context={"Format": "rest_api", "URL": url, "Failed batches": failure_count},
+                f"RestApiWriter: {failure_count} batch(es) failed posting to {where}.",
+                context={"Format": "rest_api", "URL": where, "Failed batches": failure_count},
                 hint="Check logs for per-batch HTTP errors.",
             )
 
@@ -207,7 +214,9 @@ class RestApiWriter(Writer):
 
         payload = {"records": batch}
         try:
-            _post_batch(session, url, payload, rate_cfg, auth_cfg)
+            _post_batch(
+                session, url, payload, rate_cfg, auth_cfg, secrets=getattr(self, "_secrets", None)
+            )
             success_count += 1
             log.debug("RestApiWriter: batch of %d rows posted successfully", len(batch))
         except _requests.HTTPError as exc:

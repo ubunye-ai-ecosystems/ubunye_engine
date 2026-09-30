@@ -81,6 +81,13 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
   `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
   both.
+- **Security: a REST API key no longer appears in logs or errors (F-050).** With
+  `api_key_query` the key is in the URL, and the writer's error log, the reader's
+  `HTTPError`, a `ConnectionError` and urllib3's DEBUG request lines all carried the
+  full URL. Every secret the config sends (auth token, key, password, an
+  `Authorization` or secret-named header, a secret-named query parameter) is now
+  masked as `***` in the connector's and urllib3's log lines while it runs, and in
+  every error it raises (same exception class and `response`).
 - **The REST docs name the options the connector reads, and an unknown auth type
   is refused (F-049).** The docs printed `auth: {type: api_key}`, `cursor_field` and
   `link_field`; the code reads `api_key_header` / `api_key_query`,

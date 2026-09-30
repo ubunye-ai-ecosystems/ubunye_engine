@@ -81,6 +81,82 @@ def records_of(frame: Any, backend: Any) -> Iterator[Dict[str, Any]]:
     return frame_io.iter_records(frame)
 
 
+# --------------------------------------------------------------------------- #
+# Secrets out of logs and errors (F-050)
+# --------------------------------------------------------------------------- #
+
+
+def secrets_of(cfg: Dict[str, Any]) -> List[str]:
+    """Every secret this config sends, longest first, to mask wherever it shows.
+
+    The auth token, key and password (and basic auth's encoded form), the value
+    of a header that is ``Authorization`` or has a secret-looking name, and the
+    value of a query parameter with a secret-looking name.
+    """
+    import base64
+
+    from ubunye.core.secrets import looks_secret
+
+    found = set()
+    auth_cfg = cfg.get("auth") or {}
+    if isinstance(auth_cfg, dict):
+        for name in ("token", "key", "password"):
+            if auth_cfg.get(name):
+                found.add(str(auth_cfg[name]))
+        if auth_cfg.get("password"):
+            pair = f"{auth_cfg.get('username', '')}:{auth_cfg['password']}"
+            found.add(base64.b64encode(pair.encode()).decode())
+    for header, value in (cfg.get("headers") or {}).items():
+        if value and (str(header).lower() == "authorization" or looks_secret(header)):
+            found.add(str(value))
+            found.update(str(value).split()[1:])  # "Bearer <token>": the token alone too
+    for param, value in (cfg.get("params") or {}).items():
+        if value and looks_secret(param):
+            found.add(str(value))
+    return sorted((s for s in found if len(s) >= 4), key=len, reverse=True)
+
+
+def redact(text: Any, secrets: List[str]) -> str:
+    """``text`` with every secret masked, and secret-named URL parameters too."""
+    from ubunye.core.secrets import redact_url, scrub
+
+    return redact_url(scrub(str(text), secrets))
+
+
+class _Redacting(logging.Filter):
+    """Masks secrets in the records a logger writes (urllib3 logs each URL)."""
+
+    def __init__(self, secrets: List[str]) -> None:
+        super().__init__()
+        self.secrets = secrets
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.msg = redact(record.getMessage(), self.secrets)
+        record.args = None
+        return True
+
+
+#: Loggers that write request URLs: urllib3 logs ``"GET /path?query HTTP/1.1"``.
+_URL_LOGGERS = ("urllib3.connectionpool",)
+
+
+class masked:
+    """While open, secrets are masked in this module's and urllib3's log records."""
+
+    def __init__(self, secrets: List[str], *also: str) -> None:
+        self.filter = _Redacting(secrets)
+        self.loggers = [log] + [logging.getLogger(n) for n in (*_URL_LOGGERS, *also)]
+
+    def __enter__(self) -> "masked":
+        for logger in self.loggers:
+            logger.addFilter(self.filter)
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        for logger in self.loggers:
+            logger.removeFilter(self.filter)
+
+
 AUTH_TYPES = ("bearer", "api_key_header", "api_key_query", "basic")
 
 #: Old names the docs used to print (F-049), still read, with a warning.
@@ -184,14 +260,40 @@ def send(
     rate_cfg: Dict[str, Any],
     auth_cfg: Dict[str, Any],
     retry_on_default: List[int],
+    secrets: Optional[List[str]] = None,
 ) -> Any:
     """One request with rate limiting and retries; returns the response.
 
     ``rate_cfg`` may set ``requests_per_second``, ``retry_on`` (status codes)
     and ``max_retries``. A retryable status waits 1 s, 2 s, 4 s... between
     attempts. Raises ``requests.HTTPError`` for any other error status, or for a
-    retryable one once the retries run out.
+    retryable one once the retries run out. The message of any error raised
+    here has ``secrets`` (and secret-named URL parameters) masked: requests puts
+    the full URL, query string and all, into it (F-050).
     """
+    try:
+        return _send(
+            session, method, url, params, body, rate_cfg, auth_cfg, retry_on_default, secrets
+        )
+    except Exception as exc:
+        requests = requests_module(UbunyeError)
+        if not isinstance(exc, requests.RequestException):
+            raise
+        masked_exc = type(exc)(redact(exc, secrets or []), response=getattr(exc, "response", None))
+        raise masked_exc from None
+
+
+def _send(
+    session: "requests.Session",
+    method: str,
+    url: str,
+    params: Optional[Dict[str, Any]],
+    body: Any,
+    rate_cfg: Dict[str, Any],
+    auth_cfg: Dict[str, Any],
+    retry_on_default: List[int],
+    secrets: Optional[List[str]],
+) -> Any:
     rps = float(rate_cfg.get("requests_per_second", 0) or 0)
     retry_on = list(rate_cfg.get("retry_on") or retry_on_default)
     max_retries = int(rate_cfg.get("max_retries") or DEFAULT_MAX_RETRIES)
@@ -210,7 +312,7 @@ def send(
                 "HTTP %s from %s %s, retrying in %.1fs (attempt %d/%d)",
                 resp.status_code,
                 method.upper(),
-                url,
+                redact(url, secrets or []),
                 wait,
                 attempt + 1,
                 max_retries,

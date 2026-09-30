@@ -103,6 +103,14 @@ CONFIG:
       password: "{{ env.API_PASS }}"
     ```
 
+Secrets stay out of logs and error messages. The auth token, key and password,
+an `Authorization` header or a header with a secret-looking name, and a query
+parameter with a secret-looking name (`access_token`, `api_key`...) are masked as
+`***` in every log line the connector and the HTTP library write, and in every
+error it raises. An `api_key_query` key travels in the URL, so this matters most
+there. A secret under a plain parameter name (`key`, `sig`) is masked only when
+it is the auth `key`; put keys in `auth`, not in `params`.
+
 An auth `type` the connector does not know is refused by `ubunye validate` and
 before any request, so a typo never sends a request without its key. The old
 name `type: api_key` still works, with a warning: it means `api_key_header` when
