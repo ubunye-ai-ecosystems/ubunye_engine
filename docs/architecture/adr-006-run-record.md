@@ -20,7 +20,8 @@ produced the same data. Before 0.7.0 that hash could not carry the claim:
 **One hash, `rows-v1`, over every row.** Each row becomes one canonical line:
 a JSON object with columns sorted by name, written exactly as Spark's `to_json`
 writes it (timestamps as UTC text to the microsecond, doubles the Java way, so
-`Double.MIN_VALUE` is `4.9E-324` and the smallest float `1.4E-45`, NaN
+`Double.MIN_VALUE` is `4.9E-324` and the smallest float `1.4E-45`, a control
+character without a short escape as `\u000B` with upper case hex, NaN
 as `"NaN"`, nulls left out). The line's SHA-256 is cut into two 64-bit numbers
 and each is added up over all rows. Adding does not care about order.
 

@@ -371,6 +371,23 @@ class TestJavaTwoDigitRule:
         )
 
 
+class TestJacksonControlEscapes:
+    """E-09 (live Spark 3.5 and 4): to_json writes \\u000B, upper case hex."""
+
+    def test_escape_text(self):
+        assert ch.jackson_string('a\x0bb\x1f\n\t"\\') == '"a\\u000Bb\\u001F\\n\\t\\"\\\\"'
+        assert ch.jackson_string("plain é   \x7f") == '"plain é   \x7f"'
+
+    def test_the_long_text_digest_is_sparks(self):
+        unit = "abc é€漢\n" + "q" * 40 + "\r\n" + "x\x00y\t"
+        text = (unit * (300_000 // len(unit) + 1))[:300_000] + "\x0b\x1f\x7f "
+        table = pa.table({"id": [1, 2], "txt": [text, "x\x00y"]})
+        expected = "sha256:96f5aba420144c1c355efea74adb43720892bfd102372ee794148af0a3ea4875"
+        assert fingerprint_arrow(table).data_hash == expected
+        rows = [{"id": 1, "txt": text}, {"id": 2, "txt": "x\x00y"}]
+        assert fingerprint_rows(rows, [("id", "int64"), ("txt", "string")]).data_hash == expected
+
+
 class TestManySmallChunks:
     """F-076: a table of many small chunks (a folder of small files) is hashed in few slices."""
 

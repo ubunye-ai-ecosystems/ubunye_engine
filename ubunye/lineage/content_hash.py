@@ -171,7 +171,7 @@ def value_text(value: Any, kind: str = "") -> str:
             return java_float(value)  # Java's Float.toString
         return _float_text(value)
     if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False)
+        return jackson_string(value)
     if isinstance(value, decimal.Decimal):
         return str(value)
     if isinstance(value, dt.datetime):
@@ -189,7 +189,7 @@ def value_text(value: Any, kind: str = "") -> str:
             return _map_text(value, kind)  # Arrow maps are (key, value) pairs
         inner = kind[5:-1] if kind.startswith("list<") else ""
         return "[" + ",".join(value_text(v, inner) for v in value) + "]"
-    return json.dumps(str(value), ensure_ascii=False)
+    return jackson_string(str(value))
 
 
 def _child_kinds(kind: str) -> Dict[str, str]:
@@ -230,7 +230,7 @@ def _object_text(items: Iterable[Tuple[Any, Any]], kinds: Dict[str, str]) -> str
         if val is None:
             continue  # Spark leaves null fields out
         kind = kinds.get(str(key), kinds.get("*", ""))
-        members.append(f"{json.dumps(str(key), ensure_ascii=False)}:{value_text(val, kind)}")
+        members.append(f"{jackson_string(str(key))}:{value_text(val, kind)}")
     return "{" + ",".join(members) + "}"
 
 
@@ -254,7 +254,7 @@ def _map_text(items: Iterable[Tuple[Any, Any]], kind: str) -> str:
     parts = _split_top(kind[4:-1]) if kind.endswith(">") else []
     value_kind = parts[1] if len(parts) > 1 else ""
     members = [
-        f"{json.dumps(_map_key_text(key), ensure_ascii=False)}:{value_text(val, value_kind)}"
+        f"{jackson_string(_map_key_text(key))}:{value_text(val, value_kind)}"
         for key, val in sorted(items, key=lambda kv: kv[0])
     ]
     return "{" + ",".join(members) + "}"
@@ -321,7 +321,7 @@ def _members(name: str, kind: str, values: List[Any]) -> List[Optional[str]]:
     made hashing about four times faster; a test holds it to the row-at-a-time
     reference, byte for byte.
     """
-    prefix = json.dumps(name, ensure_ascii=False) + ":"
+    prefix = jackson_string(name) + ":"
     if kind in _INT_KINDS:
         return [None if v is None else prefix + str(v) for v in values]
     if kind == "string":
@@ -340,14 +340,33 @@ def _dumps_string(text: str) -> str:
     return json.dumps(text, ensure_ascii=False)
 
 
-_encode_string: Callable[[str], str] = _dumps_string
+_plain_encode: Callable[[str], str] = _dumps_string
 try:  # the C encoder json.dumps(s, ensure_ascii=False) uses for a str
     from json.encoder import encode_basestring as _c_encode
 
     if _c_encode('a"b\né') == json.dumps('a"b\né', ensure_ascii=False):
-        _encode_string = _c_encode
+        _plain_encode = _c_encode
 except ImportError:  # pragma: no cover
     pass
+
+#: Jackson's escapes (so Spark's to_json): the short ones, and \u00XX with UPPER
+#: case hex for the other control characters. Python writes lower case (\u000b),
+#: so text holding one hashed differently on pandas (E-09, live Spark 3.5 and 4).
+_JACKSON_ESCAPES = {c: "\\u%04X" % c for c in range(0x20)}
+_JACKSON_ESCAPES.update({8: "\\b", 9: "\\t", 10: "\\n", 12: "\\f", 13: "\\r"})
+_JACKSON_ESCAPES.update({ord('"'): '\\"', ord("\\"): "\\\\"})
+#: Control characters that have no short escape: only these differ from Python.
+_NEEDS_HEX = re.compile("[\x00-\x07\x0b\x0e-\x1f]")
+
+
+def jackson_string(text: str) -> str:
+    """A string as JSON text, escaped as Jackson (and so Spark's to_json) escapes it."""
+    if _NEEDS_HEX.search(text) is None:
+        return _plain_encode(text)
+    return '"' + text.translate(_JACKSON_ESCAPES) + '"'
+
+
+_encode_string: Callable[[str], str] = jackson_string
 
 
 #: Rows per slice on the vectorised path. It bounds the memory of one slice's text
@@ -393,7 +412,7 @@ def _arrow_members(name: str, kind: str, col: Any) -> Optional[Any]:
     import pyarrow.compute as pc
 
     t = col.type
-    head = "," + json.dumps(name, ensure_ascii=False) + ":"
+    head = "," + jackson_string(name) + ":"
     tail = ""
     mask = None  # True where the Python path writes the value
     if pa.types.is_integer(t):

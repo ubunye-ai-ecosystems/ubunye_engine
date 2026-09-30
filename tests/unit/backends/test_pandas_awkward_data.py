@@ -360,6 +360,20 @@ class TestJavaNumberTextInFiles:
         text = part.read_text(encoding="utf-8")
         assert "4.9E-324" in text and "1.4E-45" in text
 
+    def test_json_control_characters_are_upper_case_hex(self, tmp_path):
+        from ubunye.core.write_modes import ResolvedWriteMode
+
+        out = tmp_path / "out"
+        PandasBackend().execute_write(
+            pd.DataFrame({"s": ["a\x0bb\x1f"]}),
+            ResolvedWriteMode(mode="overwrite", save_mode="overwrite"),
+            connector="s3",
+            file_format="json",
+            path=str(out),
+        )
+        (part,) = out.glob("part-*")
+        assert part.read_text(encoding="utf-8") == '{"s":"a\\u000Bb\\u001F"}\n'
+
 
 NY = "America/New_York"
 # 02:30 on 2024-03-10 does not exist in New York (clocks go 02:00 -> 03:00);

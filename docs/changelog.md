@@ -107,6 +107,14 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **Text holding a control character hashes as on Spark (F-083, E-09).** Spark's
+  `to_json` (Jackson) writes a control character that has no short escape with upper
+  case hex (`\u000B`); the pandas side wrote Python's lower case (`\u000b`), so a
+  column holding one had another rows-v1 digest than live Spark 3.5 and 4. The pandas
+  json writer wrote it the same way; both now write Jackson's. **Behaviour change:**
+  digests of text holding such a character (U+0000 to U+001F other than `\b \t \n
+  \f \r`, and only those with a hex letter, such as U+000B or U+001F) change; others
+  do not.
 - **The smallest doubles and floats are written as Java writes them (F-082, E-09).**
   Where the shortest text of a number has one digit, Java's `Double.toString` and
   `Float.toString` write the closest two digits instead: `4.9E-324`, not `5.0E-324`;

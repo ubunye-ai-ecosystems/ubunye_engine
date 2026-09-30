@@ -969,6 +969,8 @@ def _json_value(value: Any, arrow_type: Any = None) -> str:
     import decimal
     import math
 
+    from ubunye.lineage.content_hash import jackson_string
+
     if value is None:
         return "null"
     if value is True:
@@ -982,16 +984,13 @@ def _json_value(value: Any, arrow_type: Any = None) -> str:
             return json.dumps(_java_double(value))
         return str(_java_double(value))
     if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False)
+        return jackson_string(value)
     import pyarrow as pa
 
     if arrow_type is not None and pa.types.is_map(arrow_type):
         item = arrow_type.item_type
         pairs = value.items() if isinstance(value, dict) else value
-        members = (
-            f"{json.dumps(_map_key(k), ensure_ascii=False)}:{_json_value(v, item)}"
-            for k, v in pairs
-        )
+        members = (f"{jackson_string(_map_key(k))}:{_json_value(v, item)}" for k, v in pairs)
         return "{" + ",".join(members) + "}"  # a map keeps its null values
     if isinstance(value, dict):
         fields = (
@@ -1000,7 +999,7 @@ def _json_value(value: Any, arrow_type: Any = None) -> str:
             else {}
         )
         members = (
-            f"{json.dumps(str(k), ensure_ascii=False)}:{_json_value(v, fields.get(k))}"
+            f"{jackson_string(str(k))}:{_json_value(v, fields.get(k))}"
             for k, v in value.items()
             if v is not None
         )
