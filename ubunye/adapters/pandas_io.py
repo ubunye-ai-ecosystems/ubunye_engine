@@ -339,7 +339,10 @@ def _read_csv(
             # Always text: inference is Spark's, over every file at once (F-067),
             # and an explicit schema is cast below.
             column_types={n: pa.string() for n in names},
-            null_values=[str(opts.get("nullvalue", ""))],
+            # univocity gives the nullValue text for an empty field, and Spark then
+            # reads that text as null: so an empty field is null whatever nullValue
+            # is (a quoted "" too, here; Spark keeps that one as "").
+            null_values=sorted({str(opts.get("nullvalue", "")), ""}),
             strings_can_be_null=True,
             quoted_strings_can_be_null=True,
         )

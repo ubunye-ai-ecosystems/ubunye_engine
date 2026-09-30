@@ -107,6 +107,11 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **With `nullValue` set, an empty CSV field is still null (F-087, skeptic review).**
+  univocity hands Spark the `nullValue` text for an empty field, and Spark reads that as
+  null, so `1,,NA,2` with `nullValue: "NA"` is an `int` column `1, null, null, 2`. The
+  pandas reader took only `NA` as null, so the empty field made the column text. A
+  quoted empty field (`""`) is also null on pandas; Spark keeps it as an empty string.
 - **Names that differ only by case: refused only where Spark refuses (F-069
   follow-up, skeptic review).** The refusal sat in the frame-to-Arrow step, so the REST
   sink and the run record's hash refused such a frame too (the hash then recorded no

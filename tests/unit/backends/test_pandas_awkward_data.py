@@ -41,6 +41,18 @@ class TestCsvHeaderNames:
         )
         assert list(frame.native.columns) == ["id", "_c1"]
 
+    def test_an_empty_field_is_null_with_a_null_value_set(self, tmp_path):
+        # univocity gives nullValue for an empty field; Spark reads it as null.
+        frame = _read_bytes(
+            tmp_path,
+            "csv",
+            b"a,b\n1,x\n,y\nNA,z\n2,\n",
+            options={"header": "true", "inferSchema": "true", "nullValue": "NA"},
+        )
+        assert _types(frame) == {"a": pa.int32(), "b": pa.string()}
+        assert frame.native["a"].isna().tolist() == [False, True, True, False]
+        assert frame.native["b"].isna().tolist() == [False, False, False, True]
+
     def test_plain_headers_are_untouched(self):
         assert pandas_io.safe_header(["x", "y", "naïve", "with space"]) == [
             "x",

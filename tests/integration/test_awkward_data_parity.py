@@ -129,6 +129,13 @@ def test_csv_infer_schema_numbers(spark, pandas_backend, tmp_path, name):
     assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
 
 
+def test_csv_empty_field_with_a_null_value(spark, pandas_backend, tmp_path):
+    """F-087: with nullValue set, an empty unquoted field is null too (univocity)."""
+    path = _file(tmp_path, "nv.csv", b"a,b\n1,x\n,y\nNA,z\n2,\n")
+    options = {"header": "true", "inferSchema": "true", "nullValue": "NA"}
+    assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
+
+
 def test_csv_infer_schema_over_many_files(spark, pandas_backend, tmp_path):
     """F-067: one schema for every file of a folder, inferred over all of them."""
     folder = tmp_path / "parts"
