@@ -30,6 +30,7 @@ from __future__ import annotations
 import decimal
 import json
 import math
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 # Spark types, held as small tuples:
@@ -67,9 +68,25 @@ def _no_repeats(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
 _DECODER = json.JSONDecoder(object_pairs_hook=_no_repeats)
 
 
+#: Jackson's non-numeric numbers (Spark sets allowNonNumericNumbers) that Python's
+#: json does not read: +INF, -INF and +Infinity (NaN, Infinity and -Infinity it does;
+#: INF, +NaN and -NaN Jackson refuses too). Found as values: after : [ or , and before
+#: , ] or }. Checked with Spark 4.2's JSON reader.
+_JACKSON_INFINITY = re.compile(r"([:\[,]\s*)(\+INF|-INF|\+Infinity)(?=\s*[,\]}])")
+_INFINITY_TEXT = {"+INF": "Infinity", "-INF": "-Infinity", "+Infinity": "Infinity"}
+
+
 def loads(text: str) -> Any:
     """One JSON document, parsed as Spark's reader sees it (a repeated key refused)."""
-    return _DECODER.decode(text)
+    try:
+        return _DECODER.decode(text)
+    except json.JSONDecodeError:
+        if "INF" not in text and "+Infinity" not in text:
+            raise
+        spelled = _JACKSON_INFINITY.sub(lambda m: m.group(1) + _INFINITY_TEXT[m.group(2)], text)
+        if spelled == text:
+            raise
+        return _DECODER.decode(spelled)
 
 
 def java_order(name: str) -> bytes:
@@ -317,6 +334,9 @@ def raw_tree(text: str, start: int = 0) -> Tuple[Any, int]:
                 if text.startswith("]", i):
                     return items, i + 1
                 i += 1
+        for token in _INFINITY_TEXT:
+            if text.startswith(token, i):
+                return None, i + len(token)
         _, end = decoder.raw_decode(text, i)
         return None, end
 

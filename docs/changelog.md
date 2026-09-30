@@ -107,6 +107,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **JSON `+INF`, `-INF` and `+Infinity` read as doubles, as on Spark (F-089, skeptic
+  review).** Spark's JSON parser (Jackson, with `allowNonNumericNumbers`) reads them as
+  infinities; Python's reads only `NaN`, `Infinity` and `-Infinity`, so the pandas read
+  stopped. A line that fails to parse and holds one of them is now read with them
+  spelled the Python way. `INF`, `+NaN` and `-NaN` stay refused, as Jackson refuses
+  them.
 - **A JSON record that repeats a key is refused, as Spark refuses it (F-088, skeptic
   review).** `{"a":1,"a":"x"}` read on pandas as one column holding the last value
   (`x`), silently. Spark infers one column per occurrence (`a:bigint, a:string`) and

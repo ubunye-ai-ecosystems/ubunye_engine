@@ -175,6 +175,14 @@ class TestJsonInference:
         frame = _read_bytes(tmp_path, "json", data)
         assert _types(frame)["s"] == pa.struct([("Id", pa.float64())])
 
+    def test_jacksons_other_infinities_are_doubles(self, tmp_path):
+        # F-089: Spark 4.2's reader takes +INF, -INF and +Infinity (not INF).
+        data = b'{"a": +INF}\n{"a": -INF}\n{"a":[+Infinity, 1]}\n{"a": "text +INF, here"}\n'
+        frame = _read_bytes(tmp_path, "json", data)
+        assert frame.native["a"].tolist()[:2] == ["+INF", "-INF"]  # a text column: source text
+        frame = _read_bytes(tmp_path, "json", b'{"a": +INF}\n{"a": -INF}\n{"a": +Infinity}\n')
+        assert frame.native["a"].tolist() == [float("inf"), float("-inf"), float("inf")]
+
     @pytest.mark.parametrize("multiline", ["false", "true"])
     def test_a_repeated_key_is_refused_as_spark_refuses_it(self, tmp_path, multiline):
         # F-088: Spark infers a:bigint and a:string, then refuses the duplicate.
