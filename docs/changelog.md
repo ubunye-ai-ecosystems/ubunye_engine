@@ -81,6 +81,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
   `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
   both.
+- **The pandas backend writes a map column to JSON as Spark does** (F-015 review): as
+  an object, keeping its null values (`{"m":{"a":null,"b":"x"}}`). It wrote Arrow's
+  pairs instead (`{"m":[["a",null],["b","x"]]}`), which Spark reads back as a
+  different type. Maps inside lists and structs too.
 - **On Spark, the run record hashes the rows that were written (F-040), and a checked
   or recorded output is computed once (F-039, F-043).** The record hashed each output
   at task end by computing it again, so anything that differs per computation (a

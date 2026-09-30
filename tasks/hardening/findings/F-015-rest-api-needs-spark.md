@@ -101,3 +101,11 @@ fixed in its own commit on this branch.
    entries. The Spark 3.5 map value inference (first non-null entry only) and a
    record that is a JSON array (`_1`, `_2` on Spark, refused on pandas) are now
    documented. Test: the read test pins the JSON's order (fails before, passes after).
+3. **pandas wrote a map column to JSON as a list of pairs.** A REST map read on
+   pandas and written with `format: s3, file_format: json` came out as
+   `{"m":[["a",null],["b","x"]]}`; Spark writes `{"m":{"a":null,"b":"x"}}`
+   (`map_writers.py`). The JSON writer now takes each value's Arrow type and writes
+   a map as an object with its null values, in maps inside lists and structs too.
+   Test: `test_a_map_is_an_object_with_its_null_values` in
+   `tests/unit/backends/test_pandas_writes_like_spark.py` (fails before, passes
+   after).

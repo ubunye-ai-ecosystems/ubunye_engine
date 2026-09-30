@@ -775,12 +775,15 @@ def _texts_for_timestamps(table: Any, timezone: str) -> Any:
     return table
 
 
-def _json_value(value: Any) -> str:
+def _json_value(value: Any, arrow_type: Any = None) -> str:
     """One value as Spark's JSON writer (Jackson) writes it.
 
     Compact, no spaces; doubles the Java way (``1.0E10``), with NaN and the
     infinities as strings; null fields of an object left out (Spark's
     ``ignoreNullFields``) but nulls inside an array kept; text as UTF-8.
+    ``arrow_type`` is the value's type where known: a map (which Arrow gives as
+    ``(key, value)`` pairs) is then written as an object, its null values kept,
+    as Spark writes a map.
     """
     import base64
     import datetime as dt
@@ -801,15 +804,36 @@ def _json_value(value: Any) -> str:
         return str(_java_double(value))
     if isinstance(value, str):
         return json.dumps(value, ensure_ascii=False)
-    if isinstance(value, dict):
+    import pyarrow as pa
+
+    if arrow_type is not None and pa.types.is_map(arrow_type):
+        item = arrow_type.item_type
+        pairs = value.items() if isinstance(value, dict) else value
         members = (
-            f"{json.dumps(str(k), ensure_ascii=False)}:{_json_value(v)}"
+            f"{json.dumps(_map_key(k), ensure_ascii=False)}:{_json_value(v, item)}"
+            for k, v in pairs
+        )
+        return "{" + ",".join(members) + "}"  # a map keeps its null values
+    if isinstance(value, dict):
+        fields = (
+            {f.name: f.type for f in arrow_type}
+            if arrow_type is not None and pa.types.is_struct(arrow_type)
+            else {}
+        )
+        members = (
+            f"{json.dumps(str(k), ensure_ascii=False)}:{_json_value(v, fields.get(k))}"
             for k, v in value.items()
             if v is not None
         )
         return "{" + ",".join(members) + "}"
     if isinstance(value, (list, tuple)):
-        return "[" + ",".join(_json_value(v) for v in value) + "]"
+        element = (
+            arrow_type.value_type
+            if arrow_type is not None
+            and (pa.types.is_list(arrow_type) or pa.types.is_large_list(arrow_type))
+            else None
+        )
+        return "[" + ",".join(_json_value(v, element) for v in value) + "]"
     if isinstance(value, decimal.Decimal):
         return str(value)
     if isinstance(value, (dt.date, dt.time)):
@@ -817,6 +841,15 @@ def _json_value(value: Any) -> str:
     if isinstance(value, bytes):
         return json.dumps(base64.b64encode(value).decode("ascii"))  # as Spark writes binary
     raise TypeError(f"cannot write {type(value).__name__} to JSON")
+
+
+def _map_key(key: Any) -> str:
+    """A map key as Spark writes it: its ``toString``."""
+    if isinstance(key, bool):
+        return "true" if key else "false"
+    if isinstance(key, float):
+        return _java_double(key)
+    return str(key)
 
 
 def _shortest_floats(table: Any) -> Any:
@@ -881,11 +914,14 @@ def _write_part(
             handle.write(text)
         return name
 
+    import pyarrow as pa
+
     name = f"{stem}.json"
     with open(os.path.join(folder, name), "w", encoding="utf-8", newline="\n") as handle:
         for batch in _shortest_floats(table).to_batches():
+            row_type = pa.struct(list(batch.schema))
             for row in batch.to_pylist():
-                handle.write(_json_value(row))
+                handle.write(_json_value(row, row_type))
                 handle.write("\n")
     return name
 
