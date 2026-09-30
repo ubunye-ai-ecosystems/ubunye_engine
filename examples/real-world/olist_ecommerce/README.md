@@ -20,11 +20,13 @@ The point of this example is what can go wrong on the way, and how Ubunye stops 
 ## Run it (under a minute, no Java, no account)
 
 A small made up sample ships with the example (60 orders), so the first run needs
-nothing but Ubunye:
+nothing but Ubunye. **It needs a newer Ubunye than 0.7.1**, the latest release on
+PyPI (0.7.1 has no `columns` input contracts), so until the next release install it
+from this repository. From the repository's top folder:
 
 ```bash
-pip install "ubunye-engine[pandas]" "narwhals>=2.9"
 cd examples/real-world/olist_ecommerce
+pip install -e "../../..[pandas]" "narwhals>=2.9"
 ubunye run -d pipelines -u olist -p sales -t clean       --backend pandas --lineage
 ubunye run -d pipelines -u olist -p sales -t orders_fact --backend pandas --lineage
 ubunye run -d pipelines -u olist -p sales -t monthly     --backend pandas --lineage

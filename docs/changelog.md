@@ -468,7 +468,9 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   pandas in the unit tier, the same on Spark in the integration tier. The portable
   transforms guide gains "days between two dates" (F-053). Each step checks for
   Narwhals 2.9 or later first and says so (`the example needs narwhals>=2.9
-  (Expr.floor)`), instead of failing inside the transform.
+  (Expr.floor)`), instead of failing inside the transform. The example needs the
+  release after 0.7.1; until then the tutorial and README install Ubunye from the
+  cloned repository (`pip install -e "../../..[pandas]"`).
 - **A guide to writing portable transforms** (`docs/guides/portable-transforms.md`):
   the places the same Narwhals code gave different numbers on pandas and Spark, each
   found on real data, each with a fix (rounding modes, float sums, a lost cast,

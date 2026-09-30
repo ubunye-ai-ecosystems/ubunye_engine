@@ -18,8 +18,15 @@ git clone https://github.com/ubunye-ai-ecosystems/ubunye_engine
 cd ubunye_engine/examples/real-world/olist_ecommerce
 python -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
-pip install "ubunye-engine[pandas]" "narwhals>=2.9"
+pip install -e "../../..[pandas]" "narwhals>=2.9"
 ```
+
+The last line installs Ubunye from the repository you just cloned (`../../..` is its
+top folder). **This example needs a newer Ubunye than 0.7.1, the latest release on
+PyPI**: 0.7.1 has no `columns` input contracts and none of the fixes this example
+led to (F-052, F-054, F-055), so `pip install ubunye-engine` would fail at step 2.
+Once the next release is out, `pip install "ubunye-engine[pandas]" "narwhals>=2.9"`
+will do.
 
 Every command below runs from this folder.
 
@@ -234,7 +241,7 @@ Every step is written once with Narwhals, so it runs on Spark unchanged. With Ja
 or 21 installed (Windows also needs `HADOOP_HOME` with `winutils.exe`):
 
 ```bash
-pip install "ubunye-engine[pandas,spark]"
+pip install -e "../../..[pandas,spark]"
 for t in clean orders_fact monthly; do
   ubunye run -d pipelines -u olist -p sales -t $t --backend pandas --lineage --var out_dir=output/pandas
   ubunye prove observe --workload r2-olist-$t --env pandas-local -d pipelines -u olist -p sales -t $t -o evidence
