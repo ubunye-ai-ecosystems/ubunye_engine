@@ -1,0 +1,752 @@
+{
+  "dimensions": [
+    "execute",
+    "identity",
+    "inputs",
+    "data",
+    "schema",
+    "rows"
+  ],
+  "environments": {
+    "aws-glue": {
+      "backend": "spark",
+      "config_hash": "sha256:5eb5904c4a4ff92f5c2a49b2aa6327017f7cb88fb2845f4f1099a92ef5bb94eb",
+      "cost": {
+        "basis": "unknown",
+        "currency": "USD"
+      },
+      "digest": "6affe2f5382c",
+      "dimensions": {
+        "data": "PASS",
+        "execute": "PASS",
+        "identity": "PASS",
+        "inputs": "PASS",
+        "rows": "PASS",
+        "schema": "PASS"
+      },
+      "duration_seconds": 34.271841005,
+      "engine_packages": {
+        "pandas": "2.2.2",
+        "pyarrow": "17.0.0"
+      },
+      "engine_version": "0.7.2",
+      "outputs": {
+        "customers": {
+          "data_hash": "sha256:02dc1e73a52963d55ca140986120a794bedef8e687e01403d93f0f03b84541f3",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:204d0be637fa1ae9557d0aa5b319e54fb2338b325276d3242d4005e309579094"
+        },
+        "geolocation": {
+          "data_hash": "sha256:8f98a11653d6089919245cce30a6e3cb3e53b934204eaa2e7f4d4034519dd7c7",
+          "hash_method": "rows-v1",
+          "row_count": 11,
+          "schema_hash": "sha256:72b4d94d56a570ccedcba7131522610e0885d6ce13f76e7042c05e69d9c3f330"
+        },
+        "order_items": {
+          "data_hash": "sha256:56e23eee0a931f1f8b4fb8e88e18685f080edc0081b2a1736e55bdfc8623f09d",
+          "hash_method": "rows-v1",
+          "row_count": 79,
+          "schema_hash": "sha256:3f13b4437349e8794c4a92777ab58932b515d5315b818e64e3f3e53f700239cb"
+        },
+        "order_items_rejected": {
+          "data_hash": "sha256:58200ec00c9b2fd8c9094fba1ca0fbe6f2efcc046c6f897869637a175bdf251c",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:a75a2b57b2bdb2bd30929023a8b13b6425f5392eed73441a6fb32fe2ccf89be2"
+        },
+        "orders": {
+          "data_hash": "sha256:36a42a2b060ec2de066a65e09d63a2dc0d8094c6e389c171d5440a0fe0cba46e",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:a8328e4a698872d4dd1e2eded98879a2458711043a14297f8751eb1b8218a4ee"
+        },
+        "payments": {
+          "data_hash": "sha256:31f21f2af29f4cb0c137b4f9e215b9eee35c054f5031c2a696117af6faaafb16",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:6d33a5af07f62f59cd4371605f718056d96cce3ddb071c8fd563b94d1eb30c4d"
+        },
+        "payments_rejected": {
+          "data_hash": "sha256:65ea3540909b803c4cc4d768b93c72faf8b844889fac47b6764f4dfce75cb037",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:30aa498c81d35ee9d8b98b782ae8417aa5c374947142388409784fe50f3b5065"
+        },
+        "products": {
+          "data_hash": "sha256:7a04cac1d959b19fea73c6649f5f3ab0b31c91cb27bfd54792ed9b47c534c625",
+          "hash_method": "rows-v1",
+          "row_count": 14,
+          "schema_hash": "sha256:09c2f7e3d26e5c41d10de4f05084ab01cc8c72f83eafd2e169901b613010d27a"
+        },
+        "reviews": {
+          "data_hash": "sha256:c253cdbecb795fbd4d1b1b10e5aecfbe8b291b2983bb223b7dccbbec2b4eda12",
+          "hash_method": "rows-v1",
+          "row_count": 56,
+          "schema_hash": "sha256:7de564d128a55148c3d4fabc1b7c813e15a5ea3eed08b2fb6309dd9c9947e470"
+        },
+        "reviews_rejected": {
+          "data_hash": "sha256:0498a440be6720bd01b041228ce3e8c369630da5459e5b0866f22427c12ad6ae",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:9d6e0ca21b3ebae7088efefea6faf897d2c34f8b066c8ab63a22591937f7d0ed"
+        },
+        "sellers": {
+          "data_hash": "sha256:1ea02ba5e4dee45a24ef176224478abe66a08a57c09ad179b052cc7a05a8ea99",
+          "hash_method": "rows-v1",
+          "row_count": 6,
+          "schema_hash": "sha256:937992676f4d37ec6361fd5e1f4fc84829f854e4020aca62c4fdc8b27c3a92d3"
+        }
+      },
+      "platform": {
+        "kind": "cloud",
+        "provider": "aws",
+        "region": "eu-west-1",
+        "runtime": "Glue 5.0 (Spark 3.5), 2 x G.1X"
+      },
+      "provenance": {
+        "observed_at": "2026-09-30T11:43:37Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709032414"
+      },
+      "reason": "",
+      "run_id": "ef2f050f-ee11-4641-a967-f13c1454d459",
+      "status": "executed",
+      "verdict": "PASS"
+    },
+    "azure": {
+      "backend": "spark",
+      "config_hash": "sha256:143be636d6e68b430623bc78bcce3064e0f4bc7f6eb3d50a0f9ee9dd37748bcc",
+      "cost": {
+        "basis": "unknown",
+        "currency": "USD"
+      },
+      "digest": "6affe2f5382c",
+      "dimensions": {
+        "data": "PASS",
+        "execute": "PASS",
+        "identity": "PASS",
+        "inputs": "PASS",
+        "rows": "PASS",
+        "schema": "PASS"
+      },
+      "duration_seconds": 26.315749818000768,
+      "engine_packages": {
+        "pyspark": "3.5.9"
+      },
+      "engine_version": "0.7.2",
+      "outputs": {
+        "customers": {
+          "data_hash": "sha256:02dc1e73a52963d55ca140986120a794bedef8e687e01403d93f0f03b84541f3",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:204d0be637fa1ae9557d0aa5b319e54fb2338b325276d3242d4005e309579094"
+        },
+        "geolocation": {
+          "data_hash": "sha256:8f98a11653d6089919245cce30a6e3cb3e53b934204eaa2e7f4d4034519dd7c7",
+          "hash_method": "rows-v1",
+          "row_count": 11,
+          "schema_hash": "sha256:72b4d94d56a570ccedcba7131522610e0885d6ce13f76e7042c05e69d9c3f330"
+        },
+        "order_items": {
+          "data_hash": "sha256:56e23eee0a931f1f8b4fb8e88e18685f080edc0081b2a1736e55bdfc8623f09d",
+          "hash_method": "rows-v1",
+          "row_count": 79,
+          "schema_hash": "sha256:3f13b4437349e8794c4a92777ab58932b515d5315b818e64e3f3e53f700239cb"
+        },
+        "order_items_rejected": {
+          "data_hash": "sha256:58200ec00c9b2fd8c9094fba1ca0fbe6f2efcc046c6f897869637a175bdf251c",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:a75a2b57b2bdb2bd30929023a8b13b6425f5392eed73441a6fb32fe2ccf89be2"
+        },
+        "orders": {
+          "data_hash": "sha256:36a42a2b060ec2de066a65e09d63a2dc0d8094c6e389c171d5440a0fe0cba46e",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:a8328e4a698872d4dd1e2eded98879a2458711043a14297f8751eb1b8218a4ee"
+        },
+        "payments": {
+          "data_hash": "sha256:31f21f2af29f4cb0c137b4f9e215b9eee35c054f5031c2a696117af6faaafb16",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:6d33a5af07f62f59cd4371605f718056d96cce3ddb071c8fd563b94d1eb30c4d"
+        },
+        "payments_rejected": {
+          "data_hash": "sha256:65ea3540909b803c4cc4d768b93c72faf8b844889fac47b6764f4dfce75cb037",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:30aa498c81d35ee9d8b98b782ae8417aa5c374947142388409784fe50f3b5065"
+        },
+        "products": {
+          "data_hash": "sha256:7a04cac1d959b19fea73c6649f5f3ab0b31c91cb27bfd54792ed9b47c534c625",
+          "hash_method": "rows-v1",
+          "row_count": 14,
+          "schema_hash": "sha256:09c2f7e3d26e5c41d10de4f05084ab01cc8c72f83eafd2e169901b613010d27a"
+        },
+        "reviews": {
+          "data_hash": "sha256:c253cdbecb795fbd4d1b1b10e5aecfbe8b291b2983bb223b7dccbbec2b4eda12",
+          "hash_method": "rows-v1",
+          "row_count": 56,
+          "schema_hash": "sha256:7de564d128a55148c3d4fabc1b7c813e15a5ea3eed08b2fb6309dd9c9947e470"
+        },
+        "reviews_rejected": {
+          "data_hash": "sha256:0498a440be6720bd01b041228ce3e8c369630da5459e5b0866f22427c12ad6ae",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:9d6e0ca21b3ebae7088efefea6faf897d2c34f8b066c8ab63a22591937f7d0ed"
+        },
+        "sellers": {
+          "data_hash": "sha256:1ea02ba5e4dee45a24ef176224478abe66a08a57c09ad179b052cc7a05a8ea99",
+          "hash_method": "rows-v1",
+          "row_count": 6,
+          "schema_hash": "sha256:937992676f4d37ec6361fd5e1f4fc84829f854e4020aca62c4fdc8b27c3a92d3"
+        }
+      },
+      "platform": {
+        "kind": "cloud",
+        "provider": "azure",
+        "region": "northeurope",
+        "runtime": "Azure Container Apps job"
+      },
+      "provenance": {
+        "observed_at": "2026-09-30T11:45:24Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709032414"
+      },
+      "reason": "",
+      "run_id": "9bc0dfa7-1f9e-40b4-9999-f944bf514925",
+      "status": "executed",
+      "verdict": "PASS"
+    },
+    "databricks": {
+      "backend": "databricks",
+      "config_hash": "sha256:44860ff491f5bb2685a93198fafc294790790604f14487eacc601423e19e516a",
+      "cost": {
+        "basis": "unknown",
+        "currency": "USD"
+      },
+      "digest": "6affe2f5382c",
+      "dimensions": {
+        "data": "PASS",
+        "execute": "PASS",
+        "identity": "PASS",
+        "inputs": "PASS",
+        "rows": "PASS",
+        "schema": "PASS"
+      },
+      "duration_seconds": 58.56555396900001,
+      "engine_packages": {
+        "pandas": "1.5.3",
+        "pyarrow": "14.0.1"
+      },
+      "engine_version": "0.7.2",
+      "outputs": {
+        "customers": {
+          "data_hash": "sha256:02dc1e73a52963d55ca140986120a794bedef8e687e01403d93f0f03b84541f3",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:204d0be637fa1ae9557d0aa5b319e54fb2338b325276d3242d4005e309579094"
+        },
+        "geolocation": {
+          "data_hash": "sha256:8f98a11653d6089919245cce30a6e3cb3e53b934204eaa2e7f4d4034519dd7c7",
+          "hash_method": "rows-v1",
+          "row_count": 11,
+          "schema_hash": "sha256:72b4d94d56a570ccedcba7131522610e0885d6ce13f76e7042c05e69d9c3f330"
+        },
+        "order_items": {
+          "data_hash": "sha256:56e23eee0a931f1f8b4fb8e88e18685f080edc0081b2a1736e55bdfc8623f09d",
+          "hash_method": "rows-v1",
+          "row_count": 79,
+          "schema_hash": "sha256:3f13b4437349e8794c4a92777ab58932b515d5315b818e64e3f3e53f700239cb"
+        },
+        "order_items_rejected": {
+          "data_hash": "sha256:58200ec00c9b2fd8c9094fba1ca0fbe6f2efcc046c6f897869637a175bdf251c",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:a75a2b57b2bdb2bd30929023a8b13b6425f5392eed73441a6fb32fe2ccf89be2"
+        },
+        "orders": {
+          "data_hash": "sha256:36a42a2b060ec2de066a65e09d63a2dc0d8094c6e389c171d5440a0fe0cba46e",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:a8328e4a698872d4dd1e2eded98879a2458711043a14297f8751eb1b8218a4ee"
+        },
+        "payments": {
+          "data_hash": "sha256:31f21f2af29f4cb0c137b4f9e215b9eee35c054f5031c2a696117af6faaafb16",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:6d33a5af07f62f59cd4371605f718056d96cce3ddb071c8fd563b94d1eb30c4d"
+        },
+        "payments_rejected": {
+          "data_hash": "sha256:65ea3540909b803c4cc4d768b93c72faf8b844889fac47b6764f4dfce75cb037",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:30aa498c81d35ee9d8b98b782ae8417aa5c374947142388409784fe50f3b5065"
+        },
+        "products": {
+          "data_hash": "sha256:7a04cac1d959b19fea73c6649f5f3ab0b31c91cb27bfd54792ed9b47c534c625",
+          "hash_method": "rows-v1",
+          "row_count": 14,
+          "schema_hash": "sha256:09c2f7e3d26e5c41d10de4f05084ab01cc8c72f83eafd2e169901b613010d27a"
+        },
+        "reviews": {
+          "data_hash": "sha256:c253cdbecb795fbd4d1b1b10e5aecfbe8b291b2983bb223b7dccbbec2b4eda12",
+          "hash_method": "rows-v1",
+          "row_count": 56,
+          "schema_hash": "sha256:7de564d128a55148c3d4fabc1b7c813e15a5ea3eed08b2fb6309dd9c9947e470"
+        },
+        "reviews_rejected": {
+          "data_hash": "sha256:0498a440be6720bd01b041228ce3e8c369630da5459e5b0866f22427c12ad6ae",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:9d6e0ca21b3ebae7088efefea6faf897d2c34f8b066c8ab63a22591937f7d0ed"
+        },
+        "sellers": {
+          "data_hash": "sha256:1ea02ba5e4dee45a24ef176224478abe66a08a57c09ad179b052cc7a05a8ea99",
+          "hash_method": "rows-v1",
+          "row_count": 6,
+          "schema_hash": "sha256:937992676f4d37ec6361fd5e1f4fc84829f854e4020aca62c4fdc8b27c3a92d3"
+        }
+      },
+      "platform": {
+        "kind": "managed",
+        "provider": "databricks",
+        "runtime": "Databricks serverless (notebook job)"
+      },
+      "provenance": {
+        "observed_at": "2026-09-30T11:42:38Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709032414"
+      },
+      "reason": "",
+      "run_id": "4af2742a-a4ff-4b2a-8bf7-f2e5be78ce7d",
+      "status": "executed",
+      "verdict": "PASS"
+    },
+    "gcp-dataproc": {
+      "backend": "spark",
+      "config_hash": "sha256:1570a9317cb2b5b6af0ac5121ed3f0f614ed5ce61633c749274bf5a836521056",
+      "cost": {
+        "basis": "unknown",
+        "currency": "USD"
+      },
+      "digest": "6affe2f5382c",
+      "dimensions": {
+        "data": "PASS",
+        "execute": "PASS",
+        "identity": "PASS",
+        "inputs": "PASS",
+        "rows": "PASS",
+        "schema": "PASS"
+      },
+      "duration_seconds": 55.895808816,
+      "engine_packages": {
+        "pyspark": "3.5.3"
+      },
+      "engine_version": "0.7.2",
+      "outputs": {
+        "customers": {
+          "data_hash": "sha256:02dc1e73a52963d55ca140986120a794bedef8e687e01403d93f0f03b84541f3",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:204d0be637fa1ae9557d0aa5b319e54fb2338b325276d3242d4005e309579094"
+        },
+        "geolocation": {
+          "data_hash": "sha256:8f98a11653d6089919245cce30a6e3cb3e53b934204eaa2e7f4d4034519dd7c7",
+          "hash_method": "rows-v1",
+          "row_count": 11,
+          "schema_hash": "sha256:72b4d94d56a570ccedcba7131522610e0885d6ce13f76e7042c05e69d9c3f330"
+        },
+        "order_items": {
+          "data_hash": "sha256:56e23eee0a931f1f8b4fb8e88e18685f080edc0081b2a1736e55bdfc8623f09d",
+          "hash_method": "rows-v1",
+          "row_count": 79,
+          "schema_hash": "sha256:3f13b4437349e8794c4a92777ab58932b515d5315b818e64e3f3e53f700239cb"
+        },
+        "order_items_rejected": {
+          "data_hash": "sha256:58200ec00c9b2fd8c9094fba1ca0fbe6f2efcc046c6f897869637a175bdf251c",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:a75a2b57b2bdb2bd30929023a8b13b6425f5392eed73441a6fb32fe2ccf89be2"
+        },
+        "orders": {
+          "data_hash": "sha256:36a42a2b060ec2de066a65e09d63a2dc0d8094c6e389c171d5440a0fe0cba46e",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:a8328e4a698872d4dd1e2eded98879a2458711043a14297f8751eb1b8218a4ee"
+        },
+        "payments": {
+          "data_hash": "sha256:31f21f2af29f4cb0c137b4f9e215b9eee35c054f5031c2a696117af6faaafb16",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:6d33a5af07f62f59cd4371605f718056d96cce3ddb071c8fd563b94d1eb30c4d"
+        },
+        "payments_rejected": {
+          "data_hash": "sha256:65ea3540909b803c4cc4d768b93c72faf8b844889fac47b6764f4dfce75cb037",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:30aa498c81d35ee9d8b98b782ae8417aa5c374947142388409784fe50f3b5065"
+        },
+        "products": {
+          "data_hash": "sha256:7a04cac1d959b19fea73c6649f5f3ab0b31c91cb27bfd54792ed9b47c534c625",
+          "hash_method": "rows-v1",
+          "row_count": 14,
+          "schema_hash": "sha256:09c2f7e3d26e5c41d10de4f05084ab01cc8c72f83eafd2e169901b613010d27a"
+        },
+        "reviews": {
+          "data_hash": "sha256:c253cdbecb795fbd4d1b1b10e5aecfbe8b291b2983bb223b7dccbbec2b4eda12",
+          "hash_method": "rows-v1",
+          "row_count": 56,
+          "schema_hash": "sha256:7de564d128a55148c3d4fabc1b7c813e15a5ea3eed08b2fb6309dd9c9947e470"
+        },
+        "reviews_rejected": {
+          "data_hash": "sha256:0498a440be6720bd01b041228ce3e8c369630da5459e5b0866f22427c12ad6ae",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:9d6e0ca21b3ebae7088efefea6faf897d2c34f8b066c8ab63a22591937f7d0ed"
+        },
+        "sellers": {
+          "data_hash": "sha256:1ea02ba5e4dee45a24ef176224478abe66a08a57c09ad179b052cc7a05a8ea99",
+          "hash_method": "rows-v1",
+          "row_count": 6,
+          "schema_hash": "sha256:937992676f4d37ec6361fd5e1f4fc84829f854e4020aca62c4fdc8b27c3a92d3"
+        }
+      },
+      "platform": {
+        "kind": "cloud",
+        "provider": "gcp",
+        "region": "europe-west1",
+        "runtime": "Dataproc Serverless 2.2 (Spark 3.5)"
+      },
+      "provenance": {
+        "observed_at": "2026-09-30T11:44:15Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709032414"
+      },
+      "reason": "",
+      "run_id": "e602374a-6557-4bf8-a99e-424e1a958660",
+      "status": "executed",
+      "verdict": "PASS"
+    },
+    "kubernetes-kind": {
+      "backend": "spark",
+      "config_hash": "sha256:143be636d6e68b430623bc78bcce3064e0f4bc7f6eb3d50a0f9ee9dd37748bcc",
+      "cost": {
+        "basis": "local",
+        "currency": "USD"
+      },
+      "digest": "6affe2f5382c",
+      "dimensions": {
+        "data": "PASS",
+        "execute": "PASS",
+        "identity": "PASS",
+        "inputs": "PASS",
+        "rows": "PASS",
+        "schema": "PASS"
+      },
+      "duration_seconds": 12.285925444000014,
+      "engine_packages": {
+        "pyspark": "3.5.9"
+      },
+      "engine_version": "0.7.2",
+      "outputs": {
+        "customers": {
+          "data_hash": "sha256:02dc1e73a52963d55ca140986120a794bedef8e687e01403d93f0f03b84541f3",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:204d0be637fa1ae9557d0aa5b319e54fb2338b325276d3242d4005e309579094"
+        },
+        "geolocation": {
+          "data_hash": "sha256:8f98a11653d6089919245cce30a6e3cb3e53b934204eaa2e7f4d4034519dd7c7",
+          "hash_method": "rows-v1",
+          "row_count": 11,
+          "schema_hash": "sha256:72b4d94d56a570ccedcba7131522610e0885d6ce13f76e7042c05e69d9c3f330"
+        },
+        "order_items": {
+          "data_hash": "sha256:56e23eee0a931f1f8b4fb8e88e18685f080edc0081b2a1736e55bdfc8623f09d",
+          "hash_method": "rows-v1",
+          "row_count": 79,
+          "schema_hash": "sha256:3f13b4437349e8794c4a92777ab58932b515d5315b818e64e3f3e53f700239cb"
+        },
+        "order_items_rejected": {
+          "data_hash": "sha256:58200ec00c9b2fd8c9094fba1ca0fbe6f2efcc046c6f897869637a175bdf251c",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:a75a2b57b2bdb2bd30929023a8b13b6425f5392eed73441a6fb32fe2ccf89be2"
+        },
+        "orders": {
+          "data_hash": "sha256:36a42a2b060ec2de066a65e09d63a2dc0d8094c6e389c171d5440a0fe0cba46e",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:a8328e4a698872d4dd1e2eded98879a2458711043a14297f8751eb1b8218a4ee"
+        },
+        "payments": {
+          "data_hash": "sha256:31f21f2af29f4cb0c137b4f9e215b9eee35c054f5031c2a696117af6faaafb16",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:6d33a5af07f62f59cd4371605f718056d96cce3ddb071c8fd563b94d1eb30c4d"
+        },
+        "payments_rejected": {
+          "data_hash": "sha256:65ea3540909b803c4cc4d768b93c72faf8b844889fac47b6764f4dfce75cb037",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:30aa498c81d35ee9d8b98b782ae8417aa5c374947142388409784fe50f3b5065"
+        },
+        "products": {
+          "data_hash": "sha256:7a04cac1d959b19fea73c6649f5f3ab0b31c91cb27bfd54792ed9b47c534c625",
+          "hash_method": "rows-v1",
+          "row_count": 14,
+          "schema_hash": "sha256:09c2f7e3d26e5c41d10de4f05084ab01cc8c72f83eafd2e169901b613010d27a"
+        },
+        "reviews": {
+          "data_hash": "sha256:c253cdbecb795fbd4d1b1b10e5aecfbe8b291b2983bb223b7dccbbec2b4eda12",
+          "hash_method": "rows-v1",
+          "row_count": 56,
+          "schema_hash": "sha256:7de564d128a55148c3d4fabc1b7c813e15a5ea3eed08b2fb6309dd9c9947e470"
+        },
+        "reviews_rejected": {
+          "data_hash": "sha256:0498a440be6720bd01b041228ce3e8c369630da5459e5b0866f22427c12ad6ae",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:9d6e0ca21b3ebae7088efefea6faf897d2c34f8b066c8ab63a22591937f7d0ed"
+        },
+        "sellers": {
+          "data_hash": "sha256:1ea02ba5e4dee45a24ef176224478abe66a08a57c09ad179b052cc7a05a8ea99",
+          "hash_method": "rows-v1",
+          "row_count": 6,
+          "schema_hash": "sha256:937992676f4d37ec6361fd5e1f4fc84829f854e4020aca62c4fdc8b27c3a92d3"
+        }
+      },
+      "platform": {
+        "kind": "local",
+        "provider": "kubernetes",
+        "runtime": "kind on GitHub Actions"
+      },
+      "provenance": {
+        "observed_at": "2026-09-30T11:43:43Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709032414"
+      },
+      "reason": "",
+      "run_id": "dd954b04-ae5c-4e25-81ac-63d93a792f94",
+      "status": "executed",
+      "verdict": "PASS"
+    },
+    "pandas-local": {
+      "backend": "pandas",
+      "config_hash": "sha256:52ff32ba82946506252d8aa50ca28be43c5963c3980e1db661c4499f10a8828d",
+      "cost": {
+        "basis": "local",
+        "currency": "USD"
+      },
+      "digest": "6affe2f5382c",
+      "dimensions": {
+        "data": "PASS",
+        "execute": "PASS",
+        "identity": "PASS",
+        "inputs": "PASS",
+        "rows": "PASS",
+        "schema": "PASS"
+      },
+      "duration_seconds": 0.6953083969999909,
+      "engine_packages": {
+        "pandas": "3.0.6",
+        "pyarrow": "25.0.1",
+        "pyspark": "4.2.0"
+      },
+      "engine_version": "0.7.2",
+      "outputs": {
+        "customers": {
+          "data_hash": "sha256:02dc1e73a52963d55ca140986120a794bedef8e687e01403d93f0f03b84541f3",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:204d0be637fa1ae9557d0aa5b319e54fb2338b325276d3242d4005e309579094"
+        },
+        "geolocation": {
+          "data_hash": "sha256:8f98a11653d6089919245cce30a6e3cb3e53b934204eaa2e7f4d4034519dd7c7",
+          "hash_method": "rows-v1",
+          "row_count": 11,
+          "schema_hash": "sha256:72b4d94d56a570ccedcba7131522610e0885d6ce13f76e7042c05e69d9c3f330"
+        },
+        "order_items": {
+          "data_hash": "sha256:56e23eee0a931f1f8b4fb8e88e18685f080edc0081b2a1736e55bdfc8623f09d",
+          "hash_method": "rows-v1",
+          "row_count": 79,
+          "schema_hash": "sha256:3f13b4437349e8794c4a92777ab58932b515d5315b818e64e3f3e53f700239cb"
+        },
+        "order_items_rejected": {
+          "data_hash": "sha256:58200ec00c9b2fd8c9094fba1ca0fbe6f2efcc046c6f897869637a175bdf251c",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:a75a2b57b2bdb2bd30929023a8b13b6425f5392eed73441a6fb32fe2ccf89be2"
+        },
+        "orders": {
+          "data_hash": "sha256:36a42a2b060ec2de066a65e09d63a2dc0d8094c6e389c171d5440a0fe0cba46e",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:a8328e4a698872d4dd1e2eded98879a2458711043a14297f8751eb1b8218a4ee"
+        },
+        "payments": {
+          "data_hash": "sha256:31f21f2af29f4cb0c137b4f9e215b9eee35c054f5031c2a696117af6faaafb16",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:6d33a5af07f62f59cd4371605f718056d96cce3ddb071c8fd563b94d1eb30c4d"
+        },
+        "payments_rejected": {
+          "data_hash": "sha256:65ea3540909b803c4cc4d768b93c72faf8b844889fac47b6764f4dfce75cb037",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:30aa498c81d35ee9d8b98b782ae8417aa5c374947142388409784fe50f3b5065"
+        },
+        "products": {
+          "data_hash": "sha256:7a04cac1d959b19fea73c6649f5f3ab0b31c91cb27bfd54792ed9b47c534c625",
+          "hash_method": "rows-v1",
+          "row_count": 14,
+          "schema_hash": "sha256:09c2f7e3d26e5c41d10de4f05084ab01cc8c72f83eafd2e169901b613010d27a"
+        },
+        "reviews": {
+          "data_hash": "sha256:c253cdbecb795fbd4d1b1b10e5aecfbe8b291b2983bb223b7dccbbec2b4eda12",
+          "hash_method": "rows-v1",
+          "row_count": 56,
+          "schema_hash": "sha256:7de564d128a55148c3d4fabc1b7c813e15a5ea3eed08b2fb6309dd9c9947e470"
+        },
+        "reviews_rejected": {
+          "data_hash": "sha256:0498a440be6720bd01b041228ce3e8c369630da5459e5b0866f22427c12ad6ae",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:9d6e0ca21b3ebae7088efefea6faf897d2c34f8b066c8ab63a22591937f7d0ed"
+        },
+        "sellers": {
+          "data_hash": "sha256:1ea02ba5e4dee45a24ef176224478abe66a08a57c09ad179b052cc7a05a8ea99",
+          "hash_method": "rows-v1",
+          "row_count": 6,
+          "schema_hash": "sha256:937992676f4d37ec6361fd5e1f4fc84829f854e4020aca62c4fdc8b27c3a92d3"
+        }
+      },
+      "platform": {
+        "kind": "local",
+        "runtime": "GitHub Actions ubuntu-latest"
+      },
+      "provenance": {
+        "observed_at": "2026-09-30T11:40:20Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709032414"
+      },
+      "reason": "",
+      "run_id": "7fcf512e-f6ac-4e61-b971-82a7032d2258",
+      "status": "executed",
+      "verdict": "PASS"
+    },
+    "spark-local": {
+      "backend": "spark",
+      "config_hash": "sha256:e05e50ba1b57d01ca429df191f05cf2316dec43aaf2cb9922fac58670c8d1d66",
+      "cost": {
+        "basis": "local",
+        "currency": "USD"
+      },
+      "digest": "6affe2f5382c",
+      "dimensions": {
+        "data": "PASS",
+        "execute": "PASS",
+        "identity": "PASS",
+        "inputs": "PASS",
+        "rows": "PASS",
+        "schema": "PASS"
+      },
+      "duration_seconds": 21.69393384,
+      "engine_packages": {
+        "pandas": "3.0.6",
+        "pyarrow": "25.0.1",
+        "pyspark": "4.2.0"
+      },
+      "engine_version": "0.7.2",
+      "outputs": {
+        "customers": {
+          "data_hash": "sha256:02dc1e73a52963d55ca140986120a794bedef8e687e01403d93f0f03b84541f3",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:204d0be637fa1ae9557d0aa5b319e54fb2338b325276d3242d4005e309579094"
+        },
+        "geolocation": {
+          "data_hash": "sha256:8f98a11653d6089919245cce30a6e3cb3e53b934204eaa2e7f4d4034519dd7c7",
+          "hash_method": "rows-v1",
+          "row_count": 11,
+          "schema_hash": "sha256:72b4d94d56a570ccedcba7131522610e0885d6ce13f76e7042c05e69d9c3f330"
+        },
+        "order_items": {
+          "data_hash": "sha256:56e23eee0a931f1f8b4fb8e88e18685f080edc0081b2a1736e55bdfc8623f09d",
+          "hash_method": "rows-v1",
+          "row_count": 79,
+          "schema_hash": "sha256:3f13b4437349e8794c4a92777ab58932b515d5315b818e64e3f3e53f700239cb"
+        },
+        "order_items_rejected": {
+          "data_hash": "sha256:58200ec00c9b2fd8c9094fba1ca0fbe6f2efcc046c6f897869637a175bdf251c",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:a75a2b57b2bdb2bd30929023a8b13b6425f5392eed73441a6fb32fe2ccf89be2"
+        },
+        "orders": {
+          "data_hash": "sha256:36a42a2b060ec2de066a65e09d63a2dc0d8094c6e389c171d5440a0fe0cba46e",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:a8328e4a698872d4dd1e2eded98879a2458711043a14297f8751eb1b8218a4ee"
+        },
+        "payments": {
+          "data_hash": "sha256:31f21f2af29f4cb0c137b4f9e215b9eee35c054f5031c2a696117af6faaafb16",
+          "hash_method": "rows-v1",
+          "row_count": 60,
+          "schema_hash": "sha256:6d33a5af07f62f59cd4371605f718056d96cce3ddb071c8fd563b94d1eb30c4d"
+        },
+        "payments_rejected": {
+          "data_hash": "sha256:65ea3540909b803c4cc4d768b93c72faf8b844889fac47b6764f4dfce75cb037",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:30aa498c81d35ee9d8b98b782ae8417aa5c374947142388409784fe50f3b5065"
+        },
+        "products": {
+          "data_hash": "sha256:7a04cac1d959b19fea73c6649f5f3ab0b31c91cb27bfd54792ed9b47c534c625",
+          "hash_method": "rows-v1",
+          "row_count": 14,
+          "schema_hash": "sha256:09c2f7e3d26e5c41d10de4f05084ab01cc8c72f83eafd2e169901b613010d27a"
+        },
+        "reviews": {
+          "data_hash": "sha256:c253cdbecb795fbd4d1b1b10e5aecfbe8b291b2983bb223b7dccbbec2b4eda12",
+          "hash_method": "rows-v1",
+          "row_count": 56,
+          "schema_hash": "sha256:7de564d128a55148c3d4fabc1b7c813e15a5ea3eed08b2fb6309dd9c9947e470"
+        },
+        "reviews_rejected": {
+          "data_hash": "sha256:0498a440be6720bd01b041228ce3e8c369630da5459e5b0866f22427c12ad6ae",
+          "hash_method": "rows-v1",
+          "row_count": 1,
+          "schema_hash": "sha256:9d6e0ca21b3ebae7088efefea6faf897d2c34f8b066c8ab63a22591937f7d0ed"
+        },
+        "sellers": {
+          "data_hash": "sha256:1ea02ba5e4dee45a24ef176224478abe66a08a57c09ad179b052cc7a05a8ea99",
+          "hash_method": "rows-v1",
+          "row_count": 6,
+          "schema_hash": "sha256:937992676f4d37ec6361fd5e1f4fc84829f854e4020aca62c4fdc8b27c3a92d3"
+        }
+      },
+      "platform": {
+        "kind": "local",
+        "runtime": "GitHub Actions ubuntu-latest"
+      },
+      "provenance": {
+        "observed_at": "2026-09-30T11:41:08Z",
+        "run_url": "https://github.com/ubunye-ai-ecosystems/ubunye-infra/actions/runs/36709032414"
+      },
+      "reason": "",
+      "run_id": "e52b81b7-b442-4883-a2b1-a58c6e4ee077",
+      "status": "executed",
+      "verdict": "PASS"
+    }
+  },
+  "generated_at": "2026-09-30T11:46:13Z",
+  "reference": "spark-local",
+  "summary": {
+    "FAIL": 0,
+    "NOT RECORDED": 0,
+    "NOT RUN": 0,
+    "PARTIAL": 0,
+    "PASS": 7,
+    "UNSUPPORTED": 0
+  },
+  "ubunye_matrix": 1,
+  "workload": "r2-olist-clean"
+}
