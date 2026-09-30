@@ -2,10 +2,11 @@
 
 One local JSON API (``tests/rest_api_server.py``) is read on live Spark and on
 the pandas backend, with each pagination, and the two frames are compared:
-the same columns in the same order, the same types, the same values, the same
-map entry order (Spark's comes from a Java HashMap), and the same ``rows-v1``
-hash (ADR 006), which covers every value and type. Records Spark refuses are
-refused on both. The writer POSTs the same payloads from both.
+the same columns in the same order, the same types, the same values (a map
+compared as a set of entries: its order is not stable on Spark), and the same
+``rows-v1`` hash (ADR 006), which covers every value and type and sorts maps.
+Records Spark refuses are refused on both. The writer POSTs the same payloads
+from both.
 
 ``tests/`` is on ``sys.path`` (its conftest puts it there), so the server
 module imports by name.
@@ -49,12 +50,31 @@ def _rows(backend, frame):
     return list(backend.iter_records(frame))
 
 
+def _unordered_maps(value):
+    """Nested dicts (maps: REST records hold no structs) with sorted keys.
+
+    A map has no entry order, and Spark's differs between its JVMs and between
+    classic and Connect, so maps are compared as sets of entries. A row's own
+    keys (the columns) keep their order.
+    """
+    if isinstance(value, dict):
+        return {k: _unordered_maps(value[k]) for k in sorted(value)}
+    if isinstance(value, list):
+        return [_unordered_maps(v) for v in value]
+    return value
+
+
+def _canonical(rows):
+    return json.dumps([{k: _unordered_maps(v) for k, v in row.items()} for row in rows])
+
+
 def _assert_same(spark_backend, spark_df, pandas_backend, pandas_frame):
     spark_rows = _rows(spark_backend, spark_df)
     pandas_rows = _rows(pandas_backend, pandas_frame)
     assert pandas_rows == spark_rows
-    # Order sensitive: columns, and the entries of every map.
-    assert json.dumps(pandas_rows) == json.dumps(spark_rows)
+    # Order sensitive for the columns; maps compared as sets of entries.
+    assert [list(r) for r in pandas_rows] == [list(r) for r in spark_rows]
+    assert _canonical(pandas_rows) == _canonical(spark_rows)
     ours, theirs = fingerprint(pandas_frame), fingerprint_spark(spark_df)
     assert ours.row_count == theirs.row_count
     assert ours.schema_hash == theirs.schema_hash, spark_df.schema.simpleString()
@@ -135,4 +155,6 @@ def test_write_posts_the_same_payloads(backends):
             payloads.append(api.posted)
     spark_posted, pandas_posted = payloads
     assert [len(p["records"]) for p in spark_posted] == [2, 2, 1]
-    assert json.dumps(pandas_posted) == json.dumps(spark_posted)
+    for spark_body, pandas_body in zip(spark_posted, pandas_posted):
+        assert _canonical(pandas_body["records"]) == _canonical(spark_body["records"])
+    assert len(pandas_posted) == len(spark_posted)

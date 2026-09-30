@@ -5,8 +5,8 @@ pagination) and records every POST body, so the reader and the writer can be
 checked on each backend against the same data.
 
 The records are chosen to hit Spark's inference rules: a key that appears only
-on the last page (added at the end), nested objects (maps, whose entry order is
-Java's HashMap order, not the JSON's), a list, nulls in every kind of field, and
+on the last page (added at the end), nested objects (maps, whose entry order
+Spark does not keep stable), a list, nulls in every kind of field, and
 a field that is a number in some records and text in others (``string``).
 """
 

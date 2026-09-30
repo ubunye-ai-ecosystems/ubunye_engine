@@ -94,9 +94,9 @@ def test_read_on_pandas_types_as_spark_does():
     assert frame["code"].isna().tolist() == [False, False, False, True, False]
     assert frame["name"].isna().tolist() == [False, True, False, False, False]
     assert frame["late"].isna().tolist() == [True, True, True, True, False]
-    # A map's entries in java.util.HashMap order, as Spark holds them.
-    assert [k for k, _ in frame["address"][0]] == ["zip", "area", "country", "city"]
-    assert [k for k, _ in frame["meta"][0]] == ["last", "first"]
+    # A map keeps the JSON's entry order. (Spark's is not stable: its JVM decides.)
+    assert [k for k, _ in frame["address"][0]] == ["zip", "city", "country", "area"]
+    assert [k for k, _ in frame["meta"][0]] == ["first", "last"]
 
 
 @pytest.mark.parametrize("how", ["cursor", "next_link"])
@@ -184,7 +184,7 @@ def test_write_on_pandas_posts_every_row_in_batches():
     first = rows[0]
     assert first["code"] == "7"
     assert first["address"] == RECORDS[0]["address"]  # a map is a dict again
-    assert list(first["meta"]) == ["last", "first"]  # in Spark's order
+    assert list(first["meta"]) == ["first", "last"]  # the JSON's order
     assert rows[1]["tags"] == [] and rows[2]["tags"] is None
 
 
@@ -240,34 +240,3 @@ def test_a_task_reads_and_writes_rest_on_pandas(tmp_path):
     assert rows == [
         {"id": r["id"], "code": c} for r, c in zip(RECORDS, ["7", "A7", "12", None, "0012"])
     ]
-
-
-# --------------------------------------------------------------------------- #
-# java.util.HashMap order, checked against Java 11 (new HashMap(0), as Pyrolite)
-# --------------------------------------------------------------------------- #
-
-
-@pytest.mark.parametrize(
-    "inserted, java",
-    [
-        ("zip city country area", "zip area country city"),
-        ("c b a", "a b c"),
-        ("name age", "name age"),
-        ("Aa BB C#", "Aa BB C#"),
-        ("été 日本 zz ab", "zz ab 日本 été"),
-        (
-            "k9 k3 k14 k0 k7 k11 k2 k5 k13 k1 k8 k12 k4 k10 k6",
-            "k0 k1 k2 k3 k4 k11 k5 k10 k6 k7 k13 k8 k12 k9 k14",
-        ),
-        (
-            "street suburb postal_code province geo town ward",
-            "geo province town street suburb ward postal_code",
-        ),
-        ("first last", "last first"),
-    ],
-)
-def test_java_map_order(inserted, java):
-    from ubunye.adapters import pandas_records
-
-    keys = inserted.split()
-    assert [keys[i] for i in pandas_records.java_map_order(keys)] == java.split()

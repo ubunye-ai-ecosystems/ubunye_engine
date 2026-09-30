@@ -74,9 +74,11 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   databricks and pandas backends declare and the connector now requires instead of
   `spark`. On pandas the records are typed by a port of Spark's own `createDataFrame`
   rules (`ubunye/adapters/pandas_records.py`), so both backends give the same columns,
-  order, types and values, including a map's entry order (Spark's is Java's HashMap
-  order), and refuse the same records (a field that is `1` in one record and `2.5` in
-  another, or null in all of them). Checked against live Spark 4 and 3.5 in
+  order, types and values, and refuse the same records (a field that is `1` in one
+  record and `2.5` in another, or null in all of them). A map's entry order is not
+  promised: Spark's is not stable (it changed between Java 11 and Java 21, and
+  Spark Connect keeps the JSON's), so pandas keeps the JSON's and the parity tests
+  compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
   `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
   both.
 - **On Spark, the run record hashes the rows that were written (F-040), and a checked

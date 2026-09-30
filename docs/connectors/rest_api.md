@@ -182,9 +182,12 @@ same frame on both:
 - Columns are in name order. A key that first appears in a later record goes last.
 - A field that is a number in some records and text in others is `string`: `7`
   becomes `"7"`, `true` becomes `"true"`.
-- A map keeps its entries in Spark's order, which is Java's HashMap order, not the
-  order in the JSON. On pandas a map cell is a list of `(key, value)` pairs;
-  `dict(cell)` makes it a dict.
+- A map has no entry order. pandas keeps the JSON's order. Spark does not keep
+  one you can rely on: Spark classic takes it from a Java HashMap, and that order
+  changed between Java 11 and Java 21; Spark Connect keeps the JSON's. Do not
+  depend on it. The run record's hash sorts maps by key, so it does not either.
+  On pandas a map cell is a list of `(key, value)` pairs; `dict(cell)` makes it a
+  dict.
 
 Spark refuses some records, and so does pandas, with the same error:
 
@@ -195,9 +198,17 @@ Spark refuses some records, and so does pandas, with the same error:
 
 For any of these, declare the field under `schema`. `string` takes any value, as text.
 
-Known differences, on values where Spark 3.5 and Spark 4 also disagree: Spark 3.5
-writes a large or tiny decimal number in a text column the Java way (`1.0E7`), where
-Spark 4 and pandas write `10000000.0`.
+Known differences, on records where Spark 3.5 and Spark 4 also disagree:
+
+- Spark 3.5 writes a large or tiny decimal number in a text column the Java way
+  (`1.0E7`), where Spark 4 and pandas write `10000000.0`.
+- Spark 3.5 takes a map's value type from its first non-null entry only. Spark 4
+  and pandas look at every entry, so `{"a": 1, "b": "x"}` is `map<string,string>`
+  there. On Spark 3.5, give a map one kind of value.
+
+One difference from every Spark: a record that is a JSON array (`[1, "a"]`)
+instead of an object. Spark reads it as a row with columns `_1`, `_2`...; pandas
+refuses it. Point `response.root_key` at the list of objects instead.
 
 ## Schema
 

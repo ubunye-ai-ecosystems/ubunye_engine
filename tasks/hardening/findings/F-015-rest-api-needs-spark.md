@@ -89,3 +89,15 @@ fixed in its own commit on this branch.
    `TestMaps` in `tests/unit/lineage/test_content_hash.py` (5 fail before, pass
    after); `test_maps_hash_the_same_whatever_their_entry_order` in the integration
    tier (CI).
+2. **The HashMap order emulation was wrong, and the promise behind it too.** It
+   modelled plain puts into `new HashMap(0)`; Pyrolite's `load_setitems` fills a
+   temporary map in reverse and then `putAll`s it, and `putAll`'s sizing changed in
+   JDK 19, so Java 11 and Java 21 disagree, and Spark Connect keeps the JSON's
+   order. Proof: `runtime_attacks.py` case C, the fixture's first address was
+   `zip, area, country, city` on pandas and `area, zip, country, city` on Spark with
+   JDK 11, 17 and 21 (`map_order_fixture.py`, `pyrolite_model.py`). The emulation is
+   gone: pandas keeps the JSON's order, map order is not promised (the section above
+   is superseded on this point), and the parity tests compare maps as sets of
+   entries. The Spark 3.5 map value inference (first non-null entry only) and a
+   record that is a JSON array (`_1`, `_2` on Spark, refused on pandas) are now
+   documented. Test: the read test pins the JSON's order (fails before, passes after).

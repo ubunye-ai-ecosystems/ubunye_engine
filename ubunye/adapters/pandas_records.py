@@ -18,17 +18,23 @@ Spark's rules, as ported:
   number becomes its text (``7`` becomes ``"7"``, ``True`` becomes ``"true"``).
 * A whole number in one record and a decimal number in another is an error, as
   is a field that is null in every record. Spark refuses both; so does this.
-* A map keeps its entries in the order Spark gives them. Spark hands a Python
-  dict to the JVM as a ``java.util.HashMap``, so that order is the HashMap's, not
-  the JSON's: :func:`java_map_order` reproduces it.
 * With an explicit schema, a value must already have the column's Python type
   (Spark does not turn ``1`` into ``1.0`` for a ``double``), and a ``string``
   column takes anything, as its text.
+
+Not ported, on purpose: a map's entry order. A map has no order, and Spark's is
+not stable: Spark classic takes it from the JVM's ``HashMap`` (as Pyrolite fills
+it, which changed between Java 11 and Java 21), Spark Connect keeps the JSON's.
+This module keeps the JSON's. The run record's hash sorts every map by key, so
+it does not depend on the order (ADR 006).
 
 Known differences, all in values Spark 3.5 and 4 also disagree on: Spark 3.5
 writes a decimal number in a text column the JVM's way (``1.0E7``) where Spark 4
 and this module write Python's (``10000000.0``). A text column given a JSON
 object or array by an explicit schema gets Python's text of it, as on Spark 4.
+Spark 3.5 takes a map's value type from its first non-null entry only; Spark 4
+and this module merge every entry. Spark reads a record that is a JSON array as
+a row of columns ``_1``, ``_2``...; this module refuses it.
 """
 
 from __future__ import annotations
@@ -176,44 +182,6 @@ def infer_schema(records: List[Any]) -> Tuple:
 # --------------------------------------------------------------------------- #
 
 
-def java_string_hash(text: str) -> int:
-    """``String.hashCode()`` in Java, over UTF-16 code units, as an unsigned int."""
-    h = 0
-    data = text.encode("utf-16-be")
-    for i in range(0, len(data), 2):
-        h = (31 * h + ((data[i] << 8) | data[i + 1])) & 0xFFFFFFFF
-    return h
-
-
-def _hashmap_capacity(size: int) -> int:
-    """The table size of a ``new HashMap(0)`` after ``size`` puts (Java 8 and later).
-
-    Pyrolite, which unpickles Python data on the JVM, starts every dict as
-    ``new HashMap(0)``; the table then doubles whenever it is more than three
-    quarters full (1, 2, 4, 8, 16, ...).
-    """
-    capacity = 1
-    while size > int(capacity * 0.75):
-        capacity *= 2
-    return capacity
-
-
-def java_map_order(keys: List[str]) -> List[int]:
-    """The order a ``java.util.HashMap`` holding ``keys`` iterates them in.
-
-    Returns positions into ``keys``. Entries go in buckets by their spread hash;
-    a bucket keeps insertion order. Not modelled: eight or more keys in one
-    bucket, which Java first answers with a bigger table.
-    """
-    mask = _hashmap_capacity(len(keys)) - 1
-
-    def bucket(i: int) -> int:
-        h = java_string_hash(keys[i])
-        return (h ^ (h >> 16)) & mask
-
-    return sorted(range(len(keys)), key=bucket)  # sorted() is stable
-
-
 def _as_text(value: Any) -> Any:
     if value is None:
         return None
@@ -234,11 +202,8 @@ def convert(value: Any, t: Tuple) -> Any:
     if kind == "array":
         return [convert(v, t[1]) for v in value]
     if kind == "map":
-        items = [(convert(k, t[1]), convert(v, t[2])) for k, v in value.items()]
-        if t[1] == STRING:
-            order = java_map_order([k for k, _ in items])
-            items = [items[i] for i in order]
-        return items
+        # The JSON's order. Spark's order is not stable (see the module notes).
+        return [(convert(k, t[1]), convert(v, t[2])) for k, v in value.items()]
     return value
 
 
