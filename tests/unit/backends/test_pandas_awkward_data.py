@@ -230,9 +230,30 @@ class TestCsvInferSchemaNumbers:
     def test_a_decimal_merged_with_ints_keeps_its_precision(self, tmp_path):
         # Live Spark 3.5 and 4 (CI, E-09): an int fits decimal(10,0), so the
         # column stays decimal(19,0); only a bigint widens it to decimal(20,0).
-        data = b"a,b\n9223372036854775808,9223372036854775808\n1,3000000000\n"
+        # The order counts (Spark's fold): a bigint after the decimal adds only its
+        # digits, a bigint before it widens it to 20 (skeptic, Spark 4.2 classes).
+        data = b"a,b,c\n9223372036854775808,9223372036854775808,3000000000\n1,3000000000,9223372036854775808\n"
         frame = self._infer(tmp_path, data)
-        assert _types(frame) == {"a": pa.decimal128(19, 0), "b": pa.decimal128(20, 0)}
+        assert _types(frame) == {
+            "a": pa.decimal128(19, 0),
+            "b": pa.decimal128(19, 0),
+            "c": pa.decimal128(20, 0),
+        }
+
+    def test_whole_number_decimal_forms_and_unicode_digits(self, tmp_path):
+        # Spark 4.2 classes (skeptic): BigDecimal with scale 0 is a decimal; any
+        # Unicode digit reads as Integer.parseInt reads it.
+        data = "a,b,c,d,e\n5.,1.5E1,0E0,１２３,1\n6.,12.0E1,5e0,٤٥,5.\n".encode()
+        frame = self._infer(tmp_path, data)
+        assert _types(frame) == {
+            "a": pa.decimal128(1, 0),
+            "b": pa.decimal128(3, 0),
+            "c": pa.decimal128(1, 0),
+            "d": pa.int32(),
+            "e": pa.decimal128(10, 0),
+        }
+        assert [str(v) for v in frame.native["b"]] == ["15", "120"]
+        assert frame.native["d"].tolist() == [123, 45]
 
     def test_java_number_forms(self, tmp_path):
         data = b"sign,suffix,hex,tok,lower\n+5,1.5d,0x1.8p1,Inf,inf\n-7,2f,1,-Inf,1\n"

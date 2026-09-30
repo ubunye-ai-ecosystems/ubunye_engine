@@ -114,6 +114,9 @@ INFER_CASES = {
     ),
     "int-long-double-mix": "a,b,c\n1,2147483648,1\n2,1,1.5\n,,\n",
     "all-null": "a,b\n,1\n,2\n",
+    "whole-number-decimal-forms": "a,b,c,d\n5.,1.5E1,0E0,1\n6.,12.0E1,5e0,5.\n",
+    "unicode-digits": "a,b\n１２３,٤٥\n7,1\n",
+    "decimal-order": "a,b\n9223372036854775808,3000000000\n3000000000,9223372036854775808\n",
     "decimal-and-int": "a,b\n9223372036854775808,9223372036854775808\n1,3000000000\n",
 }
 

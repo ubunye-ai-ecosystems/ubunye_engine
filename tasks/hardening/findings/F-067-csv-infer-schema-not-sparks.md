@@ -49,7 +49,8 @@ over values except for hex doubles.
 
 Speed (dev box, best of 3): 300 MB, 5,000,000 rows, 6 columns: 2.59 s (1.98 s
 before); 1,500 columns by 2,000 rows: 1.23 s (0.92 s). Performance guard
-`csv_read_plain_60k`: 48.3 ms against 40.0 ms (+21%, inside its 30%).
+`csv_read_plain_60k`: 48.3 ms against 40.0 ms (+21% in that run; the skeptic measured
++24%).
 
 ## Evidence
 Unit: `TestCsvInferSchemaNumbers` (6 failed before, 7 pass after); the existing
@@ -62,3 +63,26 @@ port gave `decimal(20,0)` (the E-09 task `messy-csv` had a different schema hash
 An int fits `decimal(10,0)`, so only a bigint widens a whole-number decimal to 20
 digits. Fixed in its own commit; parity case `decimal-and-int` added. The other eight
 inference cases matched on both versions.
+
+## Skeptic review (Spark 4.2's own classes, 2026-09-30)
+The skeptic ran Spark 4.2's `CSVInferSchema.inferField` and `UnivocityParser` in a JVM
+without a session over 12,506 generated columns: 11,644 matched after the first port.
+Three rules were missing, all in the numeric part, fixed in one commit because they are
+one mechanism (the per-value `tryParse` chain and its fold):
+
+- `tryParseDecimal` keeps any `BigDecimal` with scale 0, not only plain digits: `5.`,
+  `1.5E1`, `12.0E1`, `0E0`, `5e0` are `decimal(p,0)`; `1E5` (scale below 0) and `1.5`
+  go on to double. 484 cases.
+- `Integer.parseInt`, `Long.parseLong` and `BigDecimal` read digits in any script
+  (`Character.digit`); `Double.parseDouble` reads ASCII only. So `１２３` is an int, and
+  in a double column it is null (after the first double, it makes the column text).
+- The fold is in row order: once the type is a decimal, later values are tried as
+  decimals only, so a bigint before the first decimal widens it to `decimal(20,0)`, a
+  bigint after it adds only its 10 to 19 digits.
+
+After the fix: 12,404 of 12,506 match; the other 102 are the looser date and time
+forms (F-077). Across several files Spark folds each partition and then merges them;
+the pandas backend folds all rows in file order, so the order rule is exact for one
+file. Performance guard `csv_read_plain_60k`: 53.6 ms against 40.3 ms for the base
+before the port (+33%, inside 30% plus 5 ms); a 300 MB file reads in 3.0 s (2.0 s
+before the port).

@@ -50,7 +50,7 @@ copies Spark's defaults instead of pandas' own:
 |---|---|
 | CSV, no options | No header: the first line is data, columns are `_c0`, `_c1`, ... |
 | CSV with `header: "true"` | Columns named from the first line, every value as text. A blank name becomes `_c<position>`; a repeated name (ignoring case) gets its position added to each copy, so `a,a,,A` reads as `a0, a1, _c2, A3` |
-| CSV with `inferSchema: "true"` | Spark's rules, over every file at once: `int` if every value fits, else `bigint`, a whole number past 64 bits a `decimal` (read exactly); `double` (Java's forms: `1.5d`, ` 2` with a space, `Inf`, `NaN`; but `inf` is text), `boolean` in any case, `date`, `timestamp` (with or without an offset); an empty column is text |
+| CSV with `inferSchema: "true"` | Spark's rules, over every file at once: `int` if every value fits, else `bigint`, a whole number past 64 bits, or one written `5.` or `1.5E1`, a `decimal` (read exactly); digits in any script count; `double` (Java's forms: `1.5d`, ` 2` with a space, `Inf`, `NaN`; but `inf` is text), `boolean` in any case, `date`, `timestamp` (with or without an offset); an empty column is text |
 | An empty CSV field | null, not an empty string |
 | A CSV value of any length | Read whole (Spark has no limit; pyarrow alone stopped past 1 MB) |
 | `encoding` (csv, json) | One of the names Spark 4 accepts: `UTF-8`, `ISO-8859-1`, `US-ASCII`, `UTF-16`, `UTF-16LE`, `UTF-16BE`, `UTF-32` (any case). Others (`cp1252`, `latin1`, `utf8`) are refused, as Spark 4 refuses them; Spark 3.5 took any Java name |

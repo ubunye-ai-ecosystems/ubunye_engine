@@ -107,6 +107,18 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **CSV `inferSchema` numbers follow Spark's rules exactly, in row order (F-067
+  follow-up, skeptic review).** Checked against Spark 4.2's own `CSVInferSchema` and
+  `UnivocityParser` over 12,506 generated columns: every case matches except the
+  looser date and time forms (F-077). Three changes: a number `BigDecimal` reads with
+  scale 0 is a whole-number decimal (`5.`, `1.5E1`, `0E0` are `decimal`, as `1E5` and
+  `1.5` are `double`); digits in any script (`１２３`, `٤٥`) read as numbers, as
+  `Integer.parseInt` reads them; and a decimal's precision depends on the order of the
+  values, as Spark folds them (a bigint before the first decimal widens it to 20
+  digits, one after it does not). A value Java cannot read as a double in a double
+  column is null, as Spark's PERMISSIVE mode reads it. Performance guard: the plain
+  CSV read is 33% slower than before the port (40 to 54 ms for 60,000 rows), inside
+  the guard's 30% plus 5 ms.
 - **Broken UTF-8 is replaced exactly as Java replaces it (F-086, E-09).** An encoded
   surrogate (`ED A0 80`, which some tools write for half an emoji) became three U+FFFD
   on pandas and one on live Spark 3.5 and 4, so the text differed. The pandas CSV

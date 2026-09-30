@@ -64,43 +64,146 @@ def _all(mask: Any) -> bool:
     return bool(pc.all(mask).as_py()) if len(mask) else True
 
 
-def _whole_kind(values: Any) -> Tuple[Any, ...]:
-    """The merged kind of whole numbers (every value matches ``_WHOLE``)."""
+# A number as java.math.BigDecimal reads it: sign, digits, a point, an exponent.
+_BIGDEC = (
+    r"^(?P<sign>[+-]?)(?P<whole>[0-9]*)(?:\.(?P<frac>[0-9]*))?(?:[eE](?P<exp>[+-]?[0-9]{1,9}))?$"
+)
+
+
+class _Digits(dict):
+    """str.translate table: every Unicode decimal digit to its ASCII digit.
+
+    Java's Integer.parseInt and BigDecimal read any Unicode digit (Character.digit);
+    Double.parseDouble reads ASCII digits only.
+    """
+
+    def __missing__(self, code: int) -> Any:
+        import unicodedata
+
+        value = unicodedata.decimal(chr(code), None)
+        self[code] = chr(code) if value is None else str(value)
+        return self[code]
+
+
+_DIGITS = _Digits()
+
+
+def _has_high_bytes(values: Any) -> bool:
+    import numpy as np
+
+    data = values.buffers()[2]
+    return data is not None and bool((np.frombuffer(data, dtype=np.uint8) >= 0x80).any())
+
+
+def ascii_digits(col: Any) -> Any:
+    """``col`` with Unicode digits as ASCII digits (the rest as it is).
+
+    Only when the first values then read as numbers: a text column with accents
+    is left alone rather than rewritten value by value.
+    """
     import pyarrow as pa
     import pyarrow.compute as pc
 
-    digits = pc.replace_substring_regex(values, pattern=r"^[+-]?0*", replacement="")
-    widths = pc.utf8_length(digits)
-    widest = pc.max(widths).as_py() or 0
-    if widest <= 18:
-        numbers = pc.replace_substring_regex(values, pattern=r"^\+", replacement="").cast(
-            pa.int64()
-        )
-        low, high = pc.min_max(numbers).values()
-        fits = -(2**31) <= low.as_py() and high.as_py() <= _INT_MAX
-        return ("int",) if fits else ("long",)
-    # 19 digits or more: the ones past a long are decimals of their digit count.
-    negative = pc.starts_with(values, pattern="-")
-    limit = pc.if_else(negative, "9223372036854775808", "9223372036854775807")
-    past_long = pc.or_(
-        pc.greater(widths, 19),
-        pc.and_(pc.equal(widths, 19), pc.greater(digits, limit)),
+    if not _has_high_bytes(col):
+        return col
+    head = pc.drop_null(col.slice(0, 256)).to_pylist()
+    changed = [t for v in head for t in [v.translate(_DIGITS)] if t != v]
+    if (
+        not changed
+        or not pc.any(
+            pc.match_substring_regex(pa.array(changed, pa.string()), pattern=_BIGDEC)
+        ).as_py()
+    ):
+        return col
+    return pa.array(
+        [None if v is None else v.translate(_DIGITS) for v in col.to_pylist()], pa.string()
     )
-    if not pc.any(past_long).as_py():
-        return ("long",)
-    precision = pc.max(pc.filter(widths, past_long)).as_py()
-    if precision > 38:
-        return ("double",)
-    # A bigint merged with a decimal(p, 0) is a decimal(max(p, 20), 0); an int
-    # fits in decimal(10, 0), so it leaves p as it is (live Spark 3.5 and 4:
-    # "9223372036854775808" and "1" are decimal(19,0)).
-    rest = pc.filter(values, pc.invert(past_long))
-    if len(rest):
-        numbers = pc.replace_substring_regex(rest, pattern=r"^\+", replacement="").cast(pa.int64())
-        low, high = (v.as_py() for v in pc.min_max(numbers).values())
-        if low < -(2**31) or high > _INT_MAX:
-            precision = max(precision, 20)
-    return ("decimal", precision)
+
+
+def _fits(values: Any, digits: Any, widths: Any, limit: int) -> Any:
+    """Which whole numbers fit in a signed integer of ``limit`` (2**31-1 or 2**63-1)."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    top = str(limit)
+    negative = pc.starts_with(values, pattern="-")
+    bound = pc.if_else(negative, str(limit + 1), top)
+    return pc.or_(
+        pc.less(widths, len(top)),
+        pc.and_(pc.equal(widths, len(top)), pc.less_equal(digits, bound)),
+    ).cast(pa.bool_())
+
+
+def _number_kind(text: Any, values: Any) -> Optional[Tuple[Any, ...]]:
+    """Spark's merged numeric type for a column, or None if it is not all numbers.
+
+    ``text`` holds the values with Unicode digits made ASCII; ``values`` as read.
+    The port of ``CSVInferSchema.inferField`` for numbers, in row order: each value
+    is tried as ``Integer.parseInt``, ``Long.parseLong``, ``new BigDecimal`` (kept
+    only when its scale is 0: ``5.``, ``1.5E1`` and ``0E0`` are whole-number
+    decimals; ``1E5`` and ``1.5`` are not) and ``Double.parseDouble``. The fold is
+    Spark's: once the type is a decimal, later values are read as decimals too, so
+    the precision depends on the order (a bigint before the first decimal widens it
+    to 20 digits, an int to 10; after it, a bigint adds only its own digits).
+    """
+    import numpy as np
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    head = text.slice(0, 256)
+    if not _all(
+        pc.or_(
+            pc.match_substring_regex(head, pattern=_BIGDEC),
+            _java_number(values.slice(0, 256)),
+        )
+    ):
+        return None
+    parts = pc.extract_regex(text, pattern=_BIGDEC)
+    whole_part, frac = pc.struct_field(parts, "whole"), pc.struct_field(parts, "frac")
+    exp = pc.struct_field(parts, "exp")
+    matched = pc.fill_null(
+        pc.greater(pc.add(pc.utf8_length(whole_part), pc.utf8_length(frac)), 0), False
+    )
+    java = _java_number(values)
+    if not _all(pc.or_(matched, java)):
+        return None
+    exponent = pc.if_else(pc.equal(exp, ""), "0", pc.replace_substring(exp, "+", ""))
+    exponent = exponent.cast(pa.int64())
+    scale0 = pc.fill_null(pc.equal(pc.utf8_length(frac).cast(pa.int64()), exponent), False)
+    scale0 = pc.and_(matched, scale0)
+    if not _all(scale0):
+        # A value that is not a whole number: a double, if Java reads it as one.
+        # Once the type is double, each later value must be a Java double too: a
+        # whole number in Unicode digits (Integer.parseInt reads it, parseDouble
+        # does not) before the first double is read as null, after it makes text.
+        if not _all(pc.or_(scale0, java)):
+            return ("string",)
+        flags = np.asarray(pc.invert(scale0).to_numpy(zero_copy_only=False), dtype=bool)
+        first = int(flags.argmax())
+        return ("double",) if _all(java.slice(first)) else ("string",)
+    digits = pc.replace_substring_regex(
+        pc.binary_join_element_wise(whole_part, frac, ""), pattern="^0*", replacement=""
+    )
+    widths = pc.max_element_wise(pc.utf8_length(digits), 1)
+    if pc.max(widths).as_py() > 38:
+        # BigDecimal past 38 digits is not a DecimalType: that value is a double,
+        # and every value after it must be a Java double too.
+        wide = np.asarray(pc.greater(widths, 38).to_numpy(zero_copy_only=False), dtype=bool)
+        return ("double",) if _all(java.slice(int(wide.argmax()))) else ("string",)
+    plain = pc.match_substring_regex(text, pattern=r"^[+-]?[0-9]+$")
+    is_int = pc.and_(plain, _fits(text, digits, widths, 2**31 - 1))
+    is_long = pc.and_(plain, _fits(text, digits, widths, 2**63 - 1))
+    decimal_like = pc.invert(is_long)  # past a long, or a decimal form
+    if not pc.any(decimal_like).as_py():
+        return ("int",) if _all(is_int) else ("long",)
+    flags = np.asarray(decimal_like.to_numpy(zero_copy_only=False), dtype=bool)
+    first = int(flags.argmax())
+    before_long = not _all(is_int.slice(0, first)) if first else False
+    precision = max(
+        pc.max(widths.slice(first)).as_py(),
+        20 if before_long else (10 if first else 0),
+    )
+    return ("double",) if precision > 38 else ("decimal", precision)
 
 
 def _has_byte(values: Any, chars: bytes) -> bool:
@@ -147,8 +250,21 @@ def _fast_kind(col: Any) -> Optional[Tuple[Tuple[Any, ...], Any]]:
         odd = pc.invert(pc.is_finite(doubles))
         if pc.any(odd).as_py() and not _all(_java_number(pc.filter(col, odd))):
             return ("string",), col  # inf, nan, INF: text to Spark
-        if not _has_byte(col, b".eE"):
-            return None  # whole numbers only (a sign, or past 64 bits): Spark's integer rules
+        # One value with digits after its point and no exponent (1.5) is a true
+        # double (BigDecimal scale 1 or more), so the column is double. Without one
+        # (whole numbers with a sign or past 64 bits, 5., 1.5E1) Spark's integer
+        # and decimal rules decide.
+        fraction = pc.and_(
+            pc.match_substring(col, "."),
+            pc.invert(
+                pc.or_(
+                    pc.match_substring(col, "e", ignore_case=True),
+                    pc.ends_with(col, pattern="."),
+                )
+            ),
+        )
+        if not pc.any(fraction).as_py():
+            return None
         return ("double",), doubles
     return None
 
@@ -210,17 +326,17 @@ def _sample_all(values: Any, pattern: str) -> bool:
     return _all(pc.match_substring_regex(values.slice(0, 256), pattern=pattern))
 
 
-def _slow_kind(values: Any) -> Tuple[Any, ...]:
-    """The kind by Java's rules, value by value (as Arrow arrays)."""
+def _slow_kind(values: Any, text: Any = None) -> Tuple[Any, ...]:
+    """The kind by Java's rules, value by value (as Arrow arrays).
+
+    ``text`` is ``values`` with Unicode digits made ASCII (see ascii_digits).
+    """
     import pyarrow as pa
     import pyarrow.compute as pc
 
-    if _sample_all(values, _WHOLE) and _all(pc.match_substring_regex(values, pattern=_WHOLE)):
-        return _whole_kind(values)
-    head = values.slice(0, 256)
-    if _all(_java_number(head)) and _all(_java_number(values)):
-        # A double merged with an int, a bigint or a decimal is a double.
-        return ("double",)
+    number = _number_kind(values if text is None else text, values)
+    if number is not None:
+        return number
     if _sample_all(values, _DATE) and _all(pc.match_substring_regex(values, pattern=_DATE)):
         return ("date",) if _casts(values, pa.date32()) else ("string",)
     if _sample_all(values, _TIMESTAMP) and _all(
@@ -260,6 +376,8 @@ def _java_doubles(col: Any) -> Any:
     import pyarrow as pa
     import pyarrow.compute as pc
 
+    # A value Double.parseDouble cannot read is null (Spark's PERMISSIVE mode).
+    col = pc.if_else(pc.fill_null(_java_number(col), False), col, pa.scalar(None, pa.string()))
     text = pc.utf8_trim(col, characters=_BLANKS)
     for special, java in _SPECIAL.items():
         text = pc.if_else(pc.equal(col, special), java, text)
@@ -282,9 +400,19 @@ def convert(col: Any, kind: Optional[Tuple[Any, ...]], cast_timestamp: Any) -> A
     if kind is None or kind == ("string",):
         return col
     tag = kind[0]
-    if tag in ("int", "long", "decimal"):
-        target = {"int": pa.int32(), "long": pa.int64()}.get(tag) or pa.decimal128(kind[1], 0)
-        return pc.replace_substring_regex(col, pattern=r"^\+", replacement="").cast(target)
+    if tag in ("int", "long"):
+        text = pc.replace_substring_regex(ascii_digits(col), pattern=r"^\+", replacement="")
+        return text.cast(pa.int32() if tag == "int" else pa.int64())
+    if tag == "decimal":
+        # The unscaled digits: the scale is 0, so 1.5E1 is 15 and 5. is 5.
+        parts = pc.extract_regex(ascii_digits(col), pattern=_BIGDEC)
+        unscaled = pc.binary_join_element_wise(
+            pc.replace_substring(pc.struct_field(parts, "sign"), "+", ""),
+            pc.struct_field(parts, "whole"),
+            pc.struct_field(parts, "frac"),
+            "",
+        )
+        return unscaled.cast(pa.decimal128(kind[1], 0))
     if tag == "double":
         return _java_doubles(col)
     if tag == "boolean":
@@ -313,7 +441,11 @@ def infer_table(table: Any, cast_timestamp: Any) -> Any:
             kind = None  # no values: Spark's NullType, read as text
         else:
             fast = _fast_kind(col)
-            kind, typed = fast if fast is not None else (_slow_kind(pc.drop_null(col)), None)
+            if fast is not None:
+                kind, typed = fast
+            else:
+                values = pc.drop_null(col)
+                kind, typed = _slow_kind(values, ascii_digits(values)), None
         if typed is None:
             typed = convert(col, kind, cast_timestamp)
         columns.append(typed)
