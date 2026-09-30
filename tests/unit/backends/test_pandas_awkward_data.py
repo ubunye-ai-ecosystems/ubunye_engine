@@ -471,6 +471,30 @@ class TestCsvBytesNotInTheEncoding:
         assert frame.native.iloc[0].tolist() == ["Café", "\x805"]
 
 
+class TestJavaDecodingOfBrokenUtf8:
+    """F-086: Java replaces an encoded surrogate (ED A0..BF xx) once, Python per byte."""
+
+    @pytest.mark.parametrize(
+        "data, java",
+        [
+            # The CI row: live Spark 3.5 and 4 gave 7 replacement characters.
+            (bytes.fromhex("eda080ffff80c080e282"), "�" * 7),
+            (b"\xed\xa0\x80", "�"),
+            (b"\xed\xa0A", "�A"),
+            (b"\xed\xa0", "�"),
+            (b"\xed\x9f\xbf", "퟿"),
+            (b"\xf0\x9f\x98A", "�A"),
+            (b"\xc0\x80", "��"),
+        ],
+    )
+    def test_as_java_decodes(self, data, java):
+        assert pandas_io.java_decode(data, "utf-8") == java
+
+    def test_a_csv_with_an_encoded_surrogate(self, tmp_path):
+        frame = _read_bytes(tmp_path, "csv", b"a\nx\xed\xa0\x80y\n", options={"header": "true"})
+        assert frame.native["a"].tolist() == ["x�y"]
+
+
 class TestEncodingNamesSpark4Accepts:
     """E-09 (live Spark 4.2): encoding must be one of Spark 4's seven names."""
 

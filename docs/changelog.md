@@ -107,6 +107,11 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **Broken UTF-8 is replaced exactly as Java replaces it (F-086, E-09).** An encoded
+  surrogate (`ED A0 80`, which some tools write for half an emoji) became three U+FFFD
+  on pandas and one on live Spark 3.5 and 4, so the text differed. The pandas CSV
+  reader now decodes with Java's rule; over 40,000 random byte strings it matches
+  Java 21's `new String(bytes, UTF_8)` exactly (UTF-8, UTF-16LE, UTF-16BE, US-ASCII).
 - **`encoding` takes the names Spark 4 takes (F-085, E-09).** Live Spark 4.2 refuses
   any csv or json `encoding` but `UTF-8`, `ISO-8859-1`, `US-ASCII`, `UTF-16`,
   `UTF-16LE`, `UTF-16BE` and `UTF-32` (`INVALID_PARAMETER_VALUE.CHARSET`; `cp1252`,

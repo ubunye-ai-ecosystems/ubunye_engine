@@ -30,6 +30,7 @@ so it satisfies ``DataFramePort`` exactly as a Spark DataFrame does.
 
 from __future__ import annotations
 
+import codecs
 import contextlib
 import glob
 import json
@@ -501,7 +502,7 @@ def _csv_source(path: str, encoding: str, dialect: _CsvDialect, opts: Dict[str, 
         # encoding becomes U+FFFD and the read goes on. pyarrow and Python stop
         # instead (F-061), so the text is decoded here the Java way and handed on
         # as UTF-8.
-        text = data.decode(_text_encoding(encoding), errors="replace")
+        text = java_decode(bytes(data), _text_encoding(encoding))
         data, encoding = text.encode("utf-8"), "utf8"
     d = dialect
     plain = not spark_csv.needs_spark_split(text, d.delimiter, d.quote, d.escape, d.multiline)
@@ -521,6 +522,36 @@ def _csv_source(path: str, encoding: str, dialect: _CsvDialect, opts: Dict[str, 
         return bytes(data), encoding, parse
     text = spark_csv.respell(text, d.delimiter, d.quote, d.escape, d.multiline, d.null_text)
     return text.encode("utf-8"), "utf8", parse
+
+
+def _java_replace(error: UnicodeDecodeError) -> Any:
+    """Python's ``replace``, with one change to match Java's UTF-8 decoder (F-086).
+
+    Both give one U+FFFD per malformed sequence, and agree on where each ends,
+    except for an encoded surrogate (``ED A0``..``ED BF`` then a continuation byte):
+    Java's decoder reads the three bytes and replaces them once, Python replaces each
+    byte. Checked against ``new String(bytes, UTF_8)`` on Java 21 over 40,000 random
+    byte strings (scratchpad/awkward/java_decode_fuzz.py).
+    """
+    raw, i = error.object, error.start
+    if (
+        error.encoding.replace("-", "").replace("_", "").lower() == "utf8"
+        and raw[i] == 0xED
+        and i + 1 < len(raw)
+        and 0xA0 <= raw[i + 1] <= 0xBF
+    ):
+        if i + 2 < len(raw) and 0x80 <= raw[i + 2] <= 0xBF:
+            return "\ufffd", i + 3
+        return "\ufffd", i + 2
+    return "\ufffd", error.end
+
+
+codecs.register_error("ubunye-java-replace", _java_replace)
+
+
+def java_decode(data: bytes, encoding: str) -> str:
+    """``data`` decoded as Java's ``new String(bytes, charset)`` decodes it (U+FFFD)."""
+    return data.decode(encoding, errors="ubunye-java-replace")
 
 
 def _csv_dialect(parse: Any) -> Dict[str, Any]:
