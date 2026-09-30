@@ -15,6 +15,31 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Changed
 
+- **A Delta read is pinned to one version for the whole run** (F-046, skeptic review).
+  A lazy Delta frame read the table's latest version on every action, so with another
+  job appending, two outputs of one input could count 10 and 13 rows. A Delta read that
+  names no version (`format: delta`, or `s3` with `file_format: delta`) now carries
+  `versionAsOf` for the version the table is at when it is read, so the transform, every
+  output and the run record see one snapshot. A version in the config
+  (`version_as_of`, `timestamp_as_of`, or `versionAsOf` / `timestampAsOf` in `options`,
+  any case) is left as written. It costs one `DESCRIBE HISTORY` per read (about 0.16 s
+  on the dev box); if that fails, the read is unpinned, as before.
+- **The run record says whether an input's hash is of what the run read** (F-046). On
+  Spark an input is hashed at task end by reading its source again; if another job
+  changed it in between, the hash described a later state and nothing said so. Each
+  input now records its source version when it is read and again after its hash
+  (`source_version`, `source_version_at_hash`): a Delta table's version, or a file
+  input's files with sizes and times, taken without reading data. When they differ,
+  `source_changed: true` and `source_note` say the hash is of the later state;
+  `lineage trace` prints the note, `lineage compare` calls that hash unknown, and
+  `ubunye gate` warns instead of calling a changed output nondeterministic. The hash
+  and its default are unchanged; old records load as before. After review: without
+  content tags (etags, which S3A and ABFS give) "unchanged" means names, sizes and
+  times only, and the note says so; a failed listing is "not known", never missing
+  files; OPTIMIZE and other commits that change no rows are not a change; no version is
+  taken when inputs are not hashed; a few files are asked one by one (0.005 s for one
+  file of a 10,000 file folder, was 2.6 s); and taking a version stops after
+  `UBUNYE_SOURCE_VERSION_TIMEOUT` seconds (30).
 - **A Spark run record's hash takes about 45% less time** (F-041). The per row SHA-256
   lanes are summed as 32 bit halves in `long` instead of as decimals; the digest is
   the same. A table past about 2.1 billion rows falls back to the decimal sums.

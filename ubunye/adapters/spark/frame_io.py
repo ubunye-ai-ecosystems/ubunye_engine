@@ -23,13 +23,28 @@ def read_frame(
     options: Optional[Dict[str, Any]] = None,
     schema: Optional[str] = None,
 ) -> Any:
-    """Read a path into a Spark DataFrame (which satisfies ``DataFramePort``)."""
+    """Read a path into a Spark DataFrame (which satisfies ``DataFramePort``).
+
+    A Delta path read with no version is pinned to the version it is at now, so
+    every consumer of the frame sees one snapshot (F-046, ``delta_pin``).
+    """
+    pin = None
+    if str(file_format).lower() == "delta":
+        from ubunye.adapters.spark import delta_pin
+
+        options = dict(options or {})
+        pin = delta_pin.pin_options(spark, f"delta.`{path}`", {}, options)
     reader = spark.read.format(file_format)
     if options:
         reader = reader.options(**options)
     if schema:
         reader = reader.schema(schema)
-    return reader.load(path)
+    frame = reader.load(path)
+    if pin is not None:
+        from ubunye.adapters.spark import delta_pin
+
+        delta_pin.mark(frame, pin)
+    return frame
 
 
 def execute_write(

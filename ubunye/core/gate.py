@@ -20,7 +20,8 @@ What fails:
 Every changed output also says what else changed between the runs (config,
 code, environment, inputs), and a change with none of them is called out as
 nondeterminism. Warnings (a ``warn`` expectation broken, rows quarantined, a hash
-that cannot be compared, a new output) never fail the gate.
+that cannot be compared, a new output, an input whose source changed between its
+read and its hash) never fail the gate.
 """
 
 from __future__ import annotations
@@ -86,6 +87,16 @@ def _what_else_changed(base: RunContext, cand: RunContext) -> List[str]:
     )
     if changed_inputs:
         moved.append("input " + ", ".join(changed_inputs))
+    # An input whose source moved between its read and its hash has a digest of a
+    # later state: it cannot show the input was the same, so it is not ruled out.
+    unsure = sorted(
+        {s.name for s in base.inputs + cand.inputs if s.source_changed} - set(changed_inputs)
+    )
+    if unsure:
+        moved.append(
+            "input " + ", ".join(unsure) + " (its source changed during the run, so its "
+            "digest is not of what was read)"
+        )
     return moved
 
 
@@ -180,6 +191,19 @@ def evaluate(base: RunContext, cand: RunContext, policy: Optional[Policy] = None
                         name,
                     )
                 )
+
+    # --- the inputs: a digest taken after the source moved is not of what was read ---
+    for step in cand.inputs:
+        if step.source_changed:
+            found.append(
+                Finding(
+                    "input",
+                    WARN,
+                    "the source changed between the read and the hash; its digest is of "
+                    "the later state, not of what the run read (F-046)",
+                    step.name,
+                )
+            )
 
     found += _llm_findings(base, cand, policy)
 

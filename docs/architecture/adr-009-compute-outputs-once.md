@@ -96,7 +96,15 @@ in executor memory and local disk. It is on by default.
 
 **Inputs are not held.** The input hash is still a separate scan of the source, so a
 source that changes between the read and the hash gives an input digest of the later
-state; every Spark input step says `recomputed` (F-046).
+state; every Spark input step says `recomputed`. The record now checks the source's
+version at the read and after the hash, and says when the two differ (F-046, ADR 006).
+
+**A Delta input is pinned to one version.** Holding computes each output once, but
+two outputs of one lazy Delta input were still two reads, and each read the table's
+latest version: with an append between them, one output counted 10 rows and the other
+13 (skeptic review of F-046). A Delta read that names no version is now pinned to the
+version the table is at when it is read (`versionAsOf`), so every output, the checks
+and the input hash see one snapshot. A read the config pins is left as written.
 
 ## Measured (E-06 job, 5,000,000 rows, dev box, Spark 4.2 local, 3 runs each)
 

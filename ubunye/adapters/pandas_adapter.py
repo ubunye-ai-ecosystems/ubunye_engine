@@ -24,6 +24,10 @@ class PandasDataFrameAdapter:
     nothing is copied until ``collect()`` is called.
     """
 
+    #: The files a read came from (``pandas_io.read_frame``), for the run record's
+    #: source version (F-046); None for a frame that was not read from files.
+    source_files: Optional[List[str]] = None
+
     def __init__(self, df: Any, timezone: Optional[str] = None) -> None:
         self._df = df
         #: The zone naive timestamps in this frame are read in when it is written

@@ -676,7 +676,10 @@ def read_frame(
             context={"Backend": "pandas", "path": local, "file_format": fmt},
         ) from exc
 
-    return PandasDataFrameAdapter(to_pandas(table))
+    frame = PandasDataFrameAdapter(to_pandas(table))
+    # The files read, for the run record's source version (F-046); never read again.
+    frame.source_files = [os.path.abspath(f) for f in files]
+    return frame
 
 
 # --------------------------------------------------------------------------- #

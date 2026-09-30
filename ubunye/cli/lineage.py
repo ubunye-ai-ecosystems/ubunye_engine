@@ -160,6 +160,11 @@ def data_hash_state(sa: Optional[StepRecord], sb: Optional[StepRecord]) -> Dict[
     if ha is None or hb is None:
         reasons = [getattr(s, "hash_error", None) for s in (sa, sb)]
         verdict.update(state="unknown", why="; ".join(r for r in reasons if r) or "not recorded")
+    elif any(getattr(s, "source_changed", None) for s in (sa, sb)):
+        # An input hashed after its source moved: the digest is not of what was read.
+        verdict.update(
+            state="unknown", why="the source changed between the read and the hash (F-046)"
+        )
     elif ma != mb:
         verdict.update(state="not comparable")
     else:
@@ -402,6 +407,9 @@ def _print_steps(steps: List[StepRecord]) -> None:
             typer.echo(f"      hash from: {step.hash_basis}")
         if getattr(step, "hash_reused_from", None):
             typer.echo(f"      hash of  : {step.hash_reused_from} (same frame)")
+        if getattr(step, "source_note", None):
+            colour = typer.colors.YELLOW if step.source_changed else None
+            typer.secho(f"      source   : {step.source_note}", fg=colour)
 
 
 @lineage_app.command("trace")

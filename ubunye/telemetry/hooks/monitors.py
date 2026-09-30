@@ -20,7 +20,15 @@ from ubunye.telemetry.monitors import load_monitors, safe_call
 
 #: What the engine knows beyond the outputs; given only to a monitor whose
 #: ``task_end`` accepts it, so older monitors keep working unchanged.
-EVIDENCE = ("inputs", "expectations", "timings", "llm_calls", "llm_budget", "hash_basis")
+EVIDENCE = (
+    "inputs",
+    "expectations",
+    "timings",
+    "llm_calls",
+    "llm_budget",
+    "hash_basis",
+    "source_versions",
+)
 
 
 def _evidence(monitor: Any, state: Dict[str, Any], keys: tuple = EVIDENCE) -> Dict[str, Any]:
@@ -81,6 +89,11 @@ class MonitorHook(Hook):
     def reads_outputs(self) -> bool:  # type: ignore[override]
         """Whether the monitor says it acts on the output frames (the lineage recorder)."""
         return bool(getattr(self.monitor, "reads_outputs", False))
+
+    @property
+    def reads_inputs(self) -> bool:  # type: ignore[override]
+        """Whether the monitor hashes the input frames (the lineage recorder, by default)."""
+        return bool(getattr(self.monitor, "reads_inputs", False))
 
     @contextmanager
     def task(self, ctx, cfg: Dict[str, Any], state: Dict[str, Any]) -> Iterator[None]:

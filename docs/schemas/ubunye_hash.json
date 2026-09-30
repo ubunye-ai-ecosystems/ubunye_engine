@@ -62,6 +62,181 @@
             "recomputed",
             null
           ]
+        },
+        "sourceVersion": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "delta",
+                "files",
+                "none"
+              ]
+            },
+            "version": {
+              "type": "integer",
+              "description": "delta: the table version"
+            },
+            "timestamp": {
+              "type": "string",
+              "description": "delta: the version's commit time"
+            },
+            "timestamp_as_of": {
+              "type": "string",
+              "description": "delta: a read pinned by time"
+            },
+            "pinned": {
+              "type": "boolean",
+              "description": "delta: the read was pinned to this version"
+            },
+            "pinned_by": {
+              "enum": [
+                "config",
+                "engine"
+              ]
+            },
+            "latest_version": {
+              "type": "integer",
+              "description": "delta, at the hash: the table's latest version (information only)"
+            },
+            "commits_since_read": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "delta, at the hash: the operations committed since the read"
+            },
+            "files": {
+              "type": "integer",
+              "description": "files: how many files the frame reads"
+            },
+            "bytes": {
+              "type": "integer"
+            },
+            "latest_modified": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "listing_hash": {
+              "type": "string",
+              "description": "files: sha256 of the sorted (relative path, size, time, etag) list"
+            },
+            "etags": {
+              "type": "boolean",
+              "description": "files: every file has a content tag, so a same size and time rewrite is seen"
+            },
+            "missing": {
+              "type": "integer"
+            },
+            "reason": {
+              "type": "string",
+              "description": "none: why there is no version"
+            },
+            "seconds": {
+              "type": "number",
+              "description": "how long taking it took"
+            }
+          },
+          "description": "An input's source version when it was read. F-046."
+        },
+        "sourceVersionAtHash": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "delta",
+                "files",
+                "none"
+              ]
+            },
+            "version": {
+              "type": "integer",
+              "description": "delta: the table version"
+            },
+            "timestamp": {
+              "type": "string",
+              "description": "delta: the version's commit time"
+            },
+            "timestamp_as_of": {
+              "type": "string",
+              "description": "delta: a read pinned by time"
+            },
+            "pinned": {
+              "type": "boolean",
+              "description": "delta: the read was pinned to this version"
+            },
+            "pinned_by": {
+              "enum": [
+                "config",
+                "engine"
+              ]
+            },
+            "latest_version": {
+              "type": "integer",
+              "description": "delta, at the hash: the table's latest version (information only)"
+            },
+            "commits_since_read": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "delta, at the hash: the operations committed since the read"
+            },
+            "files": {
+              "type": "integer",
+              "description": "files: how many files the frame reads"
+            },
+            "bytes": {
+              "type": "integer"
+            },
+            "latest_modified": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "listing_hash": {
+              "type": "string",
+              "description": "files: sha256 of the sorted (relative path, size, time, etag) list"
+            },
+            "etags": {
+              "type": "boolean",
+              "description": "files: every file has a content tag, so a same size and time rewrite is seen"
+            },
+            "missing": {
+              "type": "integer"
+            },
+            "reason": {
+              "type": "string",
+              "description": "none: why there is no version"
+            },
+            "seconds": {
+              "type": "number",
+              "description": "how long taking it took"
+            }
+          },
+          "description": "The same, taken right after the input's hash. F-046."
+        },
+        "sourceChanged": {
+          "description": "true: the source changed between the read and the hash, so the digest is of a later state than the one read; false: it did not; null: not known. F-046.",
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       }
     }

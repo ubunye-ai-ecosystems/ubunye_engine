@@ -291,7 +291,10 @@ class Engine:
                 if self._manage_backend:
                     self.backend.start()
                 try:
-                    sources = self._read_inputs(ctx, chain, inputs_cfg)
+                    versions: Optional[Dict[str, Any]] = None
+                    if any(getattr(h, "reads_inputs", False) for h in chain.hooks):
+                        versions = state["source_versions"] = {}
+                    sources = self._read_inputs(ctx, chain, inputs_cfg, versions)
                     state["inputs"] = self._to_ports(sources)
                     # Contracts and reconcile counts before the transform: it may
                     # change its inputs in place.
@@ -690,7 +693,10 @@ class Engine:
         ctx: EngineContext,
         chain: HookChain,
         inputs_cfg: Dict[str, Any],
+        versions: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """Read every input. With ``versions`` (a recorded run), each source's
+        version is taken right after its read, for the run record (F-046)."""
         sources: Dict[str, Any] = {}
         for name in sorted(inputs_cfg):
             icfg = inputs_cfg[name]
@@ -710,6 +716,10 @@ class Engine:
             with self._step(chain, ctx, f"Reader:{rtype}", {"input": name}):
                 # Secrets are swapped in only here, in the connector's copy.
                 sources[name] = reader_cls().read(self._secrets.resolve(icfg), self.backend)
+            if versions is not None:
+                from ubunye.lineage.source_version import capture
+
+                versions[name] = capture(_unwrap(sources[name]), icfg)
         return sources
 
     def _apply_transforms(

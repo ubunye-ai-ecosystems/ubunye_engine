@@ -96,6 +96,17 @@ class StepRecord:
     #: input, which is read again, or an output that could not be held), so a
     #: step whose values differ per computation can differ from what was written.
     hash_basis: Optional[str] = None
+    #: An input's source version when it was read (F-046): {"kind": "delta",
+    #: "version", "timestamp"}, {"kind": "files", "files", "bytes",
+    #: "latest_modified", "listing_hash"}, or {"kind": "none", "reason"}.
+    source_version: Optional[Dict[str, Any]] = None
+    #: The same, taken again right after the hash (a recomputed input only).
+    source_version_at_hash: Optional[Dict[str, Any]] = None
+    #: True when the two differ: the digest is of a later state, not of what was
+    #: read. False when they match. None when it is not known.
+    source_changed: Optional[bool] = None
+    #: One sentence on whether the digest is of what the task read.
+    source_note: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -115,6 +126,10 @@ class StepRecord:
             hash_seconds=d.get("hash_seconds"),
             hash_reused_from=d.get("hash_reused_from"),
             hash_basis=d.get("hash_basis"),
+            source_version=d.get("source_version"),
+            source_version_at_hash=d.get("source_version_at_hash"),
+            source_changed=d.get("source_changed"),
+            source_note=d.get("source_note"),
         )
 
     @staticmethod

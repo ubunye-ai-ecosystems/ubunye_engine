@@ -28,11 +28,14 @@ ubunye gate ... --max-slowdown 0.5 --max-row-change 0.1 --summary "$GITHUB_STEP_
 A deliberate change bumps `VERSION` in the task's `config.yaml`, or passes
 `--allow-data-change` (then it warns). Every changed output also says what else
 changed between the runs (config, code, environment, which inputs); a change
-with none of them is reported as a transform that is not deterministic.
+with none of them is reported as a transform that is not deterministic. An input
+whose source changed between its read and its hash (`source_changed` in the
+record) is named as a possible cause too: its hash is of a later state, so it
+cannot show the input was the same.
 
 Warnings never fail the gate: a `warn` expectation broken, rows quarantined, a
 new output, hashes that cannot be compared (a record from before 0.7.0, or an
-unreadable output).
+unreadable output), an input whose source changed during the run.
 
 Exit code 1 when the gate fails; `--json` prints the findings; `--summary FILE`
 appends a Markdown table.
