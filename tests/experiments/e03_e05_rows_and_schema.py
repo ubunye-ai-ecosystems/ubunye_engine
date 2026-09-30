@@ -7,7 +7,11 @@ E-05: after a good run, the source changes: a column added, dropped, renamed, or
 retyped. For each: does the run fail loudly or write quietly, does the record show
 the schema changed, and does `ubunye gate` against the good run catch it?
 
-Usage: python tests/experiments/e03_e05_rows_and_schema.py <ubunye executable>
+Usage: python tests/experiments/e03_e05_rows_and_schema.py <ubunye executable> [--contracts]
+
+With --contracts the task declares what must hold: E-03 reconciles enriched with
+orders (no order lost, F-017), and E-05 gives orders an input contract (the
+columns and their types, F-018). The run should then stop before writing.
 """
 
 from __future__ import annotations
@@ -22,6 +26,24 @@ import sys
 import pandas as pd
 
 UBUNYE = sys.argv[1]
+CONTRACTS = "--contracts" in sys.argv[2:]
+
+# E-03 with --contracts: every order must reach enriched, with its amount.
+RECONCILE = """\
+  expectations:
+    enriched:
+      reconcile:
+        - input: orders
+          rows: {max_lost: 0}
+          sum: {column: price, tolerance: 0.01}
+"""
+# E-05 with --contracts: the orders source must keep its columns and types.
+CONTRACT = """\
+  expectations:
+    orders:
+      rules:
+        - columns: {order_id: int64, customer_id: int64, qty: int64, price: float64}
+"""
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 TRANSFORM = """\
@@ -37,7 +59,11 @@ class Enrich(Task):
 """
 
 
-def config(root: str) -> str:
+def config(root: str, expectations: str = "") -> str:
+    return _config(root) + expectations
+
+
+def _config(root: str) -> str:
     root = root.replace("\\", "/")
     return f"""\
 MODEL: etl
@@ -155,8 +181,19 @@ def main() -> None:
 
     print("== E-03: an inner join drops 100 of 1000 orders")
     orders().to_parquet(os.path.join(work, "data", "orders.parquet"))
+    if CONTRACTS:
+        with open(os.path.join(task, "config.yaml"), "w") as fh:
+            fh.write(config(work, RECONCILE))
     code, out = run(work)
     print("exit", code, "| record steps:", json.dumps(steps(latest_record(work))))
+    written = os.path.exists(os.path.join(work, "out", "enriched"))
+    print("   output written:", written)
+    for ln in out.splitlines():
+        if "rows_from_orders" in ln or "price_sum_from_orders" in ln:
+            print("   ", ln.strip()[:170])
+    if CONTRACTS:
+        with open(os.path.join(task, "config.yaml"), "w") as fh:
+            fh.write(config(work, CONTRACT))
 
     print("\n== E-05: the orders source changes after a good run")
     drifts = {
@@ -176,6 +213,10 @@ def main() -> None:
         gcode, glines = gate(work)
         print(f"\n-- {label}")
         print("   run exit", code, "|", (err[0].strip()[:160] if err else "wrote output"))
+        for ln in out.splitlines():
+            if "(columns):" in ln:
+                print("   ", ln.strip()[:170])
+                break
         print("   record:", json.dumps(rec))
         print("   gate exit", gcode)
         for ln in glines:

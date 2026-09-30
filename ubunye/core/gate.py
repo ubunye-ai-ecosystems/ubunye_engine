@@ -108,7 +108,10 @@ def evaluate(base: RunContext, cand: RunContext, policy: Optional[Policy] = None
     for e in cand.expectations:
         if e.get("passed"):
             continue
-        where = f"{e['rule']} broken by {e['failed']} of {e['total']} rows"
+        if e.get("detail"):
+            where = f"{e['rule']}: {e['detail']}"
+        else:
+            where = f"{e['rule']} broken by {e['failed']} of {e['total']} rows"
         severity = e.get("severity")
         if severity == "fail":
             found.append(Finding("expectation", FAIL, where, e.get("output")))

@@ -234,6 +234,50 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   again. It needs no new engine feature: the extra calls count against the budget
   and are in the run record, and inside a run they replay call for call. A test runs
   the recipe from the page as written.
+- **Input contracts: expectations can name an input, checked before the transform**
+  (F-018). Its rules run right after it is read. A new rule, `columns: {price:
+  float64, qty: int64}` (with `extra: allow|forbid`), checks each column's type by the
+  names the run record uses, on Spark and pandas alike, from the schema alone. Types
+  match exactly (`int32` is not `int64`; list several to accept them); nulls are not
+  part of the type. A mismatch stops the run before the transform, naming each
+  column with the type expected and found. Before, a source that wrote `price` as
+  text made pandas compute `"11.011.0"` and the run succeeded; the E-05 cases
+  (column dropped, renamed, retyped) now stop with, for example, "price: expected
+  float64, found string". Results carry `side: input` in the record. `ubunye
+  validate` refuses a name that is both an input and an output, an input with a
+  quarantine or reconcile, and an unknown type name (with the right one for
+  `double`, `long` and friends). `columns` also works on an output.
+
+- **`reconcile`: an output can declare that nothing is lost on the way from an input**
+  (F-017). Under `CONFIG.expectations.<output>`, `reconcile: [{input: orders, rows:
+  {max_lost: 0}, sum: {column: amount, tolerance: 0.01}}]`. Bounds are a number or a
+  share (`"1%"`); `max_gained` catches a join that fans out. It is checked with the
+  other expectations, before anything is written, and reported like a rule
+  (`rows_from_orders`, with what was found in a new `detail` field) in the error, the
+  run record, `ubunye lineage show` and `ubunye gate`. Rows sent to quarantine count
+  as carried over. Before, an inner join that dropped 100 of 1,000 orders succeeded;
+  the E-03 task now stops with "1000 rows read from orders, 900 reached enriched: 100
+  lost". It costs one pass over each reconciled input (on Spark, a second read of it).
+  `ubunye validate` refuses a reconcile that names no real input.
+  `Engine.write_outputs` takes `inputs=` for it; the notebook passes what it read.
+
+- **Reconcile and input contracts, after the skeptic's review** (F-017, F-018).
+  The inputs are counted before the transform runs: a pandas transform that dropped
+  rows from its input in place used to make the record say "8 read, 0 lost". Sums
+  are exact: integers no longer wrap past 2**63 (3 x 2**62 came out negative) and
+  decimals are no longer compared as floats (0.01 on a 1.2e19 total passed at
+  tolerance 0); on Spark an integer sum is taken as `decimal(38,0)`. Equal infinite
+  totals match. A reconcile item takes an optional `name`, so a warning at 1% and a
+  stop at 5% can check one input. `ubunye validate` gives a clear message for a
+  blank tolerance, a list as a bound, a number as a type, and NaN or infinite
+  tolerances (it crashed with a TypeError or accepted them). Nested type names are
+  checked part by part (`list<banana>` was accepted), and every kind a frame can
+  report (`uint8`, `null`, `mixed`, `time64[us]`) can be declared. A contract names
+  a timestamp by what it is, `timestamp` with a zone and `timestamp_ntz` without,
+  on pandas as on Spark 3.4+; the run record is unchanged. The notebook checks the
+  contract on, and reconciles with, the frames passed to `transform()`, and tells
+  you to call `read()` or `transform()` when it has none. Input contract results
+  are on the input datasets in OpenLineage.
 
 - **`ubunye deploy` runs several tasks in one launch** (glue, dataproc, k8s,
   container-apps, emr-serverless): repeat `-t`, as in `-t clean -t monitor`. They run in

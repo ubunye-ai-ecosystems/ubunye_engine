@@ -254,6 +254,8 @@ class NotebookContext:
                 raise ValueError(
                     "No outputs to write. Call transform() first or pass outputs explicitly."
                 )
+        # The engine kept what the transform got (read or passed in), checked and
+        # counted before it ran; a reconcile compares with that.
         self._engine.write_outputs(outputs, self._cfg_dict, as_run=True)
 
     def run(self) -> Dict[str, Any]:

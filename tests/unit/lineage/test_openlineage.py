@@ -153,6 +153,26 @@ def test_a_failed_run_says_why_and_which_expectation_broke():
     assert assertions == [{"assertion": "qty_between", "success": False, "column": "qty"}]
 
 
+def test_an_input_contract_is_reported_on_the_input_dataset():
+    # F-018 skeptic review: an input's checks went nowhere in OpenLineage.
+    contract = {
+        "output": "raw",
+        "side": "input",
+        "rule": "columns",
+        "kind": "columns",
+        "severity": "fail",
+        "column": None,
+        "failed": 1,
+        "total": 3,
+        "passed": False,
+        "detail": "price: expected float64, found string",
+    }
+    _, fail = [validate(e) for e in events(_record("error", [contract]))]
+    assertions = fail["inputs"][0]["facets"]["dataQualityAssertions"]["assertions"]
+    assert assertions == [{"assertion": "columns", "success": False}]
+    assert "dataQualityAssertions" not in fail["outputs"][0]["facets"]
+
+
 # --- dataset names ----------------------------------------------------------------
 
 

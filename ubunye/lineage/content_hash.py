@@ -553,6 +553,57 @@ def _package(obj: Any) -> str:
     return (getattr(type(obj), "__module__", "") or "").split(".")[0]
 
 
+def _contract_kind(t: Any) -> str:
+    """An Arrow column type by its real name: a category is named by its values."""
+    import pyarrow as pa
+
+    if pa.types.is_dictionary(t):
+        return _contract_kind(t.value_type)
+    return arrow_kind(t)
+
+
+def frame_kinds(frame: Any) -> Dict[str, str]:
+    """Each column's type as an input contract names it (``columns`` rule).
+
+    The run record's names (ADR 006), with one difference: a timestamp is named
+    by what it is, on every backend and at every depth. With a zone it is
+    ``timestamp``, without one ``timestamp_ntz``, as Spark 3.4 and later name
+    them. The record itself writes every pandas timestamp as an instant
+    (``timestamp``); that is unchanged, so its schema hashes stay the same.
+
+    Read from the schema: a Spark frame is not computed. A pandas column of
+    Python objects is inferred by Arrow; one holding values of mixed types is
+    named ``mixed``. A column of nulls only is ``null``.
+    """
+    package = _package(frame)
+    if package == "pyspark":
+        from ubunye.adapters.spark.content_hash import canonical_schema
+
+        return dict(canonical_schema(frame))
+
+    from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
+
+    if isinstance(frame, PandasDataFrameAdapter):
+        frame, package = frame.native, "pandas"
+    if package == "pyarrow":
+        return {f.name: _contract_kind(f.type) for f in frame.schema}
+    if package == "pandas":
+        import pyarrow as pa
+
+        if any(name is not None for name in frame.index.names):
+            frame = frame.reset_index()
+        kinds: Dict[str, str] = {}
+        for column in frame.columns:
+            try:
+                field = pa.Schema.from_pandas(frame[[column]], preserve_index=False)[0]
+                kinds[str(column)] = _contract_kind(field.type)
+            except (pa.ArrowInvalid, pa.ArrowTypeError, pa.ArrowNotImplementedError):
+                kinds[str(column)] = "mixed"
+        return kinds
+    port_schema = getattr(frame, "schema", {}) or {}
+    return {str(k): str(v) for k, v in dict(port_schema).items()}
+
+
 def fingerprint(frame: Any) -> Fingerprint:
     """The fingerprint of whatever frame a run produced, or an honest failure.
 

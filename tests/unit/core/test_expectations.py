@@ -200,7 +200,7 @@ def _config(expectations_block, outputs=("out", "bad")):
 @pytest.mark.parametrize(
     "block, message",
     [
-        ({"nope": {"rules": [{"not_null": "id"}]}}, "no output named 'nope'"),
+        ({"nope": {"rules": [{"not_null": "id"}]}}, "no input or output named 'nope'"),
         (
             {
                 "out": {
