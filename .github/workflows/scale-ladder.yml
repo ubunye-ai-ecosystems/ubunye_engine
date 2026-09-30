@@ -101,3 +101,5 @@ jobs:
           name: e06-${{ matrix.backend }}-${{ matrix.rows }}
           path: e06-*.jsonl
           if-no-files-found: warn
+
+# F-039 closeout ladder run on hardening after the 2026-09-30 fixes.
