@@ -206,6 +206,10 @@ Known differences, on records where Spark 3.5 and Spark 4 also disagree:
   and pandas look at every entry, so `{"a": 1, "b": "x"}` is `map<string,string>`
   there. On Spark 3.5, give a map one kind of value.
 
+A whole number outside the 64 bit range (past 9223372036854775807) is refused on
+pandas, with the field's name. Spark classic stores null there without a word.
+Declare the field as `string` to keep it as text on both.
+
 One difference from every Spark: a record that is a JSON array (`[1, "a"]`)
 instead of an object. Spark reads it as a row with columns `_1`, `_2`...; pandas
 refuses it. Point `response.root_key` at the list of objects instead.

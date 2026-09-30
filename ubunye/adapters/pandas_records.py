@@ -238,7 +238,16 @@ def _inferred_table(records: List[Dict[str, Any]]) -> Any:
     columns = {}
     for name, t in schema[1]:
         values = [convert(r.get(name), t) for r in records]
-        columns[name] = pa.array(values, type=arrow_type(t))
+        try:
+            columns[name] = pa.array(values, type=arrow_type(t))
+        except (OverflowError, pa.ArrowInvalid) as exc:
+            # A whole number past 64 bits. Spark classic stores null there without
+            # a word (its bigint converter takes no BigInteger); this refuses.
+            raise ValueError(
+                f"[VALUE_OUT_OF_BOUNDS] field {name}: a whole number is outside "
+                f"{-(2**63)} to {2**63 - 1} ({exc}). Spark stores null there; the "
+                "pandas backend refuses. Declare the field as string to keep it as text."
+            ) from None
     return pa.table(columns)
 
 

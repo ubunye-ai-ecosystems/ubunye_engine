@@ -81,6 +81,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
   `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
   both.
+- **A REST field with a whole number past 64 bits is refused by name on pandas**
+  (F-015 review). It raised a bare `OverflowError`. Now it is a `SourceReadError`
+  naming the field, with the fix (declare it `string`). Spark classic stores null
+  there silently; pandas refuses on purpose, since a lost value should not pass.
 - **A plugin Spark backend keeps running the REST connector** (F-015 review). The
   F-015 fix made rest_api require the new `records` feature, so a third party
   backend that declared `spark` (as on 0.7) was refused, and `RestApiWriter().write`

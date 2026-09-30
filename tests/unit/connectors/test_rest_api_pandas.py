@@ -147,6 +147,31 @@ def test_records_spark_cannot_type_are_refused(records, error):
     assert "schema" in str(caught.value)  # the hint says what to do
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        '[{"id": 1, "big": 9223372036854775808}]',
+        '[{"id": 1, "big": [1, -9223372036854775809]}]',
+        '[{"id": 1, "big": {"k": 99999999999999999999}}]',
+    ],
+    ids=["field", "in-array", "in-map"],
+)
+def test_a_whole_number_past_64_bits_is_refused_by_name(body):
+    """Spark classic stores null; pandas raised a bare OverflowError (F-015 review)."""
+    with served() as api:
+        api.raw = body
+        with pytest.raises(SourceReadError, match="field big") as caught:
+            _read({"url": f"{api.base}/raw"})
+    assert "string" in str(caught.value)
+
+
+def test_a_whole_number_past_64_bits_reads_as_string():
+    with served() as api:
+        api.raw = '[{"big": 9223372036854775808}]'
+        cfg = {"url": f"{api.base}/raw", "schema": [{"name": "big", "type": "string"}]}
+        assert _read(cfg)["big"].tolist() == ["9223372036854775808"]
+
+
 def test_a_null_everywhere_column_reads_with_a_schema():
     with served([{"id": 1, "note": None}]) as api:
         cfg = {"url": f"{api.base}/all", "schema": [{"name": "note", "type": "string"}]}

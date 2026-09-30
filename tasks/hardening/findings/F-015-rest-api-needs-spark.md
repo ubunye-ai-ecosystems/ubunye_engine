@@ -118,3 +118,10 @@ fixed in its own commit on this branch.
    the writer falls back to `toLocalIterator`. After: plan problems `[]`, writer ok
    with both. Tests: `tests/unit/connectors/test_rest_api_third_party_backends.py`
    (5 fail before, pass after).
+5. **A whole number past 64 bits crashed the pandas read with a bare
+   `OverflowError`** (`runtime_attacks.py` case A). Spark classic stores null there
+   (its bigint converter takes no BigInteger). Now pandas raises `SourceReadError`
+   naming the field and saying to declare it `string`; the difference from Spark is
+   deliberate and documented (a silently lost value is worse than a refusal). Tests:
+   `test_a_whole_number_past_64_bits_is_refused_by_name` (3 cases: a field, inside
+   an array, inside a map; fail before, pass after) and a `string` schema read.

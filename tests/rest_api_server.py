@@ -80,6 +80,7 @@ class _Api(BaseHTTPRequestHandler):
     records: List[Dict[str, Any]] = RECORDS
     posted: List[Any] = []
     base: str = ""
+    raw: str = "[]"
 
     def _send(self, body: Any) -> None:
         data = json.dumps(body).encode()
@@ -110,6 +111,14 @@ class _Api(BaseHTTPRequestHandler):
             return self._send(records)
         if url.path == "/empty":
             return self._send({"data": []})
+        if url.path == "/raw":  # a body given as text, as a test set it
+            data = type(self).raw.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return None
         self.send_error(404)
 
     def do_POST(self):  # noqa: N802
