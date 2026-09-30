@@ -210,3 +210,17 @@ GitHub `ubuntu-latest`, median of 3, run 36673389425: `--lineage` / plain on pan
 5M rows (was 9.81x), 4.90x at 50M (was 9.67x); record `hash_seconds` 9.6 s at 5M (was
 15.7), 71.9 s at 50M (was 156.1). The rest of the gap is tracked in F-039 and E-07.
 
+## Flaky parallel tests (2026-09-30)
+A reviewer's full unit tier failed 5 tests in `test_content_hash_parallel.py` ("the
+helpers did not run"); the file alone passed. The log said why: `helpers failed (exit
+codes [5, 5, 5])`, the source check. Another agent was editing `content_hash.py` in the
+same worktree during the run (F-082, commit 4f3750d), so the file on disk no longer
+matched the imported code and every helper correctly refused. The first hypothesis
+example ran on helpers; the later ones fell back. Not a budget leak, a cached core
+count, the deadline or a leaked setting: two full tiers here passed with the budget at
+0, the interpreter found and no relevant variable changed before every parallel test.
+Production is right (a helper must never hash with other code), so only the tests
+changed. Their helpers now load a copy of the bytes that were imported, the fixture
+checks the budget is free before and after, and a failure prints the logged reason.
+Repro: a plugin that appends a comment to `content_hash.py` after collection gave the
+same 5 failures and exit codes before, and 20 passed after.

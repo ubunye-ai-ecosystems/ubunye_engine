@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime as dt
 import gc
+import hashlib
 import logging
 import os
 import subprocess
@@ -43,14 +44,53 @@ def _serial(table, monkeypatch):
             os.environ[ch.HASH_WORKERS_ENV] = before
 
 
+#: The bytes of content_hash.py as this test run imported them. A helper loads the
+#: file by its path and refuses to hash when the file's digest is not the caller's
+#: (exit code 5). The file on disk can change while the tests run (another agent
+#: edits the same tree), which made helpers refuse mid run and five tests fail. The
+#: helpers here are handed a copy of these bytes, so they run the imported code.
+_IMPORTED_SOURCE = open(ch.__file__, "rb").read()
+_SNAPSHOT_MATCHES = hashlib.sha256(_IMPORTED_SOURCE).hexdigest() == ch._SOURCE_DIGEST
+
+
+@pytest.fixture(scope="module")
+def helper_file(tmp_path_factory):
+    """A copy of the imported content_hash.py, for the helpers to load."""
+    if not _SNAPSHOT_MATCHES:
+        pytest.fail(
+            "content_hash.py changed on disk between its import and this test module's "
+            "import; the imported code cannot be recovered, run the tests again"
+        )
+    path = tmp_path_factory.mktemp("f038") / "content_hash.py"
+    path.write_bytes(_IMPORTED_SOURCE)
+    return str(path)
+
+
+class _Seen(list):
+    """Every parallel result (None is a fallback), and every logged reason."""
+
+    reasons: list
+
+    def why(self):
+        return "; ".join(self.reasons) or "nothing logged"
+
+
 @pytest.fixture
-def parallel(monkeypatch):
-    """Helpers for any table of 2 rows or more, and a record of every parallel result."""
+def parallel(monkeypatch, helper_file):
+    """Helpers for any table of 2 rows or more, and a record of every parallel result.
+
+    Nothing here depends on the machine: the thresholds, the core count and the
+    setting are fixed, the budget must be free, and the helpers run a copy of the
+    imported code, never the file on disk.
+    """
+    assert ch._helpers_running == 0, "an earlier hash kept helper slots"
     monkeypatch.setattr(ch, "_PARALLEL_MIN_ROWS", 2)
     monkeypatch.setattr(ch, "_ROWS_PER_WORKER", 1)
     monkeypatch.setattr(ch, "_cores", lambda: 8)
+    monkeypatch.setattr(ch, "__file__", helper_file)
     monkeypatch.setenv(ch.HASH_WORKERS_ENV, "3")
-    seen = []
+    seen = _Seen()
+    seen.reasons = []
     real = ch._parallel_lanes
 
     def spy(*args, **kwargs):
@@ -58,8 +98,21 @@ def parallel(monkeypatch):
         seen.append(out)
         return out
 
+    class Reasons(logging.Handler):
+        def emit(self, record):
+            seen.reasons.append(record.getMessage())
+
+    handler = Reasons(logging.DEBUG)
+    level = ch._log.level
+    ch._log.addHandler(handler)
+    ch._log.setLevel(logging.DEBUG)
     monkeypatch.setattr(ch, "_parallel_lanes", spy)
-    return seen
+    try:
+        yield seen
+    finally:
+        ch._log.removeHandler(handler)
+        ch._log.setLevel(level)
+    assert ch._helpers_running == 0, "this test's hash kept helper slots"
 
 
 @settings(
@@ -72,7 +125,7 @@ def test_any_table_hashes_the_same_in_helpers(parallel, monkeypatch, table):
     got = fingerprint_arrow(table)
     extension = not all(ch._plain_type(f.type) for f in table.schema)
     if not extension:
-        assert parallel and parallel[-1] is not None, "the helpers did not run"
+        assert parallel and parallel[-1] is not None, f"the helpers did not run: {parallel.why()}"
     assert got == _serial(table, monkeypatch)
     assert got == _reference(table)
 
@@ -94,7 +147,7 @@ def test_the_e06_shape_hashes_the_same_in_helpers(parallel, monkeypatch):
         }
     )
     got = fingerprint_arrow(table)
-    assert parallel == [parallel[0]] and parallel[0] is not None
+    assert parallel == [parallel[0]] and parallel[0] is not None, parallel.why()
     assert got == _serial(table, monkeypatch)
 
 
@@ -108,7 +161,7 @@ def test_golden_digest_does_not_move_in_helpers(parallel):
     )
     reference = _reference(table)
     assert fingerprint_arrow(table) == reference
-    assert parallel[-1] is not None
+    assert parallel and parallel[-1] is not None, parallel.why()
 
 
 def test_a_failed_helper_falls_back_to_one_process(parallel, monkeypatch):
@@ -276,7 +329,7 @@ def test_a_helper_cannot_start_helpers_or_stop_in_a_prompt(parallel, popens, mon
     monkeypatch.setenv("PYTHONINSPECT", "1")
     table = _wide(50)
     assert fingerprint_arrow(table) == _reference(table)
-    assert parallel and parallel[-1] is not None
+    assert parallel and parallel[-1] is not None, parallel.why()
     for _, kwargs in popens:
         env = kwargs.get("env") or {}
         assert env.get(ch.HASH_WORKERS_ENV) == "1"
