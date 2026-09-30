@@ -1,6 +1,6 @@
 """The SparkSession behind a backend, for connectors that cannot work without one.
 
-hive, jdbc, delta, unity, binary and rest_api build on Spark. On a backend with
+hive, jdbc, delta, unity and binary build on Spark. On a backend with
 no session (the pandas backend) they call :func:`spark_of` first, so the run
 stops before any work with a message naming the connector and the way out,
 instead of ``AttributeError: ... has no attribute 'spark'`` from deep inside.

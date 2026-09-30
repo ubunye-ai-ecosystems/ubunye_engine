@@ -1,6 +1,7 @@
 """REST API reader plugin for Ubunye Engine.
 
-Reads records from a paginated HTTP API and returns a Spark DataFrame.
+Reads records from a paginated HTTP API and returns the backend's frame: a Spark
+DataFrame on Spark, a pandas DataFrame on pandas, with the same rows and types.
 
 Supports:
 - HTTP methods: GET, POST
@@ -8,8 +9,12 @@ Supports:
 - Authentication: bearer token, api_key (header or query param), basic auth
 - Rate limiting with configurable requests_per_second
 - Retry with exponential backoff on configurable status codes (default: 429, 503)
-- Optional user-defined schema; otherwise infers from response
+- Optional user-defined schema; otherwise inferred from every record
 - Extraction of nested arrays via response.root_key
+
+The HTTP side (session, auth, retries, rate limit) is shared with the writer in
+:mod:`ubunye.plugins.rest_http`. The last step, records to a frame, is the
+backend's ``frame_from_records`` (F-015).
 
 Example config (config.yaml):
   inputs:
@@ -34,8 +39,6 @@ Example config (config.yaml):
       schema:
         - name: customer_id
           type: string
-        - name: created_at
-          type: timestamp
         - name: email
           type: string
 """
@@ -43,107 +46,46 @@ Example config (config.yaml):
 from __future__ import annotations
 
 import logging
-import time
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional
 
 if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
     import requests
 
-from ubunye.adapters.spark.session import spark_of
-from ubunye.core.capabilities import SPARK
+from ubunye.core.capabilities import RECORDS
 from ubunye.core.errors import SourceReadError
 from ubunye.core.interfaces import Reader
-
-
-def _requests():
-    """Import `requests`, and say something useful if it is not there.
-
-    It used to be declared only in the `dev` extra, so `pip install ubunye-engine[spark]`
-    gave you a rest_api reader that could not make a request. On Databricks it worked by
-    accident, because the runtime preinstalls requests -- so the bug was invisible from
-    the one platform most people used, and surfaced the moment anyone left it, as a bare
-    `ModuleNotFoundError: No module named 'requests'` from inside a Spark job.
-    """
-    try:
-        import requests  # noqa: PLC0415
-    except ImportError as exc:  # pragma: no cover - exercised by the message, not the path
-        raise SourceReadError(
-            "The 'rest_api' connector needs the `requests` library, which is not installed.",
-            context={"Format": "rest_api"},
-            hint="pip install 'ubunye-engine[rest]'  (or add requests to your environment). "
-            "It is not installed by default because not every pipeline makes HTTP calls.",
-        ) from exc
-    return requests
-
+from ubunye.plugins import rest_http
 
 log = logging.getLogger(__name__)
 
-# Maps simple type names from config schema to PySpark type strings.
+# The schema's type names, as Spark DDL types (the form every backend reads).
 _SPARK_TYPE_MAP: Dict[str, str] = {
-    "string": "string",
-    "str": "string",
-    "integer": "integer",
-    "int": "integer",
-    "long": "long",
-    "bigint": "long",
-    "double": "double",
-    "float": "float",
-    "boolean": "boolean",
-    "bool": "boolean",
-    "timestamp": "timestamp",
-    "date": "date",
-    "binary": "binary",
+    "string": "STRING",
+    "str": "STRING",
+    "integer": "INT",
+    "int": "INT",
+    "long": "BIGINT",
+    "bigint": "BIGINT",
+    "double": "DOUBLE",
+    "float": "FLOAT",
+    "boolean": "BOOLEAN",
+    "bool": "BOOLEAN",
+    "timestamp": "TIMESTAMP",
+    "date": "DATE",
+    "binary": "BINARY",
 }
 
 _DEFAULT_RETRY_ON = [429, 503]
-_DEFAULT_MAX_RETRIES = 3
-_DEFAULT_BACKOFF_BASE = 1.0  # seconds; doubles each attempt
+
+
+def _requests():
+    """``requests``, or a clear error naming the extra that installs it."""
+    return rest_http.requests_module(SourceReadError)
 
 
 def _build_session(cfg: Dict[str, Any]) -> requests.Session:
-    """Build a requests.Session with auth pre-configured.
-
-    Supported auth types (configured under cfg['auth']):
-      - bearer:         {'type': 'bearer', 'token': '<value>'}
-      - api_key_header: {'type': 'api_key_header', 'header': 'X-Api-Key', 'key': '<value>'}
-      - api_key_query:  {'type': 'api_key_query', 'param': 'api_key', 'key': '<value>'}
-                        (key appended to every request's params at fetch time)
-      - basic:          {'type': 'basic', 'username': '...', 'password': '...'}
-
-    Headers declared at the top-level cfg['headers'] are also applied to the session.
-    """
-    requests = _requests()
-    from requests.auth import HTTPBasicAuth  # noqa: PLC0415
-
-    session = requests.Session()
-
-    # Apply top-level headers (e.g. Authorization: Bearer ... already templated by engine)
-    for header, value in (cfg.get("headers") or {}).items():
-        session.headers[header] = str(value)
-
-    auth_cfg = cfg.get("auth") or {}
-    auth_type = auth_cfg.get("type", "").lower()
-
-    if auth_type == "bearer":
-        token = auth_cfg.get("token", "")
-        session.headers["Authorization"] = f"Bearer {token}"
-
-    elif auth_type == "api_key_header":
-        header_name = auth_cfg.get("header", "X-Api-Key")
-        session.headers[header_name] = str(auth_cfg.get("key", ""))
-
-    elif auth_type == "api_key_query":
-        # Cannot pre-apply to session; stored for per-request injection.
-        # _fetch_page reads cfg['auth'] directly for this case.
-        pass
-
-    elif auth_type == "basic":
-        session.auth = HTTPBasicAuth(
-            auth_cfg.get("username", ""),
-            auth_cfg.get("password", ""),
-        )
-
-    return session
+    """A session with headers and auth set (see :func:`rest_http.build_session`)."""
+    return rest_http.build_session(cfg, SourceReadError)
 
 
 def _fetch_page(
@@ -155,67 +97,21 @@ def _fetch_page(
     rate_cfg: Dict[str, Any],
     auth_cfg: Dict[str, Any],
 ) -> Any:
-    """Perform a single HTTP request with retry and rate limiting.
+    """One page: a request with rate limiting and retries, as parsed JSON.
 
-    Parameters
-    ----------
-    session:   pre-configured requests.Session
-    url:       target URL
-    method:    'GET' or 'POST'
-    params:    query string parameters
-    body:      JSON body (POST only)
-    rate_cfg:  dict with optional keys requests_per_second, retry_on, max_retries
-    auth_cfg:  dict; used to inject api_key_query param if needed
-
-    Returns
-    -------
-    Parsed JSON response (dict or list).
-
-    Raises
-    ------
-    requests.HTTPError  if all retries are exhausted on a retryable status code.
-    requests.HTTPError  on non-retryable HTTP errors.
+    Raises ``requests.HTTPError`` on an error status, once the retries run out.
     """
-    rps: float = float(rate_cfg.get("requests_per_second", 0) or 0)
-    retry_on: List[int] = list(rate_cfg.get("retry_on") or _DEFAULT_RETRY_ON)
-    max_retries: int = int(rate_cfg.get("max_retries") or _DEFAULT_MAX_RETRIES)
-
-    # Inject api_key_query if configured
-    if auth_cfg.get("type") == "api_key_query":
-        params = dict(params or {})
-        params[auth_cfg.get("param", "api_key")] = auth_cfg.get("key", "")
-
-    for attempt in range(max_retries + 1):
-        if rps > 0:
-            time.sleep(1.0 / rps)
-
-        resp = session.request(
-            method=method.upper(),
-            url=url,
-            params=params or None,
-            json=body or None,
-        )
-
-        if resp.status_code in retry_on:
-            if attempt < max_retries:
-                wait = _DEFAULT_BACKOFF_BASE * (2**attempt)
-                log.warning(
-                    "HTTP %s from %s — retrying in %.1fs (attempt %d/%d)",
-                    resp.status_code,
-                    url,
-                    wait,
-                    attempt + 1,
-                    max_retries,
-                )
-                time.sleep(wait)
-                continue
-            resp.raise_for_status()
-
-        resp.raise_for_status()
-        return resp.json()
-
-    # Should never reach here, but satisfy type checker
-    raise RuntimeError("Exhausted retries without returning or raising")  # pragma: no cover
+    resp = rest_http.send(
+        session,
+        method,
+        url,
+        params=params,
+        body=body or None,
+        rate_cfg=rate_cfg,
+        auth_cfg=auth_cfg,
+        retry_on_default=_DEFAULT_RETRY_ON,
+    )
+    return resp.json()
 
 
 def _extract_records(response_json: Any, root_key: Optional[str]) -> List[Dict[str, Any]]:
@@ -381,51 +277,30 @@ def _paginate(
         )
 
 
-def _build_schema(schema_cfg: List[Dict[str, str]]):
-    """Build a PySpark StructType from a list of {name, type} dicts.
-
-    Lazy-imports pyspark so the module can be imported without Spark installed.
-    """
-    type_map = {
-        "string": "StringType",
-        "str": "StringType",
-        "integer": "IntegerType",
-        "int": "IntegerType",
-        "long": "LongType",
-        "bigint": "LongType",
-        "double": "DoubleType",
-        "float": "FloatType",
-        "boolean": "BooleanType",
-        "bool": "BooleanType",
-        "timestamp": "TimestampType",
-        "date": "DateType",
-        "binary": "BinaryType",
-    }
-
-    import pyspark.sql.types as T
-
-    fields = []
+def _schema_ddl(schema_cfg: List[Dict[str, str]]) -> str:
+    """The config's ``schema`` list as a Spark DDL string, the form every backend reads."""
+    parts = []
     for col in schema_cfg:
         name = col["name"]
-        raw_type = col.get("type", "string").lower()
-        type_class_name = type_map.get(raw_type)
-        if not type_class_name:
+        raw_type = str(col.get("type", "string")).lower()
+        ddl_type = _SPARK_TYPE_MAP.get(raw_type)
+        if not ddl_type:
             raise SourceReadError(
                 f"Unsupported schema type '{raw_type}' for column '{name}'.",
                 context={"Format": "rest_api", "Column": name, "Type": raw_type},
-                hint=f"Supported types: {', '.join(sorted(type_map))}",
+                hint=f"Supported types: {', '.join(sorted(_SPARK_TYPE_MAP))}",
             )
-        spark_type = getattr(T, type_class_name)()
-        fields.append(T.StructField(name, spark_type, nullable=True))
-
-    return T.StructType(fields)
+        parts.append("`" + str(name).replace("`", "``") + "` " + ddl_type)
+    return ", ".join(parts)
 
 
 class RestApiReader(Reader):
-    """Read a Spark DataFrame from a REST API endpoint.
+    """Read records from a REST API endpoint into the backend's frame.
 
     Handles pagination (offset, cursor, next_link), authentication (bearer,
-    api_key, basic), rate limiting, and retry with exponential backoff.
+    api_key, basic), rate limiting, and retry with exponential backoff. The HTTP
+    side is the same on every backend; the backend builds the frame
+    (``frame_from_records``), typed as Spark's ``createDataFrame`` types it.
     """
 
     # The settings this connector reads (typos in any other key fail validation).
@@ -444,36 +319,35 @@ class RestApiReader(Reader):
         }
     )
 
-    # Needs a live SparkSession; checked before a run (ADR 002).
-    REQUIRES = frozenset({SPARK})
+    # Needs a backend that builds a frame from records; checked before a run (ADR 002).
+    REQUIRES = frozenset({RECORDS})
 
     @classmethod
     def validate_config(cls, cfg):
         return [] if cfg.get("url") else ["format 'rest_api' requires 'url'"]
 
     def read(self, cfg: Dict[str, Any], backend) -> Any:
-        """Fetch all pages from the API and return a Spark DataFrame.
+        """Fetch all pages from the API and return the backend's frame.
 
         Parameters
         ----------
         cfg : dict
             Reader configuration. Required key: ``url``.
             See module docstring for full reference.
-        backend : SparkBackend
-            Ubunye Spark backend exposing ``.spark``.
-
-        Returns
-        -------
-        pyspark.sql.DataFrame
+        backend : Backend
+            Any backend with the ``records`` capability (spark, databricks, pandas).
         """
-        # Refuse before any HTTP call if there is no Spark to build the frame.
-        spark_of(backend, "rest_api", error=SourceReadError)
         if not cfg.get("url"):
             raise SourceReadError(
                 "RestApiReader requires 'url' in config.",
                 context={"Format": "rest_api"},
                 hint="Set url: 'https://api.example.com/...' in your input config.",
             )
+        # Refuse before any HTTP call: a backend that cannot hold records, or a
+        # schema type no backend knows.
+        rest_http.check_backend(backend, SourceReadError)
+        schema_cfg = cfg.get("schema")
+        schema = _schema_ddl(schema_cfg) if schema_cfg else None
 
         session = _build_session(cfg)
         all_records: List[Dict[str, Any]] = []
@@ -490,29 +364,15 @@ class RestApiReader(Reader):
         if not all_records:
             log.warning("RestApiReader: no records returned from %s", cfg["url"])
 
-        return self._to_dataframe(all_records, cfg, backend)
-
-    def _to_dataframe(
-        self,
-        records: List[Dict[str, Any]],
-        cfg: Dict[str, Any],
-        backend,
-    ) -> Any:
-        """Convert a list of record dicts to a Spark DataFrame.
-
-        Uses an explicit schema if cfg['schema'] is provided; otherwise infers.
-        """
-        spark = backend.spark
-        schema_cfg = cfg.get("schema")
-
-        if schema_cfg:
-            schema = _build_schema(schema_cfg)
-            return spark.createDataFrame(records, schema=schema)
-
-        if not records:
-            # Return empty DataFrame with a single string column as placeholder
-            from pyspark.sql.types import StructType
-
-            return spark.createDataFrame([], StructType([]))
-
-        return spark.createDataFrame(records)
+        try:
+            return backend.frame_from_records(all_records, schema=schema)
+        except (TypeError, ValueError) as exc:
+            # Spark's own type errors (PySparkTypeError is a TypeError,
+            # PySparkValueError a ValueError) and the pandas backend's port of them.
+            raise SourceReadError(
+                f"The records from {cfg['url']} do not fit one table: {exc}",
+                context={"Format": "rest_api", "Records": len(all_records)},
+                hint="A field must hold one kind of value in every record, and not be "
+                "null in all of them. Declare it under schema: as string to take any "
+                "value as text, or fix the field in the API's response.",
+            ) from exc

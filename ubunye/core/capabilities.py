@@ -11,10 +11,13 @@ The core never assumes what an engine can do. It asks.
 Feature names a backend can declare (connectors refer to the same names):
 
 ``spark``
-    A live SparkSession (``backend.spark``). The hive, jdbc, delta, unity,
-    binary and rest_api connectors need it.
+    A live SparkSession (``backend.spark``). The hive, jdbc, delta, unity and
+    binary connectors need it.
 ``path_io``
     ``read_frame`` / ``execute_write`` on paths, which the ``s3`` connector uses.
+``records``
+    ``frame_from_records`` / ``iter_records``: a frame from a list of dicts, and
+    each row of a frame as a dict. The ``rest_api`` connector uses it.
 ``partitioned_writes``
     Honours ``partitionBy`` on a path write.
 ``remote_paths``
@@ -37,6 +40,7 @@ if TYPE_CHECKING:
 
 SPARK = "spark"
 PATH_IO = "path_io"
+RECORDS = "records"
 PARTITIONED_WRITES = "partitioned_writes"
 REMOTE_PATHS = "remote_paths"
 CATALOG = "catalog"

@@ -7,7 +7,18 @@ transforms, and user-defined tasks.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, FrozenSet, List, Optional, Sequence, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Dict,
+    FrozenSet,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 from ubunye.core.capabilities import SPARK, Capabilities
 
@@ -176,6 +187,30 @@ class Backend(ABC):
         raise NotImplementedError(
             f"{type(self).__name__} does not implement execute_write(); it cannot "
             "serve a path-based writer like 's3'."
+        )
+
+    # ---------------------------------------------------------------- #
+    # Records (the ``records`` capability, F-015)
+    #
+    # A connector that gets its data as Python records (``rest_api``: parsed
+    # JSON) hands them to the backend, which builds its own frame, typed as
+    # Spark's ``createDataFrame`` types them. The writer side asks for each row
+    # back as a dict. Same concrete-and-raising shape as the path seam above.
+    # ---------------------------------------------------------------- #
+    def frame_from_records(
+        self, records: List[Dict[str, Any]], *, schema: Optional[str] = None
+    ) -> Any:
+        """A frame from a list of dicts; ``schema`` is a Spark DDL string."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement frame_from_records(); it cannot "
+            "serve a records connector like 'rest_api'."
+        )
+
+    def iter_records(self, frame: Any) -> Iterator[Dict[str, Any]]:
+        """Each row of ``frame`` as a plain dict (nested values as dicts and lists)."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement iter_records(); it cannot "
+            "serve a records connector like 'rest_api'."
         )
 
 

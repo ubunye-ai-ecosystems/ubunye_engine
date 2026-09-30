@@ -57,6 +57,21 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **The REST connector runs on the pandas backend (F-015).** `plan` and `run` with
+  `--backend pandas` refused `format: rest_api` ("needs spark"), so a laptop could not
+  pull JSON from an API. The HTTP side (session, auth, pagination, retries, rate limit)
+  is now one module shared by the reader and the writer on every backend
+  (`ubunye/plugins/rest_http.py`). Only the last step is the backend's, through two new
+  `Backend` methods: `frame_from_records` (records to a frame) and `iter_records` (a
+  frame's rows as records), behind a new capability, `records`, which the spark,
+  databricks and pandas backends declare and the connector now requires instead of
+  `spark`. On pandas the records are typed by a port of Spark's own `createDataFrame`
+  rules (`ubunye/adapters/pandas_records.py`), so both backends give the same columns,
+  order, types and values, including a map's entry order (Spark's is Java's HashMap
+  order), and refuse the same records (a field that is `1` in one record and `2.5` in
+  another, or null in all of them). Checked against live Spark 4 and 3.5 in
+  `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
+  both.
 - **On Spark, the run record hashes the rows that were written (F-040), and a checked
   or recorded output is computed once (F-039, F-043).** The record hashed each output
   at task end by computing it again, so anything that differs per computation (a

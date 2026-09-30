@@ -9,13 +9,14 @@ Spark backend implementation for Ubunye.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence
 
 from ubunye.adapters.spark import frame_io
 from ubunye.core.capabilities import (
     CATALOG,
     PARTITIONED_WRITES,
     PATH_IO,
+    RECORDS,
     REMOTE_PATHS,
     SPARK,
     Capabilities,
@@ -26,7 +27,7 @@ from ubunye.core.interfaces import Backend
 #: What any Spark backend can do. File formats and write modes are "any": Spark
 #: knows its own sources, and each connector declares the modes it supports.
 SPARK_CAPABILITIES = Capabilities(
-    features=frozenset({SPARK, PATH_IO, PARTITIONED_WRITES, REMOTE_PATHS, CATALOG}),
+    features=frozenset({SPARK, PATH_IO, RECORDS, PARTITIONED_WRITES, REMOTE_PATHS, CATALOG}),
     distributed=True,
     lazy=True,
     needs_jvm=True,
@@ -250,6 +251,14 @@ class SparkBackend(Backend):
         schema: Optional[str] = None,
     ) -> "DataFramePort":
         return frame_io.read_frame(self.spark, file_format, path, options=options, schema=schema)
+
+    def frame_from_records(
+        self, records: List[Dict[str, Any]], *, schema: Optional[str] = None
+    ) -> Any:
+        return frame_io.frame_from_records(self.spark, records, schema=schema)
+
+    def iter_records(self, frame: Any) -> Iterator[Dict[str, Any]]:
+        return frame_io.iter_records(frame)
 
     def execute_write(
         self,

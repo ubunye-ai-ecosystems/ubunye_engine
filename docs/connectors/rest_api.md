@@ -3,6 +3,10 @@
 Reads from and writes to HTTP REST endpoints.
 Supports pagination, authentication, rate limiting, retries, and optional schema enforcement.
 
+It runs on every shipped backend: `spark`, `databricks` and `pandas`. On a laptop,
+`--backend pandas` pulls from an API with no Spark and no Java. Both backends give
+the same rows and types (see [Types](#types)).
+
 ---
 
 ## Read
@@ -55,7 +59,7 @@ CONFIG:
         - name: customer_id
           type: string
         - name: created_at
-          type: timestamp
+          type: string          # text; convert it in the transform
         - name: email
           type: string
 ```
@@ -160,10 +164,45 @@ Without `root_key`, the entire response body is treated as the record (or list o
 
 ---
 
+## Types
+
+Without a `schema`, the types come from every record, by Spark's own rules
+(`createDataFrame`). The pandas backend follows the same rules, so a task gives the
+same frame on both:
+
+| JSON value | Column type |
+|---|---|
+| whole number | `bigint` |
+| decimal number | `double` |
+| text | `string` |
+| `true` / `false` | `boolean` |
+| object | `map<string, ...>` (not a struct) |
+| array | `array<...>` |
+
+- Columns are in name order. A key that first appears in a later record goes last.
+- A field that is a number in some records and text in others is `string`: `7`
+  becomes `"7"`, `true` becomes `"true"`.
+- A map keeps its entries in Spark's order, which is Java's HashMap order, not the
+  order in the JSON. On pandas a map cell is a list of `(key, value)` pairs;
+  `dict(cell)` makes it a dict.
+
+Spark refuses some records, and so does pandas, with the same error:
+
+- a field that is a whole number in one record and a decimal in another
+  (`CANNOT_MERGE_TYPE`);
+- a field that is null in every record (`CANNOT_DETERMINE_TYPE`);
+- a field that is an object in one record and a number in another.
+
+For any of these, declare the field under `schema`. `string` takes any value, as text.
+
+Known differences, on values where Spark 3.5 and Spark 4 also disagree: Spark 3.5
+writes a large or tiny decimal number in a text column the Java way (`1.0E7`), where
+Spark 4 and pandas write `10000000.0`.
+
 ## Schema
 
-If omitted, the connector infers schema from the first page of records.
-For production pipelines, declare the schema explicitly for stability:
+Declare the schema for production pipelines. Only the declared columns are kept,
+in the declared order, and a missing field is null:
 
 ```yaml
 schema:
@@ -174,10 +213,15 @@ schema:
   - name: score
     type: double
   - name: created_at
-    type: timestamp
+    type: string          # text; convert it in the transform
 ```
 
 Supported types: `string`, `integer`, `long`, `float`, `double`, `boolean`, `timestamp`, `date`, `binary`.
+
+A value must already have the column's kind, as Spark checks it: a `double` column
+refuses `1` (write `1.0`, or declare `long`), and `timestamp`, `date` and `binary`
+columns refuse text, which is all JSON can send. Read such a field as `string` and
+convert it in the transform.
 
 ---
 
@@ -202,7 +246,9 @@ CONFIG:
         max_retries: 3
 ```
 
-The writer batches rows into JSON payloads of `batch_size` records and POSTs each batch.
+The writer batches rows into JSON payloads of `batch_size` records and POSTs each batch
+as `{"records": [...]}`. A map column is sent as an object. Spark and pandas send the
+same payloads.
 
 ---
 
