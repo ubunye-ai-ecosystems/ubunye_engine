@@ -201,12 +201,13 @@ def infer_schema(rows: List[Dict[str, Any]]) -> Tuple[Tuple[str, Any], ...]:
     return canon[1] if canon is not None else ()
 
 
-def column(values: List[Any], kind: Tuple[Any, ...]) -> Any:
+def column(values: List[Any], kind: Tuple[Any, ...], raws: Any = None) -> Any:
     """One column of parsed values as an Arrow array of ``kind``, converted as Spark reads it.
 
     Arrow takes most columns as they are; a column that needs Spark's conversion
     (a number in a text column, an empty string in a number column) is
-    converted value by value.
+    converted value by value. ``raws``, when given, is a function that returns
+    each value's source text (see :func:`raw_tree`), for the text columns.
     """
     import pyarrow as pa
 
@@ -214,7 +215,60 @@ def column(values: List[Any], kind: Tuple[Any, ...]) -> Any:
     try:
         return pa.array(values, type=target)
     except (pa.ArrowInvalid, pa.ArrowTypeError, OverflowError, TypeError, ValueError):
-        return pa.array([convert(v, kind) for v in values], type=target)
+        sources = raws() if raws is not None else [None] * len(values)
+        return pa.array([convert(v, kind, r) for v, r in zip(values, sources)], type=target)
+
+
+def raw_tree(text: str, start: int = 0) -> Tuple[Any, int]:
+    """The source text of every value in one JSON document: (tree, end).
+
+    An object gives ``{key: (text, tree)}``, an array ``[(text, tree), ...]``, and
+    anything else None. Spark 4 reads a JSON lines value that lands in a text
+    column as its exact source text (``1.50``, ``1e2``, ``{ "k" : 1 }`` with its
+    spaces and escapes as written); this is how the pandas reader finds that text.
+    """
+    import json.decoder
+
+    decoder = json.decoder.JSONDecoder()
+    ws = json.decoder.WHITESPACE
+
+    def skip(i: int) -> int:
+        return ws.match(text, i).end()
+
+    def value(i: int) -> Tuple[Any, int]:
+        i = skip(i)
+        if text.startswith("{", i):
+            members: Dict[str, Any] = {}
+            i = skip(i + 1)
+            if text.startswith("}", i):
+                return members, i + 1
+            while True:
+                key, i = json.decoder.scanstring(text, skip(i) + 1)
+                i = skip(skip(i) + 1)  # past the colon
+                sub, end = value(i)
+                members[key] = (text[i:end], sub)
+                i = skip(end)
+                if text.startswith("}", i):
+                    return members, i + 1
+                i += 1  # the comma
+        if text.startswith("[", i):
+            items: List[Any] = []
+            i = skip(i + 1)
+            if text.startswith("]", i):
+                return items, i + 1
+            while True:
+                i = skip(i)
+                sub, end = value(i)
+                items.append((text[i:end], sub))
+                i = skip(end)
+                if text.startswith("]", i):
+                    return items, i + 1
+                i += 1
+        _, end = decoder.raw_decode(text, i)
+        return None, end
+
+    tree, end = value(start)
+    return tree, end
 
 
 def arrow_type(kind: Tuple[Any, ...]) -> Any:
@@ -290,13 +344,21 @@ def _jackson_string(text: str) -> str:
     return "".join(out)
 
 
-def convert(value: Any, kind: Tuple[Any, ...]) -> Any:
-    """One parsed value as the Python value Arrow takes for ``kind`` (JacksonParser)."""
+def convert(value: Any, kind: Tuple[Any, ...], raw: Any = None) -> Any:
+    """One parsed value as the Python value Arrow takes for ``kind`` (JacksonParser).
+
+    ``raw`` is the value's ``(source text, tree)`` from :func:`raw_tree` when the
+    source text is known: a value that is not a string, read into a text column,
+    is then that exact text (Spark 4, JSON lines); without it, the text Jackson
+    writes back (Spark 4 multiLine, and Spark 3.5).
+    """
     if value is None:
         return None
     tag = kind[0]
     if tag == "string":
-        return value if isinstance(value, str) else jackson_text(value)
+        if isinstance(value, str):
+            return value
+        return raw[0] if raw is not None else jackson_text(value)
     if isinstance(value, str) and value == "":
         # Spark cannot read "" as a number or a struct; in PERMISSIVE mode the
         # field is null and the rest of the record is kept.
@@ -309,8 +371,14 @@ def convert(value: Any, kind: Tuple[Any, ...]) -> Any:
         return bool(value)
     if tag == "decimal":
         return decimal.Decimal(value) if isinstance(value, int) else decimal.Decimal(repr(value))
+    sub = raw[1] if raw is not None else None
     if tag == "array":
-        return [convert(v, kind[1]) for v in value]
+        return [
+            convert(v, kind[1], sub[i] if sub is not None else None) for i, v in enumerate(value)
+        ]
     if tag == "struct":
-        return {name: convert(value.get(name), sub) for name, sub in kind[1]}
+        return {
+            name: convert(value.get(name), k, sub.get(name) if sub is not None else None)
+            for name, k in kind[1]
+        }
     raise ValueError(f"cannot convert to {kind}")

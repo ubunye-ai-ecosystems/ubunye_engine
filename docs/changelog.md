@@ -107,6 +107,15 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A JSON value read into a text column keeps its source text, as Spark 4 reads it
+  (F-084, E-09).** Live Spark 4.2 keeps the exact text of a number or object that
+  lands in a text column when it reads JSON lines (`1.50` stays `1.50`, `1e2` stays
+  `1e2`, `{ "k" : 1 }` keeps its spaces and escapes); with `multiLine` or an
+  `encoding` option it writes the value back through Jackson (`1.5`, `100.0`,
+  compact, upper case hex). The pandas backend did the second always; it now does
+  what Spark 4 does in each case. Spark 3.5 writes every such value back through
+  Jackson; the pandas backend cannot tell which Spark a task will meet, so it follows
+  Spark 4.
 - **Text holding a control character hashes as on Spark (F-083, E-09).** Spark's
   `to_json` (Jackson) writes a control character that has no short escape with upper
   case hex (`\u000B`); the pandas side wrote Python's lower case (`\u000b`), so a

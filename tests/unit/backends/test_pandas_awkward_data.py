@@ -98,14 +98,24 @@ class TestJsonInference:
         inner = pa.struct([("c", pa.int64()), ("y", pa.int64())])
         assert _types(frame)["o"] == pa.struct([("a", pa.int64()), ("b", pa.int64()), ("z", inner)])
 
-    def test_a_number_and_text_in_one_field_is_text(self, tmp_path):
-        frame = _read_bytes(tmp_path, "json", b'{"a":1}\n{"a":"x"}\n{"a":1.50}\n{"a":true}\n')
+    def test_a_number_and_text_in_one_field_is_its_source_text(self, tmp_path):
+        # Live Spark 4.2 (CI, E-09): JSON lines keep a value's exact source text.
+        data = b'{"a":1}\n{"a":"x"}\n{"a":1.50}\n{"a":true}\n{"a":1e2}\n'
+        frame = _read_bytes(tmp_path, "json", data)
         assert _types(frame)["a"] == pa.string()
-        assert frame.native["a"].tolist() == ["1", "x", "1.5", "true"]
+        assert frame.native["a"].tolist() == ["1", "x", "1.50", "true", "1e2"]
 
-    def test_an_object_and_text_in_one_field_keeps_the_objects_json(self, tmp_path):
-        frame = _read_bytes(tmp_path, "json", b'{"a":{"k":1,"n":null,"s":"q\\u000b"}}\n{"a":"x"}\n')
-        assert frame.native["a"].tolist() == ['{"k":1,"n":null,"s":"q\\u000B"}', "x"]
+    def test_an_object_and_text_in_one_field_keeps_the_objects_source(self, tmp_path):
+        data = b'{"a":{ "k" : 1,"n":null,"s":"q\\u000b"}}\n{"a":"x"}\n'
+        frame = _read_bytes(tmp_path, "json", data)
+        assert frame.native["a"].tolist() == ['{ "k" : 1,"n":null,"s":"q\\u000b"}', "x"]
+
+    def test_multiline_writes_the_value_back_as_jackson_does(self, tmp_path):
+        # Spark 4.2 multiLine (a stream parser) and Spark 3.5 copy the value
+        # through Jackson: 1.5, upper case hex, no spaces.
+        data = b'[{"a":{ "k" : 1.50,"s":"q\\u000b"}}, {"a":"x"}, {"a":1e2}]'
+        frame = _read_bytes(tmp_path, "json", data, options={"multiLine": "true"})
+        assert frame.native["a"].tolist() == ['{"k":1.5,"s":"q\\u000B"}', "x", "100.0"]
 
     def test_arrays_with_mixed_elements_are_arrays_of_text(self, tmp_path):
         frame = _read_bytes(tmp_path, "json", b'{"a":[1,"x",{"q":1},[2]]}\n')

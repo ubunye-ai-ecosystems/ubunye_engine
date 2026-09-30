@@ -307,9 +307,21 @@ JSON_CASES = {
 }
 
 
+#: Cases where a value that is not a string lands in a text column. Spark 4 keeps
+#: its exact source text (JSON lines); Spark 3.5 writes it back through Jackson.
+#: The pandas backend follows Spark 4 (F-084).
+SOURCE_TEXT_CASES = {"number-and-text", "object-and-text"}
+
+
+def _spark_major(spark) -> int:
+    return int(spark.version.split(".")[0])
+
+
 @pytest.mark.parametrize("name", sorted(JSON_CASES))
 def test_json_inference(spark, pandas_backend, tmp_path, name):
     """F-064: JSON typed as Spark's JsonInferSchema types it."""
+    if name in SOURCE_TEXT_CASES and _spark_major(spark) < 4:
+        pytest.skip("Spark 3.5 writes the value back through Jackson; pandas follows Spark 4")
     path = _file(tmp_path, "in.json", JSON_CASES[name].encode("utf-8"))
     assert_same(*_read_both(spark, pandas_backend, "json", path))
 
@@ -722,6 +734,8 @@ E2E_SHAPES = [
 @pytest.mark.parametrize("shape", E2E_SHAPES)
 def test_the_same_task_gives_the_same_run_record(e2e, shape):
     """E-09: rows, schema hash and rows-v1 digest match, input and output."""
+    if shape == "conflicting-json" and _spark_major(SparkSession.getActiveSession()) < 4:
+        pytest.skip("Spark 3.5 writes a number in a text column back through Jackson (F-084)")
     by_backend = e2e[shape]
     assert set(by_backend) == {"databricks", "pandas"}
     spark_run, pandas_run = by_backend["databricks"], by_backend["pandas"]

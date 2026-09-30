@@ -631,6 +631,11 @@ def _read_json(
 
     encoding = str(opts.get("encoding", "utf-8"))
     rows: List[Dict[str, Any]] = []
+    # Spark 4 reads a JSON lines value that lands in a text column as its exact
+    # source text; only for lines read as bytes (no encoding option). Each row's
+    # line (and its place in a line holding an array) is kept to find that text.
+    exact = not _truthy(opts.get("multiline", "false")) and "encoding" not in opts
+    sources: List[Any] = []
     for f in files:
         before = len(rows)
         with open(f, encoding=encoding) as handle:
@@ -649,19 +654,45 @@ def _read_json(
                             raise
                         continue  # DROPMALFORMED: skip the record, as Spark does
                     # A line holding an array of objects is one row per object.
-                    rows.extend(record if isinstance(record, list) else [record])
+                    if isinstance(record, list):
+                        rows.extend(record)
+                        sources.extend((line, k) for k in range(len(record)))
+                    else:
+                        rows.append(record)
+                        sources.append((line, None))
         if counts is not None:
             counts.append(len(rows) - before)
     # Parsed with the json module, not pyarrow's reader: pyarrow turns ISO text
     # into timestamps and keeps key order, and Spark does neither. Typed by a port
     # of Spark's JSON inference (F-064).
+    trees: List[Any] = []
+
+    def raws(name: str) -> Any:
+        if not exact:
+            return None
+
+        def of() -> List[Any]:
+            if not trees:
+                for line, k in sources:
+                    tree = spark_json.raw_tree(line)[0]
+                    trees.append(tree[k][1] if k is not None else tree)
+            return [t.get(name) if isinstance(t, dict) else None for t in trees]
+
+        return of
+
     if schema is not None:
         columns = {}
         for f in schema:
             values = [r.get(f.name) for r in rows]
-            if pa.types.is_string(f.type):
+            if pa.types.is_string(f.type) and any(
+                v is not None and not isinstance(v, str) for v in values
+            ):
                 # Spark keeps the JSON text of a value that is not a string.
-                values = [spark_json.convert(v, spark_json.STRING) for v in values]
+                found = raws(f.name)
+                texts = found() if found is not None else [None] * len(values)
+                values = [
+                    spark_json.convert(v, spark_json.STRING, t) for v, t in zip(values, texts)
+                ]
             columns[f.name] = pa.array(values)
         table = pa.table(columns) if columns else no_columns(len(rows))
         return _instants(_apply_schema(table, schema, timezone), timezone)
@@ -671,7 +702,10 @@ def _read_json(
         # record, with no columns. pa.table({}) has none (F-065).
         return no_columns(len(rows))
     return pa.table(
-        {name: spark_json.column([r.get(name) for r in rows], kind) for name, kind in fields}
+        {
+            name: spark_json.column([r.get(name) for r in rows], kind, raws(name))
+            for name, kind in fields
+        }
     )
 
 

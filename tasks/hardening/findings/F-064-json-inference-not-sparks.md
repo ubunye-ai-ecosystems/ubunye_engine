@@ -53,3 +53,9 @@ before, 11 pass after). Integration (CI): `test_json_inference` (11 cases, among
 depth 30 nesting and per-row keys), `test_json_multiline_document`,
 `test_json_empty_string_in_a_number_field` (Spark's partial-result rule; the one case
 this port assumes rather than reads from source).
+
+## After CI on live Spark (E-09, 2026-09-30)
+Nine of the eleven JSON cases matched on Spark 4.2 and all on Spark 3.5. The two that
+did not on Spark 4.2 (`number-and-text`, `object-and-text`) are F-084: Spark 4 keeps
+the source text of a value read into a text column. `test_json_empty_string_in_a_number_field`
+(the assumed partial-result rule) passed on both.
