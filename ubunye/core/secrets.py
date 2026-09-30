@@ -459,5 +459,21 @@ def error_text(
     variables: Optional[Dict[str, Any]] = None,
     config: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Why a run failed, safe to record: the error's type and message, secrets masked."""
-    return mask_text(f"{type(exc).__name__}: {exc}", known_secrets(variables, config))
+    """Why a run failed, safe to record: the error's type and message, secrets masked,
+    at most :data:`MAX_ERROR_CHARS` characters and then ``... (N more characters)``.
+
+    Masked first and cut after, so the cut cannot leave half a secret showing. Only
+    a head of the text is masked (16 times what is kept): a 5 MB message costs no
+    more than a 64 KB one.
+    """
+    text = f"{type(exc).__name__}: {exc}"
+    window = text[: MAX_ERROR_CHARS * 16]
+    masked = mask_text(window, known_secrets(variables, config))
+    more = len(masked) - MAX_ERROR_CHARS + (len(text) - len(window))
+    if more > 0:
+        return masked[:MAX_ERROR_CHARS] + f" ... ({more} more characters)"
+    return masked
+
+
+#: How much of a failed run's error the record keeps and OpenLineage sends.
+MAX_ERROR_CHARS = 4096

@@ -131,6 +131,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   (F-050) calls it too, so there is one implementation. The text is masked before any
   monitor receives it. Values shorter than 4 characters are not masked word for word;
   see [Secrets](config/secrets.md#a-failed-runs-error).
+- **A failed run's error is kept to about 4 KB (F-054, skeptic review).** A transform
+  that raised a 5 MB message wrote a 5 MB run record and would have sent 5 MB to
+  OpenLineage. The record (and OpenLineage's `errorMessage`) keeps the first 4,096
+  characters and says `... (N more characters)`; masking happens before the cut.
 - **A quarantined row's reasons read the same on pandas and Spark (F-052).** On
   pandas, a row that broke only the first of two quarantine rules got
   `_ubunye_failed_rules` = `price_between,` (a stray comma); Spark wrote

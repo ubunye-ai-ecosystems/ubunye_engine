@@ -69,3 +69,9 @@ and `sig`), and `Authorization` / `Proxy-Authorization` / `X-Api-Key` header val
 
 Tests: `tests/unit/core/test_mask_text.py` (27; every row above, on `mask_text` and
 through a real run). Before the fix the file does not import (`mask_text` missing).
+
+Also from the review: a 5,000,000 character message made a 5,002,957 byte record.
+The error is now cut to 4,096 characters plus `... (N more characters)` (masked
+first, so a cut cannot show half a secret); the probe's record is now a few KB.
+Tests: `tests/unit/lineage/test_record_error.py::test_a_huge_error_is_cut_to_about_4_kb_in_the_record_and_openlineage`
+and `::test_the_cut_never_shows_half_a_secret` (both fail before, pass after).

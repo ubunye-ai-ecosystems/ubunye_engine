@@ -97,6 +97,10 @@ its logs and errors). It masks:
   `;password=`), and the value of an `Authorization`, `Proxy-Authorization` or
   `X-Api-Key` header.
 
+The error is kept to its first 4,096 characters, then `... (N more characters)`: a
+5 MB message made a 5 MB record. It is masked before it is cut, so the cut cannot
+leave half a secret showing.
+
 Limits: a value shorter than 4 characters is not masked word for word (it would
 shred the text), so a 3 character password in a message stays. An environment
 variable with a secret-looking name is masked even when it is not one (a path in

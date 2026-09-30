@@ -90,3 +90,42 @@ def test_a_successful_run_has_no_error(tmp_path):
     store = FileSystemLineageStore(str(tmp_path / ".ubunye" / "lineage"))
     (record,) = store.list_runs("uc/pkg/t")
     assert record.status == "success" and record.error is None
+
+
+def test_a_huge_error_is_cut_to_about_4_kb_in_the_record_and_openlineage(tmp_path):
+    """A 5 MB message made a 5 MB record (the skeptic's p1 'size' case)."""
+    from ubunye.core.secrets import MAX_ERROR_CHARS
+    from ubunye.lineage.openlineage import events
+
+    task = _task(tmp_path)
+    (task / "transformations.py").write_text(
+        "from ubunye.core.interfaces import Task\n\n\n"
+        "class Big(Task):\n    def transform(self, sources):\n"
+        '        raise RuntimeError("x" * 5_000_000)\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(RuntimeError):
+        ubunye.run_task(str(task), backend="pandas", lineage=True)
+
+    store = FileSystemLineageStore(str(tmp_path / ".ubunye" / "lineage"))
+    (record,) = store.list_runs("uc/pkg/t")
+    head = "RuntimeError: "
+    full = len(head) + 5_000_000
+    assert record.error == (
+        head
+        + "x" * (MAX_ERROR_CHARS - len(head))
+        + f" ... ({full - MAX_ERROR_CHARS} more characters)"
+    )
+    (path,) = (tmp_path / ".ubunye" / "lineage").rglob("*.json")
+    assert path.stat().st_size < 64_000
+    fail = events(record)[-1]
+    assert fail["run"]["facets"]["errorMessage"]["message"] == record.error
+
+
+def test_the_cut_never_shows_half_a_secret():
+    from ubunye.core.secrets import MAX_ERROR_CHARS, error_text
+
+    secret = "HalfShown-Secret-987"
+    filler = "y" * (MAX_ERROR_CHARS - len("ValueError: ") - 5)
+    text = error_text(ValueError(filler + secret + " tail"), {"db_password": secret})
+    assert "Half" not in text and text.endswith("more characters)")
