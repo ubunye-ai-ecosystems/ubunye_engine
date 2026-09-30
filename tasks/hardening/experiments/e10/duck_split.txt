@@ -1,0 +1,9 @@
+﻿threads=1 scan only: sum(length(l))          0.040 s per 1M rows
+threads=1 sha256 only: count(sha256(l))      0.929 s per 1M rows
+threads=1 sha256 + lanes (candidate)         1.395 s per 1M rows
+threads=4 scan only: sum(length(l))          0.040 s per 1M rows
+threads=4 sha256 only: count(sha256(l))      0.948 s per 1M rows
+threads=4 sha256 + lanes (candidate)         1.419 s per 1M rows
+threads=8 scan only: sum(length(l))          0.050 s per 1M rows
+threads=8 sha256 only: count(sha256(l))      0.955 s per 1M rows
+threads=8 sha256 + lanes (candidate)         1.385 s per 1M rows

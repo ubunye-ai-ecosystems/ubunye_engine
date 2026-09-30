@@ -1,0 +1,8 @@
+{"backend": "pandas", "rows": 1000000, "plain": 0.78, "ubunye": 1.13, "lineage": 4.42, "hash_in": 1.58, "hash_out": 1.7, "hash_total": 3.29, "ratio": 5.67, "ratio_without_input_hash": 3.64}
+{"backend": "pandas", "rows": 20000000, "plain": 6.04, "ubunye": 6.81, "lineage": 39.12, "hash_in": 15.28, "hash_out": 17.02, "hash_total": 32.27, "ratio": 6.48, "ratio_without_input_hash": 3.95}
+{"backend": "pandas", "rows": 50000000, "plain": 18.01, "ubunye": 16.71, "lineage": 88.25, "hash_in": 34.29, "hash_out": 37.63, "hash_total": 71.92, "ratio": 4.9, "ratio_without_input_hash": 3.0}
+{"backend": "pandas", "rows": 5000000, "plain": 1.88, "ubunye": 2.32, "lineage": 11.93, "hash_in": 4.59, "hash_out": 5.01, "hash_total": 9.6, "ratio": 6.35, "ratio_without_input_hash": 3.9}
+{"backend": "spark", "rows": 1000000, "plain": 12.53, "ubunye": 12.74, "lineage": 20.4, "hash_in": 3.27, "hash_out": 2.63, "hash_total": 5.97, "ratio": 1.63, "ratio_without_input_hash": 1.37}
+{"backend": "spark", "rows": 20000000, "plain": 16.83, "ubunye": 16.48, "lineage": 48.07, "hash_in": 12.51, "hash_out": 12.81, "hash_total": 25.57, "ratio": 2.86, "ratio_without_input_hash": 2.11}
+{"backend": "spark", "rows": 50000000, "plain": 35.02, "ubunye": 35.76, "lineage": 132.37, "hash_in": 38.93, "hash_out": 41.23, "hash_total": 80.16, "ratio": 3.78, "ratio_without_input_hash": 2.67}
+{"backend": "spark", "rows": 5000000, "plain": 16.59, "ubunye": 15.29, "lineage": 31.91, "hash_in": 6.76, "hash_out": 6.03, "hash_total": 12.81, "ratio": 1.92, "ratio_without_input_hash": 1.52}
