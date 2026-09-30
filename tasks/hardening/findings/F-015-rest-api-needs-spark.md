@@ -142,3 +142,7 @@ fixed in its own commit on this branch.
    `test_whole_numbers_in_a_double_column_read_as_decimals` (fails before, passes
    after), `test_a_whole_number_a_double_cannot_hold_is_still_refused`, and the
    integration test `test_whole_numbers_in_a_double_column_read_the_same` (CI).
+8. **The REST connector's own tests never ran in CI.** `tests/test_rest_api_plugin.py`
+   (session, auth, retries, pagination, writer batches: 24 tests) sat outside
+   `tests/unit`, and CI runs only `tests/unit`. Moved to
+   `tests/unit/connectors/test_rest_api_plugin.py`; 24 pass there.
