@@ -1,7 +1,7 @@
 """Connectors that need Spark say so on a backend without it.
 
-hive, jdbc, delta, unity, binary and rest_api build on a SparkSession. On the
-pandas backend they must fail before doing any work (no HTTP call, no JDBC
+hive, jdbc, delta, unity and binary build on a SparkSession. On the
+pandas backend they must fail before doing any work (no JDBC
 connection), with a message that names the connector and the way out, not a
 stray ``AttributeError: 'PandasBackend' object has no attribute 'spark'``.
 """
@@ -17,7 +17,6 @@ from ubunye.plugins.readers.binary import BinaryReader
 from ubunye.plugins.readers.delta import DeltaReader
 from ubunye.plugins.readers.hive import HiveReader
 from ubunye.plugins.readers.jdbc import JdbcReader
-from ubunye.plugins.readers.rest_api import RestApiReader
 from ubunye.plugins.readers.unity import UnityTableReader
 from ubunye.plugins.writers.delta import DeltaWriter
 from ubunye.plugins.writers.hive import HiveWriter
@@ -35,7 +34,6 @@ READERS = [
     ("delta", DeltaReader, {"path": "/x"}),
     ("hive", HiveReader, {"db_name": "d", "tbl_name": "t"}),
     ("jdbc", JdbcReader, {"url": "jdbc:x", "table": "t"}),
-    ("rest_api", RestApiReader, {"url": "https://example.invalid/api"}),
     ("unity", UnityTableReader, {"table": "c.s.t"}),
 ]
 WRITERS = [

@@ -40,6 +40,13 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   taken when inputs are not hashed; a few files are asked one by one (0.005 s for one
   file of a 10,000 file folder, was 2.6 s); and taking a version stops after
   `UBUNYE_SOURCE_VERSION_TIMEOUT` seconds (30).
+- **The run record's hash treats a map as unordered, and writes its null values
+  (ADR 006).** Every map's entries are sorted by key before the row's line is
+  hashed, on Spark (in the expression, only for columns that hold a map) and on
+  pandas, recursively. A null map value is written as `null`, as Spark's `to_json`
+  writes it; the pandas side left it out, so a map column with a null value hashed
+  differently on the two engines. **Behaviour change:** digests of tables with map
+  columns change. Tables without maps keep their digests.
 - **A Spark run record's hash takes about 45% less time** (F-041). The per row SHA-256
   lanes are summed as 32 bit halves in `long` instead of as decimals; the digest is
   the same. A table past about 2.1 billion rows falls back to the decimal sums.
@@ -98,6 +105,71 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   note, a dead run's lease left beside it and a dead run's record are read or the
   run is refused, naming the file. A damaged finished note is refused too. A run
   whose own lease cannot be read stops after one 2 second wait, not five.
+- **The REST connector runs on the pandas backend (F-015).** `plan` and `run` with
+  `--backend pandas` refused `format: rest_api` ("needs spark"), so a laptop could not
+  pull JSON from an API. The HTTP side (session, auth, pagination, retries, rate limit)
+  is now one module shared by the reader and the writer on every backend
+  (`ubunye/plugins/rest_http.py`). Only the last step is the backend's, through two new
+  `Backend` methods: `frame_from_records` (records to a frame) and `iter_records` (a
+  frame's rows as records), behind a new capability, `records`, which the spark,
+  databricks and pandas backends declare and the connector now requires instead of
+  `spark`. On pandas the records are typed by a port of Spark's own `createDataFrame`
+  rules (`ubunye/adapters/pandas_records.py`), so both backends give the same columns,
+  order, types and values, and refuse the same records (a field that is `1` in one
+  record and `2.5` in another, or null in all of them). A map's entry order is not
+  promised: Spark's is not stable (it changed between Java 11 and Java 21, and
+  Spark Connect keeps the JSON's), so pandas keeps the JSON's and the parity tests
+  compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
+  `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
+  both.
+- **The REST writer sends NaN, timestamps, dates, decimals and binary (F-051).** It
+  crashed on the first such row (requests refuses NaN and cannot encode a datetime
+  or a Decimal), after earlier batches were posted. Now NaN and the infinities are
+  `null`, an instant is ISO 8601 UTC text with `Z`, `timestamp_ntz` has no offset, a
+  date is `yyyy-mm-dd`, a decimal is its exact text as a string, binary is base64,
+  the same from Spark and pandas (Spark's naive local timestamps are made UTC
+  first). Each batch is encoded whole before any of it is sent, so a row that cannot
+  be sent stops the write with its row and field named and none of its batch
+  posted. **Behaviour change** for Spark users whose writes used to fail.
+- **Security: a REST API key no longer appears in logs or errors (F-050).** With
+  `api_key_query` the key is in the URL, and the writer's error log, the reader's
+  `HTTPError`, a `ConnectionError` and urllib3's DEBUG request lines all carried the
+  full URL. Every secret the config sends (auth token, key, password, an
+  `Authorization` or secret-named header, a secret-named query parameter) is now
+  masked as `***` in the connector's and urllib3's log lines while it runs, and in
+  every error it raises (same exception class and `response`).
+- **The REST docs name the options the connector reads, and an unknown auth type
+  is refused (F-049).** The docs printed `auth: {type: api_key}`, `cursor_field` and
+  `link_field`; the code reads `api_key_header` / `api_key_query`,
+  `cursor_response_key` and `next_key`, and ignored an auth type it did not know, so
+  the documented API key example sent no key. The docs are fixed, the old names are
+  still read with a warning, and an unknown auth type (or `api_key` with both or
+  neither of `header` and `param`) is refused by `ubunye validate` and before any
+  request.
+- **A REST field declared `double` or `float` takes whole numbers** (F-015 review).
+  Spark's schema check refuses a Python `int` in a double column, so a price field
+  of `1` and `2.5` could not be read at all, even with a schema, on either backend.
+  The reader now turns a whole number in such a column into the same decimal number
+  before the backend sees it, when a double holds it exactly (up to 2**53); a larger
+  one is still refused. **Behaviour change** on Spark: these records used to fail.
+- **REST records with no fields are rows on pandas, as on Spark** (F-015 review).
+  `[{}, {}, {}]` gave an empty frame on pandas and three rows on Spark. A pandas
+  frame with rows and no columns now keeps its rows on the way to Arrow too, so its
+  run record counts them and the writer posts one `{}` per row.
+- **A REST field with a whole number past 64 bits is refused by name on pandas**
+  (F-015 review). It raised a bare `OverflowError`. Now it is a `SourceReadError`
+  naming the field, with the fix (declare it `string`). Spark classic stores null
+  there silently; pandas refuses on purpose, since a lost value should not pass.
+- **A plugin Spark backend keeps running the REST connector** (F-015 review). The
+  F-015 fix made rest_api require the new `records` feature, so a third party
+  backend that declared `spark` (as on 0.7) was refused, and `RestApiWriter().write`
+  with no backend (`None`) crashed. Now `spark` implies `records`, the connector
+  builds and reads records the Spark way when it has a SparkSession, and the writer
+  falls back to the frame's `toLocalIterator`, as before.
+- **The pandas backend writes a map column to JSON as Spark does** (F-015 review): as
+  an object, keeping its null values (`{"m":{"a":null,"b":"x"}}`). It wrote Arrow's
+  pairs instead (`{"m":[["a",null],["b","x"]]}`), which Spark reads back as a
+  different type. Maps inside lists and structs too.
 - **On Spark, the run record hashes the rows that were written (F-040), and a checked
   or recorded output is computed once (F-039, F-043).** The record hashed each output
   at task end by computing it again, so anything that differs per computation (a

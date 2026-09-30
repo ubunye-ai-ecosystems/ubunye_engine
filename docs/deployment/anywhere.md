@@ -142,7 +142,9 @@ file. So Spark can read what pandas wrote, and pandas can read what Spark wrote.
 - CSV is written the Spark way: no header unless `header: "true"`, text quoted
   only when it has to be, numbers such as `2.0` and `1.0E10`, timestamps such as
   `2024-01-02T03:04:05.000+02:00`.
-- JSON is one object per line, and null fields are left out.
+- JSON is one object per line, and null fields are left out. A map column is
+  written as an object and keeps its null values (`{"a":null,"b":"x"}`), as Spark
+  writes a map.
 - Parquet timestamps are stored in microseconds, which is what Spark reads.
 
 ### Partition folders

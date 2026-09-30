@@ -48,6 +48,20 @@ written by the same name on every engine:
 | `decimal(p,s)` | `decimal128(p,s)` | `decimal(p,s)` |
 | `array`, `map`, `struct` | `list`, `map`, `struct` | `list<...>`, `map<...,...>`, `struct<name:type,...>` |
 
+**Maps are unordered (clarified in 0.8, F-015 review).** A map has no entry
+order, but Spark keeps whatever order a map was built in, and that order differs
+between engines, between Spark's JVM versions and between Spark classic and
+Spark Connect. So before the line is written, every map's entries are sorted by
+key, recursively (maps inside structs, arrays and maps too). On Spark this is
+done in the expression (`map_keys`, `array_sort`, `transform`, `element_at`,
+`map_from_arrays`), and only for columns whose type holds a map, so other
+columns cost nothing. A map's null values are written as `null`, as Spark's
+`to_json` writes them; only a struct's null fields are left out. Before this, the
+pandas side dropped null map values and kept the insertion order, so a map
+column could hash differently on the two engines. **Digests of tables with map
+columns change**; digests of tables without maps do not. 0.8 is not released,
+so no published digest moves.
+
 A backend whose frames are neither Spark nor pandas is hashed from its port
 (`collect()` and `schema`), so its `schema` must give these names. The backend
 conformance suite (`ubunye.testing.backend_conformance`) checks it by requiring

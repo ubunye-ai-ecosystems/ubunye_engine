@@ -56,13 +56,51 @@ def _quoted(name: str) -> str:
     return "`" + name.replace("`", "``") + "`"
 
 
+def has_map(t: Any) -> bool:
+    """Whether a Spark type holds a map anywhere inside it."""
+    name = type(t).__name__
+    if name == "MapType":
+        return True
+    if name == "ArrayType":
+        return has_map(t.elementType)
+    if name == "StructType":
+        return any(has_map(f.dataType) for f in t.fields)
+    return False
+
+
+def sorted_maps(col: Any, t: Any) -> Any:
+    """``col`` with every map inside it rebuilt with its entries sorted by key.
+
+    A map has no order, and Spark keeps whatever order it was built in, so the
+    canonical line sorts it (ADR 006). Built by walking the type; a column with
+    no map is returned as it is, so it costs nothing. Uses only functions Spark
+    3.5 and 4 both have (``map_keys``, ``array_sort``, ``transform``,
+    ``element_at``, ``map_from_arrays``).
+    """
+    from pyspark.sql import functions as F
+
+    if not has_map(t):
+        return col
+    name = type(t).__name__
+    if name == "MapType":
+        keys = F.array_sort(F.map_keys(col))
+        values = F.transform(keys, lambda k: sorted_maps(F.element_at(col, k), t.valueType))
+        return F.map_from_arrays(keys, values)
+    if name == "ArrayType":
+        return F.transform(col, lambda x: sorted_maps(x, t.elementType))
+    fields = [sorted_maps(col.getField(f.name), f.dataType).alias(f.name) for f in t.fields]
+    return F.when(col.isNotNull(), F.struct(*fields))
+
+
 def fingerprint_spark(df: Any) -> ch.Fingerprint:
     """Fingerprint a Spark DataFrame in one distributed pass."""
     from pyspark.sql import functions as F
 
     schema = canonical_schema(df)
     names = sorted(df.columns)
-    line = F.to_json(F.struct(*[F.col(_quoted(n)) for n in names]), ch.JSON_OPTIONS)
+    types = {f.name: f.dataType for f in df.schema.fields}
+    columns = [sorted_maps(F.col(_quoted(n)), types[n]).alias(n) for n in names]
+    line = F.to_json(F.struct(*columns), ch.JSON_OPTIONS)
     digest = F.sha2(line, 256)
     try:
         rows, sums = _half_lane_sums(df, digest)

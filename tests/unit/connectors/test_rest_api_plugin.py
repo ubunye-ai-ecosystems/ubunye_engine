@@ -142,7 +142,7 @@ def test_fetch_page_retries_on_429():
         _mock_response({}, status_code=429),
         _mock_response([{"id": 1}]),
     ]
-    with patch("ubunye.plugins.readers.rest_api.time.sleep"):
+    with patch("ubunye.plugins.rest_http.time.sleep"):
         result = _fetch_page(
             session,
             "https://api.test/v1",
@@ -159,7 +159,7 @@ def test_fetch_page_retries_on_429():
 def test_fetch_page_raises_after_max_retries():
     session = MagicMock()
     session.request.return_value = _mock_response({}, status_code=429)
-    with patch("ubunye.plugins.readers.rest_api.time.sleep"):
+    with patch("ubunye.plugins.rest_http.time.sleep"):
         with pytest.raises(requests.HTTPError):
             _fetch_page(
                 session,
@@ -298,14 +298,10 @@ def test_writer_posts_in_batches():
     """250 rows with batch_size=100 should result in 3 POST calls."""
     writer = RestApiWriter()
 
-    rows = [MagicMock() for _ in range(250)]
-    for r in rows:
-        r.asDict.return_value = {"id": 1}
-
+    # The backend gives the rows back as records (iter_records, F-015).
     df = MagicMock()
-    df.toLocalIterator.return_value = iter(rows)
-
     backend = MagicMock()
+    backend.iter_records.return_value = iter([{"id": 1}] * 250)
 
     cfg = {
         "url": "https://api.test/v1/alerts",
@@ -324,12 +320,9 @@ def test_writer_posts_in_batches():
 def test_writer_raises_on_batch_failure():
     writer = RestApiWriter()
 
-    rows = [MagicMock()]
-    rows[0].asDict.return_value = {"id": 1}
     df = MagicMock()
-    df.toLocalIterator.return_value = iter(rows)
-
     backend = MagicMock()
+    backend.iter_records.return_value = iter([{"id": 1}])
     cfg = {"url": "https://api.test/v1/alerts"}
 
     with patch(
@@ -342,11 +335,11 @@ def test_writer_raises_on_batch_failure():
 
 def test_post_batch_retries_on_500():
     session = MagicMock()
-    session.post.side_effect = [
+    session.request.side_effect = [
         _mock_response({}, status_code=500),
         _mock_response({}, status_code=200),
     ]
-    with patch("ubunye.plugins.writers.rest_api.time.sleep"):
+    with patch("ubunye.plugins.rest_http.time.sleep"):
         _post_batch(
             session,
             "https://api.test/v1",
@@ -354,4 +347,4 @@ def test_post_batch_retries_on_500():
             {"retry_on": [500], "max_retries": 3},
             {},
         )
-    assert session.post.call_count == 2
+    assert session.request.call_count == 2
