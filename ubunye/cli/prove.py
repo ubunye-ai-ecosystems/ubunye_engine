@@ -94,7 +94,8 @@ def observe(
             err=True,
         )
         raise typer.Exit(code=2)
-    for one in tasks or [None]:
+    chosen: List[Optional[str]] = list(tasks) if tasks else [None]
+    for one in chosen:
         name = workload if len(tasks) <= 1 else f"{workload}-{one}"
         _observe_one(
             name, env, out, record, usecase_dir, usecase, package, one, run_id, kind,
