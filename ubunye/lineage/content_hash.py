@@ -33,6 +33,8 @@ import decimal
 import hashlib
 import json
 import math
+import os
+import sys
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
@@ -496,13 +498,187 @@ def _slice_lanes(names: List[str], kinds: Dict[str, str], piece: Any) -> Tuple[i
     return _python_lanes(columns)
 
 
+#: The setting that caps the helper processes of the parallel hash (F-038).
+#: ``1`` (or ``0``) hashes in the calling process only.
+HASH_WORKERS_ENV = "UBUNYE_HASH_WORKERS"
+
+#: Helpers used when the setting is not given: one per core, at most this many.
+#: Each holds about 75 MB of its own memory (100 MB resident) while it works.
+_DEFAULT_MAX_WORKERS = 4
+
+#: A table smaller than this is hashed in the calling process: a helper costs about
+#: 0.5 s to start (Python, pyarrow, and Arrow's first cast), about what hashing
+#: this many rows costs in one process.
+_PARALLEL_MIN_ROWS = 500_000
+
+#: Each helper gets at least this many rows.
+_ROWS_PER_WORKER = 125_000
+
+#: Where the helper finds the canonical kinds, in the stream's schema metadata.
+_KINDS_KEY = b"ubunye.rows-v1.kinds"
+
+
+def _cores() -> int:
+    try:
+        return len(os.sched_getaffinity(0))  # type: ignore[attr-defined]
+    except (AttributeError, OSError):
+        return os.cpu_count() or 1
+
+
+def _worker_count(rows: int) -> int:
+    """How many helper processes hash a table of ``rows`` rows (1 means none)."""
+    raw = os.environ.get(HASH_WORKERS_ENV, "").strip()
+    if raw:
+        try:
+            wanted = int(raw)
+        except ValueError:
+            return 1  # a setting that is not a number never starts processes
+    else:
+        wanted = min(_cores(), _DEFAULT_MAX_WORKERS)
+    if rows < _PARALLEL_MIN_ROWS:
+        return 1
+    return max(1, min(wanted, rows // _ROWS_PER_WORKER))
+
+
+def _plain_type(t: Any) -> bool:
+    """False for a type the IPC round trip might not bring back the same (extensions)."""
+    import pyarrow as pa
+
+    if isinstance(t, pa.BaseExtensionType):
+        return False
+    return all(_plain_type(t.field(i).type) for i in range(t.num_fields))
+
+
+#: How a helper starts: drop the working folder from the path (a stray module there
+#: must not shadow the standard library), load this file by its path, run it.
+_WORKER_BOOT = (
+    "import sys\n"
+    "if not getattr(sys.flags, 'safe_path', False) and sys.path and sys.path[0] == '':\n"
+    "    del sys.path[0]\n"
+    "import importlib.util as u\n"
+    "s = u.spec_from_file_location('_ubunye_rows_v1', sys.argv[1])\n"
+    "m = u.module_from_spec(s)\n"
+    "sys.modules[s.name] = m\n"
+    "s.loader.exec_module(m)\n"
+    "sys.exit(m._worker_main())\n"
+)
+
+
+def _worker_main() -> int:
+    """A helper's work: an Arrow IPC stream on stdin, ``"<a> <b>"`` on stdout.
+
+    The stream holds the columns sorted by name and, in its schema metadata, the
+    caller's canonical kinds. Any failure exits non zero with nothing on stdout;
+    the caller then hashes the table itself, so a digest never depends on whether
+    the helpers ran.
+    """
+    try:
+        import pyarrow as pa
+
+        pa.set_cpu_count(1)  # one helper per core already
+        reader = pa.ipc.open_stream(sys.stdin.buffer)
+        meta = reader.schema.metadata or {}
+        kinds = dict(json.loads(meta[_KINDS_KEY].decode("utf-8")))
+        names = list(reader.schema.names)
+        # The kinds must be the caller's, or the lines (and the digest) could differ.
+        if any(arrow_kind(f.type) != kinds.get(f.name) for f in reader.schema):
+            return 3
+        total_a = total_b = 0
+        for batch in reader:
+            for start in range(0, batch.num_rows, _SLICE_ROWS):
+                a, b = _slice_lanes(names, kinds, batch.slice(start, _SLICE_ROWS))
+                total_a += a
+                total_b += b
+        sys.stdout.write(f"{total_a & _MASK} {total_b & _MASK}\n")
+        sys.stdout.flush()
+        return 0
+    except BaseException:  # noqa: BLE001  (the caller falls back; say nothing)
+        return 2
+
+
+def _parallel_lanes(
+    table: Any, names: List[str], schema: List[Tuple[str, str]], workers: int
+) -> Optional[Tuple[int, int]]:
+    """The lane sums from ``workers`` helper processes, or None if any of them failed.
+
+    The rows are cut into ``workers`` runs, each streamed to one helper as Arrow
+    IPC. A helper is a fresh Python that loads this file alone (not the ``ubunye``
+    package, so it starts in about 0.1 s) and runs :func:`_worker_main`: it hashes
+    every row of its run exactly as this process would and sends back two numbers.
+    Their sums are the table's, since addition does not care how rows are grouped.
+    Processes, not threads: the SHA-256 of a short line holds the GIL. Fresh
+    processes, not ``multiprocessing``: that would import the caller's script
+    again in every helper on Windows and macOS.
+    """
+    import subprocess
+    import threading
+
+    import pyarrow as pa
+
+    sub = table.select(names)
+    meta = {_KINDS_KEY: json.dumps(sorted([list(p) for p in schema])).encode("utf-8")}
+    sub = sub.replace_schema_metadata(meta)
+    command = [sys.executable, "-c", _WORKER_BOOT, os.path.abspath(__file__)]
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    rows = sub.num_rows
+    step = -(-rows // workers)
+    results: List[Optional[Tuple[int, int]]] = [None] * workers
+    procs: List[Any] = []
+
+    def feed(i: int, proc: Any, part: Any) -> None:
+        try:
+            with pa.ipc.new_stream(proc.stdin, part.schema) as writer:
+                for batch in part.to_batches(max_chunksize=_SLICE_ROWS):
+                    writer.write_batch(batch)
+            proc.stdin.close()
+            out = proc.stdout.read()
+            if proc.wait() == 0:
+                a, b = out.split()
+                results[i] = (int(a), int(b))
+        except Exception:
+            pass  # results[i] stays None: the caller hashes in its own process
+
+    try:
+        for _ in range(workers):
+            procs.append(
+                subprocess.Popen(
+                    command,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=flags,
+                )
+            )
+        threads = [
+            threading.Thread(target=feed, args=(i, p, sub.slice(i * step, step)), daemon=True)
+            for i, p in enumerate(procs)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    except Exception:
+        return None
+    finally:
+        for p in procs:
+            if p.poll() is None:
+                p.kill()
+                p.wait()
+    if any(r is None for r in results):
+        return None
+    return sum(r[0] for r in results), sum(r[1] for r in results)  # type: ignore[index]
+
+
 def fingerprint_arrow(table: Any) -> Fingerprint:
     """The ``rows-v1`` fingerprint of an Arrow table.
 
     Rows are taken in slices. Each slice's canonical lines are built by Arrow
     compute (:func:`_slice_lines`) and hashed from Arrow's buffer; a slice Arrow
-    cannot build is written and hashed the Python way. A test holds the result to
-    :func:`fingerprint_rows`, the row at a time reference, byte for byte.
+    cannot build is written and hashed the Python way. A large table is hashed by
+    helper processes, one per core (:func:`_parallel_lanes`, capped by
+    ``UBUNYE_HASH_WORKERS``); if any helper fails, this process hashes it all. A
+    test holds the result to :func:`fingerprint_rows`, the row at a time
+    reference, byte for byte.
     """
     schema = [(f.name, arrow_kind(f.type)) for f in table.schema]
     kinds = dict(schema)
@@ -511,10 +687,17 @@ def fingerprint_arrow(table: Any) -> Fingerprint:
     # A table with no columns has always summed to zero here (no members to zip);
     # kept, so no recorded digest moves.
     if names:
-        for piece in _slices(table, names):
-            a, b = _slice_lanes(names, kinds, piece)
-            total_a += a
-            total_b += b
+        sums = None
+        workers = _worker_count(table.num_rows)
+        if workers > 1 and sys.executable and all(_plain_type(f.type) for f in table.schema):
+            sums = _parallel_lanes(table, names, schema, workers)
+        if sums is not None:
+            total_a, total_b = sums
+        else:
+            for piece in _slices(table, names):
+                a, b = _slice_lanes(names, kinds, piece)
+                total_a += a
+                total_b += b
     return Fingerprint(
         schema_hash=schema_hash(schema),
         data_hash=data_hash(schema, table.num_rows, (total_a, total_b)),
