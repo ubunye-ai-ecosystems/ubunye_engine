@@ -81,6 +81,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
   `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
   both.
+- **REST records with no fields are rows on pandas, as on Spark** (F-015 review).
+  `[{}, {}, {}]` gave an empty frame on pandas and three rows on Spark. A pandas
+  frame with rows and no columns now keeps its rows on the way to Arrow too, so its
+  run record counts them and the writer posts one `{}` per row.
 - **A REST field with a whole number past 64 bits is refused by name on pandas**
   (F-015 review). It raised a bare `OverflowError`. Now it is a `SourceReadError`
   naming the field, with the fix (declare it `string`). Spark classic stores null

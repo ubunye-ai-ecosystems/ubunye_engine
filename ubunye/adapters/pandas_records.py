@@ -248,6 +248,10 @@ def _inferred_table(records: List[Dict[str, Any]]) -> Any:
                 f"{-(2**63)} to {2**63 - 1} ({exc}). Spark stores null there; the "
                 "pandas backend refuses. Declare the field as string to keep it as text."
             ) from None
+    if not columns:  # records with no fields: one row each, as on Spark (struct<>)
+        from ubunye.adapters import pandas_io
+
+        return pandas_io.no_columns(len(records))
     return pa.table(columns)
 
 
@@ -332,6 +336,10 @@ def iter_records(frame: Any, *, timezone: str = "UTC", batch_rows: int = 10_000)
     from ubunye.adapters import pandas_io
 
     table = pandas_io.to_arrow(frame, timezone)
+    if table.num_columns == 0:  # rows with no fields: an empty object each, as on Spark
+        for _ in range(table.num_rows):
+            yield {}
+        return
     for batch in table.to_batches(max_chunksize=batch_rows):
         kinds = [f.type for f in batch.schema]
         for row in batch.to_pylist():

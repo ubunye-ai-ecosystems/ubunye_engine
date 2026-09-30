@@ -172,6 +172,21 @@ def test_a_whole_number_past_64_bits_reads_as_string():
         assert _read(cfg)["big"].tolist() == ["9223372036854775808"]
 
 
+def test_records_with_no_fields_are_rows_as_on_spark():
+    """Spark gives one struct<> row per {}; pandas gave none (F-015 review)."""
+    from ubunye.lineage.content_hash import fingerprint
+
+    backend = PandasBackend()
+    with served([{}, {}, {}]) as api:
+        frame = RestApiReader().read({"url": f"{api.base}/all"}, backend)
+        RestApiWriter().write(frame, {"url": f"{api.base}/sink"}, backend)
+        posted = api.posted
+    assert frame.native.shape == (3, 0)
+    assert frame.count() == 3
+    assert fingerprint(frame).row_count == 3
+    assert posted == [{"records": [{}, {}, {}]}]
+
+
 def test_a_null_everywhere_column_reads_with_a_schema():
     with served([{"id": 1, "note": None}]) as api:
         cfg = {"url": f"{api.base}/all", "schema": [{"name": "note", "type": "string"}]}

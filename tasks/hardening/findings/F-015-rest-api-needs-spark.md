@@ -125,3 +125,12 @@ fixed in its own commit on this branch.
    deliberate and documented (a silently lost value is worse than a refusal). Tests:
    `test_a_whole_number_past_64_bits_is_refused_by_name` (3 cases: a field, inside
    an array, inside a map; fail before, pass after) and a `string` schema read.
+6. **Records with no fields vanished on pandas.** `[{}, {}, {}]` gave 0 rows on
+   pandas and 3 on Spark (`runtime_attacks.py` case B: `pandas rows: 0 fingerprint
+   rows: 0`). Two causes: `pa.table({})` has no rows, and `pa.Table.from_pandas`
+   drops the rows of a frame with no columns. Both now keep them
+   (`pandas_io.no_columns`). After: 3 rows, fingerprint rows 3, the writer posts
+   three `{}`. Test: `test_records_with_no_fields_are_rows_as_on_spark` (fails
+   before, passes after). Left as it was: the data hash of a table with no columns
+   sums nothing on pandas (a deliberate old choice, so no recorded digest moves)
+   while Spark hashes one `{}` line per row, so the two digests differ there.

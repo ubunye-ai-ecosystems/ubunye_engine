@@ -704,6 +704,14 @@ def _refuse(message: str, **context: Any) -> SinkWriteError:
     return SinkWriteError(message, context={"Backend": "pandas", **context})
 
 
+def no_columns(rows: int) -> Any:
+    """An Arrow table with ``rows`` rows and no columns (``pa.table({})`` has none)."""
+    import pyarrow as pa
+
+    empty = pa.array([{}] * rows, pa.struct([]))
+    return pa.Table.from_batches([pa.RecordBatch.from_struct_array(empty)])
+
+
 def to_arrow(df: Any, timezone: str) -> Any:
     """What a task returned, as an Arrow table with the types Spark writes.
 
@@ -721,6 +729,10 @@ def to_arrow(df: Any, timezone: str) -> Any:
             raise _refuse(f"The frame has duplicate column names {dupes}.")
         if any(name is not None for name in frame.index.names):
             frame = frame.reset_index()
+        if len(frame.columns) == 0:
+            # Rows with no columns (records with no fields): from_pandas loses the
+            # rows, and Spark keeps them (one struct<> row each).
+            return no_columns(len(frame))
         table = pa.Table.from_pandas(frame, preserve_index=False)
     elif isinstance(frame, pa.Table):
         table = frame
