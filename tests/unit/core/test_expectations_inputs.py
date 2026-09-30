@@ -44,16 +44,14 @@ def check(frame, spec):
     return expectations.check_inputs({"orders": frame}, {"orders": spec})
 
 
-# --- the type names are the run record's ---------------------------------------------
+# --- the type names: the run record's, timestamps by what they are -----------------
 
 
 @pytest.mark.parametrize(
     "frame",
     [
         ORDERS,
-        pd.DataFrame({"s": ["a", None], "b": [True, False], "n": [None, None]}),
-        pd.DataFrame({"t": pd.to_datetime(["2024-01-01", None])}),
-        pd.DataFrame({"t": pd.to_datetime(["2024-01-01"]).tz_localize("Africa/Johannesburg")}),
+        pd.DataFrame({"s": ["a", None], "b": [True, False]}),
         pd.DataFrame({"c": pd.Categorical(["x", "y"]), "i8": pd.array([1, 2], dtype="int8")}),
         pandas_io.to_pandas(
             pa.table(
@@ -74,7 +72,58 @@ def test_the_type_names_are_the_ones_the_run_record_writes(frame):
 
 
 def test_a_column_of_mixed_python_values_is_named_not_guessed():
-    assert content_hash.frame_kinds(pd.DataFrame({"m": [1, "a"]})) == {"m": "mixed (object)"}
+    assert content_hash.frame_kinds(pd.DataFrame({"m": [1, "a"]})) == {"m": "mixed"}
+
+
+def test_timestamps_are_named_by_what_they_are_at_every_depth():
+    # Skeptic review 4: pandas called naive and zoned timestamps both "timestamp",
+    # so a source switching between them passed; Spark 3.4+ tells them apart.
+    table = pa.table(
+        {
+            "naive": pa.array([None], pa.timestamp("us")),
+            "zoned": pa.array([None], pa.timestamp("us", tz="UTC")),
+            "naive_list": pa.array([None], pa.list_(pa.timestamp("us"))),
+            "zoned_list": pa.array([None], pa.list_(pa.timestamp("us", tz="UTC"))),
+        }
+    )
+    expected = {
+        "naive": "timestamp_ntz",
+        "zoned": "timestamp",
+        "naive_list": "list<timestamp_ntz>",
+        "zoned_list": "list<timestamp>",
+    }
+    assert content_hash.frame_kinds(table) == expected
+    assert content_hash.frame_kinds(pandas_io.to_pandas(table)) == expected
+    numpy_frame = pd.DataFrame({"t": pd.to_datetime(["2024-01-01"])})
+    assert content_hash.frame_kinds(numpy_frame) == {"t": "timestamp_ntz"}
+    with pytest.raises(ExpectationError, match="t: expected timestamp, found timestamp_ntz"):
+        check(numpy_frame, contract(columns={"t": "timestamp"}))
+
+
+def test_the_run_record_still_names_every_pandas_timestamp_an_instant():
+    # The contract's names changed; the record's (and so its schema hash) did not.
+    frame = pd.DataFrame({"t": pd.to_datetime(["2024-01-01"])})
+    written = pandas_io.to_arrow(frame, "UTC")
+    assert content_hash.arrow_kind(written.schema.field("t").type) == "timestamp"
+
+
+def test_every_kind_a_frame_reports_can_be_declared():
+    # Skeptic review 5: with extra: forbid no column may be undeclarable.
+    table = pa.table(
+        {
+            "u8": pa.array([1], pa.uint8()),
+            "tm": pa.array([None], pa.time64("us")),
+            "du": pa.array([None], pa.duration("ms")),
+            "n": pa.array([None], pa.null()),
+            "fb": pa.array([b"ab"], pa.binary(2)),
+        }
+    )
+    kinds = content_hash.frame_kinds(table)
+    rule = ExpectationRule(columns=kinds, extra="forbid")
+    assert check(table.to_pandas(types_mapper=pd.ArrowDtype), contract(**rule.model_dump()))[
+        0
+    ].passed
+    assert ExpectationRule(columns={"m": "mixed"}).columns == {"m": ["mixed"]}
 
 
 # --- the E-05 case: price retyped to text ------------------------------------------
@@ -178,6 +227,13 @@ def test_a_warn_contract_reports_and_goes_on(caplog):
         ({"columns": {"price": "double"}}, "write float64"),
         ({"columns": {"qty": "long"}}, "write int64"),
         ({"columns": {"qty": "int63"}}, "did you mean int64"),
+        # Skeptic review 5: nested names are read part by part.
+        ({"columns": {"qty": "list<banana>"}}, "'banana' is not a type name"),
+        ({"columns": {"qty": "map<string,long>"}}, "write int64"),
+        ({"columns": {"qty": "struct<a>"}}, "name:type"),
+        # Skeptic review 3: a bare TypeError used to escape to `ubunye validate`.
+        ({"columns": {"qty": 5}}, "give a type name like int64"),
+        ({"columns": {"qty": [5]}}, "a type is a name like int64"),
         ({"columns": {}}, "at least one column"),
         ({"columns": {"qty": []}}, "give 'qty' a type"),
         ({"not_null": "qty", "extra": "forbid"}, "'extra' goes with a 'columns' rule"),
@@ -191,8 +247,22 @@ def test_a_badly_written_columns_rule_is_refused(rule, message):
 
 
 def test_type_names_are_read_leniently_and_stored_canonically():
-    r = ExpectationRule(columns={"a": " Int64 ", "b": "Decimal(10, 2)", "c": ["list<int64>"]})
-    assert r.columns == {"a": ["int64"], "b": ["decimal(10,2)"], "c": ["list<int64>"]}
+    r = ExpectationRule(
+        columns={
+            "a": " Int64 ",
+            "b": "Decimal(10, 2)",
+            "c": ["List<INT64>"],
+            "d": "struct<Name: String, when: list<Timestamp_NTZ>>",
+            "e": "map<string, decimal(38, 2)>",
+        }
+    )
+    assert r.columns == {
+        "a": ["int64"],
+        "b": ["decimal(10,2)"],
+        "c": ["list<int64>"],
+        "d": ["struct<Name:string,when:list<timestamp_ntz>>"],
+        "e": ["map<string,decimal(38,2)>"],
+    }
     assert r.name == "columns" and r.kind == "columns"
 
 

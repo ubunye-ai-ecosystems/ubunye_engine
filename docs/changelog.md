@@ -224,6 +224,24 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   `ubunye validate` refuses a reconcile that names no real input.
   `Engine.write_outputs` takes `inputs=` for it; the notebook passes what it read.
 
+- **Reconcile and input contracts, after the skeptic's review** (F-017, F-018).
+  The inputs are counted before the transform runs: a pandas transform that dropped
+  rows from its input in place used to make the record say "8 read, 0 lost". Sums
+  are exact: integers no longer wrap past 2**63 (3 x 2**62 came out negative) and
+  decimals are no longer compared as floats (0.01 on a 1.2e19 total passed at
+  tolerance 0); on Spark an integer sum is taken as `decimal(38,0)`. Equal infinite
+  totals match. A reconcile item takes an optional `name`, so a warning at 1% and a
+  stop at 5% can check one input. `ubunye validate` gives a clear message for a
+  blank tolerance, a list as a bound, a number as a type, and NaN or infinite
+  tolerances (it crashed with a TypeError or accepted them). Nested type names are
+  checked part by part (`list<banana>` was accepted), and every kind a frame can
+  report (`uint8`, `null`, `mixed`, `time64[us]`) can be declared. A contract names
+  a timestamp by what it is, `timestamp` with a zone and `timestamp_ntz` without,
+  on pandas as on Spark 3.4+; the run record is unchanged. The notebook checks the
+  contract on, and reconciles with, the frames passed to `transform()`, and tells
+  you to call `read()` or `transform()` when it has none. Input contract results
+  are on the input datasets in OpenLineage.
+
 - **`ubunye deploy` runs several tasks in one launch** (glue, dataproc, k8s,
   container-apps, emr-serverless): repeat `-t`, as in `-t clean -t monitor`. They run in
   that order in the one job, so a task can read what the one before it wrote to the

@@ -10,7 +10,7 @@ import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Iterator, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from ubunye.core import runs
 from ubunye.core.capabilities import SELF_OVERWRITE_MARK, Capabilities, check_task
@@ -224,8 +224,11 @@ class Engine:
         self._secrets = SecretResolver()
         # Per-step timings of the current run, for the run record.
         self._timings: List[Dict[str, Any]] = []
-        # Input contract results from the last read_inputs(), for the notebook's record.
-        self._input_checks: List[Dict[str, Any]] = []
+        # The notebook path: the frames last inspected before a transform (read or
+        # passed to apply_transforms), their contract results and reconcile counts.
+        self._inspected: Optional[Tuple[Dict[str, Any], List[Dict[str, Any]], Dict[str, Any]]] = (
+            None
+        )
         self._manage_backend = manage_backend
 
     @property
@@ -290,7 +293,9 @@ class Engine:
                 try:
                     sources = self._read_inputs(ctx, chain, inputs_cfg)
                     state["inputs"] = self._to_ports(sources)
-                    self._check_inputs(cfg, sources, state)
+                    # Contracts and reconcile counts before the transform: it may
+                    # change its inputs in place.
+                    measured = self._inspect_inputs(cfg, sources, state)
                     from ubunye import llm
 
                     budget = llm.budget.Budget.from_env()
@@ -302,7 +307,7 @@ class Engine:
                     finally:
                         state["llm_budget"] = budget.summary() if budget.limited else {}
                     once = self._hold_outputs(cfg, ctx, chain, outputs_map, state, held)
-                    checked = self._check_expectations(cfg, once, state, sources)
+                    checked = self._check_expectations(cfg, once, state, measured=measured)
                     ports = self._to_ports(checked)
                     self._write_outputs(ctx, chain, outputs_cfg, ports)
                     # Hooks (lineage, monitors) get the port; the caller gets native frames.
@@ -321,32 +326,55 @@ class Engine:
         Returns a dict mapping input name to the backend's own frame type (a
         ``pandas.DataFrame`` on pandas) — suitable for interactive inspection
         before calling :meth:`apply_transforms`. The inputs' expectations (input
-        contracts) are checked here, as in :meth:`run`; their results go into the
-        record of a later ``write_outputs(..., as_run=True, inputs=...)``.
+        contracts) are checked here, as in :meth:`run`, and the inputs a
+        ``reconcile`` names are counted; both are kept for a later
+        :meth:`write_outputs`.
         """
         inputs_cfg = cfg.get("CONFIG", {}).get("inputs", {}) or {}
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         self._validate_io_configs(inputs_cfg, outputs_cfg)
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        sources = self._read_inputs(ctx, chain, inputs_cfg)
+        natives = self._to_natives(self._read_inputs(ctx, chain, inputs_cfg))
+        self._inspect_for_write(cfg, natives)
+        return natives
+
+    def _inspect_for_write(self, cfg: dict, natives: Dict[str, Any]) -> None:
+        """Check and count the frames a transform is about to get, for write_outputs.
+
+        The notebook path reads, transforms and writes in separate calls, so what
+        :meth:`run` keeps in local variables is kept here: the frames inspected,
+        the contract results and the reconcile counts.
+        """
+        self._inspected = None
         state: Dict[str, Any] = {}
-        self._input_checks = []
-        self._check_inputs(cfg, sources, state)
-        self._input_checks = list(state.get("expectations") or [])
-        return self._to_natives(sources)
+        measured = self._inspect_inputs(cfg, natives, state)
+        self._inspected = (dict(natives), list(state.get("expectations") or []), measured)
 
     def apply_transforms(self, sources: Dict[str, Any], cfg: dict) -> Dict[str, Any]:
         """Apply configured transforms to *sources*.
 
         Returns a dict mapping output name to the backend's own frame type.
+        Frames that did not come from :meth:`read_inputs` (a notebook's own
+        sample, say) are checked against the input contracts and counted for a
+        ``reconcile`` first, like read ones: a reconcile compares an output with
+        the frames the transform actually got.
         """
         transform_cfg = cfg.get("CONFIG", {}).get("transform") or {}
         transforms = self._normalize_transforms(transform_cfg)
         self._validate_transforms_exist(transforms)
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
+        if not self._is_inspected(sources):
+            self._inspect_for_write(cfg, self._to_natives(sources))
         return self._apply_transforms(ctx, chain, sources, transforms)
+
+    def _is_inspected(self, sources: Dict[str, Any]) -> bool:
+        if self._inspected is None:
+            return False
+        seen = self._inspected[0]
+        natives = self._to_natives(sources)
+        return set(natives) == set(seen) and all(natives[n] is seen[n] for n in seen)
 
     def write_outputs(
         self,
@@ -361,8 +389,10 @@ class Engine:
         With ``as_run=True`` the write is wrapped as a whole task for the hooks,
         so lineage and monitors record it exactly as they record ``run()``. This
         is how a notebook that reads, transforms and writes step by step still
-        leaves a run record. *inputs* are the frames the transform received
-        (from :meth:`read_inputs`); an expectation's ``reconcile`` needs them.
+        leaves a run record. A ``reconcile`` compares with the inputs counted
+        before the transform (by :meth:`read_inputs` or :meth:`apply_transforms`).
+        *inputs* given here that were not counted then are counted now, after
+        the transform: a transform that changed them in place hides its loss.
         """
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         # The notebook path writes here without run(): the same pre-checks apply,
@@ -371,18 +401,21 @@ class Engine:
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
         state: Dict[str, Any] = {"outputs": None}
-        if inputs is not None and self._input_checks:
-            state["expectations"] = list(self._input_checks)
+        measured: Optional[Dict[str, Any]] = None
+        if self._inspected is not None and (inputs is None or self._is_inspected(inputs)):
+            _, checks, measured = self._inspected
+            if checks:
+                state["expectations"] = list(checks)
         held: List[Any] = []
         try:
             if not as_run:
                 once = self._hold_outputs(cfg, ctx, chain, outputs, state, held, task=False)
-                outputs = self._check_expectations(cfg, once, state, inputs)
+                outputs = self._check_expectations(cfg, once, state, inputs, measured)
                 self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
                 return
             with chain.task(ctx, cfg, state):
                 once = self._hold_outputs(cfg, ctx, chain, outputs, state, held)
-                outputs = self._check_expectations(cfg, once, state, inputs)
+                outputs = self._check_expectations(cfg, once, state, inputs, measured)
                 ports = self._to_ports(outputs)
                 self._write_outputs(ctx, chain, outputs_cfg, ports)
                 state["outputs"] = ports
@@ -405,25 +438,32 @@ class Engine:
             if (name in inputs) == (side == "inputs")
         }
 
-    def _check_inputs(self, cfg: dict, sources: Dict[str, Any], state: Dict[str, Any]) -> None:
-        """Input contracts: check each input right after it is read (F-018).
+    def _inspect_inputs(
+        self, cfg: dict, sources: Dict[str, Any], state: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Before the transform: the input contracts, then the reconcile counts.
 
-        Before the transform, so a source that changed shape stops the run before
-        the transform can compute something wrong from it. Results go into
-        ``state["expectations"]``; a broken ``fail`` rule raises ExpectationError.
+        Contracts (F-018) stop a source that changed shape before the transform
+        can compute something wrong from it; results go into
+        ``state["expectations"]`` and a broken ``fail`` rule raises
+        ExpectationError. Then every input a ``reconcile`` names is counted
+        (F-017), here and not after the transform, which may change its inputs
+        in place (a pandas ``drop(inplace=True)``) and so hide the loss.
         """
-        specs = self._expectation_specs(cfg, "inputs")
-        if not specs:
-            return
         from ubunye.core import expectations
         from ubunye.core.errors import ExpectationError
 
-        try:
-            results = expectations.check_inputs(self._to_natives(sources), specs)
-        except ExpectationError as exc:
-            state["expectations"] = list(exc.results)
-            raise
-        state["expectations"] = [r.as_dict() for r in results]
+        natives = self._to_natives(sources)
+        specs = self._expectation_specs(cfg, "inputs")
+        if specs:
+            try:
+                results = expectations.check_inputs(natives, specs)
+            except ExpectationError as exc:
+                state["expectations"] = list(exc.results)
+                raise
+            state["expectations"] = [r.as_dict() for r in results]
+        outputs = {n: s for n, s in self._expectation_specs(cfg, "outputs").items() if s.reconcile}
+        return expectations.measure_inputs(natives, outputs) if outputs else {}
 
     def _check_expectations(
         self,
@@ -431,14 +471,15 @@ class Engine:
         outputs: Dict[str, Any],
         state: Dict[str, Any],
         inputs: Optional[Dict[str, Any]] = None,
+        measured: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """``CONFIG.expectations``: check every output before any is written.
 
         Returns the frames to write: clean rows, plus the quarantined rows under
         their quarantine output. Raises ``ExpectationError`` (nothing written)
         when a ``fail`` rule is broken. Every rule's result goes into
-        ``state["expectations"]`` for the hooks. *inputs* are the frames the
-        transform received, for a ``reconcile``.
+        ``state["expectations"]`` for the hooks. A ``reconcile`` compares with
+        *measured* (counted before the transform), else counts *inputs* now.
         """
         specs = self._expectation_specs(cfg, "outputs")
         if not specs:
@@ -453,6 +494,7 @@ class Engine:
                 self._to_natives(outputs),
                 specs,
                 self._to_natives(inputs) if inputs is not None else None,
+                measured,
             )
         except ExpectationError as exc:
             state["expectations"] = before + list(exc.results)

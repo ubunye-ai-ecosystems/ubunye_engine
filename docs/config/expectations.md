@@ -108,16 +108,39 @@ ExpectationError: Expectations failed, so nothing was written:
   enriched: 100 lost, 0 gained (at most 0 lost)
 ```
 
+- **The input is counted before the transform runs.** A pandas transform can
+  change its input in place (`drop(..., inplace=True)`, `orders["amount"] = 0`);
+  counting afterwards would hide the very loss a reconcile is for.
 - **Quarantined rows count as carried over.** They were set aside with a reason,
   not lost. The output is counted before any row moves to its quarantine output.
-- **A sum leaves out missing values** (null, and NaN in a float column), on both
-  sides, as the rules do. Float sums can differ in the last digits between runs
-  and engines; give a float sum a small tolerance.
+- **Counting rows sees the net change only.** A join that loses 5 rows and
+  duplicates 5 others shows 0 lost and 0 gained. `max_gained` bounds a fan out,
+  and a `unique` rule on the key catches the duplicates.
+- **A filter that drops rows on purpose** needs a share (`max_lost: "30%"`), or
+  no row reconcile at all; `max_lost: 0` would stop every run.
+- **Sums are exact** for integers (no wrap past 2**63) and decimals (no rounding
+  through a float); the message prints them in full. A sum leaves out missing
+  values (null, and NaN in a float column) on both sides, as the rules do. Two
+  equal totals match, infinities included. Float sums can differ in the last
+  digits when rows move, so give a float sum a small tolerance.
+- **Two checks against one input** need a `name` (the results are then
+  `<name>_rows` and `<name>_sum`), for example a warning at 1% and a stop at 5%:
+
+  ```yaml
+        reconcile:
+          - {input: orders, name: early, rows: {max_lost: "1%"}, severity: warn}
+          - {input: orders, name: stop, rows: {max_lost: "5%"}}
+  ```
+
 - **Cost:** one pass over each reconciled input, for its row count and sums, however
   many outputs reconcile with it. On pandas that is in memory. On Spark it reads the
-  input again: inputs are not held (ADR 009), so a source that changes between the
-  read and the count is counted as it is then. The output side is counted in the
-  same pass as the other rules.
+  input: inputs are not held (ADR 009). On the output side the rows are counted in
+  the same pass as the other rules, and sums in a pass of their own over the held
+  output. On Spark an integer sum is taken as `decimal(38,0)`; a decimal sum past 38
+  digits fails (ANSI) or comes back null.
+- **In a notebook** the check compares with what the transform got: the frames
+  `read()` returned, or the ones you passed to `transform()`. They are counted
+  when `transform()` starts.
 
 ## Input contracts
 
@@ -147,7 +170,18 @@ The `columns` rule:
   `int16`, `int32`, `int64`, `float32`, `float64`, `bool`, `string`, `binary`,
   `date`, `timestamp`, `timestamp_ntz`, `decimal(p,s)`, `list<...>`,
   `map<...,...>`, `struct<name:type,...>`. Spark's `double` is `float64`, `bigint`
-  is `int64`; `ubunye validate` says so if you write the other name.
+  is `int64`; `ubunye validate` says so if you write the other name. Nested names
+  are checked part by part (`list<banana>` is refused). A frame can also report
+  `uint8` to `uint64`, `null` (a column of nulls only), `mixed` (a pandas column
+  of mixed Python values), `time64[us]` and the like; those can be declared too.
+- **A timestamp is named by what it is**: with a zone `timestamp`, without one
+  `timestamp_ntz`, on pandas as on Spark 3.4 and later, at every depth. So a
+  source that switches between naive and UTC is caught. **This differs from the
+  run record**, which writes every pandas timestamp as an instant and names it
+  `timestamp`; the record (and its schema hash) is unchanged.
+- **CSV:** with `inferSchema`, a whole number column is `int32` when every value
+  fits, else `int64`, on both engines. A column that may grow, declare as
+  `[int32, int64]`. Without `inferSchema` every column is `string`.
 - **Types match exactly.** `int32` is not `int64`: a narrower or wider type is a
   changed source, and it changes what the task writes. To accept more than one,
   list them: `qty: [int32, int64]`.

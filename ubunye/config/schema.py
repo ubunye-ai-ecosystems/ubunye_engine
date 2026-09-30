@@ -10,7 +10,10 @@ are a conscious tradeoff documented in the PR that introduced strict mode.
 
 from __future__ import annotations
 
+import decimal
 import difflib
+import math
+import numbers
 import re
 from enum import Enum
 from functools import lru_cache
@@ -317,7 +320,14 @@ SIMPLE_TYPES = (
     "timestamp",
     "timestamp_ntz",
 )
-_NESTED_TYPE = re.compile(r"^(decimal\(\d+,\d+\)|list<.+>|map<.+,.+>|struct<.+>)$")
+#: Other names a frame can report: Arrow types Spark has no name for, a column of
+#: nulls only, a pandas column of mixed Python values, and Spark's own extras.
+OTHER_TYPES = ("uint8", "uint16", "uint32", "uint64", "null", "mixed", "variant")
+_OTHER_TYPE = re.compile(
+    r"^(time(32|64)\[(s|ms|us|ns)\]|duration\[(s|ms|us|ns)\]|fixed_size_binary\[\d+\]"
+    r"|interval\w*)$"
+)
+_DECIMAL = re.compile(r"^decimal\((\d+),(\d+)\)$")
 #: Names from other systems, and what the record calls them.
 _TYPE_HINTS = {
     "double": "float64",
@@ -341,16 +351,51 @@ _TYPE_HINTS = {
 }
 
 
-def canonical_type(name: str) -> str:
-    """A declared column type as the record's name, or ValueError saying what it means."""
-    text = re.sub(r"\s+", "", str(name))
+def _split_top(text: str) -> List[str]:
+    """Split on the commas that are not inside <...> or (...)."""
+    parts, depth, start = [], 0, 0
+    for i, ch in enumerate(text):
+        if ch in "<(":
+            depth += 1
+        elif ch in ">)":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(text[start:i])
+            start = i + 1
+    parts.append(text[start:])
+    return parts
+
+
+def canonical_type(name: Any) -> str:
+    """A declared column type as a contract names it, or ValueError saying what it means.
+
+    Nested types are read part by part, so ``list<banana>`` is refused like
+    ``banana``.
+    """
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError(f"a type is a name like int64 or string, not {name!r}")
+    text = re.sub(r"\s+", "", name)
     simple = text.lower()
-    if simple in SIMPLE_TYPES:
+    if simple in SIMPLE_TYPES or simple in OTHER_TYPES or _OTHER_TYPE.match(simple):
         return simple
-    if simple.startswith("decimal(") and _NESTED_TYPE.match(simple):
-        return simple
-    if _NESTED_TYPE.match(text):
-        return text
+    decimal = _DECIMAL.match(simple)
+    if decimal:
+        return f"decimal({int(decimal.group(1))},{int(decimal.group(2))})"
+    if text.endswith(">"):
+        if simple.startswith("list<"):
+            return f"list<{canonical_type(text[5:-1])}>"
+        if simple.startswith("map<"):
+            parts = _split_top(text[4:-1])
+            if len(parts) == 2:
+                return f"map<{canonical_type(parts[0])},{canonical_type(parts[1])}>"
+        if simple.startswith("struct<"):
+            fields = []
+            for part in _split_top(text[7:-1]):
+                field, sep, kind = part.partition(":")
+                if not sep or not field:
+                    raise ValueError(f"'{name}': a struct field is written name:type")
+                fields.append(f"{field}:{canonical_type(kind)}")
+            return "struct<" + ",".join(fields) + ">"
     hint = _TYPE_HINTS.get(simple)
     if hint:
         raise ValueError(f"'{name}' is not a type name here; write {hint}")
@@ -358,7 +403,8 @@ def canonical_type(name: str) -> str:
     also = f"; did you mean {close[0]}?" if close else ""
     raise ValueError(
         f"'{name}' is not a type name; use one of {', '.join(SIMPLE_TYPES)}, "
-        f"decimal(p,s), list<...>, map<...,...> or struct<name:type,...>{also}"
+        f"decimal(p,s), list<...>, map<...,...> or struct<name:type,...> (also uint8 to "
+        f"uint64, null, mixed, time64[us] and the like){also}"
     )
 
 
@@ -405,7 +451,15 @@ class ExpectationRule(BaseModel):
             raise ValueError("'columns' needs at least one column")
         out: Dict[str, List[str]] = {}
         for column, types in v.items():
-            names = [types] if isinstance(types, str) else list(types or [])
+            if isinstance(types, str):
+                names = [types]
+            elif isinstance(types, (list, tuple)) or types is None:
+                names = list(types or [])
+            else:
+                raise ValueError(
+                    f"'columns.{column}': give a type name like int64, or a list of them, "
+                    f"not {types!r}"
+                )
             if not names:
                 raise ValueError(f"'columns': give '{column}' a type")
             try:
@@ -452,23 +506,39 @@ _PERCENT = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*%\s*$")
 
 
 def _allowance(value: Any, what: str) -> Any:
-    """A tolerance: a number (at least 0), or a share of the input written "1%"."""
-    if isinstance(value, bool):
-        raise ValueError(f"{what} must be a number or a percentage like '1%', not {value!r}")
+    """A tolerance: a finite number (at least 0), or a share of the input written "1%"."""
+    wrong = f"{what} must be a number or a percentage like '1%', not {value!r}"
+    if value is None:
+        raise ValueError(
+            f"{what} is empty; give a number or a percentage like '1%', or leave it out"
+        )
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ValueError(wrong)
     if isinstance(value, str):
         if not _PERCENT.match(value):
-            raise ValueError(f"{what} must be a number or a percentage like '1%', not {value!r}")
+            raise ValueError(wrong)
         return value.strip()
+    if not math.isfinite(value):
+        raise ValueError(f"{what} must be a finite number, not {value!r}")
     if value < 0:
         raise ValueError(f"{what} cannot be negative")
     return value
 
 
-def allowed(value: Any, base: float) -> float:
-    """What a tolerance allows against ``base``: the number itself, or its share of base."""
+def allowed(value: Any, base: Any) -> Any:
+    """What a tolerance allows against ``base``: the number itself, or its share of base.
+
+    Exact where ``base`` is exact: a Decimal or an integer base gives a Decimal
+    (the tolerance read from its text, so 0.01 is 0.01), a float base a float.
+    """
+    exact = isinstance(base, (decimal.Decimal, numbers.Integral))
     if isinstance(value, str):
-        return float(_PERCENT.match(value).group(1)) / 100 * abs(base)  # type: ignore[union-attr]
-    return float(value)
+        share = _PERCENT.match(value).group(1)  # type: ignore[union-attr]
+        if exact:
+            whole = base if isinstance(base, decimal.Decimal) else decimal.Decimal(int(base))
+            return decimal.Decimal(share) / 100 * abs(whole)
+        return float(share) / 100 * abs(float(base))
+    return decimal.Decimal(str(value)) if exact else float(value)
 
 
 class ReconcileRows(BaseModel):
@@ -488,9 +558,9 @@ class ReconcileRows(BaseModel):
     def _bound(cls, v: Any, info: Any) -> Any:
         if v is None:
             return v
+        v = _allowance(v, info.field_name)
         if isinstance(v, float) and not v.is_integer():
             raise ValueError(f"{info.field_name} is a number of rows; use '{v}%' for a share")
-        v = _allowance(v, info.field_name)
         return int(v) if isinstance(v, float) else v
 
     @model_validator(mode="after")
@@ -531,6 +601,9 @@ class ReconcileSpec(BaseModel):
     sum: Optional[ReconcileSum] = None
     severity: Literal["fail", "warn"] = "fail"
     description: Optional[str] = None
+    #: Names the results "<name>_rows" and "<name>_sum", so two checks against one
+    #: input (warn at 1%, fail at 5%) can live side by side.
+    name: Optional[str] = None
 
     @model_validator(mode="after")
     def _something_to_check(self) -> "ReconcileSpec":
@@ -540,11 +613,13 @@ class ReconcileSpec(BaseModel):
 
     @property
     def rows_name(self) -> str:
-        return f"rows_from_{self.input}"
+        return f"{self.name}_rows" if self.name else f"rows_from_{self.input}"
 
     @property
     def sum_name(self) -> str:
-        return f"{self.sum.column}_sum_from_{self.input}" if self.sum else ""
+        if not self.sum:
+            return ""
+        return f"{self.name}_sum" if self.name else f"{self.sum.column}_sum_from_{self.input}"
 
     @property
     def names(self) -> List[str]:

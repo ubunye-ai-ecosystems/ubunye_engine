@@ -86,7 +86,32 @@ on the dev box): the same names for one parquet file on both engines, the same
 verdict for a contract on both, and a whole Spark task with `price` as text that
 stops before the transform and writes nothing.
 
-Open: a parquet timestamp written without a zone (pandas `datetime64` straight to
-parquet) may be `timestamp_ntz` on Spark 3.4+ and is `timestamp` on the pandas
-backend, which reads every timestamp as an instant. That is the record's naming
-today, not new here; a contract naming it would differ between engines.
+## Skeptic review
+
+The skeptic's probes (`p1_config.py`, `p2_validate_cli.py`, `p5_types.py`,
+`p7_notebook.py`) found four faults. All fixed in the third commit on the branch,
+each with a unit test that fails on 813d515.
+
+| # | Fault | Before | After |
+|---|---|---|---|
+| 3 | `columns: {qty: 5}` crashed `ubunye validate` with a TypeError | `TypeError: 'int' object is not iterable` | "'columns.qty': give a type name like int64, or a list of them, not 5" |
+| 4 | Timestamps: the contract used the record's names, which call every pandas timestamp an instant | pandas: naive and UTC columns both `timestamp`, so a source switching between them passed; a Spark 3.4+ naive parquet column is `timestamp_ntz`, so one contract could not fit both engines | named by what they are, top level and nested, on pandas as on Spark: `timestamp` with a zone, `timestamp_ntz` without (`p5`: `ts_naive: timestamp_ntz`, `lst_ts: list<timestamp_ntz>`, `ts_utc: timestamp`; "naive vs utc" now fails as it should) |
+| 5 | Nested names were not checked, and some kinds a frame reports could not be declared | `list<banana>` accepted; `uint8`, `time64[us]`, a null column, a mixed column: undeclarable, so `extra: forbid` could never pass | nested names are parsed part by part (`list<banana>`: "'banana' is not a type name"); `uint8` to `uint64`, `null`, `mixed`, `time32/64[unit]`, `duration[unit]`, `fixed_size_binary[n]` can be declared |
+| 6 | The notebook never checked a contract on frames passed to `transform()` | `transform({"orders": frame with price as text})` then `write()`: the error was about reconcile inputs, the contract was never run | the contract runs on those frames when `transform()` starts: "orders: columns (columns): price: expected float64, found string" |
+
+**The timestamp decision (the lead's).** Contracts name a column by its real
+type. **The run record is unchanged**: it still writes every pandas timestamp as
+an instant and names it `timestamp`, so no schema hash moves
+(`test_the_run_record_still_names_every_pandas_timestamp_an_instant`). The docs
+say plainly that the two names differ for a naive pandas timestamp. Spark 3.5 and
+4 read a parquet timestamp written without a zone as `TIMESTAMP_NTZ`
+(`spark.sql.parquet.inferTimestampNTZ.enabled`, on by default since 3.4); the
+integration tier checks both ways for CI on 3.5 and 4
+(`test_a_parquet_file_with_naive_and_zoned_timestamps_is_named_alike`, and
+`TIMESTAMP_NTZ` columns added to the typed parquet test). CSV and JSON timestamps
+are instants on both engines (`timestamp`).
+
+Also: with `inferSchema`, a CSV whole number column is `int32` when it fits, on
+both engines; the docs say to declare `[int32, int64]` for one that may grow.
+OpenLineage now carries an input contract's results on the input dataset
+(`dataQualityAssertions`), not on the outputs.

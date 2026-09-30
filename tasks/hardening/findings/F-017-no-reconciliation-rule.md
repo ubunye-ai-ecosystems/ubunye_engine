@@ -74,3 +74,32 @@ on Spark that drops orders and writes nothing (run by CI on Spark 4 and 3.5; not
 the dev box).
 
 **Status:** fixed on fix/f017-f018-contracts.
+
+## Skeptic review
+
+The skeptic's probes (`p3_reconcile.py`, `p4_engine.py`, `p1_config.py`,
+`p2_validate_cli.py`, `p7_notebook.py`) found five real faults in the first fix.
+All fixed in the third commit on the branch; each has a unit test that fails on
+813d515 and passes after.
+
+| # | Fault | Before | After |
+|---|---|---|---|
+| 1 | Inputs were counted after the transform, so a pandas transform that changed its input in place hid the loss | in-place `drop` of 2 orders: "8 rows read, 8 reached: 0 lost", run wrote 8; zeroing `amount`: "sum 0 in, 0 out" | counted before the transform (`Engine._inspect_inputs`, in `run` and the notebook): "10 rows read from orders, 8 reached enriched: 2 lost", and "550 in, 0 out: difference -550"; nothing written |
+| 2 | Decimal sums compared as floats | decimal(38,2) off by 0.01 on a 1.2e19 total: "difference 0", passed at tolerance 0 | exact: "12345678901234567890.31 ... 12345678901234567890.32: difference 0.01", fails; tolerance as `Decimal(str(t))` |
+| 3 | `ubunye validate` crashed with a bare TypeError | blank `tolerance:`, `max_lost: [1]`: TypeError; NaN and inf tolerances accepted | "tolerance is empty; give a number or a percentage like '1%', or leave it out", "not [1]", "must be a finite number" |
+| 7 | Integer sums wrapped at 2**63 | 3 x 2**62 in, 2 x 2**62 out: sums printed as negative numbers | exact: 13835058055282163712 in, 9223372036854775808 out. pandas and Arrow sum integers as decimal128(38,0) and decimals as decimal256(76,s); Spark sums integers as `decimal(38,0)` |
+| 8 | Equal infinite totals failed; two checks on one input clashed by name | inf in and out: "difference nan", failed | equal totals match (both NaN too); a reconcile item takes `name`, results `<name>_rows` and `<name>_sum` |
+| 6 | The notebook compared with the full read, not what the transform got | `transform(head(4))` then write: "10 read, 4 reached: 6 lost"; never read: an error hinting at `Engine.write_outputs` | frames passed to `transform()` are checked and counted when it starts; the sample writes. With nothing counted the error says "In a notebook, call read() or transform() before write()" |
+
+The sums now take their own pass on the output side (natively: Spark
+aggregation, Arrow compute), over the held output (ADR 009). Float totals are
+printed as a round trip, so a float sum that differs in the 16th digit shows it
+(`p3`: 100,000 floats reordered now report a difference of 7.6e-06 at tolerance
+0, which the old 10 digit print hid); the docs say to give floats a tolerance.
+Documented limits: counting rows sees the net change only (lose 5 and fan out 5
+is 0 and 0; `max_gained` or a `unique` rule catches the fan out); a filter that
+drops rows on purpose needs a share or no row reconcile; a Spark decimal total
+past 38 digits fails (ANSI) or is null.
+
+Spark parity for the exact sums is in `tests/integration/test_expectations_spark.py`
+(`test_reconcile_sums_are_exact_on_spark_as_on_pandas`), for CI.

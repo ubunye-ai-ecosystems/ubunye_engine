@@ -553,29 +553,27 @@ def _package(obj: Any) -> str:
     return (getattr(type(obj), "__module__", "") or "").split(".")[0]
 
 
-def _written_kind(t: Any) -> str:
-    """An Arrow column type as the record names it once the pandas side writes it.
-
-    The same top level steps as ``pandas_io.to_arrow``: a category is its values,
-    an all-null column is text, and every timestamp is an instant (``timestamp``).
-    """
+def _contract_kind(t: Any) -> str:
+    """An Arrow column type by its real name: a category is named by its values."""
     import pyarrow as pa
 
     if pa.types.is_dictionary(t):
-        t = t.value_type
-    if pa.types.is_null(t):
-        return "string"
-    if pa.types.is_timestamp(t):
-        return "timestamp"
+        return _contract_kind(t.value_type)
     return arrow_kind(t)
 
 
 def frame_kinds(frame: Any) -> Dict[str, str]:
-    """Each column's type, by the names the run record uses (ADR 006).
+    """Each column's type as an input contract names it (``columns`` rule).
+
+    The run record's names (ADR 006), with one difference: a timestamp is named
+    by what it is, on every backend and at every depth. With a zone it is
+    ``timestamp``, without one ``timestamp_ntz``, as Spark 3.4 and later name
+    them. The record itself writes every pandas timestamp as an instant
+    (``timestamp``); that is unchanged, so its schema hashes stay the same.
 
     Read from the schema: a Spark frame is not computed. A pandas column of
-    Python objects is inferred by Arrow, as when it is written; one holding
-    values of mixed types is named ``mixed (object)``.
+    Python objects is inferred by Arrow; one holding values of mixed types is
+    named ``mixed``. A column of nulls only is ``null``.
     """
     package = _package(frame)
     if package == "pyspark":
@@ -588,7 +586,7 @@ def frame_kinds(frame: Any) -> Dict[str, str]:
     if isinstance(frame, PandasDataFrameAdapter):
         frame, package = frame.native, "pandas"
     if package == "pyarrow":
-        return {f.name: _written_kind(f.type) for f in frame.schema}
+        return {f.name: _contract_kind(f.type) for f in frame.schema}
     if package == "pandas":
         import pyarrow as pa
 
@@ -598,9 +596,9 @@ def frame_kinds(frame: Any) -> Dict[str, str]:
         for column in frame.columns:
             try:
                 field = pa.Schema.from_pandas(frame[[column]], preserve_index=False)[0]
-                kinds[str(column)] = _written_kind(field.type)
+                kinds[str(column)] = _contract_kind(field.type)
             except (pa.ArrowInvalid, pa.ArrowTypeError, pa.ArrowNotImplementedError):
-                kinds[str(column)] = f"mixed ({frame[column].dtype})"
+                kinds[str(column)] = "mixed"
         return kinds
     port_schema = getattr(frame, "schema", {}) or {}
     return {str(k): str(v) for k, v in dict(port_schema).items()}

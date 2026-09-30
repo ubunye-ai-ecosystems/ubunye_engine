@@ -9,6 +9,7 @@ Spark and must agree.
 
 from __future__ import annotations
 
+import decimal
 import json
 from pathlib import Path
 
@@ -16,7 +17,7 @@ import pytest
 from pydantic import ValidationError
 
 pd = pytest.importorskip("pandas")
-pytest.importorskip("pyarrow")
+pa = pytest.importorskip("pyarrow")
 pytest.importorskip("narwhals")
 
 import ubunye  # noqa: E402
@@ -151,16 +152,16 @@ def test_a_sum_of_text_or_a_missing_column_is_one_clear_error():
 
 def test_each_input_is_counted_once_however_many_outputs_reconcile_with_it(monkeypatch):
     calls = []
-    real = expectations._scalars
+    real = expectations._exact_sums
 
-    def counting(frame, exprs):
-        calls.append(len(exprs))
-        return real(frame, exprs)
+    def counting(frame, columns):
+        calls.append(len(frame))
+        return real(frame, columns)
 
-    monkeypatch.setattr(expectations, "_scalars", counting)
+    monkeypatch.setattr(expectations, "_exact_sums", counting)
     s = spec(rows={"max_lost": 10}, sum={"column": "amount", "tolerance": "100%"})
     expectations.apply({"a": JOINED, "b": ORDERS}, {"a": s, "b": s}, {"orders": ORDERS})
-    assert len(calls) == 3  # one pass over the input, one over each output
+    assert sorted(calls) == [8, 10, 10]  # the input once, then each output's sum
 
 
 def test_without_the_input_frames_a_reconcile_says_so():
@@ -271,12 +272,12 @@ class Enrich(Task):
 """
 
 
-def _task(root: Path, reconcile_yaml: str) -> Path:
+def _task(root: Path, reconcile_yaml: str, transform: str = TRANSFORM) -> Path:
     task = root / "uc" / "pkg" / "enrich"
     task.mkdir(parents=True)
     ORDERS.to_parquet(root / "orders.parquet")
     CUSTOMERS.to_parquet(root / "customers.parquet")
-    (task / "transformations.py").write_text(TRANSFORM, encoding="utf-8")
+    (task / "transformations.py").write_text(transform, encoding="utf-8")
     (task / "config.yaml").write_text(
         f"""\
 CONFIG:
@@ -354,3 +355,196 @@ def test_the_notebook_path_reconciles_with_the_frames_it_read(tmp_path):
     finally:
         session.close()
     assert not (tmp_path / "out").exists()
+
+
+# --- skeptic review (fix/f017-f018-contracts) ----------------------------------------
+
+IN_PLACE_DROP = """\
+from ubunye.core.interfaces import Task
+
+
+class Enrich(Task):
+    def transform(self, sources):
+        orders = sources["orders"]
+        orders.drop(orders[orders.customer_id == 99].index, inplace=True)
+        return {"enriched": orders}
+"""
+
+IN_PLACE_ZERO = """\
+from ubunye.core.interfaces import Task
+
+
+class Enrich(Task):
+    def transform(self, sources):
+        orders = sources["orders"]
+        orders["amount"] = orders["amount"] * 0
+        return {"enriched": orders}
+"""
+
+
+@pytest.mark.parametrize(
+    "transform, says",
+    [
+        (IN_PLACE_DROP, "10 rows read from orders, 8 reached enriched: 2 lost"),
+        (IN_PLACE_ZERO, "difference -550"),
+    ],
+)
+def test_a_transform_that_changes_its_input_in_place_cannot_hide_the_loss(
+    tmp_path, transform, says
+):
+    # 1: the input was counted after the transform, so this said "8 read, 0 lost".
+    task = _task(
+        tmp_path,
+        """\
+        - input: orders
+          rows: {max_lost: 0}
+          sum: {column: amount}
+""",
+        transform,
+    )
+    with pytest.raises(ExpectationError, match=says):
+        ubunye.run_task(str(task), backend="pandas")
+    assert not (tmp_path / "out").exists()
+
+
+def test_the_notebook_counts_the_input_before_an_in_place_transform(tmp_path):
+    from ubunye.notebook import notebook
+
+    task = _task(
+        tmp_path, "        - input: orders\n          rows: {max_lost: 0}\n", IN_PLACE_DROP
+    )
+    session = notebook(str(task), backend="pandas")
+    try:
+        session.read()
+        with pytest.raises(ExpectationError, match="10 rows read from orders, 8 reached"):
+            session.write(session.transform())
+    finally:
+        session.close()
+
+
+def test_decimal_sums_are_exact():
+    # 2: compared as floats, 0.01 on a 1.2e19 total vanished at tolerance 0.
+    dec = pd.ArrowDtype(pa.decimal128(38, 2))
+    values = [decimal.Decimal("0.10")] * 3 + [decimal.Decimal("12345678901234567890.01")]
+    before = pd.DataFrame({"amount": pd.array(values, dtype=dec)})
+    after = before.copy()
+    after.loc[0, "amount"] = decimal.Decimal("0.11")
+    with pytest.raises(ExpectationError) as err:
+        run(after, spec(sum={"column": "amount"}), {"orders": before})
+    assert (
+        "sum of amount in orders 12345678901234567890.31, of amount in enriched "
+        "12345678901234567890.32: difference 0.01 (at most 0)" in str(err.value)
+    )
+    _, results = run(after, spec(sum={"column": "amount", "tolerance": 0.01}), {"orders": before})
+    assert results[0].passed
+
+
+@pytest.mark.parametrize("dtype", ["int64", pd.ArrowDtype(pa.int64())])
+def test_integer_sums_do_not_wrap_past_2_to_the_63(dtype):
+    # 7: 3 x 2**62 wrapped to a negative number on both sides.
+    big = pd.DataFrame({"amount": pd.array([2**62] * 3, dtype=dtype)})
+    with pytest.raises(ExpectationError) as err:
+        run(big.head(2), spec(sum={"column": "amount"}), {"orders": big})
+    assert f"orders {3 * 2**62}, of amount in enriched {2 * 2**62}: difference {-(2**62)}" in str(
+        err.value
+    )
+    _, results = run(big, spec(sum={"column": "amount"}), {"orders": big})
+    assert results[0].passed
+
+
+def test_equal_infinite_totals_match():
+    # 8: inf - inf is NaN, which failed a sum that carried over exactly.
+    frame = pd.DataFrame({"amount": [1.0, float("inf")]})
+    _, results = run(frame, spec(sum={"column": "amount"}), {"orders": frame})
+    assert results[0].passed
+    _, results = run(
+        frame.head(1), spec(sum={"column": "amount"}, severity="warn"), {"orders": frame}
+    )
+    assert not results[0].passed
+
+
+def test_two_named_checks_against_one_input_can_coexist():
+    # 8: a warn at 1% and a fail at 25% on the same input clashed by name.
+    s = ExpectationSet(
+        reconcile=[
+            {"input": "orders", "name": "early", "rows": {"max_lost": "1%"}, "severity": "warn"},
+            {"input": "orders", "name": "stop", "rows": {"max_lost": "25%"}},
+        ]
+    )
+    _, results = run(JOINED, s)
+    assert {r.rule: r.passed for r in results} == {"early_rows": False, "stop_rows": True}
+
+
+@pytest.mark.parametrize(
+    "check, message",
+    [
+        ({"sum": {"column": "a", "tolerance": None}}, "tolerance is empty"),
+        ({"sum": {"column": "a", "tolerance": float("nan")}}, "finite number"),
+        ({"sum": {"column": "a", "tolerance": float("inf")}}, "finite number"),
+        ({"sum": {"column": "a", "tolerance": [1]}}, r"percentage like '1%', not \[1\]"),
+        ({"rows": {"max_lost": [1]}}, r"percentage like '1%', not \[1\]"),
+        ({"rows": {"max_lost": {"a": 1}}}, "percentage like '1%'"),
+    ],
+)
+def test_a_bad_bound_is_a_clear_config_error_not_a_type_error(check, message):
+    # 3: these escaped `ubunye validate` as a bare TypeError.
+    with pytest.raises(ValidationError, match=message):
+        spec(**check)
+
+
+def test_ubunye_validate_names_a_blank_tolerance(tmp_path):
+    import yaml
+    from typer.testing import CliRunner
+
+    from ubunye.cli.main import app
+
+    task = tmp_path / "uc" / "pkg" / "t"
+    task.mkdir(parents=True)
+    block = {
+        "enriched": {"reconcile": [{"input": "orders", "sum": {"column": "a", "tolerance": None}}]}
+    }
+    cfg = {"MODEL": "etl", "VERSION": "0.1.0", **_config(block)}
+    (task / "config.yaml").write_text(yaml.dump(cfg), encoding="utf-8")
+    result = CliRunner().invoke(
+        app, ["validate", "-d", str(tmp_path), "-u", "uc", "-p", "pkg", "-t", "t"]
+    )
+    assert result.exit_code == 1
+    assert not isinstance(result.exception, TypeError)
+    assert "tolerance is empty" in result.output
+
+
+def test_the_notebook_reconciles_against_the_frames_the_transform_got(tmp_path):
+    # 6: a sample passed to transform() was compared with the full read.
+    from ubunye.notebook import notebook
+
+    task = _task(tmp_path, "        - input: orders\n          rows: {max_lost: 0}\n", COPY)
+    session = notebook(str(task), backend="pandas")
+    try:
+        session.read()
+        sample = {"orders": ORDERS.head(4).copy(), "customers": CUSTOMERS.copy()}
+        session.write(session.transform(sample))
+    finally:
+        session.close()
+    assert len(pd.read_parquet(tmp_path / "out")) == 4
+
+
+def test_the_notebook_says_what_to_call_when_it_has_no_inputs(tmp_path):
+    from ubunye.config.loader import load_config
+    from ubunye.core import backends
+    from ubunye.core.runtime import Engine
+
+    task = _task(tmp_path, "        - input: orders\n          rows: {max_lost: 0}\n")
+    cfg = load_config(str(task / "config.yaml")).model_dump(mode="json")
+    engine = Engine(backend=backends.resolve("pandas"))
+    with pytest.raises(ExpectationError, match=r"call read\(\) or transform\(\) before write"):
+        engine.write_outputs({"enriched": ORDERS}, cfg)
+
+
+COPY = """\
+from ubunye.core.interfaces import Task
+
+
+class Enrich(Task):
+    def transform(self, sources):
+        return {"enriched": sources["orders"].copy()}
+"""

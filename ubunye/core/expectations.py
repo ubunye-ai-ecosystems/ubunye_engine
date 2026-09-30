@@ -29,7 +29,9 @@ other. So ``not_null`` breaks on NaN, and ``between`` and ``one_of`` let it pass
 
 from __future__ import annotations
 
+import decimal
 import logging
+import math
 import numbers
 from dataclasses import asdict, dataclass
 from functools import reduce
@@ -203,11 +205,36 @@ def _sum(nw: Any, column: str, floats: frozenset) -> Any:
     """A column's sum, leaving out missing values (null, and NaN in a float column).
 
     Spark's sum of a column holding NaN is NaN and pandas skips it; NaN counts as
-    missing on every backend here, as it does for the rules (F-045).
+    missing on every backend here, as it does for the rules (F-045). Used only
+    for a frame that is neither Spark nor pandas nor Arrow (see :func:`_exact_sums`).
     """
     if column in floats:
         return nw.when(~_missing(nw, column, floats)).then(nw.col(column)).sum()
     return nw.col(column).sum()
+
+
+def _exact_sums(frame: Any, columns: List[str]) -> Tuple[int, Dict[str, Any]]:
+    """Row count and the sums of ``columns``: exact for integers and decimals.
+
+    Spark, pandas and Arrow frames are summed natively (the sums a reconcile
+    compares must not wrap at 2**63, nor round a decimal through a float).
+    Anything else is summed by Narwhals.
+    """
+    from ubunye.adapters.sums import exact_sums
+
+    native = exact_sums(frame, columns)
+    if native is not None:
+        return native
+    nw = _nw()
+    df = nw.from_native(frame)
+    schema = df.collect_schema()
+    floats = frozenset(c for c, t in schema.items() if t in (nw.Float32, nw.Float64))
+    got = _scalars(
+        df,
+        [nw.len().alias("__rows")]
+        + [_sum(nw, c, floats).alias(f"s{i}") for i, c in enumerate(columns)],
+    )
+    return int(got["__rows"]), {c: got[f"s{i}"] for i, c in enumerate(columns)}
 
 
 def _numeric_column(nw: Any, where: str, df: Any, column: str, rule: str) -> None:
@@ -233,9 +260,11 @@ def measure_inputs(
 ) -> Dict[str, Dict[str, Any]]:
     """Row count and asked-for sums of every input a ``reconcile`` names.
 
-    One pass over each such input, as the transform received it. On a lazy
-    backend (Spark) that pass reads the source again: inputs are not held
-    (ADR 009). Returns ``{input: {"rows": n, "sums": {column: value}}}``.
+    Taken **before the transform runs**: a pandas transform may change its
+    input in place (drop rows, overwrite a column), and counting afterwards
+    would hide exactly the loss a reconcile is for. One pass over each such
+    input. On a lazy backend (Spark) that pass reads the source: inputs are not
+    held (ADR 009). Returns ``{input: {"rows": n, "sums": {column: value}}}``.
     """
     wanted: Dict[str, List[str]] = {}
     for spec in expectations.values():
@@ -253,30 +282,54 @@ def measure_inputs(
             f"reconcile needs the input frames the transform received, and "
             f"{', '.join(repr(m) for m in missing)} was not given.",
             context={"Missing inputs": ", ".join(missing)},
-            hint="Pass the frames read for the task (Engine.write_outputs(..., inputs=...)).",
+            hint="In a notebook, call read() or transform() before write(). With the "
+            "Engine, call read_inputs() or apply_transforms() first, or pass inputs= to "
+            "write_outputs().",
         )
     nw = _nw()
     measured: Dict[str, Dict[str, Any]] = {}
     for name in sorted(wanted):
-        df = nw.from_native(inputs[name])  # type: ignore[index]
+        frame = inputs[name]  # type: ignore[index]
+        df = nw.from_native(frame)
         for column in wanted[name]:
             _numeric_column(nw, f"input {name}", df, column, "reconcile")
-        schema = df.collect_schema()
-        floats = frozenset(c for c, t in schema.items() if t in (nw.Float32, nw.Float64))
-        got = _scalars(
-            df,
-            [nw.len().alias("__rows")]
-            + [_sum(nw, c, floats).alias(f"s{i}") for i, c in enumerate(wanted[name])],
-        )
-        measured[name] = {
-            "rows": int(got["__rows"]),
-            "sums": {c: got[f"s{i}"] for i, c in enumerate(wanted[name])},
-        }
+        rows, sums = _exact_sums(frame, wanted[name])
+        measured[name] = {"rows": rows, "sums": sums}
     return measured
 
 
 def _text(value: Any) -> str:
-    return str(value) if isinstance(value, numbers.Integral) else f"{float(value):.10g}"
+    """A number written exactly: an int as is, a Decimal in full, a float round trip."""
+    if isinstance(value, numbers.Integral):
+        return str(int(value))
+    if isinstance(value, decimal.Decimal):
+        return format(value, "f")
+    value = float(value)
+    if math.isfinite(value) and value.is_integer() and abs(value) < 1e16:
+        return str(int(value))
+    return repr(value)
+
+
+def _difference(before: Any, after: Any) -> Any:
+    """after - before, exactly: ints as ints, Decimals as Decimals, else floats.
+
+    Two equal totals match, infinities included; two NaN totals (each side
+    holding +inf and -inf) match too.
+    """
+    if isinstance(before, float) or isinstance(after, float):
+        b, a = float(before), float(after)
+        if a == b or (math.isnan(a) and math.isnan(b)):
+            return 0.0
+        return a - b
+    if isinstance(before, decimal.Decimal) or isinstance(after, decimal.Decimal):
+        return _as_decimal(after) - _as_decimal(before)
+    return int(after) - int(before)
+
+
+def _as_decimal(value: Any) -> decimal.Decimal:
+    if isinstance(value, decimal.Decimal):
+        return value
+    return decimal.Decimal(int(value))
 
 
 def _limit_text(value: Any) -> str:
@@ -323,12 +376,12 @@ def _reconcile(
         if check.sum is not None:
             source = check.sum.input_column or check.sum.column
             before, after = got["sums"][source], sums[check.sum.column]
-            if isinstance(before, numbers.Integral) and isinstance(after, numbers.Integral):
-                diff: Any = int(after) - int(before)
-            else:
-                diff = float(after) - float(before)
-            limit = allowed(check.sum.tolerance, float(before))
-            ok = abs(diff) <= limit
+            floaty = isinstance(before, float) or isinstance(after, float)
+            base = float(before) if floaty else before
+            with decimal.localcontext() as ctx:
+                ctx.prec = 100  # a decimal256 total has up to 76 digits
+                diff = _difference(before, after)
+                ok = abs(diff) <= allowed(check.sum.tolerance, base)
             results.append(
                 RuleResult(
                     output=name,
@@ -431,8 +484,7 @@ def check_output(
         + [
             _breaks(nw, r, floats).cast(nw.Int64).sum().alias(f"r{i}")
             for i, r in enumerate(row_rules)
-        ]
-        + [_sum(nw, c, floats).alias(f"s{i}") for i, c in enumerate(sum_columns)],
+        ],
     )
     total = int(counts["__total"])
     failed: Dict[str, int] = {r.name: int(counts[f"r{i}"]) for i, r in enumerate(row_rules)}
@@ -466,7 +518,9 @@ def check_output(
         )
         for r in spec.rules
     ]
-    sums = {c: counts[f"s{i}"] for i, c in enumerate(sum_columns)}
+    # Sums are exact (no wrap at 2**63, no decimal through a float), so they are
+    # taken natively, in a pass of their own; the output is held (ADR 009).
+    sums = _exact_sums(frame, sum_columns)[1] if sum_columns else {}
     results += _reconcile(name, spec, total, sums, measured)
 
     clean, quarantined = _split(nw, frame, df, row_rules, floats, failed)
@@ -540,22 +594,28 @@ def apply(
     outputs: Dict[str, Any],
     expectations: Dict[str, ExpectationSet],
     inputs: Optional[Dict[str, Any]] = None,
+    measured: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Tuple[Dict[str, Any], List[RuleResult]]:
     """Check every output that has expectations; nothing is written here.
 
     Returns the outputs to write (clean frames, plus quarantined rows under their
     quarantine output) and every rule's result. Raises :class:`ExpectationError`
-    if any ``fail`` rule is broken or a quarantine rate is exceeded. ``inputs``
-    are the frames the transform received; a ``reconcile`` needs them.
+    if any ``fail`` rule is broken or a quarantine rate is exceeded. A
+    ``reconcile`` compares with ``measured`` (:func:`measure_inputs`, taken
+    before the transform ran), or else measures ``inputs`` now.
     """
     if not expectations:
         return outputs, []
     outputs = dict(outputs)
     results: List[RuleResult] = []
     problems: List[str] = []
-    measured = measure_inputs(
-        inputs, {n: s for n, s in expectations.items() if n in outputs and s.reconcile}
-    )
+    reconciled = {n: s for n, s in expectations.items() if n in outputs and s.reconcile}
+    measured = dict(measured or {})
+    unmeasured = {
+        n: s for n, s in reconciled.items() if any(c.input not in measured for c in s.reconcile)
+    }
+    if unmeasured:
+        measured.update(measure_inputs(inputs, unmeasured))
 
     for name in sorted(expectations):
         spec = expectations[name]

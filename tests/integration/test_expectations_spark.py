@@ -246,7 +246,8 @@ def test_a_task_that_drops_orders_writes_nothing_on_spark(spark, tmp_path):
 
 TYPED = (
     "i8 TINYINT, i16 SMALLINT, i32 INT, i64 BIGINT, f32 FLOAT, f64 DOUBLE, b BOOLEAN, "
-    "s STRING, bin BINARY, d DATE, t TIMESTAMP, dec DECIMAL(10,2), l ARRAY<BIGINT>, "
+    "s STRING, bin BINARY, d DATE, t TIMESTAMP, tntz TIMESTAMP_NTZ, dec DECIMAL(10,2), "
+    "l ARRAY<BIGINT>, lntz ARRAY<TIMESTAMP_NTZ>, "
     "st STRUCT<a: INT, b: STRING>"
 )
 
@@ -270,8 +271,10 @@ def test_spark_and_pandas_name_the_same_parquet_columns_the_same_way(spark, tmp_
         bytearray(b"a"),
         dt.date(2024, 1, 2),
         dt.datetime(2024, 1, 2, 10, 15),
+        dt.datetime(2024, 1, 2, 10, 15),
         Decimal("1.25"),
         [1],
+        [dt.datetime(2024, 1, 2, 10, 15)],
         (1, "a"),
     )
     path = (tmp_path / "typed").as_posix()
@@ -281,6 +284,72 @@ def test_spark_and_pandas_name_the_same_parquet_columns_the_same_way(spark, tmp_
     assert on_spark == on_pandas
     assert on_spark["i32"] == "int32" and on_spark["dec"] == "decimal(10,2)"
     assert on_spark["st"] == "struct<a:int32,b:string>"
+    assert (on_spark["t"], on_spark["tntz"]) == ("timestamp", "timestamp_ntz")
+    assert on_spark["lntz"] == "list<timestamp_ntz>"
+
+
+def test_a_parquet_file_with_naive_and_zoned_timestamps_is_named_alike(spark, tmp_path):
+    # Skeptic review 4: a naive timestamp is timestamp_ntz and a zoned one timestamp,
+    # on Spark (3.4 and later read a naive parquet timestamp as TIMESTAMP_NTZ) and on
+    # pandas, at the top level and inside a list.
+    import datetime as dt
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from ubunye.adapters import pandas_io
+    from ubunye.lineage.content_hash import frame_kinds
+
+    when = dt.datetime(2024, 1, 2, 10, 15)
+    table = pa.table(
+        {
+            "naive": pa.array([when], pa.timestamp("us")),
+            "zoned": pa.array([when], pa.timestamp("us", tz="UTC")),
+            "naive_list": pa.array([[when]], pa.list_(pa.timestamp("us"))),
+        }
+    )
+    (tmp_path / "ts").mkdir()
+    pq.write_table(table, tmp_path / "ts" / "part-0.parquet")
+    path = (tmp_path / "ts").as_posix()
+    on_spark = frame_kinds(spark.read.parquet(path))
+    on_pandas = frame_kinds(pandas_io.read_frame("parquet", path).native)
+    assert (
+        on_spark
+        == on_pandas
+        == {
+            "naive": "timestamp_ntz",
+            "zoned": "timestamp",
+            "naive_list": "list<timestamp_ntz>",
+        }
+    )
+
+
+def test_reconcile_sums_are_exact_on_spark_as_on_pandas(spark):
+    # Skeptic review 2 and 7: integer totals past 2**63 and decimal totals of 20 digits.
+    from decimal import Decimal
+
+    rows = [(2**62, Decimal("0.10")), (2**62, Decimal("12345678901234567890.01")), (2**62, None)]
+    orders = spark.createDataFrame(rows, "n BIGINT, amount DECIMAL(38,2)")
+    kept = orders.limit(2)
+    spec = ExpectationSet(
+        reconcile=[
+            {"input": "orders", "sum": {"column": "n"}, "severity": "warn"},
+            {"input": "orders", "sum": {"column": "amount"}, "severity": "warn", "name": "amt"},
+        ]
+    )
+    _, on_spark = expectations.apply({"out": kept}, {"out": spec}, {"orders": orders})
+    frame = pd.DataFrame(rows, columns=["n", "amount"])
+    frame["amount"] = frame["amount"].astype(pd.ArrowDtype(pa_decimal(38, 2)))
+    _, on_pandas = expectations.apply({"out": frame.head(2)}, {"out": spec}, {"orders": frame})
+    assert [r.as_dict() for r in on_spark] == [r.as_dict() for r in on_pandas]
+    assert f"orders {3 * 2**62}, of n in out {2 * 2**62}" in on_spark[0].detail
+    assert "12345678901234567890.11" in on_spark[1].detail and on_spark[1].passed
+
+
+def pa_decimal(precision, scale):
+    import pyarrow as pa
+
+    return pa.decimal128(precision, scale)
 
 
 def test_a_columns_contract_gives_the_same_verdict_on_spark_and_pandas(spark):
