@@ -157,6 +157,78 @@ class masked:
             logger.removeFilter(self.filter)
 
 
+# --------------------------------------------------------------------------- #
+# Rows as JSON (F-051)
+# --------------------------------------------------------------------------- #
+
+
+def jsonable(value: Any) -> Any:
+    """One value as JSON can hold it, the same from every backend.
+
+    NaN and the infinities are ``null`` (JSON has neither, and requests refuses
+    them); a timestamp is ISO 8601 text, in UTC with ``Z`` when it is an instant,
+    without an offset when it is wall clock time (``timestamp_ntz``); a date is
+    ``yyyy-mm-dd``; a decimal is its exact text (a string, so no digit is lost to
+    a float); binary is base64 text. Raises ``TypeError`` for anything else.
+    """
+    import base64
+    import datetime as dt
+    import decimal
+    import math
+
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dt.datetime):
+        if value.tzinfo is not None:
+            text = value.astimezone(dt.timezone.utc).replace(tzinfo=None).isoformat()
+            return text + "Z"
+        return value.isoformat()
+    if isinstance(value, (dt.date, dt.time)):
+        return value.isoformat()
+    if isinstance(value, decimal.Decimal):
+        return str(value)
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return base64.b64encode(bytes(value)).decode("ascii")
+    if isinstance(value, dict):
+        return {str(k): jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [jsonable(v) for v in value]
+    raise TypeError(f"a {type(value).__name__} value cannot be sent as JSON")
+
+
+def json_body(records: List[Dict[str, Any]]) -> bytes:
+    """A batch as the bytes to POST: ``{"records": [...]}``, every row checked first.
+
+    The whole batch is encoded before anything is sent, so a row that cannot be
+    sent stops the batch before its first byte leaves (F-051). Raises
+    ``ValueError`` naming the row and the field.
+    """
+    import json
+
+    rows = []
+    for i, record in enumerate(records):
+        try:
+            rows.append(jsonable(record))
+        except TypeError as exc:
+            field = (
+                next((k for k, v in record.items() if _unsendable(v)), "?")
+                if isinstance(record, dict)
+                else "?"
+            )
+            raise ValueError(f"row {i} of the batch, field '{field}': {exc}") from None
+    return json.dumps({"records": rows}, allow_nan=False).encode("utf-8")
+
+
+def _unsendable(value: Any) -> bool:
+    try:
+        jsonable(value)
+        return False
+    except TypeError:
+        return True
+
+
 AUTH_TYPES = ("bearer", "api_key_header", "api_key_query", "basic")
 
 #: Old names the docs used to print (F-049), still read, with a warning.
@@ -305,7 +377,11 @@ def _send(
     for attempt in range(max_retries + 1):
         if rps > 0:
             time.sleep(1.0 / rps)
-        resp = session.request(method=method.upper(), url=url, params=params or None, json=body)
+        if isinstance(body, bytes):  # already encoded (the writer: see json_body)
+            payload = {"data": body, "headers": {"Content-Type": "application/json"}}
+        else:
+            payload = {"json": body}
+        resp = session.request(method=method.upper(), url=url, params=params or None, **payload)
         if resp.status_code in retry_on and attempt < max_retries:
             wait = BACKOFF_BASE * (2**attempt)
             log.warning(

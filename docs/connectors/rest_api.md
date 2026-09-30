@@ -290,7 +290,23 @@ CONFIG:
 
 The writer batches rows into JSON payloads of `batch_size` records and POSTs each batch
 as `{"records": [...]}`. A map column is sent as an object. Spark and pandas send the
-same payloads.
+same payloads, with one JSON form for each kind of value:
+
+| Value | Sent as |
+|---|---|
+| NaN, `Infinity`, `-Infinity` | `null` (JSON has none of them) |
+| timestamp (an instant) | ISO 8601 text in UTC: `"2024-01-02T01:04:05.123456Z"` |
+| `timestamp_ntz` (wall clock time, Spark) | ISO 8601 text without an offset |
+| date | `"2024-01-02"` |
+| decimal | its exact text, as a string: `"12.50"` (a JSON number could lose digits) |
+| binary | base64 text |
+
+On pandas a naive timestamp is an instant in the backend's time zone, as everywhere
+on the pandas backend, so it is sent with `Z` too.
+
+Each batch is encoded whole before any of it is sent. A row holding a value that
+has no JSON form stops the write with an error naming the row and the field; none
+of its batch is posted (earlier batches were, and the error says how many).
 
 ---
 

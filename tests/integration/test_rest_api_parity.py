@@ -156,6 +156,54 @@ def test_whole_numbers_in_a_double_column_read_the_same(backends):
     assert [r["price"] for r in _rows(spark_backend, spark_df)] == [1.0, 2.5]
 
 
+def test_nan_timestamps_decimals_are_posted_the_same(backends, spark):
+    """F-051: one JSON form per value, the same from Spark and pandas."""
+    import datetime as dt
+    import decimal
+
+    from pyspark.sql import types as T
+
+    spark_backend, pandas_backend = backends
+    instant = dt.datetime(2024, 1, 2, 1, 4, 5, 123456, tzinfo=dt.timezone.utc)
+    spark_df = spark.createDataFrame(
+        [
+            (
+                float("nan"),
+                instant,
+                dt.date(2024, 1, 2),
+                decimal.Decimal("12.50"),
+                bytearray(b"\x00\x01"),
+            )
+        ],
+        T.StructType(
+            [
+                T.StructField("x", T.DoubleType()),
+                T.StructField("ts", T.TimestampType()),
+                T.StructField("day", T.DateType()),
+                T.StructField("dec", T.DecimalType(10, 2)),
+                T.StructField("bin", T.BinaryType()),
+            ]
+        ),
+    )
+    table = pa.table(
+        {
+            "x": pa.array([float("nan")]),
+            "ts": pa.array([instant], pa.timestamp("us", tz="UTC")),
+            "day": pa.array([dt.date(2024, 1, 2)]),
+            "dec": pa.array([decimal.Decimal("12.50")], pa.decimal128(10, 2)),
+            "bin": pa.array([b"\x00\x01"]),
+        }
+    )
+    pandas_frame = table.to_pandas(types_mapper=pd.ArrowDtype)
+    payloads = []
+    for backend, frame in ((spark_backend, spark_df), (pandas_backend, pandas_frame)):
+        with served() as api:
+            RestApiWriter().write(frame, {"url": f"{api.base}/sink"}, backend)
+            payloads.append(api.posted)
+    assert payloads[0] == payloads[1]
+    assert payloads[0][0]["records"][0]["ts"] == "2024-01-02T01:04:05.123456Z"
+
+
 def test_write_posts_the_same_payloads(backends):
     spark_backend, pandas_backend = backends
     payloads = []

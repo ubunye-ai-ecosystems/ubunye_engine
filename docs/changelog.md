@@ -81,6 +81,15 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
   `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
   both.
+- **The REST writer sends NaN, timestamps, dates, decimals and binary (F-051).** It
+  crashed on the first such row (requests refuses NaN and cannot encode a datetime
+  or a Decimal), after earlier batches were posted. Now NaN and the infinities are
+  `null`, an instant is ISO 8601 UTC text with `Z`, `timestamp_ntz` has no offset, a
+  date is `yyyy-mm-dd`, a decimal is its exact text as a string, binary is base64,
+  the same from Spark and pandas (Spark's naive local timestamps are made UTC
+  first). Each batch is encoded whole before any of it is sent, so a row that cannot
+  be sent stops the write with its row and field named and none of its batch
+  posted. **Behaviour change** for Spark users whose writes used to fail.
 - **Security: a REST API key no longer appears in logs or errors (F-050).** With
   `api_key_query` the key is in the URL, and the writer's error log, the reader's
   `HTTPError`, a `ConnectionError` and urllib3's DEBUG request lines all carried the

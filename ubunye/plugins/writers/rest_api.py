@@ -59,18 +59,23 @@ def _post_batch(
     rate_cfg: Dict[str, Any],
     auth_cfg: Dict[str, Any],
     secrets: Optional[List[str]] = None,
+    body: Optional[bytes] = None,
 ) -> None:
     """POST one batch with rate limiting and retries.
 
-    Raises ``requests.HTTPError`` on an error status, once the retries run out,
-    with ``secrets`` masked in its message (F-050).
+    ``body`` is the batch already encoded (:func:`rest_http.json_body`); without
+    it ``payload`` is encoded here. Raises ``requests.HTTPError`` on an error
+    status, once the retries run out, with ``secrets`` masked in its message
+    (F-050).
     """
+    if body is None:
+        body = rest_http.json_body(payload.get("records", []))
     rest_http.send(
         session,
         "POST",
         url,
         params=None,
-        body=payload,
+        body=body,
         rate_cfg=rate_cfg,
         auth_cfg=auth_cfg,
         retry_on_default=_DEFAULT_RETRY_ON,
@@ -208,14 +213,31 @@ class RestApiWriter(Writer):
     ):
         """POST a single batch and update counters.
 
-        Returns updated (success_count, failure_count).
+        The whole batch is encoded first, so a row that cannot be sent stops the
+        write before any of this batch is posted (F-051). Returns updated
+        (success_count, failure_count).
         """
         import requests as _requests
 
         payload = {"records": batch}
         try:
+            body = rest_http.json_body(batch)
+        except ValueError as exc:
+            raise SinkWriteError(
+                f"RestApiWriter: a row cannot be sent as JSON ({exc}). Nothing of this "
+                f"batch was posted; {success_count} earlier batch(es) were.",
+                context={"Format": "rest_api", "Posted batches": success_count},
+                hint="Cast the column to a string, number or date in the transform.",
+            ) from None
+        try:
             _post_batch(
-                session, url, payload, rate_cfg, auth_cfg, secrets=getattr(self, "_secrets", None)
+                session,
+                url,
+                payload,
+                rate_cfg,
+                auth_cfg,
+                secrets=getattr(self, "_secrets", None),
+                body=body,
             )
             success_count += 1
             log.debug("RestApiWriter: batch of %d rows posted successfully", len(batch))
