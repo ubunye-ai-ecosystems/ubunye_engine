@@ -158,6 +158,30 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   without it. **Behaviour change** on pandas only, and only for rows that did not break
   the last quarantine rule: their reasons lose the trailing comma. Found by the Olist
   example (R2).
+- **A Spark append to a folder lands once, however the run ends (F-070).** Spark
+  appends were not claimed (ADR 008), so on live Spark a run killed after its append
+  was appended again by the rerun, a run that failed after its append left it, and
+  `--rerun` appended a finished batch a second time. Spark cannot say its file names
+  before they land (it puts a job UUID of its own in each name), so a path append now
+  goes to a hidden folder inside the output that the run's lease names before it
+  exists (`_ubunye-<id>`, skipped by Spark, pyarrow, pandas and Ubunye's readers).
+  Once Spark has finished, the files there are claimed in the lease, then moved up in
+  one rename each. A failed or killed run has
+  exactly those files and that folder taken back, and `--rerun` replaces the batch,
+  as on pandas. The output folder is never listed to decide what is a run's, so a
+  file another job put there is never removed. Applies to `parquet`, `csv`, `json`,
+  `orc`, `avro` and `text` on a path Spark resolves to the local file system (a
+  laptop or a shared disk). Delta, catalog tables, JDBC and object storage
+  (`s3a://`, `abfss://`, `gs://`, `dbfs:/`) are written as before and named after a
+  crash (F-071, F-072, F-073), and the log says in one line which output was not
+  claimed and why. Live Spark 4.2: 9 of 10 new integration cases fail on the old
+  code, 10 of 10 pass. After the skeptic review: the staging folder moved from beside
+  the output to inside it (an output on another disk, a long folder name, and globs
+  of the parent folder broke); claiming 12,000 files takes 14.5 s (was 76 s, each file
+  re-read the growing lease; the pandas backend gains the same); a Spark append
+  refused or killed before it claimed anything is no longer reported as maybe holding
+  part of the batch; Ctrl+C cancels the Spark write's job group before its folder is
+  removed.
 - **On Windows, reading a run lease while its heartbeat replaces it no longer fails
   (F-048).** Windows refuses a read for a moment while a file is being replaced. The
   engine then called a live run's lease unreadable, and a second run of the same
@@ -288,8 +312,9 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   the batch runs again (was: the batch landed twice, 16 of 16, F-011). A run that fails
   removes its own. Only files a backend claims before they land are ever removed (the
   pandas backend claims each part file; no folder is listed to guess), so another
-  run's files are never touched. Appends that cannot be claimed (Spark, JDBC,
-  catalogs) are named in the log and the dead run's record, never deleted.
+  run's files are never touched (Spark claims a path append on a local disk too since
+  F-070). Appends that cannot be claimed (JDBC, catalogs, Delta, Spark on object
+  storage) are named in the log and the dead run's record, never deleted.
   `UBUNYE_RUN_LEASE=off` turns it
   off.
 - **A batch that finished is not appended twice by accident (F-031).** A run of a
@@ -297,8 +322,8 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   refused in one line (was: it appended the batch again). `ubunye run --rerun`
   (`rerun=True` in Python) replaces the batch instead: once the new run succeeds, the
   files the finished run claimed are removed, so a rerun that fails loses nothing.
-  Appends that cannot be claimed (Spark, JDBC, catalogs) are appended again, and the
-  run says so. A run with no `-dt` and no `--var` (a snapshot job) and a task that
+  Appends that cannot be claimed (JDBC, catalogs, Delta, Spark on object storage) are
+  appended again, and the run says so. A run with no `-dt` and no `--var` (a snapshot job) and a task that
   only overwrites are never refused. `ubunye run --resume` (`run_pipeline(...,
   resume=True)`) finishes a pipeline that stopped half way: tasks that finished the
   batch are skipped, the rest run.

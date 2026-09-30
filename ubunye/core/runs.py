@@ -21,20 +21,22 @@ belongs to a run that died. The next run takes it over and marks that run's reco
 ``interrupted``.
 
 **Appends: only claimed files are ever removed.** A backend that can name the files it
-appends (pandas: one part file with a fresh UUID in its name) *claims* each one in the
-lease before moving it into the output folder. A run that fails removes its claimed
-files; a run that takes over a dead run's lease removes the dead run's. No folder is
-ever listed to decide what to delete, so another run's files are never touched.
-Appends a backend cannot claim (Spark, JDBC, catalog tables) are never deleted: the run
-says they may hold the batch, in its log and in the dead run's record.
+appends (pandas: one part file with a fresh UUID in its name; Spark on a local or
+shared disk: the files its job wrote into a staging folder named by this run) *claims*
+each one in the lease before moving it into the output folder. A run that fails removes
+its claimed files; a run that takes over a dead run's lease removes the dead run's. No
+output folder is ever listed to decide what to delete, so another run's files are never
+touched. Appends a backend cannot claim (JDBC, catalog and Delta tables, Spark paths on
+object storage) are never deleted: the run says they may hold the batch, in its log and
+in the dead run's record.
 
 **A finished batch.** A run that appends a named batch (``dt`` or a ``--var``) and
 succeeds leaves a note beside the lease: which run finished it, and the files it
 claimed. A later run of the same batch is refused, since it would append the batch a
 second time (F-031). ``--rerun`` (``rerun=True``) replaces it instead: once the new run
 has succeeded, the files the finished run claimed are removed. Appends that were not
-claimed (Spark, JDBC, catalog tables) cannot be removed, so the run says it appends
-to them again.
+claimed (JDBC, catalog and Delta tables, Spark paths on object storage) cannot be
+removed, so the run says it appends to them again.
 
 **Limits, said plainly.** The lease protects runs that share the usecase folder (one
 machine, or a shared disk). Two cloud jobs each with their own disk are not protected
@@ -49,6 +51,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import socket
 import sys
 import threading
@@ -506,15 +509,21 @@ class RunLease:
         outputs = last["outputs"]
         who = f"run {str(last.get('run_id', '?'))[:8]} (finished {last.get('finished_at', '?')})"
         # What --rerun can replace (files the finished run claimed), and the outputs
-        # this run appends to that it cannot (written by Spark, JDBC, a catalog, or
-        # overwritten whole), where the batch would land again.
+        # this run appends to that it cannot (written by JDBC, a catalog or Delta table,
+        # Spark on object storage, or overwritten whole), where the batch would land
+        # again.
         replaces = {n: list(o["claimed"]) for n, o in outputs.items() if o.get("claimed")}
-        again = [n for n in appends if not (outputs.get(n) or {}).get("claimed")]
+        again = [
+            n
+            for n in appends
+            if not ((outputs.get(n) or {}).get("claimed") or (outputs.get(n) or {}).get("staged"))
+        ]
         if not rerun:
             if again:
                 hint = (
                     f"Output(s) {', '.join(again)} cannot be taken back by Ubunye (not "
-                    "written as claimed pandas part files), so --rerun would append the "
+                    "written as claimed part files on a local or shared disk), so --rerun "
+                    "would append the "
                     "batch to them again. Remove that run's rows first, or write them "
                     "with mode overwrite_partitions."
                 )
@@ -541,7 +550,8 @@ class RunLease:
         if again:
             logger.warning(
                 "--rerun: output(s) %s hold the batch written by %s and cannot be taken "
-                "back (Spark, JDBC, a catalog table, or an overwrite), so this run appends "
+                "back (JDBC, a catalog or Delta table, Spark on object storage, or an "
+                "overwrite), so this run appends "
                 "the batch to them again. Remove that run's rows first, or write the "
                 "output with mode overwrite_partitions.",
                 ", ".join(again),
@@ -600,7 +610,12 @@ class RunLease:
         if not self.named:
             return True
         written = {
-            n: {"claimed": list(o.get("claimed") or []) if o.get("exact") else []}
+            n: {
+                "claimed": list(o.get("claimed") or []) if o.get("exact") else [],
+                # Written through a staging folder: every file it added is claimed,
+                # even when there were none (an empty batch).
+                **({"staged": True} if o.get("exact") and o.get("staging") else {}),
+            }
             for n, o in (doc.get("outputs") or {}).items()
         }
         if not written:
@@ -679,21 +694,59 @@ class RunLease:
         Raises :class:`RunLeaseLost` (and nothing is moved) if the lease is no longer
         this run's, or the claim could not be saved.
         """
+        self.claim_all([path])
+
+    def claim_all(self, paths: List[str]) -> None:
+        """:meth:`claim` for many files, in one save of the lease."""
+        output = self._current_output
+        with self._lock:
+            note = self._doc["outputs"].get(output) if output else None
+            if note is None or not paths:
+                return
+            before = len(note["claimed"])
+            note["claimed"].extend(self._portable(p) for p in paths)
+            if not self._save():
+                del note["claimed"][before:]
+                raise self._lost()
+
+    def staging(self, folder: str) -> None:
+        """Before a backend writes an append into a new folder of its own, to move the
+        files into the output afterwards (Spark path appends): record that folder, and
+        that this output's files will be claimed before they land (``exact``).
+
+        The folder is named by this run (a fresh UUID) and recorded before it exists,
+        so taking it back removes only this run's staging. Raises
+        :class:`RunLeaseLost` if the lease is no longer this run's."""
         output = self._current_output
         with self._lock:
             note = self._doc["outputs"].get(output) if output else None
             if note is None:
                 return
-            note["claimed"].append(self._portable(path))
+            was = (note.get("exact"), note.get("staging"))
+            note["exact"] = True
+            note["staging"] = self._portable(folder)
             if not self._save():
-                note["claimed"].pop()
+                note["exact"], note["staging"] = was
                 raise self._lost()
 
     def landed(self, path: str) -> None:
         """After a claimed file was moved in. A run taken over meanwhile (frozen between
-        claim and move) removes it again: the run that took over did not see it."""
-        if self._owner() is False:
+        claim and move) removes it again: the run that took over did not see it.
+
+        One stat: a takeover marks the run it takes over (the tombstone) before it
+        takes anything back. Reading the whole lease here, once per file, made a
+        12,000 file append take 92 s (F-070 skeptic review); :meth:`all_landed` reads
+        it once after the last file."""
+        if self._tombstone(self.run_id).exists():
             _remove([path])
+            raise self._lost()
+
+    def all_landed(self, paths: List[str]) -> None:
+        """After the last claimed file of a write was moved in: the full ownership
+        check. A lease that is gone or another run's (displaced, not taken over) has
+        this write's files removed again."""
+        if self._owner() is False:
+            _remove(list(paths))
             raise self._lost()
 
     def still_owned(self) -> bool:
@@ -727,6 +780,10 @@ class RunLease:
         removed: List[str] = []
         left: Dict[str, List[str]] = {}
         for name, note in outputs.items():
+            if note.get("staging"):
+                # The run's own staging folder (named by it, recorded before it was
+                # made): nothing in it has landed in the output.
+                shutil.rmtree(self._resolve(note["staging"]), ignore_errors=True)
             for claim in note.get("claimed") or []:
                 full = self._resolve(claim)
                 if not os.path.exists(full):
@@ -981,12 +1038,20 @@ class RunLease:
 
 
 def _unrepaired(outputs: Dict[str, Any]) -> List[str]:
-    """Append outputs a backend could not claim files for, that may hold data."""
-    return sorted(
-        n
-        for n, o in outputs.items()
-        if o.get("appends") and (not o.get("exact") or not o.get("claimed") or o.get("unseen"))
-    )
+    """Append outputs a backend could not claim files for, that may hold data.
+
+    An output written through a staging folder (``staging``, Spark path appends) is
+    fully repaired even with no claims: nothing reaches the output unclaimed, so no
+    claims means nothing landed (a refusal, a kill before the claims, Spark failing).
+    An exact output with no staging and no claims is still named: a custom writer on
+    a claiming backend may have appended without claiming."""
+
+    def repaired(o: Dict[str, Any]) -> bool:
+        if o.get("unseen") or not o.get("exact"):
+            return False
+        return bool(o.get("staging") or o.get("claimed"))
+
+    return sorted(n for n, o in outputs.items() if o.get("appends") and not repaired(o))
 
 
 class _InUse(Exception):
@@ -1052,6 +1117,13 @@ def landed(path: str) -> None:
         lease.landed(path)
 
 
+def all_landed(paths: List[str]) -> None:
+    """Called by a backend after the last claimed file of a write was moved in."""
+    lease = _CURRENT.get()
+    if lease is not None:
+        lease.all_landed(paths)
+
+
 def current() -> Optional[RunLease]:
     """The lease of the run in progress, if any."""
     return _CURRENT.get()
@@ -1076,6 +1148,21 @@ def claim(path: str) -> None:
     lease = _CURRENT.get()
     if lease is not None:
         lease.claim(path)
+
+
+def claim_all(paths: List[str]) -> None:
+    """:func:`claim` for many files at once (one save of the lease)."""
+    lease = _CURRENT.get()
+    if lease is not None:
+        lease.claim_all(paths)
+
+
+def staging(folder: str) -> None:
+    """Called by a backend before it writes an append into a staging folder of its own,
+    whose files it then claims and moves into the output (Spark path appends)."""
+    lease = _CURRENT.get()
+    if lease is not None:
+        lease.staging(folder)
 
 
 class held:
