@@ -10,8 +10,10 @@ backend cannot honour is refused by name rather than quietly ignored:
 
 * CSV: no header unless ``header`` is true (columns are then ``_c0``, ``_c1``);
   every column is text unless ``inferSchema`` is true; an empty field is null.
-  With ``inferSchema``: ``int`` when every value fits in 32 bits, else
-  ``bigint``; an all-null column is text; timestamps are instants.
+  With ``inferSchema``, Spark's own rules (:mod:`ubunye.adapters.csv_infer`):
+  ``int`` when every value fits in 32 bits, else ``bigint``, a whole number past
+  64 bits a ``decimal``; Java's number forms; an all-null column is text;
+  timestamps are instants.
 * JSON: one object per line unless ``multiLine`` is true; columns (and nested
   fields) sorted by name; integers are ``bigint``; timestamps stay text.
 * A path may be a file, a folder of part files (Spark's layout; names starting
@@ -28,12 +30,14 @@ so it satisfies ``DataFramePort`` exactly as a Spark DataFrame does.
 
 from __future__ import annotations
 
+import codecs
+import contextlib
 import glob
 import json
 import logging
 import os
 import re
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
 from ubunye.adapters import ddl, pandas_partitions
 from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
@@ -67,12 +71,6 @@ READ_OPTIONS: Dict[str, frozenset] = {
     "json": frozenset({"multiline", "encoding", "mode"}),
     "parquet": frozenset(),
 }
-
-_INT32_MIN, _INT32_MAX = -(2**31), 2**31 - 1
-# Spark reads booleans case blind. pyarrow's defaults also read "1" and "0" as
-# booleans, which Spark never does.
-_TRUE = ["true", "True", "TRUE"]
-_FALSE = ["false", "False", "FALSE"]
 
 
 def _truthy(value: Any) -> bool:
@@ -123,6 +121,13 @@ def _data_files(local: str) -> List[str]:
     ]
 
 
+#: The encodings Spark 4 accepts for csv and json (``CharsetProvider``, compared
+#: in lower case; live Spark 4.2, E-09). Spark 3.5 took any Java charset name.
+SPARK_CHARSETS = frozenset(
+    {"us-ascii", "iso-8859-1", "utf-8", "utf-16be", "utf-16le", "utf-16", "utf-32"}
+)
+
+
 #: Spark's `mode` for csv and json: what to do with a malformed record.
 #: FAILFAST stops, DROPMALFORMED skips it, PERMISSIVE (Spark's default) keeps a
 #: CSV row with the wrong number of fields by cutting or padding it with null,
@@ -154,6 +159,15 @@ def read_problems(
         if str(key).lower() == "mode" and str(value).upper() not in PARSE_MODES:
             problems.append(
                 f"The {fmt} option mode '{value}' is not one of {', '.join(sorted(PARSE_MODES))}."
+            )
+        if str(key).lower() == "encoding" and str(value).lower() not in SPARK_CHARSETS:
+            problems.append(
+                f"The {fmt} option encoding '{value}' is not one Spark 4 accepts "
+                f"({', '.join(sorted(SPARK_CHARSETS))}); Spark 4 refuses it "
+                "(INVALID_PARAMETER_VALUE.CHARSET), so the pandas backend does too. "
+                "For a Windows file use 'ISO-8859-1' (cp1252's extra characters then read "
+                "as control characters), or convert the file to UTF-8. Spark 3.5, and "
+                "spark.sql.legacy.javaCharsets=true on Spark 4, accept any Java charset name."
             )
     if schema:
         try:
@@ -203,31 +217,52 @@ def _to_spark_types(table: Any) -> Any:
     return table if target.equals(table.schema) else table.cast(target)
 
 
-def _narrow_ints(table: Any) -> Any:
-    """Spark's CSV inference: ``int`` when every value fits in 32 bits."""
+def assume_zone(col: Any, timezone: str) -> Any:
+    """Wall clock timestamps as instants in ``timezone``, by Java's rule, as Spark reads them.
+
+    Spark turns a local time into an instant with ``ZonedDateTime.of``: a time in
+    a daylight saving gap (02:30 on the morning clocks go forward) moves later by
+    the gap, so it takes the offset before the change; a time that happens twice
+    (01:30 on the morning clocks go back) takes the earlier instant. pyarrow's
+    ``assume_timezone`` stopped at both (F-063).
+    """
     import pyarrow as pa
     import pyarrow.compute as pc
 
-    for i, field in enumerate(table.schema):
-        if pa.types.is_int64(field.type):
-            bounds = pc.min_max(table.column(i))
-            lo, hi = bounds["min"].as_py(), bounds["max"].as_py()
-            if lo is None or (_INT32_MIN <= lo and hi <= _INT32_MAX):
-                col = table.column(i).cast(pa.int32())
-                table = table.set_column(i, field.with_type(pa.int32()), col)
-    return table
+    if col.type.unit != "s":
+        # pyarrow finds the offset of a time before 1970 with a fraction of a second
+        # from the next whole second, so 02:59:59.5 in a gap's last second was not in
+        # the gap (skeptic review). The whole seconds decide; the fraction is added.
+        whole = pc.floor_temporal(col, unit="second")
+        if not pc.all(pc.fill_null(pc.equal(col, whole), True)).as_py():
+            return pc.add(assume_zone(whole, timezone), pc.subtract(col, whole))
+    try:
+        return pc.assume_timezone(col, timezone=timezone)
+    except pa.ArrowInvalid:
+        pass  # a time in a gap or a fold: the rule below
+    early = pc.assume_timezone(col, timezone=timezone, ambiguous="earliest", nonexistent="earliest")
+    late = pc.assume_timezone(col, timezone=timezone, ambiguous="earliest", nonexistent="latest")
+    # Only a time in a gap gives two answers: the last instant before the gap
+    # and the first after (the change itself). The offset a minute before the
+    # change is the offset before the gap. (A whole minute, not the last instant:
+    # pyarrow 25 finds the wrong offset for 06:59:59.999999999 in nanoseconds.)
+    unit = col.type.unit
+    before = pc.subtract(late, pa.scalar(60, pa.duration("s")).cast(pa.duration(unit)))
+    before_utc = before.cast(pa.timestamp(unit))  # the UTC wall clock of that instant
+    offset = pc.subtract(pc.local_timestamp(before), before_utc)
+    moved = pc.subtract(col, offset).cast(pa.timestamp(unit, tz=timezone))
+    return pc.if_else(pc.not_equal(early, late), moved, early)
 
 
 def _instants(table: Any, timezone: str) -> Any:
     """Wall-clock timestamps read as instants in ``timezone``, held in UTC."""
     import pyarrow as pa
-    import pyarrow.compute as pc
 
     for i, field in enumerate(table.schema):
         if pa.types.is_timestamp(field.type):
             col = table.column(i)
             if field.type.tz is None:
-                col = pc.assume_timezone(col, timezone=timezone)
+                col = assume_zone(col, timezone)
             col = col.cast(pa.timestamp("us", tz="UTC"))
             table = table.set_column(i, field.with_type(col.type), col)
     return table
@@ -250,7 +285,7 @@ def _cast(col: Any, target: Any, timezone: str) -> Any:
             null = pa.scalar(None, col.type)
             aware = pc.if_else(has_offset, col, null).cast(pa.timestamp("us", tz="UTC"))
             naive = pc.if_else(has_offset, null, col).cast(pa.timestamp("us"))
-            local = pc.assume_timezone(naive, timezone=timezone).cast(pa.timestamp("us", tz="UTC"))
+            local = assume_zone(naive, timezone).cast(pa.timestamp("us", tz="UTC"))
             return pc.coalesce(aware, local).cast(target)
     return col.cast(target)
 
@@ -305,25 +340,22 @@ def _read_csv(
             names = _first_record(data, encoding, parse)
             if not header:
                 names = [f"_c{n}" for n in range(len(names))]
+            else:
+                names = safe_header(names, str(opts.get("nullvalue", "")))
         convert = pcsv.ConvertOptions(
-            # Text unless inference is on; an explicit schema is cast below.
-            column_types=None if infer else {n: pa.string() for n in names},
-            null_values=[str(opts.get("nullvalue", ""))],
+            # Always text: inference is Spark's, over every file at once (F-067),
+            # and an explicit schema is cast below.
+            column_types={n: pa.string() for n in names},
+            # univocity gives the nullValue text for an empty field, and Spark then
+            # reads that text as null: so an empty field is null whatever nullValue
+            # is (a quoted "" too, here; Spark keeps that one as "").
+            null_values=sorted({str(opts.get("nullvalue", "")), ""}),
             strings_can_be_null=True,
             quoted_strings_can_be_null=True,
-            true_values=_TRUE,
-            false_values=_FALSE,
         )
         read = pcsv.ReadOptions(encoding=encoding, column_names=names, skip_rows=1 if header else 0)
         try:
-            tables.append(
-                pcsv.read_csv(
-                    pa.BufferReader(data),
-                    read_options=read,
-                    parse_options=parse,
-                    convert_options=convert,
-                )
-            )
+            tables.append(_parse_csv(data, read, parse, convert))
         except pa.ArrowInvalid as exc:
             # PERMISSIVE (Spark's default) keeps a row with the wrong number of
             # fields: extra fields are dropped and missing ones are null. pyarrow
@@ -339,11 +371,7 @@ def _read_csv(
                 skip_header=header,
                 pad=str(opts.get("nullvalue", "")),
             )
-            tables.append(
-                pcsv.read_csv(
-                    evened, read_options=read, parse_options=parse, convert_options=convert
-                )
-            )
+            tables.append(_parse_csv(evened.getvalue(), read, parse, convert))
         if counts is not None:
             counts.append(tables[-1].num_rows)
 
@@ -352,8 +380,44 @@ def _read_csv(
         return _instants(_apply_schema(table, schema, timezone), timezone)
     table = _to_spark_types(table)
     if infer:
-        table = _narrow_ints(table)
+        from ubunye.adapters import csv_infer
+
+        table = csv_infer.infer_table(
+            table, lambda col: _cast(col, pa.timestamp("us", tz="UTC"), timezone)
+        )
     return _instants(table, timezone)
+
+
+def _parse_csv(data: bytes, read: Any, parse: Any, convert: Any) -> Any:
+    """pyarrow's CSV parse of ``data``, with no limit on the length of a row.
+
+    pyarrow parses in blocks of 1 MB and stops at a row longer than a block
+    ("straddling object straddles two block boundaries"). Spark has no such limit
+    (``maxCharsPerColumn`` is -1), so a file with such a row is parsed again as
+    one block (F-062).
+    """
+    import pyarrow as pa
+    import pyarrow.csv as pcsv
+
+    try:
+        return pcsv.read_csv(
+            pa.BufferReader(data), read_options=read, parse_options=parse, convert_options=convert
+        )
+    except pa.ArrowInvalid as exc:
+        if "straddl" not in str(exc):
+            raise
+    # A file in another encoding is parsed after it is turned into UTF-8, which
+    # takes up to three bytes for one (cp1252's euro sign).
+    size = len(data) * (1 if _text_encoding(read.encoding) == "utf-8" else 3) + 1
+    whole = pcsv.ReadOptions(
+        encoding=read.encoding,
+        column_names=read.column_names,
+        skip_rows=read.skip_rows,
+        block_size=max(read.block_size, min(size, 2**31 - 1)),
+    )
+    return pcsv.read_csv(
+        pa.BufferReader(data), read_options=whole, parse_options=parse, convert_options=convert
+    )
 
 
 # How far into a CSV file the escape check looks.
@@ -441,7 +505,15 @@ def _csv_source(path: str, encoding: str, dialect: _CsvDialect, opts: Dict[str, 
         # or data, quoted or not) and keeps one anywhere else. Left in, it became
         # part of the first column's name.
         data = data[3:]
-    text = data.decode(_text_encoding(encoding), errors="replace")
+    try:
+        text = data.decode(_text_encoding(encoding))
+    except UnicodeDecodeError:
+        # Spark decodes with Java's defaults: a byte that is not valid in the
+        # encoding becomes U+FFFD and the read goes on. pyarrow and Python stop
+        # instead (F-061), so the text is decoded here the Java way and handed on
+        # as UTF-8.
+        text = java_decode(bytes(data), _text_encoding(encoding))
+        data, encoding = text.encode("utf-8"), "utf8"
     d = dialect
     plain = not spark_csv.needs_spark_split(text, d.delimiter, d.quote, d.escape, d.multiline)
     parse = pcsv.ParseOptions(
@@ -462,6 +534,38 @@ def _csv_source(path: str, encoding: str, dialect: _CsvDialect, opts: Dict[str, 
     return text.encode("utf-8"), "utf8", parse
 
 
+def _java_replace(error: UnicodeError) -> Tuple[str, int]:
+    """Python's ``replace``, with one change to match Java's UTF-8 decoder (F-086).
+
+    Both give one U+FFFD per malformed sequence, and agree on where each ends,
+    except for an encoded surrogate (``ED A0``..``ED BF`` then a continuation byte):
+    Java's decoder reads the three bytes and replaces them once, Python replaces each
+    byte. Checked against ``new String(bytes, UTF_8)`` on Java 21 over 40,000 random
+    byte strings (scratchpad/awkward/java_decode_fuzz.py).
+    """
+    if not isinstance(error, UnicodeDecodeError):
+        raise error  # only used for decoding
+    raw, i = error.object, error.start
+    if (
+        error.encoding.replace("-", "").replace("_", "").lower() == "utf8"
+        and raw[i] == 0xED
+        and i + 1 < len(raw)
+        and 0xA0 <= raw[i + 1] <= 0xBF
+    ):
+        if i + 2 < len(raw) and 0x80 <= raw[i + 2] <= 0xBF:
+            return "\ufffd", i + 3
+        return "\ufffd", i + 2
+    return "\ufffd", error.end
+
+
+codecs.register_error("ubunye-java-replace", _java_replace)
+
+
+def java_decode(data: bytes, encoding: str) -> str:
+    """``data`` decoded as Java's ``new String(bytes, charset)`` decodes it (U+FFFD)."""
+    return data.decode(encoding, errors="ubunye-java-replace")
+
+
 def _csv_dialect(parse: Any) -> Dict[str, Any]:
     """pyarrow's parse options as keyword arguments for Python's csv module."""
     return {
@@ -476,20 +580,75 @@ def _text_encoding(encoding: str) -> str:
     return "utf-8" if encoding.lower().replace("-", "") == "utf8" else encoding
 
 
-def _text(data: bytes, encoding: str) -> Any:
+def _csv_module_text(data: bytes, encoding: str) -> Any:
+    """``data`` as text for Python's csv module, and the stand in for NUL, if any.
+
+    Python 3.10's csv module stops at a NUL character ("line contains NUL" when
+    reading, "need to escape" when writing); 3.11 and later take it. So a NUL is
+    swapped for a private use character the text does not hold, and swapped back
+    after (F-062 on Python 3.10).
+    """
     import io
 
-    return io.TextIOWrapper(io.BytesIO(data), encoding=_text_encoding(encoding), newline="")
+    from ubunye.adapters.spark_csv import nul_stand_in
+
+    text = data.decode(_text_encoding(encoding))
+    stand_in = nul_stand_in(text)
+    if stand_in:
+        text = text.replace("\0", stand_in)
+    return io.StringIO(text, newline=""), stand_in
+
+
+def safe_header(names: List[str], null_text: str = "") -> List[str]:
+    """Column names from a CSV header, as Spark's ``CSVUtils.makeSafeHeader`` makes them.
+
+    A blank name (or the ``nullValue`` text) becomes ``_c<index>``. A name that
+    appears more than once, ignoring case (Spark's default
+    ``spark.sql.caseSensitive=false``), gets its index appended to every copy:
+    ``a,a,A`` becomes ``a0,a1,A2``. Left as they were, pyarrow refused the file
+    ("duplicate field names") and a blank name became a column called ``""``
+    (F-060).
+    """
+    from collections import Counter
+
+    counts = Counter(n.lower() for n in names if n)
+    dupes = {n for n, seen in counts.items() if seen > 1}
+    safe = []
+    for index, name in enumerate(names):
+        if not name or name == null_text:
+            safe.append(f"_c{index}")
+        elif name.lower() in dupes:
+            safe.append(f"{name}{index}")
+        else:
+            safe.append(name)
+    return safe
+
+
+@contextlib.contextmanager
+def _no_field_limit() -> Iterator[None]:
+    """Python's csv module with no limit on a field's length, as Spark has none.
+
+    The module stops at 131,072 characters by default (F-062).
+    """
+    import csv
+
+    before = csv.field_size_limit()
+    csv.field_size_limit(2**31 - 1)  # the largest a C long holds on every platform
+    try:
+        yield
+    finally:
+        csv.field_size_limit(before)
 
 
 def _first_record(data: bytes, encoding: str, parse: Any) -> List[str]:
     """The first non blank record of a CSV file's bytes, as its fields."""
     import csv
 
-    with _text(data, encoding) as handle:
+    handle, stand_in = _csv_module_text(data, encoding)
+    with _no_field_limit():
         for row in csv.reader(handle, **_csv_dialect(parse)):
             if row:
-                return row
+                return [f.replace(stand_in, "\0") for f in row] if stand_in else row
     return []
 
 
@@ -513,7 +672,8 @@ def _even_rows(
     dialect = _csv_dialect(parse)
     out = io.StringIO()
     writer = csv.writer(out, lineterminator=chr(10), **dialect)
-    with _text(data, encoding) as handle:
+    handle, stand_in = _csv_module_text(data, encoding)
+    with _no_field_limit():
         reader = csv.reader(handle, **dialect)
         for number, row in enumerate(reader):
             if not row:
@@ -521,7 +681,10 @@ def _even_rows(
             if not (skip_header and number == 0):
                 row = (row + [pad] * width)[:width]  # pad with the null marker: read as null
             writer.writerow(row)
-    return io.BytesIO(out.getvalue().encode(text_encoding))
+    text = out.getvalue()
+    if stand_in:
+        text = text.replace(stand_in, "\0")
+    return io.BytesIO(text.encode(text_encoding))
 
 
 def _drop_malformed(opts: Dict[str, Any]) -> bool:
@@ -530,14 +693,6 @@ def _drop_malformed(opts: Dict[str, Any]) -> bool:
 
 def _skip(row: Any) -> str:
     return "skip"
-
-
-def _sorted_keys(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {k: _sorted_keys(value[k]) for k in sorted(value)}
-    if isinstance(value, list):
-        return [_sorted_keys(v) for v in value]
-    return value
 
 
 def _read_json(
@@ -549,13 +704,20 @@ def _read_json(
 ) -> Any:
     import pyarrow as pa
 
+    from ubunye.adapters import spark_json
+
     encoding = str(opts.get("encoding", "utf-8"))
     rows: List[Dict[str, Any]] = []
+    # Spark 4 reads a JSON lines value that lands in a text column as its exact
+    # source text; only for lines read as bytes (no encoding option). Each row's
+    # line (and its place in a line holding an array) is kept to find that text.
+    exact = not _truthy(opts.get("multiline", "false")) and "encoding" not in opts
+    sources: List[Any] = []
     for f in files:
         before = len(rows)
         with open(f, encoding=encoding) as handle:
             if _truthy(opts.get("multiline", "false")):
-                doc = json.load(handle)
+                doc = spark_json.loads(handle.read())
                 rows.extend(doc if isinstance(doc, list) else [doc])
             else:
                 drop = _drop_malformed(opts)
@@ -563,21 +725,65 @@ def _read_json(
                     if not line.strip():
                         continue
                     try:
-                        rows.append(json.loads(line))
+                        record = spark_json.loads(line)
                     except json.JSONDecodeError:
                         if not drop:
                             raise
-                        # DROPMALFORMED: skip the record, as Spark does
+                        continue  # DROPMALFORMED: skip the record, as Spark does
+                    # A line holding an array of objects is one row per object.
+                    if isinstance(record, list):
+                        rows.extend(record)
+                        sources.extend((line, k) for k in range(len(record)))
+                    else:
+                        rows.append(record)
+                        sources.append((line, None))
         if counts is not None:
             counts.append(len(rows) - before)
     # Parsed with the json module, not pyarrow's reader: pyarrow turns ISO text
-    # into timestamps and keeps key order, and Spark does neither.
-    rows = [_sorted_keys(r) for r in rows]
-    names = sorted({k for r in rows for k in r})
-    table = pa.table({n: pa.array([r.get(n) for r in rows]) for n in names})
+    # into timestamps and keeps key order, and Spark does neither. Typed by a port
+    # of Spark's JSON inference (F-064).
+    trees: List[Any] = []
+
+    def raws(name: str) -> Any:
+        if not exact:
+            return None
+
+        def of() -> List[Any]:
+            if not trees:
+                for line, k in sources:
+                    tree = spark_json.raw_tree(line)[0]
+                    trees.append(tree[k][1] if k is not None else tree)
+            return [t.get(name) if isinstance(t, dict) else None for t in trees]
+
+        return of
+
     if schema is not None:
+        columns = {}
+        for f in schema:
+            values = [r.get(f.name) for r in rows]
+            if pa.types.is_string(f.type) and any(
+                v is not None and not isinstance(v, str) for v in values
+            ):
+                # Spark keeps the JSON text of a value that is not a string.
+                found = raws(f.name)
+                texts = found() if found is not None else [None] * len(values)
+                values = [
+                    spark_json.convert(v, spark_json.STRING, t) for v, t in zip(values, texts)
+                ]
+            columns[f.name] = pa.array(values)
+        table = pa.table(columns) if columns else no_columns(len(rows))
         return _instants(_apply_schema(table, schema, timezone), timezone)
-    return _to_spark_types(table)
+    fields = spark_json.infer_schema(rows)
+    if not fields:
+        # Records with no fields ({}) are still rows: Spark keeps one row per
+        # record, with no columns. pa.table({}) has none (F-065).
+        return no_columns(len(rows))
+    return pa.table(
+        {
+            name: spark_json.column([r.get(name) for r in rows], kind, raws(name))
+            for name, kind in fields
+        }
+    )
 
 
 def _read_parquet(files: List[str], schema: Any, counts: Optional[List[int]] = None) -> Any:
@@ -587,6 +793,17 @@ def _read_parquet(files: List[str], schema: Any, counts: Optional[List[int]] = N
     tables = []
     for f in files:
         handle = pq.ParquetFile(f)
+        if schema is not None:
+            # Spark (caseSensitive false) finds each schema field in the file ignoring
+            # case, and stops when two file columns match: "Found duplicate field(s)".
+            present = handle.schema_arrow.names
+            for field in schema:
+                matches = [n for n in present if n.lower() == field.name.lower()]
+                if len(matches) > 1:
+                    raise ValueError(
+                        f"Found duplicate field(s) {field.name!r}: {matches} in "
+                        "case-insensitive mode (as Spark reads it)"
+                    )
         # Spark's legacy INT96 timestamps hold UTC instants; say so.
         legacy = {c.name for c in handle.schema if c.physical_type == "INT96"}
         table = handle.read()
@@ -598,7 +815,45 @@ def _read_parquet(files: List[str], schema: Any, counts: Optional[List[int]] = N
         if counts is not None:
             counts.append(table.num_rows)
     table = pa.concat_tables(tables, promote_options="permissive")
+    table = _signed(table)
     return _apply_schema(table, schema) if schema is not None else table
+
+
+def _signed_type(t: Any) -> Any:
+    """Spark's type for a parquet unsigned integer, at any depth (F-066).
+
+    ``ParquetSchemaConverter`` (SPARK-34817): UINT_8 is ``smallint``, UINT_16
+    ``int``, UINT_32 ``bigint`` and UINT_64 ``decimal(20,0)``. Spark has no
+    unsigned type, so the same file read as ``uint64`` on pandas gave another
+    schema and another run record hash.
+    """
+    import pyarrow as pa
+
+    if pa.types.is_unsigned_integer(t):
+        return {8: pa.int16(), 16: pa.int32(), 32: pa.int64()}.get(
+            t.bit_width, pa.decimal128(20, 0)
+        )
+    if pa.types.is_list(t) or pa.types.is_large_list(t):
+        inner = _signed_type(t.value_type)
+        if inner.equals(t.value_type):
+            return t
+        return (pa.large_list if pa.types.is_large_list(t) else pa.list_)(inner)
+    if pa.types.is_struct(t):
+        fields = [f.with_type(_signed_type(f.type)) for f in t]
+        return t if all(a.equals(b) for a, b in zip(fields, t)) else pa.struct(fields)
+    if pa.types.is_map(t):
+        key, item = _signed_type(t.key_type), _signed_type(t.item_type)
+        if key.equals(t.key_type) and item.equals(t.item_type):
+            return t
+        return pa.map_(key, item)
+    return t
+
+
+def _signed(table: Any) -> Any:
+    import pyarrow as pa
+
+    target = pa.schema([f.with_type(_signed_type(f.type)) for f in table.schema])
+    return table if target.equals(table.schema) else table.cast(target)
 
 
 def to_pandas(table: Any) -> Any:
@@ -638,6 +893,12 @@ def read_frame(
         files = layout.files
     else:
         files = _data_files(local)
+    if not files and arrow_schema is not None and os.path.exists(local):
+        # An empty file, or a folder with no data files, read with a schema:
+        # Spark reads no rows with that schema (it has nothing to infer), F-068.
+        frame = PandasDataFrameAdapter(to_pandas(_instants(arrow_schema.empty_table(), timezone)))
+        frame.source_files = []
+        return frame
     if not files:
         raise SourceReadError(
             f"Path does not exist or holds no data files: {path}",
@@ -676,6 +937,15 @@ def read_frame(
             context={"Backend": "pandas", "path": local, "file_format": fmt},
         ) from exc
 
+    dupes = case_duplicates(table.column_names)
+    if dupes:
+        raise SourceReadError(
+            f"The data at {path} has columns whose names differ only by case: {dupes}.",
+            context={"Backend": "pandas", "path": local, "file_format": fmt},
+            hint="Spark refuses such data by default (spark.sql.caseSensitive is false: "
+            "'Found duplicate column(s) in the data schema'), so the pandas backend does "
+            "too. Rename the columns at the source.",
+        )
     frame = PandasDataFrameAdapter(to_pandas(table))
     # The files read, for the run record's source version (F-046); never read again.
     frame.source_files = [os.path.abspath(f) for f in files]
@@ -713,6 +983,18 @@ def no_columns(rows: int) -> Any:
 
     empty = pa.array([{}] * rows, pa.struct([]))
     return pa.Table.from_batches([pa.RecordBatch.from_struct_array(empty)])
+
+
+def case_duplicates(names: Sequence[str]) -> List[str]:
+    """Names that appear more than once, ignoring case, as Spark compares them (F-069).
+
+    Spark's default ``spark.sql.caseSensitive=false`` refuses a read or a write of
+    data whose column names differ only by case.
+    """
+    from collections import Counter
+
+    counts = Counter(str(n).lower() for n in names)
+    return sorted({str(n) for n in names if counts[str(n).lower()] > 1})
 
 
 def to_arrow(df: Any, timezone: str) -> Any:
@@ -753,9 +1035,7 @@ def to_arrow(df: Any, timezone: str) -> Any:
             col, t = col.cast(pa.string()), pa.string()
         if pa.types.is_timestamp(t):
             if t.tz is None:
-                import pyarrow.compute as pc
-
-                col = pc.assume_timezone(col, timezone=timezone)
+                col = assume_zone(col, timezone)
             # Spark holds microseconds and cannot read nanosecond parquet.
             col = col.cast(pa.timestamp("us", tz="UTC"), safe=False)
             t = col.type
@@ -805,6 +1085,8 @@ def _json_value(value: Any, arrow_type: Any = None) -> str:
     import decimal
     import math
 
+    from ubunye.lineage.content_hash import jackson_string
+
     if value is None:
         return "null"
     if value is True:
@@ -818,16 +1100,13 @@ def _json_value(value: Any, arrow_type: Any = None) -> str:
             return json.dumps(_java_double(value))
         return str(_java_double(value))
     if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False)
+        return jackson_string(value)
     import pyarrow as pa
 
     if arrow_type is not None and pa.types.is_map(arrow_type):
         item = arrow_type.item_type
         pairs = value.items() if isinstance(value, dict) else value
-        members = (
-            f"{json.dumps(_map_key(k), ensure_ascii=False)}:{_json_value(v, item)}"
-            for k, v in pairs
-        )
+        members = (f"{jackson_string(_map_key(k))}:{_json_value(v, item)}" for k, v in pairs)
         return "{" + ",".join(members) + "}"  # a map keeps its null values
     if isinstance(value, dict):
         fields = (
@@ -836,7 +1115,7 @@ def _json_value(value: Any, arrow_type: Any = None) -> str:
             else {}
         )
         members = (
-            f"{json.dumps(str(k), ensure_ascii=False)}:{_json_value(v, fields.get(k))}"
+            f"{jackson_string(str(k))}:{_json_value(v, fields.get(k))}"
             for k, v in value.items()
             if v is not None
         )
@@ -874,12 +1153,8 @@ def _shortest_floats(table: Any) -> Any:
 
     for i, field in enumerate(table.schema):
         if pa.types.is_float32(field.type) or pa.types.is_float16(field.type):
-            import numpy as np
 
-            values = [
-                None if v is None else float(str(np.float32(v)))
-                for v in table.column(i).to_pylist()
-            ]
+            values = [_java_float_value(v) for v in table.column(i).to_pylist()]
             table = table.set_column(i, pa.field(field.name, pa.float64()), pa.array(values))
     return table
 
@@ -944,7 +1219,6 @@ def _write_part(
 
 def _java_double(x: Any) -> Optional[str]:
     """A float as Java's ``Double.toString`` writes it, which is what Spark writes."""
-    import decimal
     import math
 
     if x is None:
@@ -953,15 +1227,20 @@ def _java_double(x: Any) -> Optional[str]:
         return "NaN"
     if math.isinf(x):
         return "Infinity" if x > 0 else "-Infinity"
-    if x == 0:
-        return "-0.0" if math.copysign(1.0, x) < 0 else "0.0"
-    text = repr(x)
-    if 1e-3 <= abs(x) < 1e7:
-        return text if "." in text else text + ".0"
-    sign, digits, exponent = decimal.Decimal(text).as_tuple()
-    ds = "".join(map(str, digits)).rstrip("0") or "0"
-    power = len(digits) + int(exponent) - 1
-    return f"{'-' if sign else ''}{ds[0]}.{ds[1:] or '0'}E{power}"
+    from ubunye.lineage.content_hash import java_double
+
+    return java_double(x)  # one rule for the files and the run record (E-09)
+
+
+def _java_float_value(v: Any) -> Any:
+    """A float32 as the float64 of Java's Float.toString text (None, NaN, inf kept)."""
+    import math
+
+    from ubunye.lineage.content_hash import java_float
+
+    if v is None or not math.isfinite(v):
+        return v
+    return float(java_float(v))
 
 
 def _csv_column(col: Any, field: Any, sep: str) -> Any:
@@ -974,12 +1253,8 @@ def _csv_column(col: Any, field: Any, sep: str) -> Any:
         if pa.types.is_float64(t):
             values = [_java_double(v) for v in col.to_pylist()]
         else:  # float32 and float16: Java's Float.toString is numpy's shortest form
-            import numpy as np
 
-            values = [
-                None if v is None else _java_double(float(str(np.float32(v))))
-                for v in col.to_pylist()
-            ]
+            values = [_java_double(_java_float_value(v)) for v in col.to_pylist()]
         return pa.array(values, pa.string()).fill_null("")
     text = pc.cast(col, pa.string())
     if pa.types.is_string(t) or pa.types.is_large_string(t):
@@ -1299,6 +1574,14 @@ def execute_write(
 
     local = _local_path(path, error=SinkWriteError)
     arrow = to_arrow(df, timezone)
+    dupes = case_duplicates(arrow.column_names)
+    if dupes:
+        raise _refuse(
+            f"The frame has columns whose names differ only by case: {dupes}. Spark "
+            "refuses to write it ('Found duplicate column(s) when inserting into', "
+            "spark.sql.caseSensitive false), so the pandas backend does too.",
+            path=path,
+        )
     # Partition columns and values are checked before anything is written, as
     # Spark checks them before its job starts (F-012).
     cut = pandas_partitions.split(arrow, partition_by, timezone) if partition_by else None

@@ -19,7 +19,9 @@ produced the same data. Before 0.7.0 that hash could not carry the claim:
 
 **One hash, `rows-v1`, over every row.** Each row becomes one canonical line:
 a JSON object with columns sorted by name, written exactly as Spark's `to_json`
-writes it (timestamps as UTC text to the microsecond, doubles the Java way, NaN
+writes it (timestamps as UTC text to the microsecond, doubles the Java way, so
+`Double.MIN_VALUE` is `4.9E-324` and the smallest float `1.4E-45`, a control
+character without a short escape as `\u000B` with upper case hex, NaN
 as `"NaN"`, nulls left out). The line's SHA-256 is cut into two 64-bit numbers
 and each is added up over all rows. Adding does not care about order.
 
@@ -106,6 +108,9 @@ the same identity, so `ubunye lineage list` finds every run.
   caller's hash code (by its SHA-256) and the caller's pyarrow, or gives no
   answer; a helper past its deadline is stopped. Memory, containers and frozen
   apps: see [Deploying anywhere](../deployment/anywhere.md).
+- A table in many small Arrow chunks (a folder of many small files) is put into one
+  chunk before it is hashed; each slice has a fixed cost, so 5,000 chunks of 2 rows
+  took 1.9 s and now take 0.02 s (F-076). The digest does not change.
 - Records written before 0.7.0 have no `hash_method`. `lineage compare` calls
   them "not comparable" with new records rather than "changed", and calls two
   missing hashes "unknown" rather than "unchanged".

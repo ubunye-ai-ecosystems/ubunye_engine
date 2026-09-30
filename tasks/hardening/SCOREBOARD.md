@@ -16,7 +16,7 @@ A newcomer solves a real problem from `pip install` and the public docs only.
 
 | Open | Fixed on the branch | Not a bug / won't fix |
 |---|---|---|
-| 6 (F-038 (partly fixed), F-039, F-053 (worked around), F-071, F-072, F-073) | 43 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032, F-034 to F-037, F-045; F-040 and F-043 merged eff8ba8; F-047 merged f569e0a; F-041 merged bf8f054; F-010 and F-042 merged b6ff30b; F-048 merged b3d2a76; F-008 and F-009 merged d6acbb7; F-017 and F-018 merged a1baf76; F-046 merged 68e8d0a; F-015, F-049, F-050 and F-051 merged d674481; F-052, F-054, F-055, F-056 and F-057 merged e6695e9; F-070 merged) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
+| 13 (F-038 (partly fixed), F-039, F-053 (worked around), F-068 (no-schema part), F-071, F-072, F-073, F-077, F-078, F-079, F-080, F-081, F-090, and E-10's fast-hash wheel awaiting the owner) | 62 (F-001 to F-007 in PR #98, F-011, F-012, F-013, F-014, F-016, F-019, F-020, F-031, F-032, F-034 to F-037, F-045; F-040 and F-043 merged eff8ba8; F-047 merged f569e0a; F-041 merged bf8f054; F-010 and F-042 merged b6ff30b; F-048 merged b3d2a76; F-008 and F-009 merged d6acbb7; F-017 and F-018 merged a1baf76; F-046 merged 68e8d0a; F-015, F-049, F-050 and F-051 merged d674481; F-052, F-054 to F-057 merged e6695e9; F-070 merged 4a5255d; F-060 to F-069, F-076 and F-082 to F-089 merged) | 1 (F-033: a pyarrow bug, worked around, not reported upstream) |
 
 ## Experiments
 

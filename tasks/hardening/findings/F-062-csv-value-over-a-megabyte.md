@@ -1,0 +1,48 @@
+# F-062: a CSV row over 1 MB stops the pandas read
+
+**Status:** fixed on hardening/awkward-data (2026-09-30)
+**Severity:** major (a file Spark reads cannot be read on pandas)
+**Source:** experiment E-09 (awkward data), shape 2 (long text)
+**Promise:** 1 (same result anywhere)
+
+## What happens
+A CSV with one value of about 1 MB (a document body, a JSON blob, a base64 image):
+
+```
+SourceReadError: The pandas backend could not read csv at .../long.csv:
+straddling object straddles two block boundaries (try to increase block size?)
+```
+
+With multiLine on or off, quoted or not. A file that also has a ragged row (or a
+header) with a value over 131,072 characters then stopped in Python's csv module:
+`field larger than field limit (131072)`.
+
+## Repro
+```python
+from ubunye.backends.pandas_backend import PandasBackend
+open("l.csv", "w").write("id,t\n1," + "x" * 3_000_000 + "\n")
+PandasBackend().read_frame("csv", "l.csv", options={"header": "true"})
+```
+
+## Expected
+Spark has no limit on a value's length: `maxCharsPerColumn` is -1 by default
+(Spark 3.x and 4, `CSVOptions`), so univocity reads any length.
+
+## Fix
+pyarrow parses in 1 MB blocks; a file whose row does not fit is parsed again as
+one block. Python's csv module (used for the header and for ragged rows) runs with
+its field limit raised for the read, then put back.
+
+## Evidence
+Unit: `tests/unit/backends/test_pandas_awkward_data.py::TestCsvLongRows` (6 failed
+before, 6 pass after). Integration (CI): `test_csv_values_longer_than_a_megabyte`
+(3 MB and 1.2 MB values with LF, CRLF, NUL, tab and non-ASCII, multiLine on and off).
+
+## Python 3.10 (CI, Spark 4 on Python 3.10, 2026-09-30)
+`test_csv_values_longer_than_a_megabyte` failed on Python 3.10 only: "line contains
+NUL" (multiLine off) and "need to escape, but no escapechar set" (on). The value holds
+a NUL, and Python 3.10's csv module refuses NUL in its reader and writer (3.11 lifted
+that). The fix swaps NUL for a private use character the text does not hold before
+the module sees it (header, ragged rows, `spark_csv.respell`) and back after. Checked
+on CPython 3.10.20 on the dev box: the new unit tests failed before and pass after, and
+the CI case's file reads to the same rows and rows-v1 digest on 3.10 and 3.13.

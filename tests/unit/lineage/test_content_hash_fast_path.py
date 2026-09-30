@@ -312,3 +312,101 @@ def test_nan_is_still_not_null():
     with_nan = pa.table({"f": pa.array([math.nan], pa.float64())})
     with_null = pa.table({"f": pa.array([None], pa.float64())})
     assert fingerprint_arrow(with_nan).data_hash != fingerprint_arrow(with_null).data_hash
+
+
+class TestJavaTwoDigitRule:
+    """E-09 (live Spark 3.5 and 4): Java writes 4.9E-324 and 1.4E-45, not 5.0E-324 and 1.0E-45."""
+
+    def test_double_and_float_text(self):
+        assert ch.java_double(5e-324) == "4.9E-324"
+        assert ch.java_double(-5e-324) == "-4.9E-324"
+        assert ch.java_double(1e23) == "1.0E23"
+        assert ch.java_double(1e-5) == "1.0E-5"
+        assert ch.java_double(0.1) == "0.1"
+        assert ch.java_float(1e-45) == "1.4E-45"
+        assert ch.java_float(3.4028235e38) == "3.4028235E38"
+        assert ch.java_float(0.1) == "0.1"
+
+    def test_the_special_numbers_digest_is_sparks(self):
+        # The digest live Spark 3.5 and 4 gave for this table (CI, E-09).
+        import decimal
+
+        D = decimal.Decimal
+        table = pa.table(
+            {
+                "f": [
+                    float("nan"),
+                    float("inf"),
+                    float("-inf"),
+                    -0.0,
+                    0.0,
+                    5e-324,
+                    1.7976931348623157e308,
+                    None,
+                ],
+                "f32": pa.array(
+                    [float("nan"), float("inf"), -0.0, 0.1, 3.4028235e38, 1e-45, 1.0, None],
+                    pa.float32(),
+                ),
+                "dec": pa.array(
+                    [
+                        D("12345678901234567890.123456789012345678"),
+                        D("-0.000000000000000001"),
+                        D(0),
+                        None,
+                        D("99999999999999999999.999999999999999999"),
+                        D(1),
+                        D(-1),
+                        D("0.5"),
+                    ],
+                    pa.decimal128(38, 18),
+                ),
+                "i64": pa.array(
+                    [2**63 - 1, -(2**63), 0, None, 1, -1, 2**53 + 1, 2**31], pa.int64()
+                ),
+            }
+        )
+        assert fingerprint_arrow(table).data_hash == (
+            "sha256:65d216a011cab4fe9074b4594277fb7979154ec2b2450685060e426d5b5e189b"
+        )
+
+
+class TestJacksonControlEscapes:
+    """E-09 (live Spark 3.5 and 4): to_json writes \\u000B, upper case hex."""
+
+    def test_escape_text(self):
+        assert ch.jackson_string('a\x0bb\x1f\n\t"\\') == '"a\\u000Bb\\u001F\\n\\t\\"\\\\"'
+        assert ch.jackson_string("plain é   \x7f") == '"plain é   \x7f"'
+
+    def test_the_long_text_digest_is_sparks(self):
+        unit = "abc é€漢\n" + "q" * 40 + "\r\n" + "x\x00y\t"
+        text = (unit * (300_000 // len(unit) + 1))[:300_000] + "\x0b\x1f\x7f "
+        table = pa.table({"id": [1, 2], "txt": [text, "x\x00y"]})
+        expected = "sha256:96f5aba420144c1c355efea74adb43720892bfd102372ee794148af0a3ea4875"
+        assert fingerprint_arrow(table).data_hash == expected
+        rows = [{"id": 1, "txt": text}, {"id": 2, "txt": "x\x00y"}]
+        assert fingerprint_rows(rows, [("id", "int64"), ("txt", "string")]).data_hash == expected
+
+
+class TestManySmallChunks:
+    """F-076: a table of many small chunks (a folder of small files) is hashed in few slices."""
+
+    def _table(self):
+        pieces = [
+            pa.table({"id": pa.array([2 * i, 2 * i + 1], pa.int64()), "v": [0.5, None]})
+            for i in range(2000)
+        ]
+        return pa.concat_tables(pieces)
+
+    def test_the_rows_are_put_together_before_hashing(self, monkeypatch):
+        table = self._table()
+        assert table.column(0).num_chunks == 2000
+        calls = []
+        real = ch._slice_lanes
+        monkeypatch.setattr(ch, "_slice_lanes", lambda *a: calls.append(1) or real(*a))
+        fingerprint_arrow(table)
+        assert len(calls) == 1  # was one slice per chunk: 2000
+
+    def test_the_digest_is_unchanged(self):
+        table = self._table()
+        assert fingerprint_arrow(table) == fingerprint_arrow(table.combine_chunks())

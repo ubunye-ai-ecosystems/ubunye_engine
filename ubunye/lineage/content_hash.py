@@ -102,17 +102,43 @@ def lanes(line: str) -> Tuple[int, int]:
 # --------------------------------------------------------------------------- #
 
 
-def java_double(x: float) -> str:
-    """A finite float as Java's ``Double.toString`` writes it."""
+def java_double(x: float, shortest: Optional[str] = None, same: Any = None) -> str:
+    """A finite float as Java's ``Double.toString`` writes it.
+
+    Java writes the shortest decimal that reads back as ``x``, like Python's
+    ``repr``, with one exception: when that has a single digit, Java picks the
+    decimal of one or two digits closest to ``x`` (JDK 19 spec, and the older
+    algorithm too for these values). So ``Double.MIN_VALUE`` is ``4.9E-324``,
+    not ``5.0E-324``, which made the run record's digest differ from Spark's
+    (E-09, live Spark 3.5 and 4). ``shortest`` and ``same`` let
+    :func:`java_float` reuse this for ``float``.
+    """
     if x == 0:
         return "-0.0" if math.copysign(1.0, x) < 0 else "0.0"
-    text = repr(x)
+    text = shortest or repr(x)
     if 1e-3 <= abs(x) < 1e7:
+        # One digit here is always the closest too (the gaps between floats are far
+        # smaller than the digit), so the shortest text stands.
         return text if "." in text else text + ".0"
     sign, digits, exponent = decimal.Decimal(text).as_tuple()
     ds = "".join(map(str, digits)).rstrip("0") or "0"
     power = len(digits) + int(exponent) - 1
+    if len(ds) == 1:
+        # The closest decimal of two digits, if it still reads back as x.
+        near = "%.1e" % abs(x)
+        if (same or (lambda t: float(t) == abs(x)))(near):
+            mantissa, _, exp = near.partition("e")
+            ds = mantissa.replace(".", "").rstrip("0") or "0"
+            power = int(exp)
     return f"{'-' if sign else ''}{ds[0]}.{ds[1:] or '0'}E{power}"
+
+
+def java_float(x: float) -> str:
+    """A finite ``float`` (32 bit) as Java's ``Float.toString`` writes it (see java_double)."""
+    import numpy as np
+
+    f = np.float32(x)
+    return java_double(float(f), shortest=str(f), same=lambda t: np.float32(float(t)) == np.abs(f))
 
 
 def _float_text(x: float) -> str:
@@ -142,12 +168,10 @@ def value_text(value: Any, kind: str = "") -> str:
         return str(value)
     if isinstance(value, float):
         if kind == "float32" and math.isfinite(value):
-            import numpy as np
-
-            value = float(str(np.float32(value)))  # Java's Float.toString
+            return java_float(value)  # Java's Float.toString
         return _float_text(value)
     if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False)
+        return jackson_string(value)
     if isinstance(value, decimal.Decimal):
         return str(value)
     if isinstance(value, dt.datetime):
@@ -165,7 +189,7 @@ def value_text(value: Any, kind: str = "") -> str:
             return _map_text(value, kind)  # Arrow maps are (key, value) pairs
         inner = kind[5:-1] if kind.startswith("list<") else ""
         return "[" + ",".join(value_text(v, inner) for v in value) + "]"
-    return json.dumps(str(value), ensure_ascii=False)
+    return jackson_string(str(value))
 
 
 def _child_kinds(kind: str) -> Dict[str, str]:
@@ -206,7 +230,7 @@ def _object_text(items: Iterable[Tuple[Any, Any]], kinds: Dict[str, str]) -> str
         if val is None:
             continue  # Spark leaves null fields out
         kind = kinds.get(str(key), kinds.get("*", ""))
-        members.append(f"{json.dumps(str(key), ensure_ascii=False)}:{value_text(val, kind)}")
+        members.append(f"{jackson_string(str(key))}:{value_text(val, kind)}")
     return "{" + ",".join(members) + "}"
 
 
@@ -230,7 +254,7 @@ def _map_text(items: Iterable[Tuple[Any, Any]], kind: str) -> str:
     parts = _split_top(kind[4:-1]) if kind.endswith(">") else []
     value_kind = parts[1] if len(parts) > 1 else ""
     members = [
-        f"{json.dumps(_map_key_text(key), ensure_ascii=False)}:{value_text(val, value_kind)}"
+        f"{jackson_string(_map_key_text(key))}:{value_text(val, value_kind)}"
         for key, val in sorted(items, key=lambda kv: kv[0])
     ]
     return "{" + ",".join(members) + "}"
@@ -297,7 +321,7 @@ def _members(name: str, kind: str, values: List[Any]) -> List[Optional[str]]:
     made hashing about four times faster; a test holds it to the row-at-a-time
     reference, byte for byte.
     """
-    prefix = json.dumps(name, ensure_ascii=False) + ":"
+    prefix = jackson_string(name) + ":"
     if kind in _INT_KINDS:
         return [None if v is None else prefix + str(v) for v in values]
     if kind == "string":
@@ -316,14 +340,33 @@ def _dumps_string(text: str) -> str:
     return json.dumps(text, ensure_ascii=False)
 
 
-_encode_string: Callable[[str], str] = _dumps_string
+_plain_encode: Callable[[str], str] = _dumps_string
 try:  # the C encoder json.dumps(s, ensure_ascii=False) uses for a str
     from json.encoder import encode_basestring as _c_encode
 
     if _c_encode('a"b\né') == json.dumps('a"b\né', ensure_ascii=False):
-        _encode_string = _c_encode
+        _plain_encode = _c_encode
 except ImportError:  # pragma: no cover
     pass
+
+#: Jackson's escapes (so Spark's to_json): the short ones, and \u00XX with UPPER
+#: case hex for the other control characters. Python writes lower case (\u000b),
+#: so text holding one hashed differently on pandas (E-09, live Spark 3.5 and 4).
+_JACKSON_ESCAPES = {c: "\\u%04X" % c for c in range(0x20)}
+_JACKSON_ESCAPES.update({8: "\\b", 9: "\\t", 10: "\\n", 12: "\\f", 13: "\\r"})
+_JACKSON_ESCAPES.update({ord('"'): '\\"', ord("\\"): "\\\\"})
+#: Control characters that have no short escape: only these differ from Python.
+_NEEDS_HEX = re.compile("[\x00-\x07\x0b\x0e-\x1f]")
+
+
+def jackson_string(text: str) -> str:
+    """A string as JSON text, escaped as Jackson (and so Spark's to_json) escapes it."""
+    if _NEEDS_HEX.search(text) is None:
+        return _plain_encode(text)
+    return '"' + text.translate(_JACKSON_ESCAPES) + '"'
+
+
+_encode_string: Callable[[str], str] = jackson_string
 
 
 #: Rows per slice on the vectorised path. It bounds the memory of one slice's text
@@ -369,7 +412,7 @@ def _arrow_members(name: str, kind: str, col: Any) -> Optional[Any]:
     import pyarrow.compute as pc
 
     t = col.type
-    head = "," + json.dumps(name, ensure_ascii=False) + ":"
+    head = "," + jackson_string(name) + ":"
     tail = ""
     mask = None  # True where the Python path writes the value
     if pa.types.is_integer(t):
@@ -511,7 +554,14 @@ def _arrow_lanes(lines: Any) -> Tuple[int, int]:
 
 
 def _slices(table: Any, names: List[str]) -> Iterator[Any]:
-    for batch in table.select(names).to_batches():
+    table = table.select(names)
+    batches = table.to_batches()
+    if len(batches) > 1 and table.num_rows < len(batches) * (_SLICE_ROWS // 8):
+        # Many small chunks (a folder of small files keeps one chunk per file):
+        # each slice costs about a millisecond whatever its size, so 5,000 files
+        # of 2 rows took 2.4 s to hash. Put the rows together first (F-076).
+        batches = table.combine_chunks().to_batches()
+    for batch in batches:
         for start in range(0, batch.num_rows, _SLICE_ROWS):
             yield batch.slice(start, _SLICE_ROWS)
 

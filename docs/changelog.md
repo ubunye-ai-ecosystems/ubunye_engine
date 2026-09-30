@@ -182,6 +182,168 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   refused or killed before it claimed anything is no longer reported as maybe holding
   part of the batch; Ctrl+C cancels the Spark write's job group before its folder is
   removed.
+- **The awkward-data readers pass mypy (E-09 CI).** `spark_json.raw_tree` used the
+  json module's private `WHITESPACE` and `scanstring`; it now uses its own JSON
+  whitespace pattern and the public decoder. The Java-style UTF-8 error handler has
+  the signature `codecs.register_error` expects. No change in what is read.
+- **A CSV with a NUL character reads on Python 3.10 too (F-062 follow-up, E-09 CI).**
+  Python 3.10's csv module stops at NUL ("line contains NUL" when reading, "need to
+  escape" when writing), where 3.11 and later take it. The pandas CSV reader uses the
+  module for the header, ragged rows and the port of Spark's splitter, so such a file
+  failed on 3.10 only. A private use character stands in for NUL there and is swapped
+  back; the read and its digest are the same on 3.10 and 3.13.
+- **JSON `+INF`, `-INF` and `+Infinity` read as doubles, as on Spark (F-089, skeptic
+  review).** Spark's JSON parser (Jackson, with `allowNonNumericNumbers`) reads them as
+  infinities; Python's reads only `NaN`, `Infinity` and `-Infinity`, so the pandas read
+  stopped. A line that fails to parse and holds one of them is now read with them
+  spelled the Python way. `INF`, `+NaN` and `-NaN` stay refused, as Jackson refuses
+  them.
+- **A JSON record that repeats a key is refused, as Spark refuses it (F-088, skeptic
+  review).** `{"a":1,"a":"x"}` read on pandas as one column holding the last value
+  (`x`), silently. Spark infers one column per occurrence (`a:bigint, a:string`) and
+  refuses the read ("Found duplicate column(s)"). The pandas reader now refuses it
+  too, naming the key, at any depth.
+- **A time with a fraction of a second in a daylight saving gap before 1970 moves
+  as Java moves it (F-063 follow-up, skeptic review).** pyarrow judged such a time by
+  the next whole second, so `1950-04-30 02:59:59.5` in New York (in the gap) was read
+  an hour early. The whole second now decides and the fraction is added back. Against
+  Java's `ZonedDateTime.of` at every transition from 1950 to 2037 in 21 zones, the
+  only differences left are where pyarrow's time zone data and Java's differ.
+- **With `nullValue` set, an empty CSV field is still null (F-087, skeptic review).**
+  univocity hands Spark the `nullValue` text for an empty field, and Spark reads that as
+  null, so `1,,NA,2` with `nullValue: "NA"` is an `int` column `1, null, null, 2`. The
+  pandas reader took only `NA` as null, so the empty field made the column text. A
+  quoted empty field (`""`) is also null on pandas; Spark keeps it as an empty string.
+- **Names that differ only by case: refused only where Spark refuses (F-069
+  follow-up, skeptic review).** The refusal sat in the frame-to-Arrow step, so the REST
+  sink and the run record's hash refused such a frame too (the hash then recorded no
+  digest). It now applies to file reads and writes only. And a parquet read with a
+  `schema` naming a field that matches two file columns (`id` and `ID`) read one of
+  them silently; Spark stops ("Found duplicate field(s)"), and so does the pandas
+  backend now.
+- **JSON records whose names differ only by case merge as on Spark (F-064 follow-up,
+  skeptic review).** `{"Id":1}` then `{"id":2}` gave two columns on pandas, which the
+  engine then refused (F-069). Spark (with `spark.sql.caseSensitive` false) merges two
+  structs of the same shape whose names differ only by case into one, with the names
+  seen first (`findTypeForComplex`), at the top level and nested, widening each
+  field's type; and then reads `id` as a different name, so that record's value is
+  null. The pandas reader now does the same. Checked against Spark 4.2's own classes
+  on 4,007 generated record sets: all match but one duplicate-key case.
+- **CSV `inferSchema` numbers follow Spark's rules exactly, in row order (F-067
+  follow-up, skeptic review).** Checked against Spark 4.2's own `CSVInferSchema` and
+  `UnivocityParser` over 12,506 generated columns: every case matches except the
+  looser date and time forms (F-077). Three changes: a number `BigDecimal` reads with
+  scale 0 is a whole-number decimal (`5.`, `1.5E1`, `0E0` are `decimal`, as `1E5` and
+  `1.5` are `double`); digits in any script (`１２３`, `٤٥`) read as numbers, as
+  `Integer.parseInt` reads them; and a decimal's precision depends on the order of the
+  values, as Spark folds them (a bigint before the first decimal widens it to 20
+  digits, one after it does not). A value Java cannot read as a double in a double
+  column is null, as Spark's PERMISSIVE mode reads it. Performance guard: the plain
+  CSV read is 33% slower than before the port (40 to 54 ms for 60,000 rows), inside
+  the guard's 30% plus 5 ms.
+- **Broken UTF-8 is replaced exactly as Java replaces it (F-086, E-09).** An encoded
+  surrogate (`ED A0 80`, which some tools write for half an emoji) became three U+FFFD
+  on pandas and one on live Spark 3.5 and 4, so the text differed. The pandas CSV
+  reader now decodes with Java's rule; over 40,000 random byte strings it matches
+  Java 21's `new String(bytes, UTF_8)` exactly (UTF-8, UTF-16LE, UTF-16BE, US-ASCII).
+- **`encoding` takes the names Spark 4 takes (F-085, E-09).** Live Spark 4.2 refuses
+  any csv or json `encoding` but `UTF-8`, `ISO-8859-1`, `US-ASCII`, `UTF-16`,
+  `UTF-16LE`, `UTF-16BE` and `UTF-32` (`INVALID_PARAMETER_VALUE.CHARSET`; `cp1252`,
+  `latin1` and even `utf8` are refused). The pandas backend read them, so a task could
+  pass on a laptop and fail on Spark 4. It now refuses them too, before reading, and
+  says which names work. **Behaviour change** for tasks that used another name: use
+  `ISO-8859-1` for Latin-1, or convert the file. Spark 3.5 (and Spark 4 with
+  `spark.sql.legacy.javaCharsets`) takes any Java name; the pandas backend follows
+  Spark 4.
+- **A JSON value read into a text column keeps its source text, as Spark 4 reads it
+  (F-084, E-09).** Live Spark 4.2 keeps the exact text of a number or object that
+  lands in a text column when it reads JSON lines (`1.50` stays `1.50`, `1e2` stays
+  `1e2`, `{ "k" : 1 }` keeps its spaces and escapes); with `multiLine` or an
+  `encoding` option it writes the value back through Jackson (`1.5`, `100.0`,
+  compact, upper case hex). The pandas backend did the second always; it now does
+  what Spark 4 does in each case. Spark 3.5 writes every such value back through
+  Jackson; the pandas backend cannot tell which Spark a task will meet, so it follows
+  Spark 4.
+- **Text holding a control character hashes as on Spark (F-083, E-09).** Spark's
+  `to_json` (Jackson) writes a control character that has no short escape with upper
+  case hex (`\u000B`); the pandas side wrote Python's lower case (`\u000b`), so a
+  column holding one had another rows-v1 digest than live Spark 3.5 and 4. The pandas
+  json writer wrote it the same way; both now write Jackson's. **Behaviour change:**
+  digests of text holding such a character (U+0000 to U+001F other than `\b \t \n
+  \f \r`, and only those with a hex letter, such as U+000B or U+001F) change; others
+  do not.
+- **The smallest doubles and floats are written as Java writes them (F-082, E-09).**
+  Where the shortest text of a number has one digit, Java's `Double.toString` and
+  `Float.toString` write the closest two digits instead: `4.9E-324`, not `5.0E-324`;
+  `1.4E-45`, not `1.0E-45`. The run record's hash and the pandas json and csv writers
+  used Python's shortest text, so a table holding such a number had a different
+  rows-v1 digest on pandas than on live Spark 3.5 and 4. Other digests do not change.
+- **CSV `inferSchema`: a whole number past 64 bits with small ones is `decimal(19,0)`,
+  as live Spark types it (F-067 follow-up, E-09).** The port widened it to
+  `decimal(20,0)` whenever a smaller number was present; Spark does that only for a
+  number past the `int` range.
+- **The run record hashes a folder of many small files quickly on pandas (F-076,
+  E-09).** A read of 5,000 small files keeps one Arrow chunk per file, and the hash
+  paid about a millisecond per chunk: 10,000 rows took 1.9 s to hash, most of a
+  `--lineage` run. Such a table is now put together first: 0.02 s. Same digest.
+- **Columns whose names differ only by case are refused on pandas, as on Spark
+  (F-069, E-09).** A parquet file with `Col` and `col`, JSON keys `a` and `A`, or a
+  transform that returns both, ran on pandas and failed on Spark, whose default
+  (`spark.sql.caseSensitive` false) refuses such data on read and on write. The pandas
+  backend now refuses them too, before anything is written, and says why.
+- **An empty file or folder read with a schema is zero rows on pandas (F-068, E-09).**
+  A zero byte file, or a folder holding only `_SUCCESS`, read with `schema:` stopped
+  the run ("Path does not exist or holds no data files"). Spark reads zero rows with
+  that schema, and so does the pandas backend now. A missing path is still an error.
+- **CSV `inferSchema` on pandas follows Spark's rules (F-067, E-09).** pyarrow chose
+  the types, and differed from Spark on numbers written a little differently: a
+  whole number past 64 bits became a `double` that lost digits (Spark: an exact
+  `decimal`), `1, 2` with a space after the comma stayed `int` (Spark: `double`),
+  `+5` was a `double`, `1.5d` text, `inf` a `double` (Spark: text), `tRuE` text, and
+  timestamps with and without an offset in one column text. Types are now chosen by
+  a port of Spark's `CSVInferSchema`, over every file of a folder at once (each file
+  was inferred alone before). About 20% slower on a plain file (performance guard:
+  40 to 48 ms for 60,000 rows).
+- **Unsigned parquet columns read with Spark's types on pandas (F-066, E-09).** A
+  `uint8` to `uint64` column kept its unsigned type, so the schema and the run record
+  hash differed from Spark's. They now read as Spark reads them: `smallint`, `int`,
+  `bigint` and `decimal(20,0)`, at any depth.
+- **JSON records with no fields are no longer lost on pandas (F-065, E-09).** A file
+  of `{}` records (or records holding only fields Spark drops) read as 0 rows, and the
+  run succeeded. Spark reads one row per record, with no columns; so does the pandas
+  backend now.
+- **JSON on pandas is typed by Spark's rules (F-064, E-09).** The pandas reader let
+  pyarrow infer the types. Nested fields kept the order they were first seen (Spark
+  sorts them, so the schema hash differed), and a field that was a number in one
+  record and text in the next, an object in one and text in the next, or a whole
+  number past 64 bits stopped the read. The reader now uses a port of Spark's
+  `JsonInferSchema`: such a field is text (an object keeps its JSON text), a long
+  whole number is a `decimal`, bigint and double give double, empty names and empty
+  objects are dropped, and a line holding an array of objects is one row per object.
+- **A timestamp in a daylight saving gap or fold no longer stops a pandas run
+  (F-063, E-09).** With a session zone such as `America/New_York`, the text
+  `2024-11-03 01:30:00` (it happens twice) or `2024-03-10 02:30:00` (it never
+  happens) stopped a CSV read with `inferSchema`, a read with a `TIMESTAMP` schema, and
+  a write of a naive timestamp. The pandas backend now follows Java's rule, as Spark
+  does: a time in a gap moves later by the gap (02:30 reads as 03:30), a time in a
+  fold takes the earlier offset. Times outside a change cost nothing extra.
+- **A CSV value over 1 MB no longer stops a pandas read (F-062, E-09).** pyarrow
+  parses in 1 MB blocks and stopped at a longer row ("straddling object straddles two
+  block boundaries"); Python's csv module, used for the header and for ragged rows,
+  stopped at 131,072 characters. Spark has no limit (`maxCharsPerColumn` is -1). Such
+  a file is now parsed again as one block, and the csv module's limit is lifted for
+  the read.
+- **A CSV byte that is not valid in its encoding no longer stops a pandas read
+  (F-061, E-09).** A Windows (cp1252) export read as UTF-8 failed with "can't decode
+  byte 0xe9". Spark decodes the Java way: such a byte becomes U+FFFD and the read goes
+  on. The pandas backend now does the same. Files that decode cleanly are read as
+  before, at the same cost.
+- **A CSV header with a repeated or blank name reads as on Spark (F-060, E-09).** On
+  the pandas backend a header such as `id,amount,amount,,note` stopped the read
+  ("duplicate field names"), and a blank name became a column called `""`. The names
+  are now made as Spark's `makeSafeHeader` makes them: a blank name (or the `nullValue`
+  text) becomes `_c<position>`, and a name that appears more than once, ignoring case,
+  gets its position added to each copy (`a,a,,A` reads as `a0, a1, _c2, A3`).
 - **On Windows, reading a run lease while its heartbeat replaces it no longer fails
   (F-048).** Windows refuses a read for a moment while a file is being replaced. The
   engine then called a live run's lease unreadable, and a second run of the same

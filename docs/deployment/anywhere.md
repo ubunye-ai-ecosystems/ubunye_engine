@@ -49,15 +49,20 @@ copies Spark's defaults instead of pandas' own:
 | What you read | What you get (same as Spark) |
 |---|---|
 | CSV, no options | No header: the first line is data, columns are `_c0`, `_c1`, ... |
-| CSV with `header: "true"` | Columns named from the first line, every value as text |
-| CSV with `inferSchema: "true"` | `int` if every value fits, else `bigint`; `double`, `boolean`, `date`, `timestamp`; an empty column is text |
-| An empty CSV field | null, not an empty string |
+| CSV with `header: "true"` | Columns named from the first line, every value as text. A blank name becomes `_c<position>`; a repeated name (ignoring case) gets its position added to each copy, so `a,a,,A` reads as `a0, a1, _c2, A3` |
+| CSV with `inferSchema: "true"` | Spark's rules, over every file at once: `int` if every value fits, else `bigint`, a whole number past 64 bits, or one written `5.` or `1.5E1`, a `decimal` (read exactly); digits in any script count; `double` (Java's forms: `1.5d`, ` 2` with a space, `Inf`, `NaN`; but `inf` is text), `boolean` in any case, `date`, `timestamp` (with or without an offset); an empty column is text |
+| An empty CSV field | null, not an empty string (also when `nullValue` is set to other text) |
+| A CSV value of any length | Read whole (Spark has no limit; pyarrow alone stopped past 1 MB) |
+| `encoding` (csv, json) | One of the names Spark 4 accepts: `UTF-8`, `ISO-8859-1`, `US-ASCII`, `UTF-16`, `UTF-16LE`, `UTF-16BE`, `UTF-32` (any case). Others (`cp1252`, `latin1`, `utf8`) are refused, as Spark 4 refuses them; Spark 3.5 took any Java name |
+| A CSV byte that is not valid in `encoding` (UTF-8 unless set) | The character U+FFFD, one per broken sequence exactly as Java decodes it (an encoded surrogate, `ED A0 80`, is one); the read goes on |
 | Quotes in a CSV value | Spark's escape is a backslash, so `"Anna ""Annie"""` stays exactly as written, and `"a\"b"` is `a"b` (set `escape: '"'` for doubled quotes); a line of only spaces is skipped |
-| JSON | One object per line (`multiLine: "true"` for one big array); columns sorted by name; whole numbers are `bigint`; dates stay text |
+| JSON | One object per line (`multiLine: "true"` for one big array); columns and nested fields sorted by name; whole numbers are `bigint` (`decimal` past 64 bits); a field that is a number in one record and text in another is text, and a value read as text keeps its JSON (one object per line: its exact source text, `1.50` stays `1.50`, as Spark 4 reads it; `multiLine`: as Jackson writes it back, `1.5`, as Spark 3.5 does always); records whose names differ only by case merge into the names seen first (as Spark does; the other spelling then reads as null); a record that repeats a key is refused; empty names and empty objects are dropped, and a record left with no fields is still a row; dates stay text |
+| Parquet with unsigned columns | `uint8` as `smallint`, `uint16` as `int`, `uint32` as `bigint`, `uint64` as `decimal(20,0)`: Spark has no unsigned types |
 | A folder | Every data file in it, skipping `_SUCCESS` and other `_` or `.` files and empty files, so it reads what Spark wrote |
 | A partitioned folder (`dt=2024-01-02/...`) | The partition columns, after the data columns, typed as Spark infers them (see below) |
 | A glob such as `data/*.csv` | Every matching file |
-| `schema: "id INT, name STRING"` | Exactly those columns and types |
+| Column names that differ only by case (`Col`, `col`) | Refused, on read and on write, as Spark refuses them by default |
+| `schema: "id INT, name STRING"` | Exactly those columns and types; an empty file or a folder with no data files gives zero rows of them |
 | `mode: "FAILFAST"`, `"DROPMALFORMED"`, `"PERMISSIVE"` | What Spark does with a bad row: stop, skip it, or (the default) cut a row with too many fields and pad one with too few |
 
 The frame your task gets is an ordinary pandas DataFrame whose columns are backed
@@ -74,7 +79,10 @@ class Enrich(Task):
 Timestamps written as text are read in `spark.sql.session.timeZone` from your
 `ENGINE.spark_conf`, the same setting Spark uses. If it is not set, the pandas
 backend uses UTC on every machine, while Spark would use the machine's own zone.
-Set it once and the two backends agree.
+Set it once and the two backends agree. A wall clock time that the zone skips
+(02:30 on the night clocks go forward) is read an hour later, and one that happens
+twice (01:30 on the night clocks go back) is read as the first of the two, as Java
+and so Spark read them.
 
 ### Big merges on Arrow columns
 

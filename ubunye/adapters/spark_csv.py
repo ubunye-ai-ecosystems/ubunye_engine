@@ -171,9 +171,15 @@ def respell(
     """
     out = io.StringIO()
     writer = csv.writer(out, delimiter=delimiter, quotechar=quote or '"', lineterminator=_NL)
+    # Python 3.10's csv writer cannot write NUL ("need to escape"); a private use
+    # character the text does not hold stands in for it and is swapped back.
+    stand_in = nul_stand_in(text)
 
     def write(row: List[Value]) -> None:
-        writer.writerow([null_text if v is None else v for v in row])
+        values = [null_text if v is None else v for v in row]
+        if stand_in:
+            values = [v.replace(_NUL, stand_in) for v in values]
+        writer.writerow(values)
 
     flags = None if multiline or not quote else _messy(text, delimiter, quote, escape, False)
     if flags is None or bool(flags.all()):
@@ -181,7 +187,7 @@ def respell(
         # ends lines: split it all.
         for row in split_text(text, delimiter, quote, escape, multiline):
             write(row)
-        return out.getvalue()
+        return _restore_nul(out.getvalue(), stand_in)
     # Line by line: each plain line is kept as written, and only the lines
     # that need it are split (the flags count lines the same way, at "\n").
     for line, needs in zip(text.split(_NL), flags.tolist()):
@@ -191,7 +197,18 @@ def respell(
                 out.write(line + _NL)
         elif line.strip(_BLANKS):  # Spark drops blank lines
             write(split_line(line, delimiter, quote, escape))
-    return out.getvalue()
+    return _restore_nul(out.getvalue(), stand_in)
+
+
+def nul_stand_in(text: str) -> Optional[str]:
+    """A private use character ``text`` does not hold, if ``text`` holds NUL."""
+    if _NUL not in text:
+        return None
+    return next(chr(c) for c in range(0xE000, 0xF900) if chr(c) not in text)
+
+
+def _restore_nul(text: str, stand_in: Optional[str]) -> str:
+    return text.replace(stand_in, _NUL) if stand_in else text
 
 
 class _EOF(Exception):
