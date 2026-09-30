@@ -7,7 +7,7 @@
 
 ## What happens
 A JSON file of records with no fields (`{}`, or only fields Spark drops: an empty
-name, an empty object) reads as 0 rows on pandas. The E-08 task
+name, an empty object) reads as 0 rows on pandas. The E-09 task
 (`nested_empty_records`: three `{}` lines, a transform that adds a column) finished
 with status success and wrote 0 rows; the run record said the input had 0 rows.
 
@@ -29,5 +29,5 @@ writer already used for the same reason) when the records have no fields left.
 
 ## Evidence
 Unit: `TestJsonRecordsWithNoFields` (2 failed before, 2 pass after). Integration
-(CI): `test_json_records_with_no_fields_are_rows`. E-08 rerun: `nested_empty_records`
+(CI): `test_json_records_with_no_fields_are_rows`. E-09 rerun: `nested_empty_records`
 writes 3 rows.

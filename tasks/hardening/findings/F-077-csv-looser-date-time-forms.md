@@ -28,3 +28,7 @@ day it runs, which is a question in itself.
 ## Evidence
 `tests/integration/test_awkward_data_parity.py::test_csv_looser_date_and_time_forms`,
 `xfail(strict=False)`: CI shows which forms Spark really takes.
+
+## Live Spark (CI, 2026-09-30)
+The `xfail` parity case failed on Spark 4.2 (Python 3.13, Java 21) and Spark 3.5
+(Java 11) as this finding says: the difference is real on both. Still open.

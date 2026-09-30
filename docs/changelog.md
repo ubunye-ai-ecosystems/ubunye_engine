@@ -198,19 +198,19 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   `decimal(20,0)` whenever a smaller number was present; Spark does that only for a
   number past the `int` range.
 - **The run record hashes a folder of many small files quickly on pandas (F-076,
-  E-08).** A read of 5,000 small files keeps one Arrow chunk per file, and the hash
+  E-09).** A read of 5,000 small files keeps one Arrow chunk per file, and the hash
   paid about a millisecond per chunk: 10,000 rows took 1.9 s to hash, most of a
   `--lineage` run. Such a table is now put together first: 0.02 s. Same digest.
 - **Columns whose names differ only by case are refused on pandas, as on Spark
-  (F-069, E-08).** A parquet file with `Col` and `col`, JSON keys `a` and `A`, or a
+  (F-069, E-09).** A parquet file with `Col` and `col`, JSON keys `a` and `A`, or a
   transform that returns both, ran on pandas and failed on Spark, whose default
   (`spark.sql.caseSensitive` false) refuses such data on read and on write. The pandas
   backend now refuses them too, before anything is written, and says why.
-- **An empty file or folder read with a schema is zero rows on pandas (F-068, E-08).**
+- **An empty file or folder read with a schema is zero rows on pandas (F-068, E-09).**
   A zero byte file, or a folder holding only `_SUCCESS`, read with `schema:` stopped
   the run ("Path does not exist or holds no data files"). Spark reads zero rows with
   that schema, and so does the pandas backend now. A missing path is still an error.
-- **CSV `inferSchema` on pandas follows Spark's rules (F-067, E-08).** pyarrow chose
+- **CSV `inferSchema` on pandas follows Spark's rules (F-067, E-09).** pyarrow chose
   the types, and differed from Spark on numbers written a little differently: a
   whole number past 64 bits became a `double` that lost digits (Spark: an exact
   `decimal`), `1, 2` with a space after the comma stayed `int` (Spark: `double`),
@@ -219,15 +219,15 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   a port of Spark's `CSVInferSchema`, over every file of a folder at once (each file
   was inferred alone before). About 20% slower on a plain file (performance guard:
   40 to 48 ms for 60,000 rows).
-- **Unsigned parquet columns read with Spark's types on pandas (F-066, E-08).** A
+- **Unsigned parquet columns read with Spark's types on pandas (F-066, E-09).** A
   `uint8` to `uint64` column kept its unsigned type, so the schema and the run record
   hash differed from Spark's. They now read as Spark reads them: `smallint`, `int`,
   `bigint` and `decimal(20,0)`, at any depth.
-- **JSON records with no fields are no longer lost on pandas (F-065, E-08).** A file
+- **JSON records with no fields are no longer lost on pandas (F-065, E-09).** A file
   of `{}` records (or records holding only fields Spark drops) read as 0 rows, and the
   run succeeded. Spark reads one row per record, with no columns; so does the pandas
   backend now.
-- **JSON on pandas is typed by Spark's rules (F-064, E-08).** The pandas reader let
+- **JSON on pandas is typed by Spark's rules (F-064, E-09).** The pandas reader let
   pyarrow infer the types. Nested fields kept the order they were first seen (Spark
   sorts them, so the schema hash differed), and a field that was a number in one
   record and text in the next, an object in one and text in the next, or a whole
@@ -236,24 +236,24 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   whole number is a `decimal`, bigint and double give double, empty names and empty
   objects are dropped, and a line holding an array of objects is one row per object.
 - **A timestamp in a daylight saving gap or fold no longer stops a pandas run
-  (F-063, E-08).** With a session zone such as `America/New_York`, the text
+  (F-063, E-09).** With a session zone such as `America/New_York`, the text
   `2024-11-03 01:30:00` (it happens twice) or `2024-03-10 02:30:00` (it never
   happens) stopped a CSV read with `inferSchema`, a read with a `TIMESTAMP` schema, and
   a write of a naive timestamp. The pandas backend now follows Java's rule, as Spark
   does: a time in a gap moves later by the gap (02:30 reads as 03:30), a time in a
   fold takes the earlier offset. Times outside a change cost nothing extra.
-- **A CSV value over 1 MB no longer stops a pandas read (F-062, E-08).** pyarrow
+- **A CSV value over 1 MB no longer stops a pandas read (F-062, E-09).** pyarrow
   parses in 1 MB blocks and stopped at a longer row ("straddling object straddles two
   block boundaries"); Python's csv module, used for the header and for ragged rows,
   stopped at 131,072 characters. Spark has no limit (`maxCharsPerColumn` is -1). Such
   a file is now parsed again as one block, and the csv module's limit is lifted for
   the read.
 - **A CSV byte that is not valid in its encoding no longer stops a pandas read
-  (F-061, E-08).** A Windows (cp1252) export read as UTF-8 failed with "can't decode
+  (F-061, E-09).** A Windows (cp1252) export read as UTF-8 failed with "can't decode
   byte 0xe9". Spark decodes the Java way: such a byte becomes U+FFFD and the read goes
   on. The pandas backend now does the same. Files that decode cleanly are read as
   before, at the same cost.
-- **A CSV header with a repeated or blank name reads as on Spark (F-060, E-08).** On
+- **A CSV header with a repeated or blank name reads as on Spark (F-060, E-09).** On
   the pandas backend a header such as `id,amount,amount,,note` stopped the read
   ("duplicate field names"), and a blank name became a column called `""`. The names
   are now made as Spark's `makeSafeHeader` makes them: a blank name (or the `nullValue`

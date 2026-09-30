@@ -6,7 +6,7 @@
 **Promise:** 1 (same result anywhere: the Spark record has a digest, the pandas one not)
 
 ## What happens
-The E-08 time zone tasks (session zone `America/New_York`) read
+The E-09 time zone tasks (session zone `America/New_York`) read
 `9999-12-31 23:59:59` as wall clock time, which is `10000-01-01 04:59:59` UTC.
 The run succeeds and writes every row, but every step's rows-v1 hash is missing:
 
@@ -26,7 +26,11 @@ options); what Java's formatter writes for year 10000 (`+10000-01-01...` or
 run, so not fixed here.
 
 ## Evidence
-E-08 harness: `tz_csv_ny`, `tz_csv_schema_ny`, `tz_parquet` all `success` with no
+E-09 harness: `tz_csv_ny`, `tz_csv_schema_ny`, `tz_parquet` all `success` with no
 digests. `tests/integration/test_awkward_data_parity.py::test_digest_of_instants_outside_python_years`,
 `xfail(strict=False)`: CI shows whether Spark's digest exists and what the pandas
 side must match.
+
+## Live Spark (CI, 2026-09-30)
+The `xfail` parity case failed on Spark 4.2 (Python 3.13, Java 21) and Spark 3.5
+(Java 11) as this finding says: the difference is real on both. Still open.

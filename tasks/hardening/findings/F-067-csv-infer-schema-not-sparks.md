@@ -7,7 +7,7 @@ naive plus aware timestamp mix; the looser date and time forms are F-077
 **Promise:** 1 (same result anywhere), 5 (nothing lost silently)
 
 ## What happens
-The pandas reader let pyarrow infer each file's types. On the E-08 files:
+The pandas reader let pyarrow infer each file's types. On the E-09 files:
 
 | Column values | pandas before | Spark (`CSVInferSchema`) |
 |---|---|---|

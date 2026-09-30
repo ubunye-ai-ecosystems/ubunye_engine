@@ -39,3 +39,8 @@ schema is an error on both (it has no footer).
 Unit: `TestEmptyInputsWithASchema` (4 failed before, 5 pass after). Integration
 (CI): `test_empty_file_with_a_schema` (csv, json, parquet),
 `test_empty_folder_with_a_schema`, `test_zero_rows_with_a_schema_and_a_header_only_csv`.
+
+## Live Spark (CI, 2026-09-30)
+With a schema: the three formats and the empty folder matched on Spark 3.5 and 4.
+Without a schema: the `xfail` case failed on both, so Spark does not refuse an empty
+CSV or JSON file where the pandas backend does. Still open (design question).

@@ -7,7 +7,7 @@
 
 ## What happens
 A parquet file with columns `Col` and `col`, JSON records with keys `a` and `A`, or a
-transform that returns a frame with `Col` and `col`: the E-08 task
+transform that returns a frame with `Col` and `col`: the E-09 task
 (`names_parquet_case_dupes`) succeeded on pandas and wrote both columns.
 
 ## Repro

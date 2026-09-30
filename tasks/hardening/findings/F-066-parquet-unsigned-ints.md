@@ -8,7 +8,7 @@
 ## What happens
 A parquet file with unsigned columns (pandas and numpy write them from `uint8` and
 friends; so do many IoT and image pipelines) reads on pandas as `uint8`, `uint16`,
-`uint32`, `uint64`. The E-08 task wrote them back unsigned, and the run record's
+`uint32`, `uint64`. The E-09 task wrote them back unsigned, and the run record's
 schema hash names `uint64`, a type Spark does not have.
 
 ## Repro

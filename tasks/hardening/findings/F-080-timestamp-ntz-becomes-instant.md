@@ -9,7 +9,7 @@
 A parquet column written without a time zone (`TIMESTAMP(isAdjustedToUTC=false)`: what
 pandas, pyarrow and Spark's `timestamp_ntz` write) is read by the pandas backend as a
 naive timestamp. Written back, every naive timestamp is taken as wall clock time in
-the session zone and stored as an instant (`timestamp` with UTC). The E-08 task
+the session zone and stored as an instant (`timestamp` with UTC). The E-09 task
 `tz_parquet` (session zone New York) turned `2024-03-10 02:30` (no zone) into
 `2024-03-10 07:30Z` and changed the column type.
 
@@ -30,3 +30,7 @@ passthrough data but makes the rule depend on history. Not changed here.
 ## Evidence
 `tests/integration/test_awkward_data_parity.py::test_timestamp_ntz_round_trip`,
 `xfail(strict=False)`.
+
+## Live Spark (CI, 2026-09-30)
+The `xfail` parity case failed on Spark 4.2 (Python 3.13, Java 21) and Spark 3.5
+(Java 11) as this finding says: the difference is real on both. Still open.
