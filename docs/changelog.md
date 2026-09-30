@@ -107,6 +107,13 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **`ubunye run` stops on a broken expectation without a traceback (F-055).** An
+  expectation that fails, an input contract or a reconcile, is the engine doing its
+  job: nothing was written and the message names the rule. The CLI printed that
+  message, then about 60 lines of traceback through the engine, which read as a
+  crash. It now prints `[ERROR] Run stopped for <task>: <message>` and exits with
+  code 1, as a refused run does. Any other error still shows its traceback. Found
+  writing Tutorial 2 (Olist).
 - **A failed run's record says why it failed (F-054).** The record has an `error`
   field; OpenLineage sends it as the failed run's `errorMessage`, and `ubunye prove`
   shows it as the reason. Nothing filled it: every failed run said `status: error`,

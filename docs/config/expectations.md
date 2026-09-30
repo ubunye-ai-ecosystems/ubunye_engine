@@ -74,7 +74,9 @@ ExpectationError: Expectations failed, so nothing was written:
   or warn if this is expected.
 ```
 
-The error carries every rule's result, passed or not (`err.results`). A rule that
+`ubunye run` prints the message and exits with code 1, with no traceback: the data
+broke a rule, the engine did not crash. The error carries every rule's result, passed
+or not (`err.results`). A rule that
 breaks zero rows today and thousands tomorrow is the earliest warning that
 something upstream moved.
 
