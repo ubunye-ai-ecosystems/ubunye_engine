@@ -32,6 +32,146 @@ class LabelReviews(Task):
 Calls run where the task's Python runs. On Spark that is the driver: collect the
 column you want to label, or keep the frame small.
 
+## Check each answer, ask again for the bad ones
+
+`complete_many` gives back text. A model asked for a format, such as
+`SENTIMENT | ASPECT`, will miss it now and then: a small local model missed it 20
+times in 300. Parse every answer, and ask again only for the ones that fail, a set
+number of times. Copy this into your task:
+
+<!-- llm-reask:begin -->
+```python
+SENTIMENTS = {"positive", "negative", "neutral"}
+
+
+def sentiment_aspect(text):
+    """'positive | battery life' -> ('positive', 'battery life'); ValueError if not."""
+    parts = [p.strip() for p in text.strip().split("|")]
+    if len(parts) != 2 or parts[0].lower() not in SENTIMENTS or not parts[1]:
+        raise ValueError(f"not 'SENTIMENT | ASPECT': {text!r}")
+    return parts[0].lower(), parts[1]
+
+
+def with_reminder(prompt, reminder):
+    """The prompt with the reminder added to its last user message; a new copy."""
+    if not reminder:
+        return prompt
+    if isinstance(prompt, str):
+        return prompt + reminder
+    messages = [dict(m) for m in prompt]
+    users = [i for i, m in enumerate(messages) if m.get("role") == "user"]
+    if not users or not isinstance(messages[users[-1]].get("content"), str):
+        return messages + [{"role": "user", "content": reminder.strip()}]
+    messages[users[-1]]["content"] += reminder
+    return messages
+
+
+def complete_parsed(port, prompts, parse, *, tries=2, reminder=None, **options):
+    """Ask every prompt; ask again, up to `tries` more times, only where `parse` fails.
+
+    Returns (values, failed). values[i] is parse(answer i), or None. failed maps
+    each position that never parsed to the last reason: what parse raised, or the
+    LLMBudgetError that stopped the asking again.
+    """
+    from ubunye.core.errors import LLMBudgetError
+
+    if tries < 0:
+        raise ValueError(f"tries must be 0 or more, not {tries}")
+    prompts = list(prompts)  # by position: a pandas Series would index by label
+    values = [None] * len(prompts)
+    failed = {i: None for i in range(len(prompts))}
+    for attempt in range(tries + 1):
+        todo = list(failed)
+        asked = [with_reminder(prompts[i], reminder if attempt else None) for i in todo]
+        try:
+            answers = port.complete_many(asked, **options)
+        except LLMBudgetError as exc:
+            if attempt == 0:
+                raise  # the budget does not cover one pass: nothing to keep
+            failed = {i: exc for i in todo}  # keep what was paid for, stop asking
+            break
+        for i, answer in zip(todo, answers):
+            try:
+                values[i] = parse(answer.text)
+                del failed[i]
+            except Exception as exc:  # any error in parse means "did not parse"
+                failed[i] = exc
+        if not failed:
+            break
+    return values, failed
+```
+<!-- llm-reask:end -->
+
+In the task:
+
+```python
+values, failed = complete_parsed(
+    self.model, list(df["text"]), sentiment_aspect, tries=2, max_tokens=20,
+    reminder="\n\nAnswer with one line: SENTIMENT | ASPECT.",
+)
+df["sentiment"] = [v[0] if v else None for v in values]
+df["aspect"] = [v[1] if v else None for v in values]
+```
+
+Then decide what a row that failed every try means: drop it, keep it as unknown, or
+fail the run with `raise ValueError(f"{len(failed)} answers never parsed: {failed}")`.
+`failed` says why for each one.
+
+How it behaves:
+
+- Answers go back by position. `prompts` can be a list or a pandas column; a
+  column's own index (after a sort or a filter) is not used.
+- Any error in `parse` (a `ValueError`, or a `KeyError` from a missing JSON field)
+  counts as "did not parse". That prompt is asked again, and the error is kept in
+  `failed`.
+- Prompts can be text or chat message lists. The reminder is added to the last
+  user message, on a copy; your prompts are not changed.
+- Only the failed prompts are sent again. Each extra call counts against the budget
+  like any other, so `UBUNYE_LLM_MAX_CALLS` and `UBUNYE_LLM_MAX_USD` still cap it.
+  When the budget refuses an ask again, the answers already paid for are kept and
+  the rest are returned as failed, with the `LLMBudgetError` as the reason. The
+  answers of that last, refused round are lost. When the budget cannot cover the
+  first pass, the error is raised.
+- Every call, first or again, is in the run record's `llm_calls`.
+- Record and replay, inside a run: the engine opens a call log for every task run,
+  and there replay gives back the recorded run call for call, also when the same
+  prompt is sent twice with no `reminder` (the second ask gets the second recorded
+  answer). Outside a run (a notebook, with no `llm.recording()` block) that is not
+  so: a second identical ask is recorded over the first, and replay can make fewer
+  calls than the recording did. Record and replay inside a run.
+- `reminder` changes the prompt on a second try. At `temperature=0` a model asked
+  the very same prompt often gives the very same wrong answer; a reminder gives it a
+  reason to change.
+
+## Progress on a long batch
+
+A long `complete_many` writes how far it is to stderr:
+
+```
+LLM anthropic/claude-haiku-4-5: 90/300 calls (30%), 1m48s, $0.0412 spent of $2
+```
+
+A line comes at most every 10 seconds and every 10% of the calls, whichever is
+rarer, so a slow batch gets about ten lines. A batch that wrote a line gets one
+more line at the end. A batch of fewer than 20 prompts, or one that is done in
+under 10 seconds, writes nothing. A loop of `complete()` calls has no total and
+writes no progress: use `complete_many`.
+
+When some calls did not get an answer, the line says so:
+
+```
+LLM anthropic/claude-haiku-4-5: 300/300 calls (100%), 50 answered, 250 refused by the budget, 5m00s
+```
+
+The spend shows only when a dollar limit is enforced
+([Cap the bill](#cap-the-bill-before-the-run)): `UBUNYE_LLM_MAX_USD` (in a run, or
+outside one), or the port's `max_usd=`. With both, the line shows both, as
+`run $0.0412 of $2, port $0.0412 of $0.5`. With no dollar limit, no spend shows.
+
+The line goes to stderr, so stdout stays clean for pipes and for `ubunye mcp`.
+When stderr is missing or broken, the line is dropped; it never stops a batch.
+Turn it off with `UBUNYE_LLM_PROGRESS=0` (also `false`, `no` or `off`).
+
 ## Backends
 
 | Backend | For | Key (when `api_key=` is not given) |
@@ -103,9 +243,17 @@ the request's key; it never holds the prompt. Commit it with the task and CI, a
 colleague's laptop or another cloud replays the same answers, so the run writes the
 same data and the same row hashes.
 
+Replay gives back the recorded run call for call. A run may send the same request
+more than once (two identical reviews), and a model can answer each differently; the
+nth identical request is replayed the nth recorded answer, so the replayed output is
+the recorded output, row for row. Recording again replaces a request's answers.
+`complete_many` numbers repeats by their position in the list, so parallel calls
+replay the same way.
+
 Replay fails closed. A request with no recorded answer (a new prompt, another
 model, another `temperature`) stops the run with the request's key and the hint to
-record again; it never falls back to a live call. Each call in the run record says
+record again; it never falls back to a live call. So does a run that sends a
+request more times than the recording holds answers for it. Each call in the run record says
 where its answer came from: `"source": "live"`, `"record"` or `"replay"`.
 
 ## Cap the bill before the run

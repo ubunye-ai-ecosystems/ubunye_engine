@@ -27,6 +27,7 @@ Usage
 
 from __future__ import annotations
 
+import logging
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
@@ -37,9 +38,12 @@ from ubunye.config.variables import build_variables
 from ubunye.core import backends
 from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend
+from ubunye.core.runs import BatchFinished
 from ubunye.core.runtime import EngineContext
 from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
+
+logger = logging.getLogger(__name__)
 
 
 def _make_app_name(
@@ -124,6 +128,7 @@ def run_task(
     lineage_dir: str = ".ubunye/lineage",
     profile: Optional[str] = None,
     hooks: Optional[Iterable[Hook]] = None,
+    rerun: bool = False,
 ) -> Dict[str, Any]:
     """Run a single Ubunye task and return the outputs map.
 
@@ -159,6 +164,10 @@ def run_task(
     hooks : iterable of Hook, optional
         Replace the engine's default hooks entirely. Rarely needed; prefer
         the ``ubunye.hooks`` entry point for always-on hooks.
+    rerun : bool
+        Replace a batch (same ``dt`` and variables) that a finished run already
+        appended. Without it, such a run is refused, since it would append the
+        batch twice.
 
     Returns
     -------
@@ -195,7 +204,12 @@ def run_task(
 
     run_id = str(uuid.uuid4())
     context = EngineContext(
-        run_id=run_id, profile=mode, task_name=task_identity, variables=variables
+        run_id=run_id,
+        profile=mode,
+        task_name=task_identity,
+        variables=variables,
+        lineage_dir=str(usecase_dir / lineage_dir) if lineage else None,
+        rerun=rerun,
     )
 
     backend.start()
@@ -233,6 +247,8 @@ def run_pipeline(
     lineage_dir: str = ".ubunye/lineage",
     profile: Optional[str] = None,
     hooks: Optional[Iterable[Hook]] = None,
+    rerun: bool = False,
+    resume: bool = False,
 ) -> Dict[str, Dict[str, Any]]:
     """Run multiple tasks sequentially and return all outputs.
 
@@ -246,13 +262,17 @@ def run_pipeline(
         Package/pipeline name.
     tasks : List[str]
         Task names to run in order.
-    mode, dt, dtf, spark, backend, variables, lineage, lineage_dir, profile, hooks
+    mode, dt, dtf, spark, backend, variables, lineage, lineage_dir, profile, hooks, rerun
         Same as :func:`run_task`. One backend runs every task.
+    resume : bool
+        Finish a pipeline that stopped half way: a task that already finished this
+        batch is skipped (with a warning, and is not in the result); the rest run.
+        Without it, such a task is refused (:class:`~ubunye.core.runs.BatchFinished`).
 
     Returns
     -------
     Dict[str, Dict[str, Any]]
-        Mapping of task name → outputs map.
+        Mapping of task name → outputs map (without tasks skipped by ``resume``).
     """
     base = Path(usecase_dir).resolve()
     variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
@@ -297,15 +317,22 @@ def run_pipeline(
                 profile=mode,
                 task_name=f"{usecase}/{package}/{task}",
                 variables=variables,
+                lineage_dir=str(base / lineage_dir) if lineage else None,
+                rerun=rerun,
             )
-            results[task] = execute_user_task(
-                chosen,
-                task_path,
-                cfg,
-                context,
-                hooks=hooks,
-                extra_hooks=extra_hooks,
-            )
-        return results
+            try:
+                results[task] = execute_user_task(
+                    chosen,
+                    task_path,
+                    cfg,
+                    context,
+                    hooks=hooks,
+                    extra_hooks=extra_hooks,
+                )
+            except BatchFinished as exc:
+                if not resume:
+                    raise
+                logger.warning("Skipped %s (resume): %s", task, exc)
     finally:
         chosen.stop()
+    return results

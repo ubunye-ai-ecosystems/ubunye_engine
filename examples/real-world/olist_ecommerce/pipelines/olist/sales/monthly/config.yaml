@@ -1,0 +1,53 @@
+MODEL: etl
+VERSION: "1.0.0"
+
+# Step 3 of the Olist sales pipeline: what each seller sold each month, and how often
+# it arrived on time; and sales per product category per month. Reads what steps 1 and
+# 2 wrote.
+CONFIG:
+  inputs:
+    orders_fact:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/orders_fact"
+      file_format: parquet
+    order_items:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/order_items"
+      file_format: parquet
+    sellers:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/sellers"
+      file_format: parquet
+    products:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/products"
+      file_format: parquet
+
+  transform:
+    params:
+      # Orders in these states sold nothing: left out of sales (GMV).
+      not_sold: [canceled, unavailable]
+
+  outputs:
+    seller_monthly:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/seller_monthly"
+      file_format: parquet
+      mode: overwrite
+    category_monthly:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/category_monthly"
+      file_format: parquet
+      mode: overwrite
+
+  expectations:
+    seller_monthly:
+      rules:
+        - unique: [seller_id, purchase_year, purchase_month]
+        - not_null: seller_state
+        - between: {column: on_time_rate, min: 0, max: 1}
+        - between: {column: gmv, min: 0}
+    category_monthly:
+      rules:
+        - unique: [category, purchase_year, purchase_month]
+        - between: {column: gmv, min: 0}

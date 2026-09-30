@@ -137,36 +137,82 @@ the scheduler artifacts that the usecase repo commits.
 
 ## Workflow in this repo
 
-The `tasks/` scratchpad tracks work in flight (not authoritative — GitHub issues + changelog are):
+### The hardening programme (from 2026-09-28)
 
-- `tasks/todo/task-NN.md` — queued bugs and coverage gaps. `task-00.md` is the umbrella strategy.
-- `tasks/done/task-NN.md` — finished work, same number, with a `Status: done (date)` line
-  appended. **Move, don't copy.**
+Ubunye is tested against real use: real open data (Kaggle), every example and
+capability on every environment, the production failures other data teams have hit
+(the AbsaOSS research in `docs/research/absaoss/`), and a scale ladder. What breaks is
+proven, fixed and measured again.
 
-Four project-level subagents automate the loop (see `.claude/agents/README.md`):
+- **Branch:** all work lands on `hardening/real-world` (or a branch off it). One release
+  PR to `main` at the end. Never commit to `main`.
+- **Ledger:** `tasks/hardening/`. `findings/F-NNN-*.md` (one problem each, with repro and
+  evidence), `experiments/E-NN-*.md` (a question asked on purpose), and `SCOREBOARD.md`
+  (the numbers that say whether it is getting better). The older `tasks/todo/` and
+  `tasks/done/` are history.
+- **Commands:** `/stranger-test`, `/finding`, `/parity`, `/scale`, `/ship`
+  (`.claude/commands/`).
+- **Agents** (`.claude/agents/README.md`): `stranger`, `fire-tester`, `parity-checker`,
+  `scale-runner` find; `engine-fixer` fixes; `skeptic` reviews every fix and claim;
+  `example-author` builds examples; `task-curator` keeps the ledger honest.
 
-1. `fire-tester` — runs a production example end-to-end on Databricks, files findings to
-   `tasks/todo/`. Use for prompts like "run the titanic example", "does the ML lifecycle still
-   work".
-2. `engine-fixer` — picks up a filed bug, produces **one atomic commit per bug** (failing test
-   first, then minimal fix). Does not release.
-3. `example-author` — scaffolds a new `examples/production/*` pipeline when a coverage-gap task
-   calls for one.
-4. `task-curator` — tidies `tasks/` and keeps numbering/metadata honest.
+### Verification is the job
 
-Hard invariants these agents preserve (and you should too):
+A change counts when it is proven, not when it is written:
 
-- No releases. The `pypip` GitHub environment requires a human reviewer.
+- A fix: its test fails on the old code and passes on the new. Show both runs.
+- Pandas-backend behaviour: checked on live Spark and pinned as a parity case.
+- Speed: the performance guard (`benchmarks/guard.py`) or a scale step with a baseline.
+- An example: its golden hash matches in CI, and a stranger could finish it.
+- A claim that Ubunye is better than X: measured against X, same data, same machine.
+
+### Hard invariants
+
+- No releases, no PyPI. The `pypip` GitHub environment requires a human reviewer.
 - Never skip pre-commit hooks (`--no-verify`) or signing.
-- One commit per fix — no bundled bug-fix commits.
-- **Docs + changelog move with code.** Every code change touches `docs/` and `docs/changelog.md`
-  in the same commit; this is tracked in user memory and has been called out before.
+- One commit per fix. **Docs + changelog move with code**, in the same commit.
+- Nothing public under the owner's name, and no spend beyond free tiers, without asking.
+- Kaggle data is downloaded at run time, never committed.
+- The core stays small: prefer a plugin, a doc, or nothing over a new core feature.
+
+### Traps that have cost real time
+
+- **Spark decides.** Port Spark behaviour from its real source (Maven sources jar of the
+  bundled version) and fuzz against live Spark; guessing the rules failed. When Spark
+  itself surprises (its CSV escape is a backslash, so files that double their quotes
+  split wrongly), keep parity and warn. Never change the default.
+- **Backslashes in shell heredocs get mangled** (`\n` became a newline, a `\xef` escape
+  became a literal byte). Write code with backslashes through the Write/Edit tools or a
+  script file.
+- **Format only through the pinned hooks** (`pre-commit run --files ...`). A venv's own
+  black once lost the line-length config and reformatted about 95 files.
+- **pandas 3 vs 2:** `DataFrame.__module__` is `"pandas"` on 3; compare types, not module
+  strings. On pandas 2.2 an object column's `str.contains` gives None for a null.
+- **Narwhals:** no `is_not_null` (use `~is_null()`); `filter(nw.lit(False))` is refused
+  (use `head(0)`). Test expressions in the minimum-versions venv too.
+- **Typer vendors click**, so `isinstance(cmd, click.Group)` is always False; duck-type.
+  CI terminals get colour: strip `\x1b\[[0-9;]*m` before matching CLI output.
+- **pyarrow before 24** cannot find a timezone database on Windows.
+- **The dev box Spark venv (`sparkvenv`) resolves `ubunye-engine` 0.5.0** from the user
+  site (an old editable install of `Documents/gits/ubunye_engine`), so its entry points
+  have no pandas backend and integration tests fail with `No backend named 'pandas'`.
+  Put the tree under test and a copy of a current `ubunye_engine-*.dist-info` (without
+  `RECORD` and `direct_url.json`) first on `PYTHONPATH`.
+- **Retargeting a PR's base fires no pull_request workflows.** Close and reopen it.
+- **Stopping a background job can orphan its Python child.** Check for and stop leftover
+  processes; the dev box has 16 GB and runs out.
+- **A lease's host is not the hostname on Linux.** `runs._host()` adds the pid namespace
+  (`name|pid:[...]`), so a test that writes `socket.gethostname()` fakes another host and
+  its dead run looks alive. Use `runs._host()`. Windows and macOS hide this; only CI's
+  Linux jobs caught it.
+- **Windows paths:** `Path.resolve()` can spell a folder two ways (8.3 short names); use
+  `os.path.abspath` + `normcase` for identity.
 
 ## Related docs in this repo
 
 - `README.md` — user-facing pitch + quickstart.
 - `DEV_README.md` — environment bootstrap. Partially stale (lists `dagster`/`prefect` exporters
-  that don't exist and a `doctor` command that was never shipped). Trust the code over this file.
+  that don't exist). Trust the code over this file.
 - `docs/` — full MkDocs site (`mkdocs serve` to preview). `mkdocs.yml` nav lists what exists.
 - `tasks/README.md` — scratchpad conventions.
 - `examples/production/README.md` — portability contract, CE-vs-paid-workspace matrix.

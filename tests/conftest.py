@@ -47,6 +47,17 @@ class MockBackend:
 
         return frame_io.read_frame(self.spark, file_format, path, options=options, schema=schema)
 
+    # The records seam (F-015), through the same Spark mechanism.
+    def frame_from_records(self, records, *, schema=None):
+        from ubunye.adapters.spark import frame_io
+
+        return frame_io.frame_from_records(self.spark, records, schema=schema)
+
+    def iter_records(self, frame):
+        from ubunye.adapters.spark import frame_io
+
+        return frame_io.iter_records(frame)
+
     def execute_write(
         self,
         df,

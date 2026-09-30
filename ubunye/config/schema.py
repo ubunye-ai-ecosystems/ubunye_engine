@@ -10,7 +10,10 @@ are a conscious tradeoff documented in the PR that introduced strict mode.
 
 from __future__ import annotations
 
+import decimal
 import difflib
+import math
+import numbers
 import re
 from enum import Enum
 from functools import lru_cache
@@ -290,9 +293,119 @@ class RowCountSpec(BaseModel):
     max: Optional[int] = None
 
 
-EXPECTATION_KINDS = ("not_null", "unique", "between", "one_of", "matches", "row_count")
+EXPECTATION_KINDS = (
+    "not_null",
+    "unique",
+    "between",
+    "one_of",
+    "matches",
+    "row_count",
+    "columns",
+)
 #: Kinds judged per row; only these can quarantine rows.
 ROW_KINDS = ("not_null", "between", "one_of", "matches")
+
+#: The type names a ``columns`` rule accepts: the run record's names (ADR 006).
+SIMPLE_TYPES = (
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "float32",
+    "float64",
+    "bool",
+    "string",
+    "binary",
+    "date",
+    "timestamp",
+    "timestamp_ntz",
+)
+#: Other names a frame can report: Arrow types Spark has no name for, a column of
+#: nulls only, a pandas column of mixed Python values, and Spark's own extras.
+OTHER_TYPES = ("uint8", "uint16", "uint32", "uint64", "null", "mixed", "variant")
+_OTHER_TYPE = re.compile(
+    r"^(time(32|64)\[(s|ms|us|ns)\]|duration\[(s|ms|us|ns)\]|fixed_size_binary\[\d+\]"
+    r"|interval\w*)$"
+)
+_DECIMAL = re.compile(r"^decimal\((\d+),(\d+)\)$")
+#: Names from other systems, and what the record calls them.
+_TYPE_HINTS = {
+    "double": "float64",
+    "float": "float32 (Spark float) or float64 (Spark double, pandas float)",
+    "real": "float32",
+    "long": "int64",
+    "bigint": "int64",
+    "int": "int32",
+    "integer": "int32",
+    "smallint": "int16",
+    "short": "int16",
+    "tinyint": "int8",
+    "byte": "int8",
+    "str": "string",
+    "text": "string",
+    "varchar": "string",
+    "object": "string",
+    "boolean": "bool",
+    "datetime": "timestamp",
+    "timestamp_ltz": "timestamp",
+}
+
+
+def _split_top(text: str) -> List[str]:
+    """Split on the commas that are not inside <...> or (...)."""
+    parts, depth, start = [], 0, 0
+    for i, ch in enumerate(text):
+        if ch in "<(":
+            depth += 1
+        elif ch in ">)":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(text[start:i])
+            start = i + 1
+    parts.append(text[start:])
+    return parts
+
+
+def canonical_type(name: Any) -> str:
+    """A declared column type as a contract names it, or ValueError saying what it means.
+
+    Nested types are read part by part, so ``list<banana>`` is refused like
+    ``banana``.
+    """
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError(f"a type is a name like int64 or string, not {name!r}")
+    text = re.sub(r"\s+", "", name)
+    simple = text.lower()
+    if simple in SIMPLE_TYPES or simple in OTHER_TYPES or _OTHER_TYPE.match(simple):
+        return simple
+    decimal = _DECIMAL.match(simple)
+    if decimal:
+        return f"decimal({int(decimal.group(1))},{int(decimal.group(2))})"
+    if text.endswith(">"):
+        if simple.startswith("list<"):
+            return f"list<{canonical_type(text[5:-1])}>"
+        if simple.startswith("map<"):
+            parts = _split_top(text[4:-1])
+            if len(parts) == 2:
+                return f"map<{canonical_type(parts[0])},{canonical_type(parts[1])}>"
+        if simple.startswith("struct<"):
+            fields = []
+            for part in _split_top(text[7:-1]):
+                field, sep, kind = part.partition(":")
+                if not sep or not field:
+                    raise ValueError(f"'{name}': a struct field is written name:type")
+                fields.append(f"{field}:{canonical_type(kind)}")
+            return "struct<" + ",".join(fields) + ">"
+    hint = _TYPE_HINTS.get(simple)
+    if hint:
+        raise ValueError(f"'{name}' is not a type name here; write {hint}")
+    close = difflib.get_close_matches(simple, SIMPLE_TYPES, n=1)
+    also = f"; did you mean {close[0]}?" if close else ""
+    raise ValueError(
+        f"'{name}' is not a type name; use one of {', '.join(SIMPLE_TYPES)}, "
+        f"decimal(p,s), list<...>, map<...,...> or struct<name:type,...> (also uint8 to "
+        f"uint64, null, mixed, time64[us] and the like){also}"
+    )
 
 
 class ExpectationRule(BaseModel):
@@ -317,11 +430,43 @@ class ExpectationRule(BaseModel):
     one_of: Optional[OneOfSpec] = None
     matches: Optional[MatchesSpec] = None
     row_count: Optional[RowCountSpec] = None
+    #: ``columns``: each named column exists and has this type (or one of a list
+    #: of types). The names are the run record's (``int64``, ``float64``,
+    #: ``string``, ...). Nulls are not part of the type.
+    columns: Optional[Dict[str, List[str]]] = None
+    #: With ``columns``: ``allow`` (default) other columns, or ``forbid`` them.
+    extra: Optional[Literal["allow", "forbid"]] = None
 
     @field_validator("unique", mode="before")
     @classmethod
     def _unique_as_list(cls, v: Any) -> Any:
         return [v] if isinstance(v, str) else v
+
+    @field_validator("columns", mode="before")
+    @classmethod
+    def _types_as_lists(cls, v: Any) -> Any:
+        if not isinstance(v, dict):
+            return v
+        if not v:
+            raise ValueError("'columns' needs at least one column")
+        out: Dict[str, List[str]] = {}
+        for column, types in v.items():
+            if isinstance(types, str):
+                names = [types]
+            elif isinstance(types, (list, tuple)) or types is None:
+                names = list(types or [])
+            else:
+                raise ValueError(
+                    f"'columns.{column}': give a type name like int64, or a list of them, "
+                    f"not {types!r}"
+                )
+            if not names:
+                raise ValueError(f"'columns': give '{column}' a type")
+            try:
+                out[str(column)] = [canonical_type(t) for t in names]
+            except ValueError as exc:
+                raise ValueError(f"'columns.{column}': {exc}") from None
+        return out
 
     @property
     def kind(self) -> str:
@@ -349,10 +494,136 @@ class ExpectationRule(BaseModel):
                 f"'{kinds[0]}' is about the whole output, not a row, so it cannot "
                 "quarantine rows; use severity fail or warn"
             )
+        if self.extra is not None and kinds[0] != "columns":
+            raise ValueError("'extra' goes with a 'columns' rule")
         if not self.name:
             column = (self.column or "").replace(", ", "_")
             self.name = f"{column}_{kinds[0]}" if column else kinds[0]
         return self
+
+
+_PERCENT = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*%\s*$")
+
+
+def _allowance(value: Any, what: str) -> Any:
+    """A tolerance: a finite number (at least 0), or a share of the input written "1%"."""
+    wrong = f"{what} must be a number or a percentage like '1%', not {value!r}"
+    if value is None:
+        raise ValueError(
+            f"{what} is empty; give a number or a percentage like '1%', or leave it out"
+        )
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ValueError(wrong)
+    if isinstance(value, str):
+        if not _PERCENT.match(value):
+            raise ValueError(wrong)
+        return value.strip()
+    if not math.isfinite(value):
+        raise ValueError(f"{what} must be a finite number, not {value!r}")
+    if value < 0:
+        raise ValueError(f"{what} cannot be negative")
+    return value
+
+
+def allowed(value: Any, base: Any) -> Any:
+    """What a tolerance allows against ``base``: the number itself, or its share of base.
+
+    Exact where ``base`` is exact: a Decimal or an integer base gives a Decimal
+    (the tolerance read from its text, so 0.01 is 0.01), a float base a float.
+    """
+    exact = isinstance(base, (decimal.Decimal, numbers.Integral))
+    if isinstance(value, str):
+        share = _PERCENT.match(value).group(1)  # type: ignore[union-attr]
+        if exact:
+            whole = base if isinstance(base, decimal.Decimal) else decimal.Decimal(int(base))
+            return decimal.Decimal(share) / 100 * abs(whole)
+        return float(share) / 100 * abs(float(base))
+    return decimal.Decimal(str(value)) if exact else float(value)
+
+
+class ReconcileRows(BaseModel):
+    """``rows``: how many of the input's rows may be lost, or gained, on the way.
+
+    A bound left out is not checked. ``max_lost: 0`` means every input row must
+    reach the output. A bound is a number of rows or a share of the input ("1%").
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_lost: Optional[Any] = None
+    max_gained: Optional[Any] = None
+
+    @field_validator("max_lost", "max_gained")
+    @classmethod
+    def _bound(cls, v: Any, info: Any) -> Any:
+        if v is None:
+            return v
+        v = _allowance(v, info.field_name)
+        if isinstance(v, float) and not v.is_integer():
+            raise ValueError(f"{info.field_name} is a number of rows; use '{v}%' for a share")
+        return int(v) if isinstance(v, float) else v
+
+    @model_validator(mode="after")
+    def _one_bound(self) -> "ReconcileRows":
+        if self.max_lost is None and self.max_gained is None:
+            raise ValueError("'rows' needs 'max_lost', 'max_gained' or both")
+        return self
+
+
+class ReconcileSum(BaseModel):
+    """``sum``: a column's total must carry over from the input to the output."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    #: The input's column, when it has another name there. Defaults to ``column``.
+    input_column: Optional[str] = None
+    #: How far the output's sum may be from the input's: a number, or "0.1%" of it.
+    tolerance: Any = 0
+
+    @field_validator("tolerance")
+    @classmethod
+    def _tolerance(cls, v: Any) -> Any:
+        return _allowance(v, "tolerance")
+
+
+class ReconcileSpec(BaseModel):
+    """One reconciliation: what must carry over from an input to this output.
+
+    Checked with the other expectations, before anything is written. Rows set
+    aside by a ``quarantine`` rule count as carried over: they were not lost.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    input: str
+    rows: Optional[ReconcileRows] = None
+    sum: Optional[ReconcileSum] = None
+    severity: Literal["fail", "warn"] = "fail"
+    description: Optional[str] = None
+    #: Names the results "<name>_rows" and "<name>_sum", so two checks against one
+    #: input (warn at 1%, fail at 5%) can live side by side.
+    name: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _something_to_check(self) -> "ReconcileSpec":
+        if self.rows is None and self.sum is None:
+            raise ValueError(f"reconcile with '{self.input}' needs 'rows', 'sum' or both")
+        return self
+
+    @property
+    def rows_name(self) -> str:
+        return f"{self.name}_rows" if self.name else f"rows_from_{self.input}"
+
+    @property
+    def sum_name(self) -> str:
+        if not self.sum:
+            return ""
+        return f"{self.name}_sum" if self.name else f"{self.sum.column}_sum_from_{self.input}"
+
+    @property
+    def names(self) -> List[str]:
+        return [n for n in (self.rows and self.rows_name, self.sum and self.sum_name) if n]
 
 
 class ExpectationSet(BaseModel):
@@ -360,7 +631,9 @@ class ExpectationSet(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    rules: List[ExpectationRule]
+    rules: List[ExpectationRule] = Field(default_factory=list)
+    #: What must carry over from an input to this output (row counts, a column's sum).
+    reconcile: List[ReconcileSpec] = Field(default_factory=list)
     #: The output that receives rows breaking a ``quarantine`` rule, with a
     #: ``_ubunye_failed_rules`` column naming the rules each row broke.
     quarantine: Optional[str] = None
@@ -370,7 +643,7 @@ class ExpectationSet(BaseModel):
 
     @model_validator(mode="after")
     def _quarantine_has_a_target(self) -> "ExpectationSet":
-        names = [r.name for r in self.rules]
+        names = [r.name for r in self.rules] + [n for c in self.reconcile for n in c.names]
         dupes = sorted({n for n in names if names.count(n) > 1})
         if dupes:
             raise ValueError(f"expectation names must be unique; repeated: {', '.join(dupes)}")
@@ -390,8 +663,10 @@ class TaskConfig(BaseModel):
     inputs: Dict[str, IOConfig]
     transform: TransformConfig = Field(default_factory=TransformConfig)
     outputs: Dict[str, IOConfig]
-    #: Checks on outputs, by output name, run after the transform and before any
-    #: output is written. See ``ubunye.core.expectations``.
+    #: Checks by output name, run after the transform and before any output is
+    #: written; or by input name, run on the input right after it is read and
+    #: before the transform (an input contract, F-018). See
+    #: ``ubunye.core.expectations``.
     expectations: Dict[str, ExpectationSet] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -419,8 +694,27 @@ class TaskConfig(BaseModel):
                 "give each its own quarantine output"
             )
         for name, spec in self.expectations.items():
+            if name in self.inputs and name in self.outputs:
+                errors.append(
+                    f"expectations.{name}: '{name}' is both an input and an output, so "
+                    "it is not clear which one to check; rename one of them"
+                )
+                continue
+            if name in self.inputs:
+                if spec.quarantine:
+                    errors.append(
+                        f"expectations.{name}: '{name}' is an input, and an input cannot "
+                        "quarantine rows (yet); check it with fail or warn, or quarantine "
+                        "on an output"
+                    )
+                if spec.reconcile:
+                    errors.append(
+                        f"expectations.{name}: reconcile goes on an output and names "
+                        f"the input ('input: {name}')"
+                    )
+                continue
             if name not in self.outputs:
-                errors.append(f"expectations.{name}: there is no output named '{name}'")
+                errors.append(f"expectations.{name}: there is no input or output named '{name}'")
             if spec.quarantine and spec.quarantine not in self.outputs:
                 errors.append(
                     f"expectations.{name}.quarantine: there is no output named "
@@ -428,6 +722,12 @@ class TaskConfig(BaseModel):
                 )
             if spec.quarantine == name:
                 errors.append(f"expectations.{name}: an output cannot quarantine into itself")
+            for check in spec.reconcile:
+                if check.input not in self.inputs:
+                    errors.append(
+                        f"expectations.{name}.reconcile: there is no input named "
+                        f"'{check.input}' (inputs: {', '.join(sorted(self.inputs))})"
+                    )
             if name in targets:
                 errors.append(
                     f"expectations.{name}: '{name}' receives quarantined rows, so it "

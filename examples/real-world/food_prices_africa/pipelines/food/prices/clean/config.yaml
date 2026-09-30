@@ -1,0 +1,41 @@
+MODEL: etl
+VERSION: "1.0.0"
+
+# Step 1 of the African staple food price monitor: WFP market prices, African
+# countries, retail, one price per kilogram. Where the data lives is a variable, so the
+# same task reads a laptop folder or object storage unchanged:
+#   --var data_dir=s3://bucket/wfp  --var out_dir=s3://bucket/food
+CONFIG:
+  inputs:
+    raw:
+      format: s3
+      # A folder of WFP yearly CSV files: a small sample ships with the example;
+      # scripts/fetch_data.sh fetches all of it from Kaggle (then --var data_dir=data).
+      path: "{{ data_dir | default(task_dir ~ '/../../../../sample') }}"
+      file_format: csv
+      options:
+        header: "true"
+      schema: >-
+        countryiso3 STRING, date DATE, admin1 STRING, admin2 STRING, market STRING,
+        market_id INT, latitude DOUBLE, longitude DOUBLE, category STRING,
+        commodity STRING, commodity_id INT, unit STRING, priceflag STRING,
+        pricetype STRING, currency STRING, price DOUBLE, usdprice DOUBLE
+  transform:
+    params:
+      # ISO 3166 alpha-3 codes of the African countries (WFP covers 38 of them).
+      africa: [DZA, AGO, BEN, BWA, BFA, BDI, CMR, CPV, CAF, TCD, COM, COD, COG, CIV,
+               DJI, EGY, GNQ, ERI, SWZ, ETH, GAB, GMB, GHA, GIN, GNB, KEN, LSO, LBR,
+               LBY, MDG, MWI, MLI, MRT, MUS, MAR, MOZ, NAM, NER, NGA, RWA, STP, SEN,
+               SYC, SLE, SOM, ZAF, SSD, SDN, TZA, TGO, TUN, UGA, ZMB, ZWE]
+  outputs:
+    prices_per_kg:
+      format: s3
+      path: "{{ out_dir | default(task_dir ~ '/../../../../output') }}/prices_per_kg"
+      file_format: parquet
+      mode: overwrite
+  expectations:
+    prices_per_kg:
+      rules:
+        - not_null: price_per_kg
+        - between: {column: price_per_kg, min: 0.000001}
+        - not_null: date

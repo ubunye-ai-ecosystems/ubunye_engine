@@ -211,3 +211,50 @@ def test_the_data_hash_payload_is_stable():
         tuple(sum(x) for x in zip(ch.lanes('{"id":1}'), ch.lanes('{"id":2}'))),
     )
     assert json.loads(json.dumps(ch.JSON_OPTIONS))["timeZone"] == "UTC"
+
+
+class TestMaps:
+    """A map has no order; its null values are written (ADR 006, the map rule).
+
+    Spark's side applies the same rule before ``to_json``: every map's entries
+    sorted by key, recursively, and a null map value written as null (only a
+    struct's null fields are left out, as Spark's JacksonGenerator does).
+    """
+
+    KIND = "map<string,string>"
+
+    def test_entries_are_sorted_and_nulls_kept(self):
+        line = ch.canonical_line({"m": [("b", "x"), ("a", None)]}, {"m": self.KIND})
+        assert line == '{"m":{"a":null,"b":"x"}}'
+
+    def test_a_dict_valued_map_is_the_same(self):
+        line = ch.canonical_line({"m": {"b": "x", "a": None}}, {"m": self.KIND})
+        assert line == '{"m":{"a":null,"b":"x"}}'
+
+    def test_nested_maps_are_sorted_too(self):
+        kind = "struct<n:int64,s:map<string,map<string,int64>>>"
+        row = {"st": {"n": None, "s": [("z", [("b", 2), ("a", None)]), ("y", [])]}}
+        line = ch.canonical_line(row, {"st": kind})
+        assert line == '{"st":{"s":{"y":{},"z":{"a":null,"b":2}}}}'
+        arrays = ch.canonical_line(
+            {"l": [[("b", 1), ("a", 2)], None]}, {"l": "list<map<string,int64>>"}
+        )
+        assert arrays == '{"l":[{"a":2,"b":1},null]}'
+
+    def test_insertion_order_does_not_change_the_digest(self):
+        kind = pa.map_(pa.string(), pa.int64())
+        one = pa.table({"m": pa.array([[("a", 1), ("b", None), ("c", 3)]], kind)})
+        two = pa.table({"m": pa.array([[("c", 3), ("a", 1), ("b", None)]], kind)})
+        assert ch.fingerprint_arrow(one).data_hash == ch.fingerprint_arrow(two).data_hash
+        null_gone = pa.table({"m": pa.array([[("a", 1), ("c", 3)]], kind)})
+        assert ch.fingerprint_arrow(one).data_hash != ch.fingerprint_arrow(null_gone).data_hash
+
+    def test_the_spark_side_rewrites_only_columns_with_a_map(self):
+        types = pytest.importorskip("pyspark.sql.types")
+        from ubunye.adapters.spark.content_hash import has_map, sorted_maps
+
+        mapped = types.ArrayType(types.MapType(types.StringType(), types.LongType()))
+        assert has_map(types.StructType([types.StructField("a", mapped)]))
+        assert not has_map(types.ArrayType(types.LongType()))
+        column = object()
+        assert sorted_maps(column, types.StringType()) is column

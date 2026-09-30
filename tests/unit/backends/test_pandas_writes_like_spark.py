@@ -201,6 +201,28 @@ class TestCsvText:
 
 
 class TestJsonText:
+    def test_a_map_is_an_object_with_its_null_values(self, tmp_path):
+        # Spark's JSON writer writes a map as an object and keeps its null values
+        # (only a struct's null fields are left out). pandas wrote Arrow's pairs:
+        # {"m":[["a",null],["b","x"]]} (F-015 review).
+        s = pa.string()
+        table = pa.table(
+            {
+                "id": [1, 2],
+                "m": pa.array([[("a", None), ("b", "x")], []], pa.map_(s, s)),
+                "l": pa.array([[[("k", 1)]], None], pa.list_(pa.map_(s, pa.int64()))),
+                "st": pa.array(
+                    [{"mm": [("z", None)], "n": None}, None],
+                    pa.struct([("mm", pa.map_(s, pa.int64())), ("n", pa.int64())]),
+                ),
+            }
+        )
+        _write(tmp_path / "out", table.to_pandas(types_mapper=pd.ArrowDtype), fmt="json")
+        assert _text(tmp_path / "out").split("\n")[:-1] == [
+            '{"id":1,"m":{"a":null,"b":"x"},"l":[{"k":1}],"st":{"mm":{"z":null}}}',
+            '{"id":2,"m":{}}',
+        ]
+
     def test_json_lines_without_null_fields(self, tmp_path):
         frame = pd.DataFrame({"a": ["x", None], "b": pd.array([1, 2], dtype="Int64")})
         _write(tmp_path / "out", frame, fmt="json")
@@ -297,8 +319,10 @@ class TestParquetTypes:
 
 
 class TestRefusals:
-    def test_partition_by_is_refused_not_ignored(self, tmp_path):
-        with pytest.raises(SinkWriteError, match="partition"):
+    def test_partition_by_every_column_is_refused_as_spark_refuses_it(self, tmp_path):
+        # Partitioned writes work since F-012 (test_pandas_partitions.py); this one
+        # Spark refuses too (ALL_PARTITION_COLUMNS_NOT_ALLOWED).
+        with pytest.raises(SinkWriteError, match="Cannot use all columns"):
             _write(tmp_path / "out", pd.DataFrame({"x": [1]}), partition_by=["x"])
         assert not (tmp_path / "out").exists()
 

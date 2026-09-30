@@ -1,0 +1,192 @@
+﻿{
+ "duckdb": {
+  "dists": {
+   "duckdb": {
+    "version": "1.5.6",
+    "installed_mb": 36.7,
+    "licence": "MIT License",
+    "pypi": {
+     "wheels": 34,
+     "python_tags": [
+      "cp310",
+      "cp311",
+      "cp312",
+      "cp313",
+      "cp314"
+     ],
+     "platforms": {
+      "win_amd64": true,
+      "win_arm64": true,
+      "manylinux x86_64": true,
+      "manylinux aarch64": true,
+      "musllinux": false,
+      "macosx x86_64": true,
+      "macosx arm64": true
+     },
+     "requires_python": ">=3.10.0",
+     "largest_wheel_mb": 31.3
+    }
+   }
+  },
+  "total_installed_mb": 36.7
+ },
+ "polars-hash": {
+  "dists": {
+   "polars-hash": {
+    "version": "0.9.3",
+    "installed_mb": 27.3,
+    "licence": "",
+    "pypi": {
+     "wheels": 7,
+     "python_tags": [
+      "cp310"
+     ],
+     "platforms": {
+      "win_amd64": true,
+      "win_arm64": false,
+      "manylinux x86_64": true,
+      "manylinux aarch64": true,
+      "musllinux": false,
+      "macosx x86_64": true,
+      "macosx arm64": true
+     },
+     "requires_python": ">=3.10",
+     "largest_wheel_mb": 7.6
+    }
+   },
+   "polars": {
+    "version": "1.44.2",
+    "installed_mb": 8.1,
+    "licence": "Copyright (c) 2025 Ritchie Vink\nCopyright (c) 2024 (Some portions) NVIDIA CORPORATION & AFFILIATES. All rights reserved.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
+    "pypi": {
+     "wheels": 1,
+     "python_tags": [
+      "py3"
+     ],
+     "platforms": {
+      "win_amd64": false,
+      "win_arm64": false,
+      "manylinux x86_64": false,
+      "manylinux aarch64": false,
+      "musllinux": false,
+      "macosx x86_64": false,
+      "macosx arm64": false
+     },
+     "requires_python": ">=3.10",
+     "largest_wheel_mb": 0.8
+    }
+   },
+   "polars-runtime-32": {
+    "version": "1.44.2",
+    "installed_mb": 167.7,
+    "licence": "MIT",
+    "pypi": {
+     "wheels": 8,
+     "python_tags": [
+      "cp310"
+     ],
+     "platforms": {
+      "win_amd64": true,
+      "win_arm64": true,
+      "manylinux x86_64": true,
+      "manylinux aarch64": true,
+      "musllinux": true,
+      "macosx x86_64": true,
+      "macosx arm64": true
+     },
+     "requires_python": ">=3.10",
+     "largest_wheel_mb": 48.9
+    }
+   }
+  },
+  "total_installed_mb": 203.1
+ },
+ "datafusion": {
+  "dists": {
+   "datafusion": {
+    "version": "54.0.0",
+    "installed_mb": 133.5,
+    "licence": "Apache Software License;OSI Approved",
+    "pypi": {
+     "wheels": 10,
+     "python_tags": [
+      "cp310",
+      "cp314"
+     ],
+     "platforms": {
+      "win_amd64": true,
+      "win_arm64": false,
+      "manylinux x86_64": true,
+      "manylinux aarch64": true,
+      "musllinux": false,
+      "macosx x86_64": true,
+      "macosx arm64": true
+     },
+     "requires_python": ">=3.10",
+     "largest_wheel_mb": 41.4
+    }
+   }
+  },
+  "total_installed_mb": 133.5
+ },
+ "numba": {
+  "dists": {
+   "numba": {
+    "version": "0.67.0",
+    "installed_mb": 26.1,
+    "licence": "BSD",
+    "pypi": {
+     "wheels": 25,
+     "python_tags": [
+      "cp310",
+      "cp311",
+      "cp312",
+      "cp313",
+      "cp314"
+     ],
+     "platforms": {
+      "win_amd64": true,
+      "win_arm64": true,
+      "manylinux x86_64": true,
+      "manylinux aarch64": true,
+      "musllinux": false,
+      "macosx x86_64": false,
+      "macosx arm64": true
+     },
+     "requires_python": ">=3.10",
+     "largest_wheel_mb": 3.7
+    }
+   },
+   "llvmlite": {
+    "version": "0.49.0",
+    "installed_mb": 116.7,
+    "licence": "BSD-2-Clause AND Apache-2.0 WITH LLVM-exception",
+    "pypi": {
+     "wheels": 25,
+     "python_tags": [
+      "cp310",
+      "cp311",
+      "cp312",
+      "cp313",
+      "cp314"
+     ],
+     "platforms": {
+      "win_amd64": true,
+      "win_arm64": true,
+      "manylinux x86_64": true,
+      "manylinux aarch64": true,
+      "musllinux": false,
+      "macosx x86_64": false,
+      "macosx arm64": true
+     },
+     "requires_python": ">=3.10",
+     "largest_wheel_mb": 57.1
+    }
+   }
+  },
+  "total_installed_mb": 142.8
+ },
+ "c (this prototype)": {
+  "total_installed_mb": 0.091
+ }
+}

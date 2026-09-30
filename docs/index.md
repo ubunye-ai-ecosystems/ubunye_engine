@@ -4,6 +4,11 @@ Ubunye Engine is a **config-first framework** for data and ML pipelines. A task 
 folder: run it on a laptop with no Java (pandas), or on Spark anywhere (locally, on a
 cluster, on Databricks), and every run leaves a record you can check.
 
+The same task, unchanged, has given the same rows on pandas, local Spark, Kubernetes,
+AWS Glue, GCP Dataproc, Azure Container Apps and Databricks, checked from the run
+records by the [proving ground](proving-ground/index.md)
+([latest results](proving-ground/latest.md)).
+
 Define your pipeline in YAML. Write a Python class. Run it.
 
 ![Ubunye Engine deployment overview](assets/ubunye_deployment.png)

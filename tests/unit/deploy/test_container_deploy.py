@@ -167,3 +167,89 @@ def test_container_apps_sets_env_vars_the_way_create_and_update_each_take_them(m
     assert write[write.index(flag) + 1 : write.index(flag) + 3] == ["A=1", "B=2"]
     other = "--env-vars" if exists else "--replace-env-vars"
     assert other not in write
+
+
+def test_container_jobs_run_several_tasks_in_one_launch():
+    k8s = containers.plan_k8s("uc", "pkg", ["clean", "monitor"], image="img:1")
+    manifest = json.loads(k8s.commands[0][3])
+    args = manifest["spec"]["template"]["spec"]["containers"][0]["args"]
+    assert args[:2] == ["--task", "uc/pkg/clean,uc/pkg/monitor"]
+    assert k8s.job.startswith("ubunye-clean-monitor-")
+    aca = containers.plan_container_apps(
+        "uc", "pkg", ["clean", "monitor"], image="i", resource_group="rg", environment="e"
+    )
+    spec = json.loads(aca.commands[0][3])
+    assert json.loads(spec["env"][-1].partition("=")[2])[:2] == [
+        "--task",
+        "uc/pkg/clean,uc/pkg/monitor",
+    ]
+    assert aca.job.startswith("ubunye-clean-monitor-")
+
+
+@pytest.mark.parametrize("condition, code", [("Failed", 1), ("Complete", 0)])
+def test_a_k8s_job_is_followed_to_failed_as_well_as_complete(monkeypatch, condition, code):
+    """F-037: `kubectl wait --for=condition=complete` sat out the whole timeout (30
+    minutes on kind) after R1's Job had already failed. Kubernetes says a Job ended with
+    a Complete or a Failed condition; the deploy stops at either, and fails on Failed.
+    """
+    import time as time_module
+
+    calls = []
+    clock = [0.0]
+
+    def fake_run(argv, input=None, capture_output=False, text=False, check=False):
+        calls.append(argv)
+        out = ""
+        if argv[1] == "wait":  # the old way: never returns for a failed Job
+            clock[0] += 1800
+            return subprocess.CompletedProcess(argv, 1, stdout="", stderr="timed out")
+        if argv[1] == "get":
+            out = condition if len([c for c in calls if c[1] == "get"]) > 2 else ""
+        if argv[1] == "logs":
+            out = "the job's log"
+        return subprocess.CompletedProcess(argv, 0, stdout=out, stderr="")
+
+    def fake_sleep(seconds):
+        clock[0] += seconds
+
+    plan = containers.plan_k8s("uc", "pkg", "t", image="img:1", timeout_s=1800)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(time_module, "sleep", fake_sleep)
+    monkeypatch.setattr(time_module, "time", lambda: clock[0])
+    monkeypatch.setattr(sys, "argv", plan.commands[0][2:])
+    try:
+        exec(containers._K8S_RUN, {"__name__": "__main__"})
+        exit_code = 0
+    except SystemExit as done:
+        exit_code = done.code
+    assert exit_code == code
+    assert clock[0] < 60, "waited out the timeout instead of stopping at the Job's end"
+    assert ["kubectl", "logs", "-n", "default", f"job/{plan.job}"] in calls
+
+
+def test_a_k8s_job_that_kubectl_cannot_read_fails_fast_and_says_why(monkeypatch, capsys):
+    """Skeptic review of F-037: a deleted Job, an RBAC refusal or an expired token made
+    every `kubectl get` fail; the loop ignored it and waited the whole timeout, silently.
+    """
+    import time as time_module
+
+    clock = [0.0]
+    gets = []
+
+    def fake_run(argv, input=None, capture_output=False, text=False, check=False):
+        if argv[1] == "get":
+            gets.append(argv)
+            err = 'Error from server (NotFound): jobs.batch "x" not found'
+            return subprocess.CompletedProcess(argv, 1, stdout="", stderr=err)
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    plan = containers.plan_k8s("uc", "pkg", "t", image="img:1", timeout_s=1800)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(time_module, "sleep", lambda s: clock.__setitem__(0, clock[0] + s))
+    monkeypatch.setattr(time_module, "time", lambda: clock[0])
+    monkeypatch.setattr(sys, "argv", plan.commands[0][2:])
+    with pytest.raises(SystemExit) as done:
+        exec(containers._K8S_RUN, {"__name__": "__main__"})
+    assert done.value.code == 1
+    assert clock[0] < 60 and len(gets) == 3
+    assert "NotFound" in capsys.readouterr().err

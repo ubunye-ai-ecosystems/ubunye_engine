@@ -1,0 +1,3 @@
+# The sample must stay byte for byte what scripts/make_sample.py writes (LF line
+# endings, a byte order mark on the translation file): no line ending conversion.
+*.csv -text

@@ -46,9 +46,11 @@ CONFIG:
       format: rest_api
       url: "https://api.shopify.example.com/v1/orders"
       auth:
-        type: api_key
+        type: api_key_header
         header: X-Shopify-Access-Token
         key: "{{ env.SHOPIFY_TOKEN }}"
+      params:
+        limit: 250              # the API's own page size parameter
       pagination:
         type: offset
         page_size: 250
@@ -59,7 +61,7 @@ CONFIG:
         - name: id
           type: long
         - name: created_at
-          type: timestamp
+          type: string          # text; convert it in the transform
         - name: total_price
           type: double
         - name: currency
@@ -94,7 +96,7 @@ CONFIG:
         token: "{{ env.CRM_TOKEN }}"
       pagination:
         type: next_link
-        link_field: _links.next.href
+        next_key: next          # a top level key of the response; dotted paths are not read
       response:
         root_key: contacts
 ```
@@ -117,8 +119,8 @@ CONFIG:
         password: "{{ env.MP_SECRET }}"
       pagination:
         type: cursor
-        cursor_field: next_page_token
-        page_size: 1000
+        cursor_response_key: next_page_token
+        cursor_param: page_token
 ```
 
 ---
@@ -138,7 +140,7 @@ CONFIG:
         X-GitHub-Api-Version: "2022-11-28"
       pagination:
         type: next_link
-        link_field: next          # parsed from Link header (or response body)
+        next_key: next            # from the response body; the Link header is not read
       rate_limit:
         requests_per_second: 1    # GitHub: 5000 req/hr authenticated
         retry_on: [429, 503]

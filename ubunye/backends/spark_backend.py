@@ -9,13 +9,14 @@ Spark backend implementation for Ubunye.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence
 
 from ubunye.adapters.spark import frame_io
 from ubunye.core.capabilities import (
     CATALOG,
     PARTITIONED_WRITES,
     PATH_IO,
+    RECORDS,
     REMOTE_PATHS,
     SPARK,
     Capabilities,
@@ -26,11 +27,16 @@ from ubunye.core.interfaces import Backend
 #: What any Spark backend can do. File formats and write modes are "any": Spark
 #: knows its own sources, and each connector declares the modes it supports.
 SPARK_CAPABILITIES = Capabilities(
-    features=frozenset({SPARK, PATH_IO, PARTITIONED_WRITES, REMOTE_PATHS, CATALOG}),
+    features=frozenset({SPARK, PATH_IO, RECORDS, PARTITIONED_WRITES, REMOTE_PATHS, CATALOG}),
     distributed=True,
     lazy=True,
     needs_jvm=True,
 )
+
+#: The session time zone every backend reads and cuts time in, unless a task sets
+#: ``spark.sql.session.timeZone`` (the pandas backend reads the same key). ADR 007.
+TIME_ZONE_KEY = "spark.sql.session.timeZone"
+DEFAULT_TIME_ZONE = "UTC"
 
 if TYPE_CHECKING:
     from ubunye.core.ports import DataFramePort
@@ -38,6 +44,23 @@ if TYPE_CHECKING:
 
 if TYPE_CHECKING:  # only for type checkers; no runtime dependency on pyspark
     from pyspark.sql import SparkSession
+
+
+def _session_time_zone(session: Any, conf: Dict[str, str]) -> Optional[str]:
+    """The zone a Spark session works in, or will: its own setting once it runs."""
+    try:
+        if session is not None:
+            return str(session.conf.get(TIME_ZONE_KEY))
+        if TIME_ZONE_KEY in conf:
+            return str(conf[TIME_ZONE_KEY])
+        from pyspark.sql import SparkSession
+
+        running = SparkSession.getActiveSession()
+        if running is not None:
+            return str(running.conf.get(TIME_ZONE_KEY))
+        return DEFAULT_TIME_ZONE
+    except Exception:  # noqa: BLE001 (no pyspark, no JVM: unknown, never a failed run)
+        return None
 
 
 class SparkBackend(Backend):
@@ -91,6 +114,13 @@ class SparkBackend(Backend):
         builder = SparkSession.builder.appName(self._app_name)
         for k, v in self._conf.items():
             builder = builder.config(k, v)
+        if running is None and TIME_ZONE_KEY not in self._conf:
+            # A session this backend creates reads and cuts time in UTC, as the pandas
+            # backend does, unless the task says otherwise (ADR 007). Left to the
+            # JVM, a laptop in Johannesburg truncated a timestamp to its own midnight
+            # and disagreed with pandas, and with the same task on a UTC cloud.
+            # A session someone else started is never changed.
+            builder = builder.config(TIME_ZONE_KEY, DEFAULT_TIME_ZONE)
         self._spark = builder.getOrCreate()
         self._owns_session = running is None
 
@@ -200,6 +230,15 @@ class SparkBackend(Backend):
         """Whether this backend is Spark-based (always True here)."""
         return True
 
+    @property
+    def timezone(self) -> Optional[str]:
+        """The session time zone this backend works in, for the run record (ADR 007).
+
+        Known before the session starts: the task's setting, else a running
+        session's (which this backend would reuse, unchanged), else UTC.
+        """
+        return _session_time_zone(self._spark, self._conf)
+
     # -------------------------
     # Data-plane IO seam (#38)
     # -------------------------
@@ -212,6 +251,14 @@ class SparkBackend(Backend):
         schema: Optional[str] = None,
     ) -> "DataFramePort":
         return frame_io.read_frame(self.spark, file_format, path, options=options, schema=schema)
+
+    def frame_from_records(
+        self, records: List[Dict[str, Any]], *, schema: Optional[str] = None
+    ) -> Any:
+        return frame_io.frame_from_records(self.spark, records, schema=schema)
+
+    def iter_records(self, frame: Any) -> Iterator[Dict[str, Any]]:
+        return frame_io.iter_records(frame)
 
     def execute_write(
         self,
@@ -236,6 +283,17 @@ class SparkBackend(Backend):
             partition_by=partition_by,
             options=options,
         )
+
+    def materialise(self, frame: Any) -> Optional[Any]:
+        """Compute an output once for its checks, write and hash (ADR 009)."""
+        from ubunye.adapters.spark import materialise
+
+        return materialise.materialise(frame)
+
+    def release(self, frame: Any) -> None:
+        from ubunye.adapters.spark import materialise
+
+        materialise.release(frame)
 
     @property
     def app_name(self) -> str:

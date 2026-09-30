@@ -160,6 +160,11 @@ def data_hash_state(sa: Optional[StepRecord], sb: Optional[StepRecord]) -> Dict[
     if ha is None or hb is None:
         reasons = [getattr(s, "hash_error", None) for s in (sa, sb)]
         verdict.update(state="unknown", why="; ".join(r for r in reasons if r) or "not recorded")
+    elif any(getattr(s, "source_changed", None) for s in (sa, sb)):
+        # An input hashed after its source moved: the digest is not of what was read.
+        verdict.update(
+            state="unknown", why="the source changed between the read and the hash (F-046)"
+        )
     elif ma != mb:
         verdict.update(state="not comparable")
     else:
@@ -396,6 +401,15 @@ def _print_steps(steps: List[StepRecord]) -> None:
             typer.echo(f"      data     : {step.data_hash}")
         elif getattr(step, "hash_error", None):
             typer.echo(f"      data     : unavailable ({step.hash_error})")
+        if getattr(step, "hash_seconds", None) is not None:
+            typer.echo(f"      hashed in: {step.hash_seconds:.3f}s")
+        if getattr(step, "hash_basis", None):
+            typer.echo(f"      hash from: {step.hash_basis}")
+        if getattr(step, "hash_reused_from", None):
+            typer.echo(f"      hash of  : {step.hash_reused_from} (same frame)")
+        if getattr(step, "source_note", None):
+            colour = typer.colors.YELLOW if step.source_changed else None
+            typer.secho(f"      source   : {step.source_note}", fg=colour)
 
 
 @lineage_app.command("trace")
@@ -419,6 +433,7 @@ def trace(
                 "task": ctx.task_path,
                 "run_id": ctx.run_id,
                 "status": ctx.status,
+                "error": ctx.error,
                 "inputs": record["inputs"],
                 "transform": "transformations.py",
                 "outputs": record["outputs"],
@@ -429,6 +444,8 @@ def trace(
     typer.echo()
     typer.secho(f"Lineage trace: {ctx.task_path}", bold=True)
     typer.echo(f"Run:     {ctx.run_id}  [{ctx.status}]  {ctx.started_at[:19]}")
+    if ctx.error:
+        typer.secho(f"Error:   {ctx.error}", fg=typer.colors.RED)
     typer.echo(f"Version: {ctx.model} v{ctx.version}")
     typer.echo()
     typer.secho("  INPUTS", fg=typer.colors.CYAN)
@@ -465,10 +482,13 @@ def _print_evidence(ctx: RunContext) -> None:
         for e in ctx.expectations:
             mark = "ok" if e.get("passed") else e.get("severity", "?")
             colour = typer.colors.GREEN if e.get("passed") else typer.colors.YELLOW
+            frame = f"input {e['output']}" if e.get("side") == "input" else e["output"]
             typer.secho(
-                f"    {mark:<10} {e['output']}.{e['rule']:<28} {e['failed']}/{e['total']}",
+                f"    {mark:<10} {frame}.{e['rule']:<28} {e['failed']}/{e['total']}",
                 fg=colour,
             )
+            if e.get("detail"):
+                typer.echo(f"               {e['detail']}")
     if ctx.llm_calls:
         typer.echo()
         typer.secho("  MODEL CALLS", fg=typer.colors.CYAN)

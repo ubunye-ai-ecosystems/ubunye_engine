@@ -5,6 +5,7 @@ import time
 
 import pytest
 
+from ubunye.core.errors import LineageRecordNotFoundError
 from ubunye.lineage.context import RunContext, StepRecord
 from ubunye.lineage.storage import FileSystemLineageStore, S3LineageStore
 
@@ -181,3 +182,31 @@ class TestS3LineageStoreStub:
         store = S3LineageStore("s3://bucket/lineage")
         with pytest.raises(NotImplementedError):
             store.search()
+
+
+class TestLoadByRunIdPrefix:
+    """`lineage list` prints eight characters of a run id; every command takes them."""
+
+    def test_a_unique_prefix_loads_the_run(self, tmp_path):
+        store = FileSystemLineageStore(str(tmp_path))
+        store.save(_ctx(run_id="78ca9cd2-aaaa-4bbb-8ccc-000000000001"))
+        assert store.load("fraud/ingestion/etl", "78ca9cd2").run_id.endswith("0001")
+
+    def test_an_ambiguous_prefix_is_refused_not_guessed(self, tmp_path):
+        store = FileSystemLineageStore(str(tmp_path))
+        store.save(_ctx(run_id="78ca9cd2-1"))
+        store.save(_ctx(run_id="78ca9cd2-2"))
+        with pytest.raises(LineageRecordNotFoundError, match="fits 2 runs"):
+            store.load("fraud/ingestion/etl", "78ca9cd2")
+
+    def test_the_full_id_wins_over_a_longer_one_it_prefixes(self, tmp_path):
+        store = FileSystemLineageStore(str(tmp_path))
+        store.save(_ctx(run_id="abc"))
+        store.save(_ctx(run_id="abcd"))
+        assert store.load("fraud/ingestion/etl", "abc").run_id == "abc"
+
+    def test_glob_characters_in_the_id_are_literal(self, tmp_path):
+        store = FileSystemLineageStore(str(tmp_path))
+        store.save(_ctx(run_id="run-1"))
+        with pytest.raises(LineageRecordNotFoundError):
+            store.load("fraud/ingestion/etl", "*")

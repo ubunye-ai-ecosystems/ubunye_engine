@@ -46,11 +46,14 @@ def _from_store(task_path: str, lineage_dir: Path, which: str) -> RunContext:
                 f"'{which}' needs {index + 1} recorded run(s) of {task_path}; found {len(runs)}"
             )
         return runs[index]
-    # A run id, or its first characters as `lineage list` prints them.
-    for run in store.list_runs(task_path, n=1_000_000):
-        if run.run_id == which or run.run_id.startswith(which):
-            return run
-    raise FileNotFoundError(f"no run '{which}' of {task_path} in {lineage_dir}")
+    # A run id, or its first characters as `lineage list` prints them; the store
+    # refuses a prefix that fits more than one run.
+    from ubunye.core.errors import LineageRecordNotFoundError
+
+    try:
+        return store.load(task_path, which)
+    except LineageRecordNotFoundError as exc:
+        raise FileNotFoundError(str(exc).splitlines()[0]) from exc
 
 
 def _load(which: str, task_path: Optional[str], lineage_dir: Optional[Path]) -> RunContext:

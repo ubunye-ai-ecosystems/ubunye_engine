@@ -36,7 +36,7 @@ CONFIG:
         token: "{{ env.CONTENT_API_TOKEN }}"
       pagination:
         type: next_link
-        link_field: next
+        next_key: next
       response:
         root_key: articles
 

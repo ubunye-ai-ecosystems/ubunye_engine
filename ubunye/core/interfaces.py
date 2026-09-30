@@ -7,7 +7,18 @@ transforms, and user-defined tasks.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, FrozenSet, List, Optional, Sequence, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Dict,
+    FrozenSet,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 from ubunye.core.capabilities import SPARK, Capabilities
 
@@ -74,6 +85,33 @@ class Backend(ABC):
         backend wraps it here. The default is the identity.
         """
         return frame
+
+    def materialise(self, frame: Any) -> Optional[Any]:
+        """The frame computed once and held, or ``None`` when this backend cannot.
+
+        A lazy backend computes a frame again for every action on it. When an
+        output has more than one consumer (the expectation checks, the writer, the
+        run record's hash), the engine asks for it to be computed once here, and
+        hands the frame returned to every consumer, so they all see the rows that
+        were written (ADR 009). Later actions on the returned frame must never
+        compute the plan again: a lost copy has to fail, not recompute.
+
+        Return ``None`` when this platform cannot hold it; the engine then goes on
+        as before and records the hash as recomputed. Raise only when computing
+        the frame failed: the engine lets that error end the task, since falling
+        back would compute the same failing plan again. Returning ``frame``
+        itself counts as not held.
+
+        The default is ``None``: nothing is held, and each consumer computes the
+        frame as before. A backend whose frames are already in memory (pandas)
+        needs nothing here. The engine calls :meth:`release` on what this returns
+        when the task ends.
+        """
+        return None
+
+    def release(self, frame: Any) -> None:
+        """Free a frame :meth:`materialise` returned. Must not raise."""
+        return None
 
     @classmethod
     def create(cls, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None) -> Any:
@@ -149,6 +187,35 @@ class Backend(ABC):
         raise NotImplementedError(
             f"{type(self).__name__} does not implement execute_write(); it cannot "
             "serve a path-based writer like 's3'."
+        )
+
+    # ---------------------------------------------------------------- #
+    # Records (the ``records`` capability, F-015)
+    #
+    # A connector that gets its data as Python records (``rest_api``: parsed
+    # JSON) hands them to the backend, which builds its own frame, typed as
+    # Spark's ``createDataFrame`` types them. The writer side asks for each row
+    # back as a dict.
+    #
+    # A backend written before these methods existed, with a SparkSession
+    # (``self.spark``), still serves rest_api: ``spark`` satisfies ``records`` in
+    # the capability checks, and the connector falls back to the Spark route
+    # when these raise (``ubunye.plugins.rest_http``). The core imports no engine.
+    # ---------------------------------------------------------------- #
+    def frame_from_records(
+        self, records: List[Dict[str, Any]], *, schema: Optional[str] = None
+    ) -> Any:
+        """A frame from a list of dicts; ``schema`` is a Spark DDL string."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement frame_from_records(); it cannot "
+            "serve a records connector like 'rest_api'."
+        )
+
+    def iter_records(self, frame: Any) -> Iterator[Dict[str, Any]]:
+        """Each row of ``frame`` as a plain dict (nested values as dicts and lists)."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement iter_records(); it cannot "
+            "serve a records connector like 'rest_api'."
         )
 
 

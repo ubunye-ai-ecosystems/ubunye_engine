@@ -11,17 +11,17 @@ ubunye backends
 
 ```text
 databricks
-  features:     catalog, partitioned_writes, path_io, remote_paths, spark
+  features:     catalog, partitioned_writes, path_io, records, remote_paths, spark
   file formats: any
   write modes:  any
   distributed:  yes   needs Java: yes
 pandas
-  features:     path_io
+  features:     partitioned_writes, path_io, records
   file formats: csv, json, parquet
-  write modes:  append, errorifexists, ignore, overwrite
+  write modes:  append, errorifexists, ignore, overwrite, overwrite_partitions
   distributed:  no   needs Java: no
 spark (default)
-  features:     catalog, partitioned_writes, path_io, remote_paths, spark
+  features:     catalog, partitioned_writes, path_io, records, remote_paths, spark
   ...
 ```
 
@@ -49,7 +49,7 @@ starting anything, and lists every problem at once:
 ```text
   [FAIL] daily (on the pandas backend)
          - input 'orders' uses the 'hive' connector, which needs spark; the pandas backend does not provide it.
-         - output 'report' uses mode 'merge'; the pandas backend can do append, errorifexists, ignore, overwrite.
+         - output 'report' uses mode 'merge'; the pandas backend can do append, errorifexists, ignore, overwrite, overwrite_partitions.
 ```
 
 `ubunye run` makes the same check before it starts, so a task that cannot run
@@ -65,6 +65,11 @@ stops in the first second, not halfway through.
 
 The pandas backend reads and writes exactly as Spark does: see
 [Anywhere with spark-submit](deployment/anywhere.md#no-spark-at-all-the-pandas-backend).
+The [REST connector](connectors/rest_api.md) runs on it too (the `records` feature),
+with the same rows and types as on Spark.
+Its frames have Arrow backed columns, which makes a big `merge` slower on pandas 3;
+[Big merges on Arrow columns](deployment/anywhere.md#big-merges-on-arrow-columns)
+says when that matters and the three lines that fix it.
 
 ## One transform for every engine
 
@@ -159,6 +164,12 @@ class MyBackend(Backend):
 [project.entry-points."ubunye.backends"]
 mine = "my_package.backend:MyBackend"
 ```
+
+To serve the REST connector, declare `records` and implement
+`frame_from_records(records, *, schema=None)` (a list of dicts, and a Spark DDL
+string or None, to your frame) and `iter_records(frame)` (each row as a dict). A
+backend with a SparkSession (`self.spark`) that declares `spark` needs neither:
+`spark` implies `records`, and the REST connector falls back to the Spark way.
 
 After `pip install`, `ubunye backends` lists it and `--backend mine` runs on it.
 If your constructor takes other arguments, override the `create` class method.

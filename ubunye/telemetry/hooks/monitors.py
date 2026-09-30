@@ -20,10 +20,18 @@ from ubunye.telemetry.monitors import load_monitors, safe_call
 
 #: What the engine knows beyond the outputs; given only to a monitor whose
 #: ``task_end`` accepts it, so older monitors keep working unchanged.
-EVIDENCE = ("inputs", "expectations", "timings", "llm_calls", "llm_budget")
+EVIDENCE = (
+    "inputs",
+    "expectations",
+    "timings",
+    "llm_calls",
+    "llm_budget",
+    "hash_basis",
+    "source_versions",
+)
 
 
-def _evidence(monitor: Any, state: Dict[str, Any]) -> Dict[str, Any]:
+def _evidence(monitor: Any, state: Dict[str, Any], keys: tuple = EVIDENCE) -> Dict[str, Any]:
     method = getattr(monitor, "task_end", None)
     if method is None:
         return {}
@@ -32,7 +40,19 @@ def _evidence(monitor: Any, state: Dict[str, Any]) -> Dict[str, Any]:
     except (TypeError, ValueError):
         return {}
     takes_any = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
-    return {k: state.get(k) for k in EVIDENCE if takes_any or k in params}
+    return {k: state.get(k) for k in keys if takes_any or k in params}
+
+
+def _error_text(exc: BaseException, ctx: Any = None, cfg: Any = None) -> str:
+    """Why a run failed, in one string: the exception's type and message (F-054).
+
+    Masked before any monitor sees it: every secret the run knows of, and the
+    usual shapes of one (a URL password, ``;password=``, ``Authorization:``).
+    """
+    from ubunye.core.secrets import error_text
+
+    variables = dict(getattr(ctx, "variables", None) or {})
+    return error_text(exc, variables, cfg if isinstance(cfg, dict) else None)
 
 
 def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
@@ -41,7 +61,7 @@ def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
     safe_call(monitor, "task_start", context=ctx, config=cfg)
     try:
         yield
-    except Exception:
+    except Exception as exc:
         safe_call(
             monitor,
             "task_end",
@@ -50,7 +70,9 @@ def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
             outputs=None,
             status="error",
             duration_sec=time.perf_counter() - t0,
-            **_evidence(monitor, state),
+            **_evidence(
+                monitor, {**state, "error": _error_text(exc, ctx, cfg)}, EVIDENCE + ("error",)
+            ),
         )
         raise
     else:
@@ -77,6 +99,16 @@ class MonitorHook(Hook):
     def __init__(self, monitor: Any) -> None:
         self.monitor = monitor
 
+    @property
+    def reads_outputs(self) -> bool:  # type: ignore[override]
+        """Whether the monitor says it acts on the output frames (the lineage recorder)."""
+        return bool(getattr(self.monitor, "reads_outputs", False))
+
+    @property
+    def reads_inputs(self) -> bool:  # type: ignore[override]
+        """Whether the monitor hashes the input frames (the lineage recorder, by default)."""
+        return bool(getattr(self.monitor, "reads_inputs", False))
+
     @contextmanager
     def task(self, ctx, cfg: Dict[str, Any], state: Dict[str, Any]) -> Iterator[None]:
         yield from _wrap_monitor_task(self.monitor, ctx, cfg, state)
@@ -91,6 +123,11 @@ class LegacyMonitorsHook(Hook):
         except Exception:
             self.monitors = []
 
+    @property
+    def reads_outputs(self) -> bool:  # type: ignore[override]
+        """Whether a monitor from ``CONFIG.monitors`` acts on the output frames."""
+        return any(getattr(m, "reads_outputs", False) for m in self.monitors)
+
     @contextmanager
     def task(self, ctx, cfg: Dict[str, Any], state: Dict[str, Any]) -> Iterator[None]:
         if not self.monitors:
@@ -103,7 +140,7 @@ class LegacyMonitorsHook(Hook):
 
         try:
             yield
-        except Exception:
+        except Exception as exc:
             dur = time.perf_counter() - t0
             for m in self.monitors:
                 safe_call(
@@ -114,6 +151,7 @@ class LegacyMonitorsHook(Hook):
                     outputs=None,
                     status="error",
                     duration_sec=dur,
+                    **_evidence(m, {"error": _error_text(exc, ctx, cfg)}, ("error",)),
                 )
             raise
         else:
@@ -128,4 +166,6 @@ class LegacyMonitorsHook(Hook):
                     outputs=outputs,
                     status="success",
                     duration_sec=dur,
+                    # Only what a record needs to be honest about its hashes.
+                    **_evidence(m, state, ("hash_basis",)),
                 )

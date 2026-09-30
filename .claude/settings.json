@@ -1,0 +1,60 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git fetch*)",
+      "Bash(git stash*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(python -m pytest *)",
+      "Bash(python -m pre_commit run *)",
+      "Bash(pre-commit run *)",
+      "Bash(python -m mypy *)",
+      "Bash(python -m ruff *)",
+      "Bash(ubunye *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh run watch *)",
+      "Bash(gh run download *)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue view *)",
+      "WebSearch",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:spark.apache.org)",
+      "WebFetch(domain:www.kaggle.com)"
+    ],
+    "deny": [
+      "Bash(git push origin main*)",
+      "Bash(git push --force origin main*)",
+      "Bash(git push -f origin main*)",
+      "Bash(git commit --no-verify*)",
+      "Bash(git commit -n *)",
+      "Bash(git push --no-verify*)",
+      "Bash(gh release create*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/format.py\"",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}

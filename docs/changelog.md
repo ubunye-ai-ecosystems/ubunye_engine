@@ -9,6 +9,738 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] (2026-09-30)
+
+The hardening release. Ubunye was tested against real use: newcomers given only the
+public docs, real open data (Olist, WFP food prices), a scale ladder to 50 million
+rows, awkward data of ten shapes, and seven environments. Every fix below has a test
+that failed before it, and every engine fix was reviewed by an adversarial skeptic.
+The same three workloads (C01, R1, R2) give identical digests on pandas, Spark, AWS
+Glue, Azure Container Apps, Databricks, GCP Dataproc and Kubernetes (42 of 42 checks).
+
+### Upgrade notes (read these first)
+
+- **Digests change** for map columns (maps are now unordered: entries sorted by key,
+  null values kept) and for text holding control characters such as U+000B (the
+  escape is written in upper case, as Spark writes it). A `ubunye gate` against a
+  0.7 record may report these columns as changed once.
+- **Delta reads are pinned** to the version seen when the input is read, so every
+  output of a run sees one snapshot.
+- **New refusals, each before anything is written:** a Spark task that overwrites a
+  folder it reads; a lease or finished note that exists but cannot be read; charset
+  names Spark 4 refuses (it accepts UTF-8, ISO-8859-1, US-ASCII, UTF-16, UTF-16LE,
+  UTF-16BE and UTF-32); column names that differ only by case, on file reads and writes.
+- **Input contracts name timestamps by their real type** (`timestamp` or
+  `timestamp_ntz`), as Spark 3.4 and later do.
+- **New settings:** `UBUNYE_HASH_WORKERS`, `UBUNYE_SOURCE_VERSION_TIMEOUT`,
+  `UBUNYE_LLM_PROGRESS`.
+- **Recording a run costs** 1.9 times the plain job on Spark and 6.4 times on pandas
+  at 5 million rows (it was 2.5 and 9.8 times). The 1.5 times target is not met yet.
+
+It also carries the first fixes from real use. Two newcomers were given only
+`pip install`, the public docs and a Kaggle dataset each (Olist e-commerce, 9 tables;
+Amazon Fine Food Reviews with a local LLM labelling step), and logged every place
+they got stuck.
+
+### Changed
+
+- **A Delta read is pinned to one version for the whole run** (F-046, skeptic review).
+  A lazy Delta frame read the table's latest version on every action, so with another
+  job appending, two outputs of one input could count 10 and 13 rows. A Delta read that
+  names no version (`format: delta`, or `s3` with `file_format: delta`) now carries
+  `versionAsOf` for the version the table is at when it is read, so the transform, every
+  output and the run record see one snapshot. A version in the config
+  (`version_as_of`, `timestamp_as_of`, or `versionAsOf` / `timestampAsOf` in `options`,
+  any case) is left as written. It costs one `DESCRIBE HISTORY` per read (about 0.16 s
+  on the dev box); if that fails, the read is unpinned, as before.
+- **The run record says whether an input's hash is of what the run read** (F-046). On
+  Spark an input is hashed at task end by reading its source again; if another job
+  changed it in between, the hash described a later state and nothing said so. Each
+  input now records its source version when it is read and again after its hash
+  (`source_version`, `source_version_at_hash`): a Delta table's version, or a file
+  input's files with sizes and times, taken without reading data. When they differ,
+  `source_changed: true` and `source_note` say the hash is of the later state;
+  `lineage trace` prints the note, `lineage compare` calls that hash unknown, and
+  `ubunye gate` warns instead of calling a changed output nondeterministic. The hash
+  and its default are unchanged; old records load as before. After review: without
+  content tags (etags, which S3A and ABFS give) "unchanged" means names, sizes and
+  times only, and the note says so; a failed listing is "not known", never missing
+  files; OPTIMIZE and other commits that change no rows are not a change; no version is
+  taken when inputs are not hashed; a few files are asked one by one (0.005 s for one
+  file of a 10,000 file folder, was 2.6 s); and taking a version stops after
+  `UBUNYE_SOURCE_VERSION_TIMEOUT` seconds (30).
+- **The run record's hash treats a map as unordered, and writes its null values
+  (ADR 006).** Every map's entries are sorted by key before the row's line is
+  hashed, on Spark (in the expression, only for columns that hold a map) and on
+  pandas, recursively. A null map value is written as `null`, as Spark's `to_json`
+  writes it; the pandas side left it out, so a map column with a null value hashed
+  differently on the two engines. **Behaviour change:** digests of tables with map
+  columns change. Tables without maps keep their digests.
+- **On pandas, `--lineage` hashes on several cores** (F-038). A table of 500,000 rows
+  or more is hashed by helper processes, one per core, at most 4 by default
+  (`UBUNYE_HASH_WORKERS` sets the cap; `1` turns it off). Every row is still hashed and
+  the digest is the same: property tests hold the helpers to the one process path and
+  to the row at a time reference over generated tables of every kind. If a helper fails,
+  the table is hashed in the calling process. E-06 job at 5,000,000 rows on the dev
+  box (4 helpers, median of 3): the record's hashing took 6.0 s (was 17.2 s), the
+  whole `--lineage` run 10.5 s (was 21.8 s), against 4.7 s for the plain job. Each
+  helper holds about 105 to 125 MB resident while it works; see
+  [Deploying anywhere](deployment/anywhere.md) for containers. Not yet the 1.5 times
+  bound E-06 asks for: the SHA-256 of each row is still one Python call.
+  Made safe after review: helpers are stopped on Ctrl+C and at a deadline, stdin
+  and stdout are served at once (a program that echoes cannot deadlock), no
+  helpers in a frozen app or when `sys.executable` is not Python, a helper never
+  starts helpers, a helper that runs other hash code (the file changed on disk)
+  or another pyarrow gives no answer, the cap never exceeds the usable cores (CPU
+  affinity, cgroup v2 quota) and is shared by concurrent hashes in one process,
+  and a fallback prints nothing (one debug log line) and leaks no pipe.
+- **A Spark run record's hash takes about 45% less time** (F-041). The per row SHA-256
+  lanes are summed as 32 bit halves in `long` instead of as decimals; the digest is
+  the same. A table past about 2.1 billion rows falls back to the decimal sums.
+- **On Spark, a task that overwrites the folder it reads is refused before it starts**
+  (F-047). Spark deleted the input's files and then failed reading them, so the run
+  failed and the source was gone. `ubunye validate --backend spark` reports it too.
+  Write to a new path, or use Delta, whose overwrite reads a fixed snapshot. pandas
+  runs are not affected.
+- **A Spark session the engine creates works in UTC** (`spark.sql.session.timeZone`),
+  like the pandas backend, unless the task sets the key (ADR 007). Before, it took the
+  machine's zone: on a laptop in Johannesburg, truncating `2024-01-02 10:15 UTC` to a day
+  gave `2024-01-01 22:00 UTC` on Spark and `2024-01-02 00:00 UTC` on pandas and on a UTC
+  cloud. Found by the proving ground's first workload (F-021). Tasks that mean local
+  days set the key; a session the engine did not start is never changed.
+- **The run record says which time zone the run cut time in** (`time_zone`), from the
+  backend. `ubunye prove report` treats the same code in two zones as two different runs
+  and names the zones as the reason.
+- **`--lineage` costs about a third of what it did on pandas (F-014).** A 1,000,000 row
+  task with one input and two outputs took 1.6 s without `--lineage` and 11 to 13 s
+  with it; it now takes 4.4 to 4.8 s. The `rows-v1` hash builds each row's canonical line with
+  Arrow compute, hashes it straight from Arrow's buffer and sums the lanes with numpy,
+  instead of building every line in Python: 1,000,000 rows of four columns hash in
+  1.5 s (was 2.6 s), of eight mixed columns in 2.8 s (was 14 s). It runs in the
+  calling thread and changes no interpreter setting. A frame written to
+  two outputs is hashed once. Values Arrow's text cannot be proven to match (a string
+  with a control character, a double outside 0.001 to 10,000,000, NaN, a timestamp
+  before year 1000, nanoseconds, decimals, binary, nested types) are still written by
+  the Python path, and a string column holding invalid UTF-8 still records its
+  `UnicodeDecodeError` and no digest. **Every digest that was recorded before is
+  unchanged**: property tests hold the new path to the row at a time reference, and
+  the C01 and R1 golden digests did not move.
+  **Behaviour change:** a timestamp column with a zone east of UTC holding instants
+  near 9999-12-31 used to record `OverflowError` and no digest; it now gets a digest,
+  the same as the same instants in UTC.
+- **The run record says how long each hash took** (`hash_seconds` on every input and
+  output, `hashSeconds` in the OpenLineage `ubunye_hash` facet, and `hashed in` in
+  `ubunye lineage trace`). The hash runs after the writes and was in no timing. A step
+  whose frame was already hashed for another step (one frame written to two outputs)
+  says so: `hash_reused_from` names that step (`output:<name>`) and `hash_seconds` is 0.
+
+### Fixed
+
+- **A failed expectation's hint names only what the rule can do (F-057).** Every
+  failure said "change the rule's severity to quarantine or warn", but a reconcile,
+  `unique`, `row_count` and `columns` cannot quarantine (the config refuses it). The
+  hint now depends on what broke: quarantine or warn for a rule on rows, a share
+  (`max_lost: "1%"`) or warn for a reconcile, warn for the others, and "the source
+  probably changed" when `max_quarantine_rate` is broken.
+- **`ubunye prove observe -t a -t b` observes every task (F-056).** It took one
+  `-t` and click kept the last of several, silently: one observation, of the last
+  task, under the name meant for all. Several tasks now give one observation each,
+  named `<workload>-<task>` (as ubunye-infra's `proving/observe.sh` names them); one
+  task keeps the workload's name. A task given twice is refused, and so are several
+  tasks with `--record` or `--run-id`, which name one run.
+- **`ubunye run` stops on a broken expectation without a traceback (F-055).** An
+  expectation that fails, an input contract or a reconcile, is the engine doing its
+  job: nothing was written and the message names the rule. The CLI printed that
+  message, then about 60 lines of traceback through the engine, which read as a
+  crash. It now prints `[ERROR] Run stopped for <task>: <message>` and exits with
+  code 1, as a refused run does. Any other error still shows its traceback. Found
+  writing Tutorial 2 (Olist). After review, only an error that carries rule results
+  (a verdict on the data) stops quietly: an `ExpectationError` about the engine
+  (narwhals not installed, a reconcile given no inputs) keeps its traceback.
+- **A failed run's record says why it failed (F-054).** The record has an `error`
+  field; OpenLineage sends it as the failed run's `errorMessage`, and `ubunye prove`
+  shows it as the reason. Nothing filled it: every failed run said `status: error`,
+  `error: null`. It now holds the error's type and message (`ExpectationError: An
+  input broke its expectations...`), with the values of secret-looking variables
+  masked, as step locations are. `lineage trace` prints it (and `--json` carries it).
+  Found by the Olist example (R2).
+- **A failed run's error keeps no secret (F-054, skeptic review).** The first fix
+  masked only secret-looking `--var` values word for word; the skeptic's probe found
+  the record, `lineage trace`, OpenLineage and `ubunye prove` still kept a password
+  from an environment variable in a JDBC URL, `user:password@` in a URL, `?api_key=`,
+  `Authorization: Bearer`, a resolved `secret://` value, and a `--var` secret
+  URL-encoded, in base64 or broken across a line. One function now masks all of them,
+  `ubunye.core.secrets.mask_text`, and the REST connector's log and error masking
+  (F-050) calls it too, so there is one implementation. The text is masked before any
+  monitor receives it. Values shorter than 4 characters are not masked word for word;
+  see [Secrets](config/secrets.md#a-failed-runs-error).
+- **A failed run's error is kept to about 4 KB (F-054, skeptic review).** A transform
+  that raised a 5 MB message wrote a 5 MB run record and would have sent 5 MB to
+  OpenLineage. The record (and OpenLineage's `errorMessage`) keeps the first 4,096
+  characters and says `... (N more characters)`; masking happens before the cut.
+- **A quarantined row's reasons read the same on pandas and Spark (F-052).** On
+  pandas, a row that broke only the first of two quarantine rules got
+  `_ubunye_failed_rules` = `price_between,` (a stray comma); Spark wrote
+  `price_between`. So the quarantine output, and the run's digest, differed between the
+  two engines. Narwhals' `concat_str(ignore_nulls=True)` on pandas writes a separator
+  after every present value except the last one given. The reasons are now built
+  without it. **Behaviour change** on pandas only, and only for rows that did not break
+  the last quarantine rule: their reasons lose the trailing comma. Found by the Olist
+  example (R2).
+- **A Spark append to a folder lands once, however the run ends (F-070).** Spark
+  appends were not claimed (ADR 008), so on live Spark a run killed after its append
+  was appended again by the rerun, a run that failed after its append left it, and
+  `--rerun` appended a finished batch a second time. Spark cannot say its file names
+  before they land (it puts a job UUID of its own in each name), so a path append now
+  goes to a hidden folder inside the output that the run's lease names before it
+  exists (`_ubunye-<id>`, skipped by Spark, pyarrow, pandas and Ubunye's readers).
+  Once Spark has finished, the files there are claimed in the lease, then moved up in
+  one rename each. A failed or killed run has
+  exactly those files and that folder taken back, and `--rerun` replaces the batch,
+  as on pandas. The output folder is never listed to decide what is a run's, so a
+  file another job put there is never removed. Applies to `parquet`, `csv`, `json`,
+  `orc`, `avro` and `text` on a path Spark resolves to the local file system (a
+  laptop or a shared disk). Delta, catalog tables, JDBC and object storage
+  (`s3a://`, `abfss://`, `gs://`, `dbfs:/`) are written as before and named after a
+  crash (F-071, F-072, F-073), and the log says in one line which output was not
+  claimed and why. Live Spark 4.2: 9 of 10 new integration cases fail on the old
+  code, 10 of 10 pass. After the skeptic review: the staging folder moved from beside
+  the output to inside it (an output on another disk, a long folder name, and globs
+  of the parent folder broke); claiming 12,000 files takes 14.5 s (was 76 s, each file
+  re-read the growing lease; the pandas backend gains the same); a Spark append
+  refused or killed before it claimed anything is no longer reported as maybe holding
+  part of the batch; Ctrl+C cancels the Spark write's job group before its folder is
+  removed.
+- **The awkward-data readers pass mypy (E-09 CI).** `spark_json.raw_tree` used the
+  json module's private `WHITESPACE` and `scanstring`; it now uses its own JSON
+  whitespace pattern and the public decoder. The Java-style UTF-8 error handler has
+  the signature `codecs.register_error` expects. No change in what is read.
+- **A CSV with a NUL character reads on Python 3.10 too (F-062 follow-up, E-09 CI).**
+  Python 3.10's csv module stops at NUL ("line contains NUL" when reading, "need to
+  escape" when writing), where 3.11 and later take it. The pandas CSV reader uses the
+  module for the header, ragged rows and the port of Spark's splitter, so such a file
+  failed on 3.10 only. A private use character stands in for NUL there and is swapped
+  back; the read and its digest are the same on 3.10 and 3.13.
+- **JSON `+INF`, `-INF` and `+Infinity` read as doubles, as on Spark (F-089, skeptic
+  review).** Spark's JSON parser (Jackson, with `allowNonNumericNumbers`) reads them as
+  infinities; Python's reads only `NaN`, `Infinity` and `-Infinity`, so the pandas read
+  stopped. A line that fails to parse and holds one of them is now read with them
+  spelled the Python way. `INF`, `+NaN` and `-NaN` stay refused, as Jackson refuses
+  them.
+- **A JSON record that repeats a key is refused, as Spark refuses it (F-088, skeptic
+  review).** `{"a":1,"a":"x"}` read on pandas as one column holding the last value
+  (`x`), silently. Spark infers one column per occurrence (`a:bigint, a:string`) and
+  refuses the read ("Found duplicate column(s)"). The pandas reader now refuses it
+  too, naming the key, at any depth.
+- **A time with a fraction of a second in a daylight saving gap before 1970 moves
+  as Java moves it (F-063 follow-up, skeptic review).** pyarrow judged such a time by
+  the next whole second, so `1950-04-30 02:59:59.5` in New York (in the gap) was read
+  an hour early. The whole second now decides and the fraction is added back. Against
+  Java's `ZonedDateTime.of` at every transition from 1950 to 2037 in 21 zones, the
+  only differences left are where pyarrow's time zone data and Java's differ.
+- **With `nullValue` set, an empty CSV field is still null (F-087, skeptic review).**
+  univocity hands Spark the `nullValue` text for an empty field, and Spark reads that as
+  null, so `1,,NA,2` with `nullValue: "NA"` is an `int` column `1, null, null, 2`. The
+  pandas reader took only `NA` as null, so the empty field made the column text. A
+  quoted empty field (`""`) is also null on pandas; Spark keeps it as an empty string.
+- **Names that differ only by case: refused only where Spark refuses (F-069
+  follow-up, skeptic review).** The refusal sat in the frame-to-Arrow step, so the REST
+  sink and the run record's hash refused such a frame too (the hash then recorded no
+  digest). It now applies to file reads and writes only. And a parquet read with a
+  `schema` naming a field that matches two file columns (`id` and `ID`) read one of
+  them silently; Spark stops ("Found duplicate field(s)"), and so does the pandas
+  backend now.
+- **JSON records whose names differ only by case merge as on Spark (F-064 follow-up,
+  skeptic review).** `{"Id":1}` then `{"id":2}` gave two columns on pandas, which the
+  engine then refused (F-069). Spark (with `spark.sql.caseSensitive` false) merges two
+  structs of the same shape whose names differ only by case into one, with the names
+  seen first (`findTypeForComplex`), at the top level and nested, widening each
+  field's type; and then reads `id` as a different name, so that record's value is
+  null. The pandas reader now does the same. Checked against Spark 4.2's own classes
+  on 4,007 generated record sets: all match but one duplicate-key case.
+- **CSV `inferSchema` numbers follow Spark's rules exactly, in row order (F-067
+  follow-up, skeptic review).** Checked against Spark 4.2's own `CSVInferSchema` and
+  `UnivocityParser` over 12,506 generated columns: every case matches except the
+  looser date and time forms (F-077). Three changes: a number `BigDecimal` reads with
+  scale 0 is a whole-number decimal (`5.`, `1.5E1`, `0E0` are `decimal`, as `1E5` and
+  `1.5` are `double`); digits in any script (`１２３`, `٤٥`) read as numbers, as
+  `Integer.parseInt` reads them; and a decimal's precision depends on the order of the
+  values, as Spark folds them (a bigint before the first decimal widens it to 20
+  digits, one after it does not). A value Java cannot read as a double in a double
+  column is null, as Spark's PERMISSIVE mode reads it. Performance guard: the plain
+  CSV read is 33% slower than before the port (40 to 54 ms for 60,000 rows), inside
+  the guard's 30% plus 5 ms.
+- **Broken UTF-8 is replaced exactly as Java replaces it (F-086, E-09).** An encoded
+  surrogate (`ED A0 80`, which some tools write for half an emoji) became three U+FFFD
+  on pandas and one on live Spark 3.5 and 4, so the text differed. The pandas CSV
+  reader now decodes with Java's rule; over 40,000 random byte strings it matches
+  Java 21's `new String(bytes, UTF_8)` exactly (UTF-8, UTF-16LE, UTF-16BE, US-ASCII).
+- **`encoding` takes the names Spark 4 takes (F-085, E-09).** Live Spark 4.2 refuses
+  any csv or json `encoding` but `UTF-8`, `ISO-8859-1`, `US-ASCII`, `UTF-16`,
+  `UTF-16LE`, `UTF-16BE` and `UTF-32` (`INVALID_PARAMETER_VALUE.CHARSET`; `cp1252`,
+  `latin1` and even `utf8` are refused). The pandas backend read them, so a task could
+  pass on a laptop and fail on Spark 4. It now refuses them too, before reading, and
+  says which names work. **Behaviour change** for tasks that used another name: use
+  `ISO-8859-1` for Latin-1, or convert the file. Spark 3.5 (and Spark 4 with
+  `spark.sql.legacy.javaCharsets`) takes any Java name; the pandas backend follows
+  Spark 4.
+- **A JSON value read into a text column keeps its source text, as Spark 4 reads it
+  (F-084, E-09).** Live Spark 4.2 keeps the exact text of a number or object that
+  lands in a text column when it reads JSON lines (`1.50` stays `1.50`, `1e2` stays
+  `1e2`, `{ "k" : 1 }` keeps its spaces and escapes); with `multiLine` or an
+  `encoding` option it writes the value back through Jackson (`1.5`, `100.0`,
+  compact, upper case hex). The pandas backend did the second always; it now does
+  what Spark 4 does in each case. Spark 3.5 writes every such value back through
+  Jackson; the pandas backend cannot tell which Spark a task will meet, so it follows
+  Spark 4.
+- **Text holding a control character hashes as on Spark (F-083, E-09).** Spark's
+  `to_json` (Jackson) writes a control character that has no short escape with upper
+  case hex (`\u000B`); the pandas side wrote Python's lower case (`\u000b`), so a
+  column holding one had another rows-v1 digest than live Spark 3.5 and 4. The pandas
+  json writer wrote it the same way; both now write Jackson's. **Behaviour change:**
+  digests of text holding such a character (U+0000 to U+001F other than `\b \t \n
+  \f \r`, and only those with a hex letter, such as U+000B or U+001F) change; others
+  do not.
+- **The smallest doubles and floats are written as Java writes them (F-082, E-09).**
+  Where the shortest text of a number has one digit, Java's `Double.toString` and
+  `Float.toString` write the closest two digits instead: `4.9E-324`, not `5.0E-324`;
+  `1.4E-45`, not `1.0E-45`. The run record's hash and the pandas json and csv writers
+  used Python's shortest text, so a table holding such a number had a different
+  rows-v1 digest on pandas than on live Spark 3.5 and 4. Other digests do not change.
+- **CSV `inferSchema`: a whole number past 64 bits with small ones is `decimal(19,0)`,
+  as live Spark types it (F-067 follow-up, E-09).** The port widened it to
+  `decimal(20,0)` whenever a smaller number was present; Spark does that only for a
+  number past the `int` range.
+- **The run record hashes a folder of many small files quickly on pandas (F-076,
+  E-09).** A read of 5,000 small files keeps one Arrow chunk per file, and the hash
+  paid about a millisecond per chunk: 10,000 rows took 1.9 s to hash, most of a
+  `--lineage` run. Such a table is now put together first: 0.02 s. Same digest.
+- **Columns whose names differ only by case are refused on pandas, as on Spark
+  (F-069, E-09).** A parquet file with `Col` and `col`, JSON keys `a` and `A`, or a
+  transform that returns both, ran on pandas and failed on Spark, whose default
+  (`spark.sql.caseSensitive` false) refuses such data on read and on write. The pandas
+  backend now refuses them too, before anything is written, and says why.
+- **An empty file or folder read with a schema is zero rows on pandas (F-068, E-09).**
+  A zero byte file, or a folder holding only `_SUCCESS`, read with `schema:` stopped
+  the run ("Path does not exist or holds no data files"). Spark reads zero rows with
+  that schema, and so does the pandas backend now. A missing path is still an error.
+- **CSV `inferSchema` on pandas follows Spark's rules (F-067, E-09).** pyarrow chose
+  the types, and differed from Spark on numbers written a little differently: a
+  whole number past 64 bits became a `double` that lost digits (Spark: an exact
+  `decimal`), `1, 2` with a space after the comma stayed `int` (Spark: `double`),
+  `+5` was a `double`, `1.5d` text, `inf` a `double` (Spark: text), `tRuE` text, and
+  timestamps with and without an offset in one column text. Types are now chosen by
+  a port of Spark's `CSVInferSchema`, over every file of a folder at once (each file
+  was inferred alone before). About 20% slower on a plain file (performance guard:
+  40 to 48 ms for 60,000 rows).
+- **Unsigned parquet columns read with Spark's types on pandas (F-066, E-09).** A
+  `uint8` to `uint64` column kept its unsigned type, so the schema and the run record
+  hash differed from Spark's. They now read as Spark reads them: `smallint`, `int`,
+  `bigint` and `decimal(20,0)`, at any depth.
+- **JSON records with no fields are no longer lost on pandas (F-065, E-09).** A file
+  of `{}` records (or records holding only fields Spark drops) read as 0 rows, and the
+  run succeeded. Spark reads one row per record, with no columns; so does the pandas
+  backend now.
+- **JSON on pandas is typed by Spark's rules (F-064, E-09).** The pandas reader let
+  pyarrow infer the types. Nested fields kept the order they were first seen (Spark
+  sorts them, so the schema hash differed), and a field that was a number in one
+  record and text in the next, an object in one and text in the next, or a whole
+  number past 64 bits stopped the read. The reader now uses a port of Spark's
+  `JsonInferSchema`: such a field is text (an object keeps its JSON text), a long
+  whole number is a `decimal`, bigint and double give double, empty names and empty
+  objects are dropped, and a line holding an array of objects is one row per object.
+- **A timestamp in a daylight saving gap or fold no longer stops a pandas run
+  (F-063, E-09).** With a session zone such as `America/New_York`, the text
+  `2024-11-03 01:30:00` (it happens twice) or `2024-03-10 02:30:00` (it never
+  happens) stopped a CSV read with `inferSchema`, a read with a `TIMESTAMP` schema, and
+  a write of a naive timestamp. The pandas backend now follows Java's rule, as Spark
+  does: a time in a gap moves later by the gap (02:30 reads as 03:30), a time in a
+  fold takes the earlier offset. Times outside a change cost nothing extra.
+- **A CSV value over 1 MB no longer stops a pandas read (F-062, E-09).** pyarrow
+  parses in 1 MB blocks and stopped at a longer row ("straddling object straddles two
+  block boundaries"); Python's csv module, used for the header and for ragged rows,
+  stopped at 131,072 characters. Spark has no limit (`maxCharsPerColumn` is -1). Such
+  a file is now parsed again as one block, and the csv module's limit is lifted for
+  the read.
+- **A CSV byte that is not valid in its encoding no longer stops a pandas read
+  (F-061, E-09).** A Windows (cp1252) export read as UTF-8 failed with "can't decode
+  byte 0xe9". Spark decodes the Java way: such a byte becomes U+FFFD and the read goes
+  on. The pandas backend now does the same. Files that decode cleanly are read as
+  before, at the same cost.
+- **A CSV header with a repeated or blank name reads as on Spark (F-060, E-09).** On
+  the pandas backend a header such as `id,amount,amount,,note` stopped the read
+  ("duplicate field names"), and a blank name became a column called `""`. The names
+  are now made as Spark's `makeSafeHeader` makes them: a blank name (or the `nullValue`
+  text) becomes `_c<position>`, and a name that appears more than once, ignoring case,
+  gets its position added to each copy (`a,a,,A` reads as `a0, a1, _c2, A3`).
+- **On Windows, reading a run lease while its heartbeat replaces it no longer fails
+  (F-048).** Windows refuses a read for a moment while a file is being replaced. The
+  engine then called a live run's lease unreadable, and a second run of the same
+  batch was refused as "Run ?" instead of naming the run that holds it (11 to 20
+  times in 3 seconds against a fast heartbeat; now 0). Every lease read, stat,
+  rename and removal now retries a `PermissionError` for up to 2 seconds through one
+  helper. A missing lease is still missing at once. A flaky lease test is fixed the
+  same way.
+- **A lease file that exists but cannot be read now refuses the run** (F-048 review).
+  A finished note held open for more than 2 seconds (a backup tool, a scanner, a file
+  permission) used to count as no note, so the batch was appended a second time. A
+  live run's lease that could not be read was judged by its age alone, so a run 20
+  minutes into a long job was taken over while alive. Now the lease, the finished
+  note, a dead run's lease left beside it and a dead run's record are read or the
+  run is refused, naming the file. A damaged finished note is refused too. A run
+  whose own lease cannot be read stops after one 2 second wait, not five.
+- **The REST connector runs on the pandas backend (F-015).** `plan` and `run` with
+  `--backend pandas` refused `format: rest_api` ("needs spark"), so a laptop could not
+  pull JSON from an API. The HTTP side (session, auth, pagination, retries, rate limit)
+  is now one module shared by the reader and the writer on every backend
+  (`ubunye/plugins/rest_http.py`). Only the last step is the backend's, through two new
+  `Backend` methods: `frame_from_records` (records to a frame) and `iter_records` (a
+  frame's rows as records), behind a new capability, `records`, which the spark,
+  databricks and pandas backends declare and the connector now requires instead of
+  `spark`. On pandas the records are typed by a port of Spark's own `createDataFrame`
+  rules (`ubunye/adapters/pandas_records.py`), so both backends give the same columns,
+  order, types and values, and refuse the same records (a field that is `1` in one
+  record and `2.5` in another, or null in all of them). A map's entry order is not
+  promised: Spark's is not stable (it changed between Java 11 and Java 21, and
+  Spark Connect keeps the JSON's), so pandas keeps the JSON's and the parity tests
+  compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
+  `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
+  both.
+- **The REST writer sends NaN, timestamps, dates, decimals and binary (F-051).** It
+  crashed on the first such row (requests refuses NaN and cannot encode a datetime
+  or a Decimal), after earlier batches were posted. Now NaN and the infinities are
+  `null`, an instant is ISO 8601 UTC text with `Z`, `timestamp_ntz` has no offset, a
+  date is `yyyy-mm-dd`, a decimal is its exact text as a string, binary is base64,
+  the same from Spark and pandas (Spark's naive local timestamps are made UTC
+  first). Each batch is encoded whole before any of it is sent, so a row that cannot
+  be sent stops the write with its row and field named and none of its batch
+  posted. **Behaviour change** for Spark users whose writes used to fail.
+- **Security: a REST API key no longer appears in logs or errors (F-050).** With
+  `api_key_query` the key is in the URL, and the writer's error log, the reader's
+  `HTTPError`, a `ConnectionError` and urllib3's DEBUG request lines all carried the
+  full URL. Every secret the config sends (auth token, key, password, an
+  `Authorization` or secret-named header, a secret-named query parameter) is now
+  masked as `***` in the connector's and urllib3's log lines while it runs, and in
+  every error it raises (same exception class and `response`).
+- **The REST docs name the options the connector reads, and an unknown auth type
+  is refused (F-049).** The docs printed `auth: {type: api_key}`, `cursor_field` and
+  `link_field`; the code reads `api_key_header` / `api_key_query`,
+  `cursor_response_key` and `next_key`, and ignored an auth type it did not know, so
+  the documented API key example sent no key. The docs are fixed, the old names are
+  still read with a warning, and an unknown auth type (or `api_key` with both or
+  neither of `header` and `param`) is refused by `ubunye validate` and before any
+  request.
+- **A REST field declared `double` or `float` takes whole numbers** (F-015 review).
+  Spark's schema check refuses a Python `int` in a double column, so a price field
+  of `1` and `2.5` could not be read at all, even with a schema, on either backend.
+  The reader now turns a whole number in such a column into the same decimal number
+  before the backend sees it, when a double holds it exactly (up to 2**53); a larger
+  one is still refused. **Behaviour change** on Spark: these records used to fail.
+- **REST records with no fields are rows on pandas, as on Spark** (F-015 review).
+  `[{}, {}, {}]` gave an empty frame on pandas and three rows on Spark. A pandas
+  frame with rows and no columns now keeps its rows on the way to Arrow too, so its
+  run record counts them and the writer posts one `{}` per row.
+- **A REST field with a whole number past 64 bits is refused by name on pandas**
+  (F-015 review). It raised a bare `OverflowError`. Now it is a `SourceReadError`
+  naming the field, with the fix (declare it `string`). Spark classic stores null
+  there silently; pandas refuses on purpose, since a lost value should not pass.
+- **A plugin Spark backend keeps running the REST connector** (F-015 review). The
+  F-015 fix made rest_api require the new `records` feature, so a third party
+  backend that declared `spark` (as on 0.7) was refused, and `RestApiWriter().write`
+  with no backend (`None`) crashed. Now `spark` implies `records`, the connector
+  builds and reads records the Spark way when it has a SparkSession, and the writer
+  falls back to the frame's `toLocalIterator`, as before.
+- **The pandas backend writes a map column to JSON as Spark does** (F-015 review): as
+  an object, keeping its null values (`{"m":{"a":null,"b":"x"}}`). It wrote Arrow's
+  pairs instead (`{"m":[["a",null],["b","x"]]}`), which Spark reads back as a
+  different type. Maps inside lists and structs too.
+- **On Spark, the run record hashes the rows that were written (F-040), and a checked
+  or recorded output is computed once (F-039, F-043).** The record hashed each output
+  at task end by computing it again, so anything that differs per computation (a
+  `current_timestamp()` column, a UDF that calls a service, a changed source) gave a
+  digest of rows never written: 0 of 3 runs matched the written files, now 3 of 3.
+  The checks had the same flaw, and every check and the write paid for the transform
+  again. Now each output that the record, its expectations or a second output name
+  will act on is computed once (`localCheckpoint`, memory and disk) and every consumer
+  gets that copy; it is released when the task ends. E-06 job at 5M rows: the source
+  is read 3 times with `--lineage` (was 5) and 2 times with expectations (was 5). A
+  plain run is unchanged. Each input and output in the record now says
+  `hash_basis`: `materialised` (the rows written) or `recomputed` (computed again:
+  every Spark input, and an output that could not be held, as on Spark Connect).
+  `UBUNYE_MATERIALISE_OUTPUTS=0` turns holding off. The cost is executor memory and
+  local disk for the held outputs, and a lost executor fails the run instead of
+  recomputing. ADR 009.
+- **Expectations give the same verdict on pandas and Spark when a float column holds
+  NaN (F-045).** pandas counted NaN as null and Spark did not, so `not_null` and
+  `between` broke on different rows and a `fail` rule could stop a run on one backend
+  only. NaN now counts as missing on both: `not_null` breaks on it, `between` and
+  `one_of` let it pass. **Behaviour change** on Spark (and on Arrow-backed pandas).
+- **`ubunye deploy k8s` stops when the Job fails**, not when its timeout runs out. It
+  waited only for `Complete`, so a failed Job held the command for the whole
+  `--timeout` (30 minutes by default). It now stops at `Complete` or `Failed` and
+  prints the Job's log either way. When kubectl cannot read the Job three times in a row
+  (deleted, RBAC, an expired token) it stops and prints kubectl's error (F-037).
+- **Expectations on a Spark output no longer need pyarrow.** The one row of counts was
+  collected through Arrow, and the images `ubunye deploy dockerfile dataproc` and
+  `container` write have no pyarrow, so a task with expectations died on Dataproc,
+  Kubernetes and Container Apps after its transform ran. Spark now gives the counts
+  itself; the numbers are the same (F-036).
+- **A cloud run's record survives a log line cut inside its marker.** Glue's CloudWatch
+  sent `UB` and `UNYE-RECORD-PART 9/14 ...` as two lines, so a part lost its header
+  and a run that succeeded gave back no record. The reader now joins a marker cut in
+  two, whatever the cut point and log prefix. A record in parts is now accepted only
+  when its SHA-256 line is read whole and matches (before, a record whose digest line
+  was lost was taken unchecked, and reordered pieces could decode to a scrambled
+  record), and a log holding two different records is refused (F-035).
+- **A backend that cannot write partition folders is refused before the run** when an
+  output sets `partitionBy`. The check looked for `partition_by`, which no config uses,
+  so it never fired and the task failed at the write instead (F-032).
+- **A rerun is safe (ADR 008).** A run takes a lease on its task and variables (its
+  batch) under `.ubunye/leases/`. A second run of a batch that is still running is
+  refused in one line naming the first (was: both appended, 7 of 10 pairs, F-019; or a
+  raw OS error, F-020). A killed run is taken over: its record is marked `interrupted`
+  (was: `running` for ever, F-013) and the append files it claimed are removed before
+  the batch runs again (was: the batch landed twice, 16 of 16, F-011). A run that fails
+  removes its own. Only files a backend claims before they land are ever removed (the
+  pandas backend claims each part file; no folder is listed to guess), so another
+  run's files are never touched (Spark claims a path append on a local disk too since
+  F-070). Appends that cannot be claimed (JDBC, catalogs, Delta, Spark on object
+  storage) are named in the log and the dead run's record, never deleted.
+  `UBUNYE_RUN_LEASE=off` turns it
+  off.
+- **A batch that finished is not appended twice by accident (F-031).** A run of a
+  batch (`-dt` or a `--var`) whose task appends, and which a run already finished, is
+  refused in one line (was: it appended the batch again). `ubunye run --rerun`
+  (`rerun=True` in Python) replaces the batch instead: once the new run succeeds, the
+  files the finished run claimed are removed, so a rerun that fails loses nothing.
+  Appends that cannot be claimed (JDBC, catalogs, Delta, Spark on object storage) are
+  appended again, and the run says so. A run with no `-dt` and no `--var` (a snapshot job) and a task that
+  only overwrites are never refused. `ubunye run --resume` (`run_pipeline(...,
+  resume=True)`) finishes a pipeline that stopped half way: tasks that finished the
+  batch are skipped, the rest run.
+  **Behaviour change:** a scheduler that runs the
+  same appending batch twice now gets exit code 1 the second time; give each run its
+  own variable, or pass `--rerun` to replace.
+- **The pandas backend writes and reads partition folders, and does
+  `overwrite_partitions` (F-012).** `partitionBy` was refused on pandas, so the
+  rerun safe way to write a daily batch (replace the day's partition) needed Spark.
+  Now the same config writes the same folders as Spark 4.2 (`dt=2024-01-02/`, Spark's
+  `%` escapes, `__HIVE_DEFAULT_PARTITION__` for null, one `part-00000-<uuid>.c000`
+  file per partition, partition columns left out of the files) with every save mode,
+  and `overwrite_partitions` replaces only the partitions the data fills, one staged
+  folder swapped in at a time and put back if a swap fails. Reading a partitioned
+  folder finds the partition columns and infers their types as Spark does (int,
+  bigint, decimal, double, timestamp, date, text; widened across folders). A
+  partitioned append claims every file, so ADR 008 takes back exactly those.
+  Partition columns Spark does not read back as the same type (double, decimal,
+  binary, time) are refused with the reason, as are the layouts Spark refuses.
+  Checked against live Spark: 56 parity cases. E-01 with `overwrite_partitions`:
+  10 of 10 right after a kill and a rerun.
+  **Behaviour change:** reading a folder now follows Spark's partition discovery. A
+  folder holding `name=value` folders gains their columns, and data files directly
+  in it, beside those folders, are **dropped** (with a warning naming them), as Spark
+  drops them; the old code read those top level files. Layouts Spark refuses now fail
+  the read where the old code read the top level files: a plain folder beside
+  `name=value` folders (`CONFLICTING_DIRECTORY_STRUCTURES`), or folders with
+  different partition columns. Empty (zero byte) files are skipped for a folder, a
+  glob and a single file alike, as Spark skips them.
+  A skeptic review then found and fixed: an old partition deleted when it could not
+  be put back after a failed swap (now kept and named), two timestamps in a daylight
+  saving fold merged into one folder (now refused, as Spark fails), case collisions
+  at an outer level or on a case blind macOS disk or against existing folders (now
+  refused everywhere), `.old` folders named by number (now by partition path, and
+  the next write warns about any left behind), and a first partitioned append's root
+  `_SUCCESS` left after its take back (now removed).
+
+- **`ubunye prove report` treats two names of one time zone as one** (`UTC`,
+  `Etc/UTC`, `GMT`, `Zulu`; other zones by their offsets over time). Databricks records
+  `Etc/UTC` and was reported as a different run while its data matched exactly (F-025).
+
+- **A cloud run's record survives the log store.** `ubunye deploy glue --record-out`
+  failed after a successful Glue run because CloudWatch returned the record's one long
+  JSON line cut at about 1,000 characters (and cut again wherever Glue's output buffer
+  flushed). The entry script now prints the record's SHA-256 and the record as short
+  numbered base64 parts that say their length; the reader puts them back by number
+  from anywhere in the log, completes a part cut short from the lines after it, and
+  checks the SHA-256. A record that is not provably whole is refused, never read in
+  part. Records printed by older engines still read. Found by the proving ground
+  (F-023).
+
+- **Replay is the recorded run, call for call.** A run that sent the same request
+  twice (two identical reviews) to a model that answered each differently replayed
+  one answer for both, so a "free, identical rerun" changed 2 of 300 rows. The nth
+  identical request now replays the nth recorded answer, including across
+  `complete_many`'s parallel calls; a run that asks more often than was recorded
+  fails closed. Replay files from 0.7.1 still replay as before.
+- **A UTF-8 byte order mark at the start of a CSV file is dropped, as Spark does.**
+  The pandas backend kept it in the first column's name, so a join on that column
+  failed. Checked against Spark 4.2 on 16 cases.
+- **An expectation on a missing column, or on a column of the wrong type,** is one
+  `ExpectationError` naming the output, rule, column and type, not a pyarrow
+  traceback of thousands of characters.
+- **A variable whose name says it is a secret is masked where it is recorded.** A
+  token passed as `--var token=...` was written to the lineage record, sent in every
+  OpenLineage event and printed by `ubunye plan`. Names made of words such as
+  `password`, `secret`, `token`, `auth`, `credential`, or pairs such as `api_key`,
+  are now recorded as `***`; the run still uses the real value. `tokenizer`,
+  `author`, `max_token` and `secret_scope` are not masked. The value is also masked
+  wherever it was templated in, and a password written into a URL
+  (`user:password@`, `;password=`, `?token=`) is masked in every recorded location.
+  Found by experiment E-04, which also showed `secret://` references and
+  `{{ env.X }}` values never reach any record; an adversarial review found the URL
+  path.
+- **`lineage compare` and `lineage show` take the short run id** that `lineage list`
+  prints. A prefix that fits more than one run is refused; `gate` used to take the
+  first match silently.
+
+### Added
+
+- **A long `complete_many` shows its progress** (F-008). A 300 call model step ran
+  for 6 minutes with nothing on screen. Now a line goes to stderr, such as
+  `LLM anthropic/claude-haiku-4-5: 90/300 calls (30%), 1m48s, $0.0412 spent of $2`,
+  at most every 10 seconds and every 10% of the calls, whichever is rarer, and one at
+  the end. A batch under 20 prompts or under 10 seconds writes nothing. Sequential
+  and concurrent batches both report. Calls that got no answer are named
+  (`50 answered, 250 refused by the budget`, or `failed`), not counted as done. The
+  spend shows only when a dollar limit is enforced (`UBUNYE_LLM_MAX_USD` in a run or
+  outside one, or the port's `max_usd=`; both when both are set). The line is best
+  effort: a missing or broken stderr drops it and never stops a batch or hides a
+  call's own error. `UBUNYE_LLM_PROGRESS=0` turns it off.
+- **Docs: check each model answer, ask again for the bad ones** (F-009). A newcomer
+  asked for `SENTIMENT | ASPECT` and 20 of 300 answers missed the format. The LLM
+  page now has a short recipe, `complete_parsed`: parse each answer, ask again only
+  where the parse fails, up to a cap, with an optional reminder. It answers by
+  position (a pandas column's index is not used), treats any error in the parse as
+  "did not parse" and keeps it as the reason, adds the reminder to chat message
+  prompts too, and keeps the answers already paid for when the budget refuses an ask
+  again. It needs no new engine feature: the extra calls count against the budget
+  and are in the run record, and inside a run they replay call for call. A test runs
+  the recipe from the page as written.
+- **Input contracts: expectations can name an input, checked before the transform**
+  (F-018). Its rules run right after it is read. A new rule, `columns: {price:
+  float64, qty: int64}` (with `extra: allow|forbid`), checks each column's type by the
+  names the run record uses, on Spark and pandas alike, from the schema alone. Types
+  match exactly (`int32` is not `int64`; list several to accept them); nulls are not
+  part of the type. A mismatch stops the run before the transform, naming each
+  column with the type expected and found. Before, a source that wrote `price` as
+  text made pandas compute `"11.011.0"` and the run succeeded; the E-05 cases
+  (column dropped, renamed, retyped) now stop with, for example, "price: expected
+  float64, found string". Results carry `side: input` in the record. `ubunye
+  validate` refuses a name that is both an input and an output, an input with a
+  quarantine or reconcile, and an unknown type name (with the right one for
+  `double`, `long` and friends). `columns` also works on an output.
+
+- **`reconcile`: an output can declare that nothing is lost on the way from an input**
+  (F-017). Under `CONFIG.expectations.<output>`, `reconcile: [{input: orders, rows:
+  {max_lost: 0}, sum: {column: amount, tolerance: 0.01}}]`. Bounds are a number or a
+  share (`"1%"`); `max_gained` catches a join that fans out. It is checked with the
+  other expectations, before anything is written, and reported like a rule
+  (`rows_from_orders`, with what was found in a new `detail` field) in the error, the
+  run record, `ubunye lineage show` and `ubunye gate`. Rows sent to quarantine count
+  as carried over. Before, an inner join that dropped 100 of 1,000 orders succeeded;
+  the E-03 task now stops with "1000 rows read from orders, 900 reached enriched: 100
+  lost". It costs one pass over each reconciled input (on Spark, a second read of it).
+  `ubunye validate` refuses a reconcile that names no real input.
+  `Engine.write_outputs` takes `inputs=` for it; the notebook passes what it read.
+
+- **Reconcile and input contracts, after the skeptic's review** (F-017, F-018).
+  The inputs are counted before the transform runs: a pandas transform that dropped
+  rows from its input in place used to make the record say "8 read, 0 lost". Sums
+  are exact: integers no longer wrap past 2**63 (3 x 2**62 came out negative) and
+  decimals are no longer compared as floats (0.01 on a 1.2e19 total passed at
+  tolerance 0); on Spark an integer sum is taken as `decimal(38,0)`. Equal infinite
+  totals match. A reconcile item takes an optional `name`, so a warning at 1% and a
+  stop at 5% can check one input. `ubunye validate` gives a clear message for a
+  blank tolerance, a list as a bound, a number as a type, and NaN or infinite
+  tolerances (it crashed with a TypeError or accepted them). Nested type names are
+  checked part by part (`list<banana>` was accepted), and every kind a frame can
+  report (`uint8`, `null`, `mixed`, `time64[us]`) can be declared. A contract names
+  a timestamp by what it is, `timestamp` with a zone and `timestamp_ntz` without,
+  on pandas as on Spark 3.4+; the run record is unchanged. The notebook checks the
+  contract on, and reconciles with, the frames passed to `transform()`, and tells
+  you to call `read()` or `transform()` when it has none. Input contract results
+  are on the input datasets in OpenLineage.
+
+- **`ubunye deploy` runs several tasks in one launch** (glue, dataproc, k8s,
+  container-apps, emr-serverless): repeat `-t`, as in `-t clean -t monitor`. They run in
+  that order in the one job, so a task can read what the one before it wrote to the
+  job's own disk; the first that fails stops the rest and fails the deploy, as does a
+  task the job never reached. `--record-out glue.json` then writes one record per task
+  (`glue.clean.json`, `glue.monitor.json`), also when the job failed: the records the
+  failed job printed are read, written and reported task by task before the deploy
+  exits 1. A repeated task or a name with `/`, `\` or `,` is refused before
+  anything starts; several tasks get a job name and bundle folder with a short hash of
+  the list. Images built by an older `deploy dockerfile` must be rebuilt to run several
+  tasks. One task works as before. Before, a
+  container job ran one task and its disk went with it, so a two step pipeline could
+  not run on Kubernetes or Container Apps without shared storage (F-034).
+
+- **A real-world example: a staple food price monitor for African markets**
+  (`examples/real-world/food_prices_africa`). WFP market prices, African retail, one
+  price per kg, a monthly price per country and food, and alerts where a staple rose by
+  half on a year before across at least three markets (on 2025-2026 data: Mali paddy
+  rice +144%, Ethiopia groundnuts +122%, Chad wheat flour +78% across 54 markets). A
+  small WFP sample ships with it, so the first run needs no account and no Java; the
+  two steps give the same rows on pandas and Spark (tested, golden digests).
+- **A second real-world example: Olist sales, nine tables to an order fact table**
+  (`examples/real-world/olist_ecommerce`), and **Tutorial 2**
+  (`docs/tutorials/02-olist-multi-table.md`). Three steps: `clean` (input contracts on
+  the nine raw CSV files, typed outputs, categories in English, one point per zip
+  prefix, bad items, payments and reviews quarantined), `orders_fact` (one row per
+  order, reconciled with its inputs: every order in, one row out, payments and prices
+  add up) and `monthly` (sales and on-time rate per seller, sales per category). A
+  made up sample shaped like the real files ships with it (the Olist data is CC
+  BY-NC-SA 4.0, so it is downloaded at run time by `scripts/fetch_data.sh`, never
+  committed). The tutorial breaks the pipeline on purpose to show a contract, a
+  quarantine, a reconcile and a warning each catching its problem. Golden digests on
+  pandas in the unit tier, the same on Spark in the integration tier. The portable
+  transforms guide gains "days between two dates" (F-053). Each step checks for
+  Narwhals 2.9 or later first and says so (`the example needs narwhals>=2.9
+  (Expr.floor)`), instead of failing inside the transform. The example needs the
+  release after 0.7.1; until then the tutorial and README install Ubunye from the
+  cloned repository (`pip install -e "../../..[pandas]"`).
+- **A guide to writing portable transforms** (`docs/guides/portable-transforms.md`):
+  the places the same Narwhals code gave different numbers on pandas and Spark, each
+  found on real data, each with a fix (rounding modes, float sums, a lost cast,
+  `str.replace`, casting text, time zones, null group keys).
+
+- **`ubunye prove`: the proving ground.** Collect one workload's run records from many
+  environments (`observe`, from a stored run or a record file such as a cloud run's
+  artifact), record the ones that did not run and why (`skip`), and compare them all with
+  a reference (`report`): execute, identity (`code_hash`), inputs, data (`rows-v1`),
+  schema and rows, each PASS, FAIL, PARTIAL, NOT RECORDED, NOT RUN or UNSUPPORTED, as
+  JSON and a generated table. An expected environment without evidence is NOT RUN, never
+  a pass; a cost says whether it is billed, a provider's estimate or Ubunye's.
+  `ubunye.proving` has the same in Python. See docs/proving-ground.
+
+- **A warning for CSV files that double their quotes** (as pandas and Excel write
+  them) read with Spark's default backslash escape. Such files split into wrong rows
+  on Spark and so on pandas too; both newcomers hit it. `ubunye plan` and the pandas
+  reader now say to set `escape: '"'`. What is read is unchanged.
+- Docs: `transform.params` (dropped by mistake in 0.7.1), CSV quotes and line breaks
+  on the connector page, replay call for call, and gating on a number (an
+  expectation on a metrics output).
+- **A docs map in the README, so on PyPI too** (F-010). A newcomer guessed docs
+  addresses such as `/expectations/` and got 404s: the README linked only the docs
+  home. It now links the main pages directly (install, quickstart, config,
+  expectations, the run record, backends, CLI, Python API, language model steps,
+  examples, connectors, deployment, errors, changelog). A unit test maps every docs
+  link in the README to its page in `docs/` and the `mkdocs.yml` nav, so a renamed
+  page fails the tests instead of turning into a 404.
+- **Docs: big merges on the pandas backend** (F-042). The pandas backend hands a
+  transform Arrow backed frames, and on pandas 3 a merge on Arrow whole number keys is
+  about 2.8 times slower than on NumPy keys (memory goes the other way: 9.1 GB
+  against 12.2 GB peak at 50M rows). The pandas backend page now says so and shows a
+  three line `numpy_keys` helper for a transform to convert join keys with no nulls
+  (0.97 s merge becomes 0.33 s at 5M rows). The engine keeps Arrow types on purpose:
+  a whole number column with a null must stay whole numbers. A unit test runs the
+  snippet from the page.
+
+### Changed
+
+- The budget hint for a model with no price says how to declare a free local model:
+  `price=(0, 0)`.
+
 ## [0.7.1] (2026-09-27)
 
 Run records you can trust when a run has more than one task, and a registered model

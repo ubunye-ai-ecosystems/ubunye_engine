@@ -11,6 +11,7 @@ command: the same task, unchanged, gives the same data on every platform.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -19,7 +20,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from ubunye.core.errors import DeployError
 from ubunye.deploy import package
@@ -67,10 +68,13 @@ def _run(argv: List[str], capture: bool = False) -> str:
         sys.stdout.write(text)
     if done.returncode != 0:
         detail = (done.stderr or done.stdout or "").strip()[-2000:] if capture else ""
-        raise DeployError(
+        error = DeployError(
             f"`{' '.join(argv[:4])} ...` failed with exit code {done.returncode}.",
             context={"Output": detail} if detail else None,
         )
+        # A job that failed still printed its run record(s): keep the whole log.
+        error.log = text if capture else ""  # type: ignore[attr-defined]
+        raise error
     return text if capture else ""
 
 
@@ -90,14 +94,35 @@ def _upload(uri: str, data: bytes) -> None:
 
 
 def execute(plan: Plan) -> Plan:
-    """Upload, then run each command; the last command's output is the job's log."""
+    """Upload, then run each command; the last command's output is the job's log.
+
+    When the last command fails, ``plan.log`` still holds what it printed, and the
+    :class:`DeployError` is raised: the caller can read the records of a failed job.
+    """
     for uri, data in plan.uploads:
         _upload(uri, data)
     for argv in plan.commands[:-1]:
         _run(argv)
     if plan.commands:
-        plan.log = _run(plan.commands[-1], capture=True)
+        try:
+            plan.log = _run(plan.commands[-1], capture=True)
+        except DeployError as exc:
+            # The job ran and failed: its log (and records) is still the plan's log.
+            plan.log = getattr(exc, "log", "")
+            raise
     return plan
+
+
+def _label(task: Union[str, Sequence[str]]) -> str:
+    """The task name(s) for default job names and bundle paths.
+
+    One task: its name. Several: their names joined by ``-`` and a short hash of the
+    list, so ``-t a-b -t c`` and ``-t a -t b-c`` never share a job or a bundle.
+    """
+    tasks = package._tasks(task)
+    if len(tasks) == 1:
+        return tasks[0]
+    return "-".join(tasks) + "-" + hashlib.sha256(",".join(tasks).encode()).hexdigest()[:8]
 
 
 def _entry_args(
@@ -120,7 +145,7 @@ def plan_glue(
     usecase_dir: Path,
     usecase: str,
     pkg: str,
-    task: str,
+    task: Union[str, Sequence[str]],
     *,
     bucket: str,
     role: str,
@@ -139,13 +164,15 @@ def plan_glue(
 ) -> Plan:
     """A Glue job (Glue 5: Spark 3.5, Python 3.11) that runs the task once.
 
+    Several tasks run in order, in the one job run.
+
     The engine is pip-installed by Glue (``--additional-python-modules``): a PyPI
     requirement, or a local wheel uploaded next to the task. Delta comes from
     Glue itself (``--datalake-formats delta``).
     """
     path = package.task_path(usecase, pkg, task)
-    job = job or f"ubunye-{usecase}-{pkg}-{task}".replace("_", "-")
-    prefix = f"s3://{bucket}/ubunye/{path}"
+    job = job or f"ubunye-{usecase}-{pkg}-{_label(task)}".replace("_", "-")
+    prefix = f"s3://{bucket}/ubunye/{usecase}/{pkg}/{_label(task)}"
     plan = Plan("glue", job)
     plan.uploads.append((f"{prefix}/bundle.zip", package.bundle(usecase_dir, usecase, pkg, task)))
     plan.uploads.append((f"{prefix}/ubunye_entry.py", package.ENTRY_SCRIPT.encode("utf-8")))
@@ -245,7 +272,7 @@ def plan_dataproc(
     usecase_dir: Path,
     usecase: str,
     pkg: str,
-    task: str,
+    task: Union[str, Sequence[str]],
     *,
     project: str,
     region: str,
@@ -262,13 +289,15 @@ def plan_dataproc(
 ) -> Plan:
     """A Dataproc Serverless batch that runs the task once, in ``image``.
 
+    Several tasks run in order, in the one batch.
+
     The image carries the engine and Delta (``ubunye deploy dockerfile dataproc``
     writes its Dockerfile); Dataproc mounts Spark and Java. The task arrives as an
     archive Dataproc unpacks next to the entry script.
     """
     path = package.task_path(usecase, pkg, task)
-    batch = batch or f"ubunye-{task}-{int(time.time())}".replace("_", "-").lower()
-    prefix = f"gs://{bucket}/ubunye/{path}"
+    batch = batch or f"ubunye-{_label(task)}-{int(time.time())}".replace("_", "-").lower()
+    prefix = f"gs://{bucket}/ubunye/{usecase}/{pkg}/{_label(task)}"
     plan = Plan("dataproc", batch)
     plan.uploads.append((f"{prefix}/bundle.zip", package.bundle(usecase_dir, usecase, pkg, task)))
     plan.uploads.append((f"{prefix}/ubunye_entry.py", package.ENTRY_SCRIPT.encode("utf-8")))

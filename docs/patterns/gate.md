@@ -28,11 +28,14 @@ ubunye gate ... --max-slowdown 0.5 --max-row-change 0.1 --summary "$GITHUB_STEP_
 A deliberate change bumps `VERSION` in the task's `config.yaml`, or passes
 `--allow-data-change` (then it warns). Every changed output also says what else
 changed between the runs (config, code, environment, which inputs); a change
-with none of them is reported as a transform that is not deterministic.
+with none of them is reported as a transform that is not deterministic. An input
+whose source changed between its read and its hash (`source_changed` in the
+record) is named as a possible cause too: its hash is of a later state, so it
+cannot show the input was the same.
 
 Warnings never fail the gate: a `warn` expectation broken, rows quarantined, a
 new output, hashes that cannot be compared (a record from before 0.7.0, or an
-unreadable output).
+unreadable output), an input whose source changed during the run.
 
 Exit code 1 when the gate fails; `--json` prints the findings; `--summary FILE`
 appends a Markdown table.
@@ -61,6 +64,30 @@ It installs the engine, runs the task on the pull request's base and on its head
 table to the job summary. Inputs: `backend`, `engine` (a pip requirement),
 `extra-packages`, `baseline-ref` (default: the pull request's base), `gate-args`,
 `python-version`. Output: `passed`.
+
+## Gate on a number: accuracy, agreement, error rate
+
+`ubunye gate` compares two runs' outputs. To fail a run when a number crosses a line
+(a model's accuracy, an LLM's agreement with a label), write the number as an output
+and put an expectation on it. The run fails, and writes nothing, before the gate is
+even asked:
+
+```yaml
+CONFIG:
+  outputs:
+    metrics:
+      format: s3
+      path: "{{ task_dir }}/output/metrics"
+      file_format: parquet
+  expectations:
+    metrics:
+      rules:
+        - between: {column: agreement, min: 0.7}
+```
+
+```python
+return {"labelled": labelled, "metrics": pd.DataFrame({"agreement": [agreement]})}
+```
 
 ## Tasks that call a model
 

@@ -25,6 +25,7 @@ Usage
 
 from __future__ import annotations
 
+import glob
 import importlib.metadata as _meta
 import json
 from abc import ABC, abstractmethod
@@ -251,8 +252,21 @@ class FileSystemLineageStore(LineageStore):
         self._ctx_cache[str(record_path)] = ctx
 
     def load(self, task_path: str, run_id: str) -> RunContext:
+        """One run of a task, by its run id or the first characters of it (as
+        ``ubunye lineage list`` prints them). A prefix that fits more than one run
+        is refused, never guessed."""
         task_dir = self._task_dir_from_path(task_path)
         record_path = task_dir / f"{run_id}.json"
+        if not record_path.exists() and run_id and task_dir.exists():
+            matches = sorted(task_dir.glob(f"{glob.escape(run_id)}*.json"))
+            if len(matches) > 1:
+                raise LineageRecordNotFoundError(
+                    f"Run id '{run_id}' fits {len(matches)} runs of '{task_path}'.",
+                    context={"Task": task_path, "Matches": ", ".join(m.stem for m in matches[:5])},
+                    hint="Give more characters of the run id.",
+                )
+            if matches:
+                record_path = matches[0]
         if not record_path.exists():
             raise LineageRecordNotFoundError(
                 f"No lineage record found for task '{task_path}' run '{run_id}'.",

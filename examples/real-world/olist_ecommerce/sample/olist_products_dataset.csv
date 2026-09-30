@@ -1,0 +1,15 @@
+product_id,product_category_name,product_name_lenght,product_description_lenght,product_photos_qty,product_weight_g,product_length_cm,product_height_cm,product_width_cm
+f5d1db1116ab4f194462c7302bc32ceb,brinquedos,45,1787,6,772,41,4,20
+73c47cee0a25596dd5615151bfc45ea5,livros,41,209,1,2965,59,38,14
+15f10da5de6819ee61a75ed982db6305,utilidades_cozinha,52,576,1,1839,45,4,43
+b550d9098b0a98a7380bbeec6b7f3d6b,esporte,41,450,4,3520,45,23,25
+03e389aa5eb2d0c0a3bcbf1e45092885,papelaria,46,1763,4,4865,57,38,47
+961a5683e62e6cbbd38427fef001c2d4,jardim,35,476,1,3809,56,39,49
+46b60d341b5450f83f5ff0e824b77336,relogios,59,1185,5,298,39,29,44
+29f47241592ccc02bebc24fda1fccecb,brinquedos,31,1270,6,1299,52,9,14
+490da2838524c7f5cf7a1ac308aaa0ab,livros,50,106,4,3170,32,12,35
+b4e76c4cb1565814a0e08b6ef275e675,utilidades_cozinha,53,1876,4,1749,43,6,47
+ca3c317296cacf54fddb80a313242c5d,esporte,46,948,5,3625,13,34,32
+c4ce932a9136bba92ba176fcf7cc1cd9,papelaria,44,424,2,4847,59,11,13
+67f9a99b37de0bcc6c98f925dec9c753,jogos_pc,50,213,5,3504,39,38,43
+41573d0f073e2e43299ae6ed8327732f,,,,,500,20,10,15

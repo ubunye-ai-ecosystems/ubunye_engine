@@ -105,6 +105,8 @@ def test_an_older_monitor_gets_no_new_arguments():
         "timings",
         "llm_calls",
         "llm_budget",
+        "hash_basis",
+        "source_versions",
     }
 
 

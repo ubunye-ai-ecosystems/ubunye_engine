@@ -32,6 +32,8 @@ Limits on dollars, calls and seconds are checked before each call is sent, and a
 call that could pass one is refused (:mod:`ubunye.llm.budget`, prices in
 :mod:`ubunye.llm.prices`). Each logged call carries ``cost_usd`` (None when the
 model has no price) and the ``estimated_usd`` worst case that was reserved.
+
+A long ``complete_many`` writes its progress to stderr (:mod:`ubunye.llm.progress`).
 """
 
 from __future__ import annotations
@@ -45,6 +47,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -166,10 +169,21 @@ class _CallLog:
         self.task_dir = task_dir
         self.budget = budget
         self.lock = threading.Lock()
+        #: Tells this run's recordings from an earlier run's in a replay file.
+        self.session = uuid.uuid4().hex
+        self._seen: Dict[Tuple[str, str], int] = {}
 
     def add(self, call: Dict[str, Any]) -> None:
         with self.lock:
             self.calls.append(call)
+
+    def occurrence(self, key: str, mode: str) -> int:
+        """How many identical requests this run made before this one, in this mode
+        (a replayed call is numbered among replayed calls, as it was recorded)."""
+        with self.lock:
+            n = self._seen.get((mode, key), 0)
+            self._seen[(mode, key)] = n + 1
+            return n
 
 
 _ACTIVE: contextvars.ContextVar[Optional[_CallLog]] = contextvars.ContextVar(
@@ -263,17 +277,66 @@ class LLMPort:
         max_concurrency: int = 4,
         **options: Any,
     ) -> List[LLMResponse]:
-        """One call per prompt, ``max_concurrency`` at a time; answers in prompt order."""
+        """One call per prompt, ``max_concurrency`` at a time; answers in prompt order.
+
+        A long batch writes its progress to stderr (:mod:`ubunye.llm.progress`)."""
+        from ubunye.llm.progress import Progress
+
         requests = [self.request(p, **options) for p in prompts]
         if not requests:
             return []
+        # Numbered in prompt order before any worker starts, so a repeated prompt's
+        # nth answer is recorded and replayed at the same position every time.
+        active = _ACTIVE.get()
+        numbered = [
+            (r, active.occurrence(r.key(self.name), self.mode) if active is not None else 0)
+            for r in requests
+        ]
+        progress = Progress(
+            f"{self.name}/{self.model}", len(requests), budgets=self._progress_budgets(active)
+        )
+
+        def one(request: LLMRequest, occurrence: int) -> LLMResponse:
+            try:
+                response = self.send(request, occurrence=occurrence)
+            except LLMBudgetError:
+                progress.tick("refused")
+                raise
+            except BaseException:
+                progress.tick("failed")
+                raise
+            progress.tick("answered")
+            return response
+
         with ThreadPoolExecutor(max_workers=max(1, min(max_concurrency, len(requests)))) as pool:
             # Each worker runs in a copy of this context, so the run's call log sees it.
-            futures = [pool.submit(contextvars.copy_context().run, self.send, r) for r in requests]
+            futures = [pool.submit(contextvars.copy_context().run, one, r, n) for r, n in numbered]
             return [f.result() for f in futures]
 
-    def send(self, request: LLMRequest) -> LLMResponse:
+    def _progress_budgets(self, active: Optional[_CallLog]) -> List[Tuple[str, Any]]:
+        """The budgets that enforce limits on this port's calls, for the progress line."""
+        if self.mode == "replay":
+            return []  # replayed calls cost nothing and are never refused
+        if active is not None:
+            run_budget = active.budget
+        else:
+            try:
+                run_budget = self._outside_run_budget()
+            except LLMError:
+                run_budget = None  # a bad limit fails the first call, not the progress
+        return [
+            (name, b)
+            for name, b in (("run", run_budget), ("port", self.own_budget))
+            if b is not None and b.limited
+        ]
+
+    def send(self, request: LLMRequest, *, occurrence: Optional[int] = None) -> LLMResponse:
+        """One call. Inside a run, the nth identical request is recorded, and
+        replayed, as the nth answer; ``occurrence`` is set by :meth:`complete_many`."""
         key = request.key(self.name)
+        active = _ACTIVE.get()
+        if occurrence is None:
+            occurrence = active.occurrence(key, self.mode) if active is not None else 0
         started = time.perf_counter()
         call: Dict[str, Any] = {
             "backend": self.name,
@@ -285,8 +348,8 @@ class LLMPort:
             "attempts": 0,
             "source": self.mode,
             "cost_usd": None,
+            "occurrence": occurrence,
         }
-        active = _ACTIVE.get()
         price = self.price or prices.lookup(self.name, request.model)
         call["provider"], call["service"] = self.backend.provider()
         call["price_usd_per_mtok"] = list(price) if price is not None else None
@@ -295,7 +358,7 @@ class LLMPort:
         held: List[Tuple[Any, float]] = []
         try:
             if self.mode == "replay":
-                response = self._replay(request, key, active)
+                response = self._replay(request, key, active, occurrence)
                 call["cost_usd"] = 0.0
             else:
                 held = self._reserve(request, price, active, call)
@@ -304,7 +367,12 @@ class LLMPort:
                 response.request_key = key
                 if self.mode == "record":
                     self._store(active).put(
-                        key, backend=self.name, model=request.model, response=_saved(response)
+                        key,
+                        backend=self.name,
+                        model=request.model,
+                        response=_saved(response),
+                        occurrence=occurrence,
+                        session=active.session if active is not None else None,
                     )
             call.update(
                 status="ok",
@@ -373,9 +441,20 @@ class LLMPort:
 
         return store_for(self.store, active.task_dir if active else None)
 
-    def _replay(self, request: LLMRequest, key: str, active: Optional[_CallLog]) -> LLMResponse:
+    def _replay(
+        self, request: LLMRequest, key: str, active: Optional[_CallLog], occurrence: int
+    ) -> LLMResponse:
         store = self._store(active)
-        entry = store.get(key)
+        entry = store.get(key, occurrence)
+        if entry is None and occurrence > 0 and store.recorded(key):
+            raise LLMError(
+                f"The run asked {key} ({self.name}/{request.model}) {occurrence + 1} times; "
+                f"the recording holds {store.recorded(key)} answer(s) for it.",
+                context={"Replay file": str(store.path), "Attempts": 0},
+                hint="The run makes more identical calls than the recorded run did. Record "
+                "again with UBUNYE_LLM_MODE=record. Replay never calls out, and never "
+                "reuses an answer the recorded run did not give.",
+            )
         if entry is None:
             raise LLMError(
                 f"No recorded answer for {key} ({self.name}/{request.model})",

@@ -29,6 +29,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
+from ubunye.core.secrets import redact_url
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -44,14 +46,16 @@ def _location_from_io_cfg(io_cfg: Dict[str, Any]) -> str:
             return f"{db}.{tbl}"
         return io_cfg.get("table") or io_cfg.get("sql", "")[:80] or fmt
     if fmt == "jdbc":
-        url = io_cfg.get("url", "")
+        # A password in the URL (user:password@, ;password=) is masked: a location
+        # is recorded, sent to lineage servers and printed.
+        url = redact_url(io_cfg.get("url", ""))
         table = io_cfg.get("table", "")
         return f"{url}/{table}" if table else url
     if fmt in ("s3", "binary", "delta"):
         return io_cfg.get("path", "") or io_cfg.get("table", fmt)
     if fmt == "rest_api":
-        return io_cfg.get("url", "")
-    return io_cfg.get("path") or io_cfg.get("url") or fmt
+        return redact_url(io_cfg.get("url", ""))
+    return redact_url(io_cfg.get("path") or io_cfg.get("url") or fmt)
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +84,29 @@ class StepRecord:
     hash_method: Optional[str] = None
     #: Why there is no data_hash, when the rows could not be read.
     hash_error: Optional[str] = None
+    #: Seconds the data hash took. The hash runs after the writes and is
+    #: not in ``timings``; this keeps its cost in the record.
+    hash_seconds: Optional[float] = None
+    #: Set when this frame was already hashed for another step of the run (the
+    #: same frame written twice): that step, as "output:<name>" or "input:<name>".
+    hash_reused_from: Optional[str] = None
+    #: What data_hash was computed from (ADR 009): "materialised" when it is the
+    #: rows the writer wrote (a Spark output computed once and held, or a frame in
+    #: memory), "recomputed" when the hash computed the frame a second time (an
+    #: input, which is read again, or an output that could not be held), so a
+    #: step whose values differ per computation can differ from what was written.
+    hash_basis: Optional[str] = None
+    #: An input's source version when it was read (F-046): {"kind": "delta",
+    #: "version", "timestamp"}, {"kind": "files", "files", "bytes",
+    #: "latest_modified", "listing_hash"}, or {"kind": "none", "reason"}.
+    source_version: Optional[Dict[str, Any]] = None
+    #: The same, taken again right after the hash (a recomputed input only).
+    source_version_at_hash: Optional[Dict[str, Any]] = None
+    #: True when the two differ: the digest is of a later state, not of what was
+    #: read. False when they match. None when it is not known.
+    source_changed: Optional[bool] = None
+    #: One sentence on whether the digest is of what the task read.
+    source_note: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -96,6 +123,13 @@ class StepRecord:
             data_hash=d.get("data_hash"),
             hash_method=d.get("hash_method"),
             hash_error=d.get("hash_error"),
+            hash_seconds=d.get("hash_seconds"),
+            hash_reused_from=d.get("hash_reused_from"),
+            hash_basis=d.get("hash_basis"),
+            source_version=d.get("source_version"),
+            source_version_at_hash=d.get("source_version_at_hash"),
+            source_changed=d.get("source_changed"),
+            source_note=d.get("source_note"),
         )
 
     @staticmethod
@@ -159,6 +193,8 @@ class RunContext:
     llm_calls: List[Dict[str, Any]] = field(default_factory=list)
     #: The run's limits and what was spent (ubunye.llm.budget); empty with no limits.
     llm_budget: Dict[str, Any] = field(default_factory=dict)
+    #: The session time zone the run cut time in (ADR 007), when the backend knows it.
+    time_zone: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -197,4 +233,5 @@ class RunContext:
             expectations=list(d.get("expectations") or []),
             llm_calls=list(d.get("llm_calls") or []),
             llm_budget=dict(d.get("llm_budget") or {}),
+            time_zone=d.get("time_zone"),
         )

@@ -135,6 +135,34 @@ def _hash_facet(prod: str, step: StepRecord) -> Dict[str, Any]:
         dataHash=step.data_hash,
         hashMethod=step.hash_method,
         hashError=step.hash_error,
+        hashSeconds=step.hash_seconds,
+        hashBasis=step.hash_basis,
+        sourceVersion=step.source_version,
+        sourceVersionAtHash=step.source_version_at_hash,
+        sourceChanged=step.source_changed,
+    )
+
+
+def _assertions(prod: str, ctx: RunContext, name: str, side: str) -> Optional[Dict[str, Any]]:
+    """The expectations checked on one input or output, as a DataQualityAssertions facet."""
+    checks = [
+        e
+        for e in ctx.expectations
+        if e.get("output") == name and (e.get("side") or "output") == side
+    ]
+    if not checks:
+        return None
+    assertions = []
+    for e in checks:
+        item: Dict[str, Any] = {"assertion": e["rule"], "success": bool(e["passed"])}
+        if e.get("column"):
+            item["column"] = e["column"]
+        assertions.append(item)
+    return _facet(
+        prod,
+        f"{FACETS}/1-0-1/DataQualityAssertionsDatasetFacet.json"
+        "#/$defs/DataQualityAssertionsDatasetFacet",
+        assertions=assertions,
     )
 
 
@@ -144,6 +172,10 @@ def _inputs(prod: str, ctx: RunContext, final: bool) -> List[Dict[str, Any]]:
         ds: Dict[str, Any] = dict(dataset_id(step))
         if final:
             ds["facets"] = {"ubunye_hash": _hash_facet(prod, step)}
+            # An input contract's results (F-018) belong to the input dataset.
+            contract = _assertions(prod, ctx, step.name, "input")
+            if contract:
+                ds["facets"]["dataQualityAssertions"] = contract
             if step.row_count is not None:
                 ds["inputFacets"] = {
                     "dataQualityMetrics": _facet(
@@ -164,20 +196,9 @@ def _outputs(prod: str, ctx: RunContext, final: bool) -> List[Dict[str, Any]]:
         ds: Dict[str, Any] = dict(dataset_id(step))
         if final:
             facets: Dict[str, Any] = {"ubunye_hash": _hash_facet(prod, step)}
-            checks = [e for e in ctx.expectations if e.get("output") == step.name]
+            checks = _assertions(prod, ctx, step.name, "output")
             if checks:
-                assertions = []
-                for e in checks:
-                    item: Dict[str, Any] = {"assertion": e["rule"], "success": bool(e["passed"])}
-                    if e.get("column"):
-                        item["column"] = e["column"]
-                    assertions.append(item)
-                facets["dataQualityAssertions"] = _facet(
-                    prod,
-                    f"{FACETS}/1-0-1/DataQualityAssertionsDatasetFacet.json"
-                    "#/$defs/DataQualityAssertionsDatasetFacet",
-                    assertions=assertions,
-                )
+                facets["dataQualityAssertions"] = checks
             ds["facets"] = facets
             if step.row_count is not None:
                 ds["outputFacets"] = {

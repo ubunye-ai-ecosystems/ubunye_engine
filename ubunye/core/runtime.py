@@ -10,9 +10,10 @@ import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Iterator, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
-from ubunye.core.capabilities import Capabilities, check_task
+from ubunye.core import runs
+from ubunye.core.capabilities import SELF_OVERWRITE_MARK, Capabilities, check_task
 from ubunye.core.errors import (
     BackendCapabilityError,
     ReaderNotFoundError,
@@ -39,6 +40,15 @@ def current_run_id() -> Optional[str]:
     return ctx.run_id if ctx is not None else None
 
 
+def _backend_time_zone(backend: Any) -> Optional[str]:
+    """The zone a backend cuts time in, if it says (``timezone``); never raises."""
+    try:
+        zone = getattr(backend, "timezone", None)
+        return zone if isinstance(zone, str) else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 @dataclass(frozen=True)
 class EngineContext:
     """Lightweight context passed around for observability and debugging."""
@@ -55,6 +65,13 @@ class EngineContext:
     config_hash: Optional[str] = None
     #: The task folder, so the run record can hash the task's code.
     task_dir: Optional[str] = None
+    #: The session time zone the backend cuts time in (ADR 007).
+    time_zone: Optional[str] = None
+    #: Where run records are kept, when recorded: a dead run's record is marked
+    #: ``interrupted`` there by the run that takes over its lease (ADR 008).
+    lineage_dir: Optional[str] = None
+    #: Replace a batch a finished run already appended, rather than refuse (F-031).
+    rerun: bool = False
 
 
 class Registry:
@@ -151,6 +168,12 @@ def _unwrap(frame: Any) -> Any:
     return frame.to_native() if callable(to_native) else frame
 
 
+def _materialise_enabled() -> bool:
+    """``UBUNYE_MATERIALISE_OUTPUTS``, read when a run starts; on unless 0 (ADR 009)."""
+    value = os.getenv("UBUNYE_MATERIALISE_OUTPUTS", "1").strip().lower()
+    return value not in ("0", "false", "no", "off")
+
+
 class Engine:
     """
     Executes a task by reading inputs, applying one or more transforms, and writing outputs.
@@ -201,6 +224,11 @@ class Engine:
         self._secrets = SecretResolver()
         # Per-step timings of the current run, for the run record.
         self._timings: List[Dict[str, Any]] = []
+        # The notebook path: the frames last inspected before a transform (read or
+        # passed to apply_transforms), their contract results and reconcile counts.
+        self._inspected: Optional[Tuple[Dict[str, Any], List[Dict[str, Any]], Dict[str, Any]]] = (
+            None
+        )
         self._manage_backend = manage_backend
 
     @property
@@ -257,104 +285,355 @@ class Engine:
         self._timings = []
         state["timings"] = self._timings
         state["llm_calls"] = []
-        with chain.task(ctx, cfg, state):
-            if self._manage_backend:
-                self.backend.start()
-            try:
-                sources = self._read_inputs(ctx, chain, inputs_cfg)
-                state["inputs"] = self._to_ports(sources)
-                from ubunye import llm
-
-                budget = llm.budget.Budget.from_env()
-                try:
-                    with llm.recording(state["llm_calls"], task_dir=ctx.task_dir, budget=budget):
-                        outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
-                finally:
-                    state["llm_budget"] = budget.summary() if budget.limited else {}
-                outputs_map = self._check_expectations(cfg, outputs_map, state)
-                ports = self._to_ports(outputs_map)
-                self._write_outputs(ctx, chain, outputs_cfg, ports)
-                # Hooks (lineage, monitors) get the port; the caller gets native frames.
-                state["outputs"] = ports
-                return outputs_map
-            finally:
+        held: List[Any] = []
+        try:
+            with chain.task(ctx, cfg, state):
                 if self._manage_backend:
-                    self.backend.stop()
+                    self.backend.start()
+                try:
+                    versions: Optional[Dict[str, Any]] = None
+                    if any(getattr(h, "reads_inputs", False) for h in chain.hooks):
+                        versions = state["source_versions"] = {}
+                    sources = self._read_inputs(ctx, chain, inputs_cfg, versions)
+                    state["inputs"] = self._to_ports(sources)
+                    # Contracts and reconcile counts before the transform: it may
+                    # change its inputs in place.
+                    measured = self._inspect_inputs(cfg, sources, state)
+                    from ubunye import llm
+
+                    budget = llm.budget.Budget.from_env()
+                    try:
+                        with llm.recording(
+                            state["llm_calls"], task_dir=ctx.task_dir, budget=budget
+                        ):
+                            outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
+                    finally:
+                        state["llm_budget"] = budget.summary() if budget.limited else {}
+                    once = self._hold_outputs(cfg, ctx, chain, outputs_map, state, held)
+                    checked = self._check_expectations(cfg, once, state, measured=measured)
+                    ports = self._to_ports(checked)
+                    self._write_outputs(ctx, chain, outputs_cfg, ports)
+                    # Hooks (lineage, monitors) get the port; the caller gets native frames.
+                    state["outputs"] = ports
+                    return self._hand_back(cfg, outputs_map, once, checked, state)
+                finally:
+                    if self._manage_backend:
+                        self.backend.stop()
+        finally:
+            # After the hooks: the run record hashes the held frames at task end.
+            self._release(held)
 
     def read_inputs(self, cfg: dict) -> Dict[str, Any]:
         """Read all inputs defined in ``CONFIG.inputs``.
 
         Returns a dict mapping input name to the backend's own frame type (a
         ``pandas.DataFrame`` on pandas) — suitable for interactive inspection
-        before calling :meth:`apply_transforms`.
+        before calling :meth:`apply_transforms`. The inputs' expectations (input
+        contracts) are checked here, as in :meth:`run`, and the inputs a
+        ``reconcile`` names are counted; both are kept for a later
+        :meth:`write_outputs`.
         """
         inputs_cfg = cfg.get("CONFIG", {}).get("inputs", {}) or {}
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
         self._validate_io_configs(inputs_cfg, outputs_cfg)
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
-        return self._to_natives(self._read_inputs(ctx, chain, inputs_cfg))
+        natives = self._to_natives(self._read_inputs(ctx, chain, inputs_cfg))
+        self._inspect_for_write(cfg, natives)
+        return natives
+
+    def _inspect_for_write(self, cfg: dict, natives: Dict[str, Any]) -> None:
+        """Check and count the frames a transform is about to get, for write_outputs.
+
+        The notebook path reads, transforms and writes in separate calls, so what
+        :meth:`run` keeps in local variables is kept here: the frames inspected,
+        the contract results and the reconcile counts.
+        """
+        self._inspected = None
+        state: Dict[str, Any] = {}
+        measured = self._inspect_inputs(cfg, natives, state)
+        self._inspected = (dict(natives), list(state.get("expectations") or []), measured)
 
     def apply_transforms(self, sources: Dict[str, Any], cfg: dict) -> Dict[str, Any]:
         """Apply configured transforms to *sources*.
 
         Returns a dict mapping output name to the backend's own frame type.
+        Frames that did not come from :meth:`read_inputs` (a notebook's own
+        sample, say) are checked against the input contracts and counted for a
+        ``reconcile`` first, like read ones: a reconcile compares an output with
+        the frames the transform actually got.
         """
         transform_cfg = cfg.get("CONFIG", {}).get("transform") or {}
         transforms = self._normalize_transforms(transform_cfg)
         self._validate_transforms_exist(transforms)
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
+        if not self._is_inspected(sources):
+            self._inspect_for_write(cfg, self._to_natives(sources))
         return self._apply_transforms(ctx, chain, sources, transforms)
 
-    def write_outputs(self, outputs: Dict[str, Any], cfg: dict, *, as_run: bool = False) -> None:
+    def _is_inspected(self, sources: Dict[str, Any]) -> bool:
+        if self._inspected is None:
+            return False
+        seen = self._inspected[0]
+        natives = self._to_natives(sources)
+        return set(natives) == set(seen) and all(natives[n] is seen[n] for n in seen)
+
+    def write_outputs(
+        self,
+        outputs: Dict[str, Any],
+        cfg: dict,
+        *,
+        as_run: bool = False,
+        inputs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """Write *outputs* to the sinks defined in ``CONFIG.outputs``.
 
         With ``as_run=True`` the write is wrapped as a whole task for the hooks,
         so lineage and monitors record it exactly as they record ``run()``. This
         is how a notebook that reads, transforms and writes step by step still
-        leaves a run record.
+        leaves a run record. A ``reconcile`` compares with the inputs counted
+        before the transform (by :meth:`read_inputs` or :meth:`apply_transforms`).
+        *inputs* given here that were not counted then are counted now, after
+        the transform: a transform that changed them in place hides its loss.
         """
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
+        # The notebook path writes here without run(): the same pre-checks apply,
+        # or an overwrite of its own input deletes the source (F-047).
+        self._check_backend_can_run(cfg)
         ctx = self._resolve_context(cfg)
         chain = self._build_hook_chain(cfg)
         state: Dict[str, Any] = {"outputs": None}
-        if not as_run:
-            outputs = self._check_expectations(cfg, outputs, state)
-            self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
-            return
-        with chain.task(ctx, cfg, state):
-            outputs = self._check_expectations(cfg, outputs, state)
-            ports = self._to_ports(outputs)
-            self._write_outputs(ctx, chain, outputs_cfg, ports)
-            state["outputs"] = ports
+        measured: Optional[Dict[str, Any]] = None
+        if self._inspected is not None and (inputs is None or self._is_inspected(inputs)):
+            _, checks, measured = self._inspected
+            if checks:
+                state["expectations"] = list(checks)
+        held: List[Any] = []
+        try:
+            if not as_run:
+                once = self._hold_outputs(cfg, ctx, chain, outputs, state, held, task=False)
+                outputs = self._check_expectations(cfg, once, state, inputs, measured)
+                self._write_outputs(ctx, chain, outputs_cfg, self._to_ports(outputs))
+                return
+            with chain.task(ctx, cfg, state):
+                once = self._hold_outputs(cfg, ctx, chain, outputs, state, held)
+                outputs = self._check_expectations(cfg, once, state, inputs, measured)
+                ports = self._to_ports(outputs)
+                self._write_outputs(ctx, chain, outputs_cfg, ports)
+                state["outputs"] = ports
+        finally:
+            self._release(held)
+
+    @staticmethod
+    def _expectation_specs(cfg: dict, side: str) -> Dict[str, Any]:
+        """``CONFIG.expectations`` for the inputs (input contracts) or the outputs."""
+        section = cfg.get("CONFIG") or {}
+        raw = section.get("expectations") or {}
+        if not raw:
+            return {}
+        from ubunye.config.schema import ExpectationSet
+
+        inputs = section.get("inputs") or {}
+        return {
+            name: ExpectationSet.model_validate(spec)
+            for name, spec in raw.items()
+            if (name in inputs) == (side == "inputs")
+        }
+
+    def _inspect_inputs(
+        self, cfg: dict, sources: Dict[str, Any], state: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Before the transform: the input contracts, then the reconcile counts.
+
+        Contracts (F-018) stop a source that changed shape before the transform
+        can compute something wrong from it; results go into
+        ``state["expectations"]`` and a broken ``fail`` rule raises
+        ExpectationError. Then every input a ``reconcile`` names is counted
+        (F-017), here and not after the transform, which may change its inputs
+        in place (a pandas ``drop(inplace=True)``) and so hide the loss.
+        """
+        from ubunye.core import expectations
+        from ubunye.core.errors import ExpectationError
+
+        natives = self._to_natives(sources)
+        specs = self._expectation_specs(cfg, "inputs")
+        if specs:
+            try:
+                results = expectations.check_inputs(natives, specs)
+            except ExpectationError as exc:
+                state["expectations"] = list(exc.results)
+                raise
+            state["expectations"] = [r.as_dict() for r in results]
+        outputs = {n: s for n, s in self._expectation_specs(cfg, "outputs").items() if s.reconcile}
+        return expectations.measure_inputs(natives, outputs) if outputs else {}
 
     def _check_expectations(
-        self, cfg: dict, outputs: Dict[str, Any], state: Dict[str, Any]
+        self,
+        cfg: dict,
+        outputs: Dict[str, Any],
+        state: Dict[str, Any],
+        inputs: Optional[Dict[str, Any]] = None,
+        measured: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """``CONFIG.expectations``: check every output before any is written.
 
         Returns the frames to write: clean rows, plus the quarantined rows under
         their quarantine output. Raises ``ExpectationError`` (nothing written)
         when a ``fail`` rule is broken. Every rule's result goes into
-        ``state["expectations"]`` for the hooks.
+        ``state["expectations"]`` for the hooks. A ``reconcile`` compares with
+        *measured* (counted before the transform), else counts *inputs* now.
         """
-        raw = (cfg.get("CONFIG") or {}).get("expectations") or {}
-        if not raw:
+        specs = self._expectation_specs(cfg, "outputs")
+        if not specs:
             return outputs
-        from ubunye.config.schema import ExpectationSet
         from ubunye.core import expectations
-
-        specs = {name: ExpectationSet.model_validate(spec) for name, spec in raw.items()}
         from ubunye.core.errors import ExpectationError
 
+        # The input contracts' results, checked before the transform, come first.
+        before = list(state.get("expectations") or [])
         try:
-            checked, results = expectations.apply(self._to_natives(outputs), specs)
+            checked, results = expectations.apply(
+                self._to_natives(outputs),
+                specs,
+                self._to_natives(inputs) if inputs is not None else None,
+                measured,
+            )
         except ExpectationError as exc:
-            state["expectations"] = list(exc.results)
+            state["expectations"] = before + list(exc.results)
             raise
-        state["expectations"] = [r.as_dict() for r in results]
+        state["expectations"] = before + [r.as_dict() for r in results]
+        # A quarantine output is cut from its output's rows: it has the same basis.
+        basis = state.get("hash_basis")
+        if isinstance(basis, dict):
+            for name, spec in specs.items():
+                if spec.quarantine and name in basis:
+                    basis[spec.quarantine] = basis[name]
         return checked
+
+    # ---------- one computation per output (ADR 009) ----------
+
+    def _hold_outputs(
+        self,
+        cfg: dict,
+        ctx: EngineContext,
+        chain: HookChain,
+        outputs: Dict[str, Any],
+        state: Dict[str, Any],
+        held: List[Any],
+        task: bool = True,
+    ) -> Dict[str, Any]:
+        """Each output that more than one consumer acts on, computed once.
+
+        An output's consumers are its expectation checks, its writer, and the
+        run record's hash at task end. On a lazy backend each is a new
+        computation of the plan, so a value that differs per computation made
+        the record hash rows that were not written (F-040), and every check and
+        the write paid for the transform again (F-039, F-043). An output is held
+        (``Backend.materialise``) when the run is recorded, when it has
+        expectations, or when it is written under two names; a plain run is left
+        exactly as it was. Every consumer then gets the held frame.
+
+        ``state["hash_basis"]`` says, per output, whether the frame the record
+        will hash is the rows written (``"materialised"``) or will be computed
+        again (``"recomputed"``). What is held is added to ``held``, for
+        :meth:`_release` once the hooks are done. Holding is a timed step
+        (``Materialise``), so its cost is in the record's timings. ``task`` is
+        False for a write outside a task, where no hook sees the outputs.
+        """
+        section = cfg.get("CONFIG") or {}
+        outputs_cfg = section.get("outputs") or {}
+        expected = set((section.get("expectations") or {}).keys())
+        names = [n for n in sorted(outputs_cfg) if n in outputs]
+        recorded = task and any(getattr(h, "reads_outputs", False) for h in chain.hooks)
+        uses: Dict[int, int] = {}
+        for name in names:
+            uses[id(outputs[name])] = uses.get(id(outputs[name]), 0) + 1
+
+        in_memory = self._frames_in_memory()
+        # Only a real backend is asked: a test double or pre-0.7 object is left alone.
+        is_backend = isinstance(self.backend, Backend)
+        allowed = is_backend and not in_memory and _materialise_enabled()
+        result = dict(outputs)
+        done: Dict[int, Any] = {}  # one computation per frame, however many names
+        basis: Dict[str, str] = {}
+        for name in names:
+            frame = outputs[name]
+            needed = recorded or name in expected or uses[id(frame)] > 1
+            if needed and allowed:
+                if id(frame) not in done:
+                    # An error here is the job failing while it computes the
+                    # output; it propagates, as it would from the writer. Falling
+                    # back would compute the same failing plan again (ADR 009).
+                    with self._step(chain, ctx, "Materialise", {"output": name}):
+                        raw = _unwrap(frame)
+                        once = self.backend.materialise(raw)
+                    if once is raw:  # handed back unheld: it would recompute
+                        once = None
+                    done[id(frame)] = once
+                    if once is not None:
+                        held.append(once)
+                if done.get(id(frame)) is not None:
+                    result[name] = done[id(frame)]
+                    basis[name] = "materialised"
+                    continue
+            if in_memory is not None:
+                basis[name] = "materialised" if in_memory else "recomputed"
+        state["hash_basis"] = basis
+        return result
+
+    def _frames_in_memory(self) -> Optional[bool]:
+        """True when the backend's frames are the rows themselves (not lazy).
+
+        ``None`` when the backend has not said (a test double): the run record
+        then judges by the frame's type.
+        """
+        caps = getattr(self.backend, "capabilities", None)
+        if not isinstance(caps, Capabilities) or not caps.declared:
+            return None
+        return not caps.lazy
+
+    def _hand_back(
+        self,
+        cfg: dict,
+        original: Dict[str, Any],
+        once: Dict[str, Any],
+        checked: Dict[str, Any],
+        state: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """The frames ``run`` returns: never a held frame, which is freed at task end.
+
+        A held frame, and anything cut from it (the clean and quarantined rows),
+        stops working when it is released. So the caller gets the frames the
+        transform returned, cut again by the same rule results where
+        expectations quarantined rows. They are lazy, as they always were.
+        """
+        swapped = [n for n in once if once[n] is not original.get(n)]
+        if not swapped:
+            return checked
+        back = dict(checked)
+        for name in swapped:
+            if back.get(name) is once[name]:
+                back[name] = original[name]
+        raw = (cfg.get("CONFIG") or {}).get("expectations") or {}
+        cut = {n: spec for n, spec in raw.items() if n in swapped}
+        if cut:
+            from ubunye.config.schema import ExpectationSet
+            from ubunye.core import expectations
+
+            specs = {n: ExpectationSet.model_validate(spec) for n, spec in cut.items()}
+            natives = self._to_natives({n: original[n] for n in specs})
+            back.update(expectations.cut(natives, specs, state.get("expectations") or []))
+        return back
+
+    def _release(self, held: List[Any]) -> None:
+        """Free every held frame. Never raises: the run's result stands either way."""
+        while held:
+            frame = held.pop()
+            try:
+                self.backend.release(frame)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Releasing a held output failed: %s", exc)
 
     @contextmanager
     def _step(
@@ -399,6 +678,7 @@ class Engine:
             variables=dict(self.context.variables),
             config_hash=self.context.config_hash,
             task_dir=self.context.task_dir,
+            time_zone=self.context.time_zone or _backend_time_zone(self._backend),
         )
 
     def _build_hook_chain(self, cfg: dict) -> HookChain:
@@ -413,7 +693,10 @@ class Engine:
         ctx: EngineContext,
         chain: HookChain,
         inputs_cfg: Dict[str, Any],
+        versions: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """Read every input. With ``versions`` (a recorded run), each source's
+        version is taken right after its read, for the run record (F-046)."""
         sources: Dict[str, Any] = {}
         for name in sorted(inputs_cfg):
             icfg = inputs_cfg[name]
@@ -433,6 +716,10 @@ class Engine:
             with self._step(chain, ctx, f"Reader:{rtype}", {"input": name}):
                 # Secrets are swapped in only here, in the connector's copy.
                 sources[name] = reader_cls().read(self._secrets.resolve(icfg), self.backend)
+            if versions is not None:
+                from ubunye.lineage.source_version import capture
+
+                versions[name] = capture(_unwrap(sources[name]), icfg)
         return sources
 
     def _apply_transforms(
@@ -505,8 +792,20 @@ class Engine:
                     },
                     hint="Ensure your transform returns a dict with keys matching CONFIG.outputs.",
                 )
+            # Rerun safety (ADR 008): the lease knows which output is being written. A
+            # backend that claims its files (pandas) has its appends taken back exactly
+            # if the run fails or dies; other appends are named, never guessed at. A
+            # Spark path append on a local disk marks itself exact when it claims
+            # (``runs.staging``). A missing mode counts as append: most writers default
+            # to it.
+            runs.writing(
+                name,
+                appends=str(ocfg.get("mode") or "append").lower() == "append",
+                exact=bool(getattr(self.backend, "claims_appends", False)),
+            )
             with self._step(chain, ctx, f"Writer:{wtype}", {"output": name}):
                 writer_cls().write(outputs_map[name], self._secrets.resolve(ocfg), self.backend)
+            runs.written(name)
 
     # ---------- internal helpers ----------
 
@@ -519,12 +818,18 @@ class Engine:
         io_check = self.backend.check_io if isinstance(self.backend, Backend) else None
         problems = check_task(caps, cfg, self.registry, backend_name=name, io_check=io_check)
         if problems:
+            if all(SELF_OVERWRITE_MARK in p for p in problems):
+                hint = "Write each output listed above to a new path, or use Delta."
+            else:
+                hint = (
+                    "Run it on a backend that can (--backend spark), or change the "
+                    "inputs and outputs listed above."
+                )
             raise BackendCapabilityError(
                 f"This task cannot run on the {name} backend:\n"
                 + "\n".join(f"  - {p}" for p in problems),
                 context={"Backend": name},
-                hint="Run it on a backend that can (--backend spark), or change the "
-                "inputs and outputs listed above.",
+                hint=hint,
             )
 
     def _validate_io_configs(self, inputs: Dict[str, Any], outputs: Dict[str, Any]) -> None:

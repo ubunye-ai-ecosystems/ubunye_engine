@@ -230,6 +230,21 @@ ubunye run \
 | `--lineage` | | no | false | Record lineage for this run |
 | `--lineage-dir` | | no | `.ubunye/lineage` | Root directory for lineage records |
 | `--backend` | | no | platform, else `spark` | Execution backend by name, e.g. `pandas` for a run with no Java. See [Execution backends](backends.md) |
+| `--rerun` | | no | false | Replace a batch (same `-dt` and `--var`) that a finished run already appended |
+| `--resume` | | no | false | Skip tasks that already finished this batch, run the rest |
+
+!!! note "Running a batch again"
+    A batch is the task with its `-dt` and `--var` values. If the task appends and a
+    run already finished that batch, `run` refuses, because the batch would land twice.
+    Pass `--rerun` to replace it: the earlier run's files are removed once the new
+    run succeeds. That works for appends to a folder of files on a local or shared
+    disk, on pandas and on Spark. An append Ubunye cannot take back (a Delta, catalog
+    or JDBC table, or a Spark path on object storage such as `s3a://`) is appended
+    again, and the run says so; write such outputs with
+    `mode: overwrite_partitions` and `partitionBy` if they must be rerun. A task that only overwrites,
+    and a run with no `-dt` and no `--var`, are never refused. To finish a pipeline
+    that stopped half way, run it again with `--resume`: tasks that finished the
+    batch are skipped with `[SKIP]`, the rest run.
 
 !!! note
     `run` picks the profile with `-m/--mode` (it has no `--profile`), and `--all`
@@ -401,6 +416,30 @@ ubunye lineage show \
     -d pipelines -u fraud_detection -p ingestion -t claim_etl \
     --run-id <run_id>
 ```
+
+Each input also says whether its data hash is of what the run read. On Spark an
+input is hashed at the end of the task by reading its source again, so the record
+takes the source's version when the input is read and again right after the hash:
+
+```json
+"source_version": {"kind": "files", "files": 2, "bytes": 2030, "etags": false, "listing_hash": "sha256:..."},
+"source_version_at_hash": {"kind": "files", "files": 2, "bytes": 2034, "etags": false, "listing_hash": "sha256:..."},
+"source_changed": true,
+"source_note": "The source changed between the read and the hash (2 files, 2030 bytes -> 2 files, 2034 bytes). This digest is of the later state, not of what the task read."
+```
+
+A file input's version is its files (`files`, `bytes`, `latest_modified`, `etags`,
+`listing_hash`), from Spark's own file index; nothing is read. Where the file system
+gives no content tags (a local disk, HDFS), an unchanged version means names, sizes
+and times only, and the note says so. A Delta read is pinned to one version (by the
+config, or by the engine when the config names none), so its note says the digest is
+of what was read and gives the table's `latest_version` at the hash as information.
+A SQL query, JDBC, a catalog table that is not Delta, or a listing that failed or took
+longer than `UBUNYE_SOURCE_VERSION_TIMEOUT` seconds (30) has `"kind": "none"` and the
+reason. On pandas the input is in memory, so the version is recorded but not checked
+again. With `LineageRecorder(hash_inputs=False)` no version is taken.
+`lineage trace` prints the note, and `lineage compare` and `ubunye gate` do not treat
+such an input's hash as evidence. See [the run record](architecture/adr-006-run-record.md).
 
 ### `lineage list`
 

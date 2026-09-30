@@ -15,7 +15,7 @@ Usage
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence
 
 from ubunye.adapters.spark import frame_io
 from ubunye.backends.spark_backend import SPARK_CAPABILITIES
@@ -167,6 +167,13 @@ class DatabricksBackend(Backend):
     def is_spark(self) -> bool:
         return True
 
+    @property
+    def timezone(self) -> Optional[str]:
+        """The attached session's time zone, for the run record (ADR 007)."""
+        from ubunye.backends.spark_backend import _session_time_zone
+
+        return _session_time_zone(self._spark, {})
+
     def read_frame(
         self,
         file_format: str,
@@ -200,6 +207,25 @@ class DatabricksBackend(Backend):
             partition_by=partition_by,
             options=options,
         )
+
+    def frame_from_records(
+        self, records: List[Dict[str, Any]], *, schema: Optional[str] = None
+    ) -> Any:
+        return frame_io.frame_from_records(self.spark, records, schema=schema)
+
+    def iter_records(self, frame: Any) -> Iterator[Dict[str, Any]]:
+        return frame_io.iter_records(frame)
+
+    def materialise(self, frame: Any) -> Optional[Any]:
+        """Compute an output once for its checks, write and hash (ADR 009)."""
+        from ubunye.adapters.spark import materialise
+
+        return materialise.materialise(frame)
+
+    def release(self, frame: Any) -> None:
+        from ubunye.adapters.spark import materialise
+
+        materialise.release(frame)
 
     @property
     def app_name(self) -> str:

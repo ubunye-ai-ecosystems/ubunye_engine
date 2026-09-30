@@ -25,9 +25,11 @@ with final status, duration, and per-step hashes at ``task_end``.
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from ubunye.core.secrets import known_secrets, mask_text, redact_variables, scrub, secret_values
 from ubunye.lineage import evidence
 from ubunye.lineage.context import RunContext, StepRecord
 from ubunye.lineage.storage import FileSystemLineageStore, LineageStore, S3LineageStore
@@ -60,20 +62,90 @@ def _make_store(store: str, base_dir: str) -> LineageStore:
     return FileSystemLineageStore(base_dir)
 
 
-def _fingerprint_into(step: StepRecord, frame: Any) -> None:
+def _fingerprint_into(step: StepRecord, frame: Any, seen: Optional[Dict[Any, Any]] = None) -> None:
     """Every row, one pass, the same method on every engine (ADR 006).
 
     A failure is recorded as a failure: no data_hash and the reason, never the
-    schema hash standing in for the data.
+    schema hash standing in for the data. The time the hash took is recorded too
+    (``hash_seconds``), so its cost is never invisible. ``seen`` holds the
+    fingerprints already taken in this record, by frame: a frame written to two
+    outputs is hashed once, and the step says whose hash it reused
+    (``hash_reused_from``, with ``hash_seconds`` 0).
     """
     from ubunye.lineage.content_hash import fingerprint
 
-    print_ = fingerprint(frame)
+    t0 = time.perf_counter()
+    # The engine hands each pandas output over in its own port, so the key is the
+    # frame inside it (and the zone the port reads time in). Only that adapter is
+    # unwrapped: on anything else ``native`` may be a column, a fresh object whose
+    # id is reused once it is freed. The cache holds the object and checks it is
+    # the same one, so an id is never trusted on its own.
+    obj = frame
+    try:
+        from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
+
+        if isinstance(frame, PandasDataFrameAdapter):
+            obj = frame.native
+    except ImportError:  # pragma: no cover
+        pass
+    key = (type(frame), id(obj), getattr(frame, "timezone", None))
+    cached = seen.get(key) if seen is not None else None
+    if cached is not None and cached[0] is obj:
+        _, print_, owner = cached
+        step.hash_seconds = 0.0
+        step.hash_reused_from = owner
+    else:
+        print_ = fingerprint(frame)
+        step.hash_seconds = round(time.perf_counter() - t0, 6)
+        if seen is not None:
+            seen[key] = (obj, print_, f"{step.direction}:{step.name}")
     step.schema_hash = print_.schema_hash
     step.data_hash = print_.data_hash
     step.row_count = print_.row_count
     step.hash_method = print_.method
     step.hash_error = print_.error
+
+
+#: The hash_basis values (ADR 009).
+MATERIALISED = "materialised"
+RECOMPUTED = "recomputed"
+
+
+def _basis_of(frame: Any) -> str:
+    """The hash basis when the engine did not say: in memory, or computed again.
+
+    A pandas or Arrow frame is the rows themselves, so its hash is of what was
+    written. Anything else (a Spark frame, another port) is taken to have been
+    computed again for the hash, which is the honest default.
+    """
+    from ubunye.lineage.content_hash import _package
+
+    try:
+        from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
+
+        if isinstance(frame, PandasDataFrameAdapter):
+            return MATERIALISED
+    except ImportError:  # pragma: no cover
+        pass
+    return MATERIALISED if _package(frame) in ("pandas", "pyarrow") else RECOMPUTED
+
+
+def _check_source(step: StepRecord, frame: Any, io_cfg: Dict[str, Any]) -> None:
+    """Did the source move between the read and this input's hash? (F-046).
+
+    Only a recomputed input is checked: its hash read the source again. The
+    version is taken after the hash, so a change during the hash counts too.
+    """
+    from ubunye.lineage import source_version
+
+    before = step.source_version
+    if step.hash_basis == RECOMPUTED and source_version.comparable(before):
+        step.source_version_at_hash, step.source_changed = source_version.check(
+            frame, io_cfg, before
+        )
+    step.source_note = source_version.note(
+        step.hash_basis, before, step.source_version_at_hash, step.source_changed
+    )
 
 
 class LineageRecorder:
@@ -89,6 +161,15 @@ class LineageRecorder:
         Ignored since 0.7.0 and kept so existing configs still load: every row is
         hashed now (the ``rows-v1`` content hash), so there is nothing to sample.
     """
+
+    #: The recorder hashes the output frames at task end, so the engine computes
+    #: each output once and hands it the rows that were written (ADR 009).
+    reads_outputs = True
+
+    @property
+    def reads_inputs(self) -> bool:
+        """Whether inputs are hashed; if not, no source version is taken (F-046)."""
+        return self._hash_inputs
 
     def __init__(
         self,
@@ -108,6 +189,9 @@ class LineageRecorder:
         self._sample_fraction = sample_fraction
         # In-flight run contexts keyed by run_id (supports concurrent tasks)
         self._runs: Dict[str, RunContext] = {}
+        # Real values of the run's secret-looking variables, to mask wherever they
+        # were templated in (a JDBC URL, a REST query).
+        self._secret_values: Dict[str, List[str]] = {}
 
     # ------------------------------------------------------------------
     # Monitor protocol
@@ -154,13 +238,13 @@ class LineageRecorder:
             code_hash=evidence.code_hash(getattr(context, "task_dir", None)),
             environment=env,
             environment_hash=evidence.environment_hash(env),
-            variables={
-                k: v
-                for k, v in dict(getattr(context, "variables", {}) or {}).items()
-                if v is not None
-            },
+            time_zone=getattr(context, "time_zone", None),
+            # Secret-looking values (a token passed as --var) are masked here, so
+            # they reach neither the record nor OpenLineage.
+            variables=redact_variables(dict(getattr(context, "variables", {}) or {})),
         )
         self._runs[run_id] = ctx
+        self._secret_values[run_id] = secret_values(dict(getattr(context, "variables", {}) or {}))
         try:
             self._store.save(ctx)
         except Exception:
@@ -181,8 +265,26 @@ class LineageRecorder:
         timings: Optional[List[Dict[str, Any]]] = None,
         llm_calls: Optional[List[Dict[str, Any]]] = None,
         llm_budget: Optional[Dict[str, Any]] = None,
+        hash_basis: Optional[Dict[str, str]] = None,
+        source_versions: Optional[Dict[str, Any]] = None,
+        error: Optional[str] = None,
     ) -> None:
-        """Update the run record with final status, duration, and step hashes."""
+        """Update the run record with final status, duration, and step hashes.
+
+        ``hash_basis`` is the engine's word, by output name, on whether each
+        output frame is the rows that were written (``"materialised"``) or will
+        be computed again for the hash (``"recomputed"``). An output it does not
+        name, and every input, gets the basis its frame type implies.
+
+        ``source_versions`` is each input's source version when it was read
+        (:mod:`ubunye.lineage.source_version`). A recomputed input's version is
+        taken again right after its hash; if it moved, the step says the digest
+        is of a later state than the one read (F-046).
+
+        ``error`` is why a failed run failed (the exception's type and message). It
+        is kept in the record, with the values of secret-looking variables masked,
+        so ``lineage show``, OpenLineage and ``ubunye prove`` can say why (F-054).
+        """
         run_id = context.run_id
         ctx = self._runs.get(run_id)
         if ctx is None:
@@ -202,11 +304,17 @@ class LineageRecorder:
         ctx.llm_budget = dict(llm_budget or {})
 
         # --- Input StepRecords, hashed like outputs when the frames are given ---
+        # Fingerprints taken in this record, by frame: the same frame is hashed once.
+        seen: Dict[Any, Any] = {}
         ctx.inputs = []
         for name, io_cfg in inputs_cfg.items():
             step = StepRecord.from_io_cfg(name, "input", io_cfg)
+            step.source_version = (source_versions or {}).get(name)
             if self._hash_inputs and inputs and inputs.get(name) is not None:
-                _fingerprint_into(step, inputs[name])
+                _fingerprint_into(step, inputs[name], seen)
+                # An input is never held: on Spark its hash reads the source again.
+                step.hash_basis = _basis_of(inputs[name])
+                _check_source(step, inputs[name], io_cfg)
             ctx.inputs.append(step)
 
         # --- Build output StepRecords with optional DataFrame hashes ---
@@ -214,10 +322,25 @@ class LineageRecorder:
         for name, io_cfg in outputs_cfg.items():
             step = StepRecord.from_io_cfg(name, "output", io_cfg)
             if outputs and name in outputs and outputs[name] is not None:
-                _fingerprint_into(step, outputs[name])
+                _fingerprint_into(step, outputs[name], seen)
+                step.hash_basis = (hash_basis or {}).get(name) or _basis_of(outputs[name])
             step_outputs.append(step)
         ctx.outputs = step_outputs
+        values = self._secret_values.pop(run_id, [])
+        for step in ctx.inputs + ctx.outputs:
+            step.location = scrub(step.location, values)
+        if error:
+            ctx.error = mask_text(error, values + known_secrets(None, config))
 
+        if status == "success":
+            # A run whose lease was taken over may have had its appends taken back by
+            # the run that took it: it is not recorded as a success (ADR 008).
+            from ubunye.core import runs
+
+            why = runs.lost()
+            if why:
+                ctx.status = status = "interrupted"
+                ctx.error = why
         try:
             self._store.save(ctx)
         except Exception:

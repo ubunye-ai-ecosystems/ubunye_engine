@@ -45,6 +45,32 @@ class MyTask(Task):
 The logical names in `sources` and the returned dict must match the keys declared
 under `CONFIG.inputs` and `CONFIG.outputs`.
 
+### Settings for your Task: `params`
+
+Put your own settings under `transform.params` and read them from `self.config`, the
+whole config as a dict. Jinja variables work here too, so a setting can come from
+`--var` or the data timestamp.
+
+```yaml
+CONFIG:
+  transform:
+    params:
+      only_states: ["SP", "RJ"]
+      min_amount: 10
+```
+
+```python
+class MyTask(Task):
+    def transform(self, sources: dict) -> dict:
+        params = self.config["CONFIG"]["transform"]["params"]
+        orders = sources["orders"]
+        orders = orders[orders["customer_state"].isin(params["only_states"])]
+        return {"orders_out": orders}
+```
+
+`params` is the only key besides `type`; any other key under `transform` is refused
+by `ubunye validate` with the list of valid fields.
+
 ---
 
 ## Training a model

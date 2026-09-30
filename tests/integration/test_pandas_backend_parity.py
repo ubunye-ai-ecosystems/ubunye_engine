@@ -165,6 +165,17 @@ def test_failfast_stops_on_both_engines(spark, pandas_backend, tmp_path):
         pandas_backend.read_frame("csv", str(src), options=options)
 
 
+BOM_HEADER = "﻿a,b\n1,x\n2,y\n"
+BOM_QUOTED = '﻿"a",b\n1,x\n'
+BOM_MID = "a,b\n﻿1,x\n"
+RFC4180 = (
+    "id,text,score\n"
+    '1,"plain",5\n'
+    '2,"she said ""great""\nsecond line",4\n'
+    '3,"ends with a quote ""","1"\n'
+    '4,"a, comma",2\n'
+)
+
 READ_CASES = [
     ("csv", CSV, {}, None),
     ("csv", CSV, {"header": "true"}, None),
@@ -190,6 +201,21 @@ READ_CASES = [
     ("csv", BAD_ROWS, {"header": "true", "mode": "PERMISSIVE", "inferSchema": "true"}, None),
     ("csv", BAD_ROWS, {"header": "true", "mode": "DROPMALFORMED"}, None),
     ("json", BAD_JSON, {"mode": "DROPMALFORMED"}, None),
+    # A UTF-8 byte order mark: dropped at the start of a file, kept anywhere else.
+    ("csv", BOM_HEADER, {"header": "true"}, None),
+    ("csv", BOM_HEADER, {"header": "true", "multiLine": "true"}, None),
+    ("csv", BOM_QUOTED, {"header": "true"}, None),
+    ("csv", BOM_QUOTED, {}, None),
+    ("csv", BOM_MID, {"header": "true"}, None),
+    # Doubled quotes and line breaks inside quoted text (pandas, Excel): Spark's
+    # default escape splits rows wrongly, escape '"' reads them right.
+    ("csv", RFC4180, {"header": "true", "multiLine": "true", "inferSchema": "true"}, None),
+    (
+        "csv",
+        RFC4180,
+        {"header": "true", "multiLine": "true", "inferSchema": "true", "escape": '"'},
+        None,
+    ),
 ]
 
 
@@ -209,6 +235,13 @@ READ_CASES = [
         "csv-permissive-infer",
         "csv-dropmalformed",
         "json-dropmalformed",
+        "csv-bom-header",
+        "csv-bom-header-multiline",
+        "csv-bom-quoted-header",
+        "csv-bom-quoted-no-header",
+        "csv-bom-mid-file",
+        "csv-rfc4180-spark-escape",
+        "csv-rfc4180-quote-escape",
     ],
 )
 def test_reads_match_spark(spark, pandas_backend, tmp_path, fmt, text, options, schema):

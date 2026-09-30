@@ -17,11 +17,11 @@ than a stray ``AttributeError``.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Iterator, List, Optional, Sequence
 
-from ubunye.adapters import pandas_io
+from ubunye.adapters import pandas_io, pandas_records
 from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
-from ubunye.core.capabilities import PATH_IO, Capabilities
+from ubunye.core.capabilities import PARTITIONED_WRITES, PATH_IO, RECORDS, Capabilities
 from ubunye.core.errors import BackendNotFoundError
 from ubunye.core.interfaces import Backend
 from ubunye.core.write_modes import NATIVE_SAVE_MODES
@@ -47,14 +47,17 @@ class PandasBackend(Backend):
     """Execute a Ubunye task with pandas, no Spark and no JVM."""
 
     name = "pandas"
-    #: Local csv / json / parquet paths and the native save modes. No SparkSession,
-    #: no partitioned folders, no cloud paths, no lakehouse modes: a task that
-    #: needs any of those is refused before it starts.
+    #: Each appended part file is claimed in the run lease before it lands (ADR 008).
+    claims_appends = True
+    #: Local csv / json / parquet paths, Spark's partition folders, the native save
+    #: modes and overwrite_partitions (F-012), and frames from records for the
+    #: rest_api connector (F-015). No SparkSession, no cloud paths, no merge: a
+    #: task that needs any of those is refused before it starts.
     REQUIRES_PACKAGES = ("pandas", "pyarrow")
     CAPABILITIES = Capabilities(
-        features=frozenset({PATH_IO}),
+        features=frozenset({PATH_IO, RECORDS, PARTITIONED_WRITES}),
         file_formats=pandas_io.SUPPORTED_FORMATS,
-        write_modes=NATIVE_SAVE_MODES,
+        write_modes=NATIVE_SAVE_MODES | {"overwrite_partitions"},
     )
 
     def __init__(
@@ -171,3 +174,14 @@ class PandasBackend(Backend):
             options=options,
             timezone=self._timezone,
         )
+
+    def frame_from_records(
+        self, records: List[Dict[str, Any]], *, schema: Optional[str] = None
+    ) -> Any:
+        """Records typed as Spark's ``createDataFrame`` types them (F-015)."""
+        frame = pandas_records.frame_from_records(records, schema, timezone=self._timezone)
+        return PandasDataFrameAdapter(frame, timezone=self._timezone)
+
+    def iter_records(self, frame: Any) -> Iterator[Dict[str, Any]]:
+        """Each row as a dict, as Spark's ``Row.asDict(recursive=True)`` gives it."""
+        return pandas_records.iter_records(frame, timezone=self._timezone)

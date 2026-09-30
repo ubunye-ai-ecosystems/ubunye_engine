@@ -97,6 +97,85 @@ class TestTheRecord:
         first, second = _records(tmp_path)
         assert first.outputs[0].data_hash == second.outputs[0].data_hash
 
+    def test_the_hash_is_timed_in_the_record(self, tmp_path):
+        """F-014: the hash ran after the writes and its time was nowhere."""
+        ubunye.run_task(str(_task(tmp_path)), backend="pandas", lineage=True)
+        (record,) = _records(tmp_path)
+        (src,) = record.inputs
+        (out,) = record.outputs
+        assert src.hash_seconds is not None and src.hash_seconds >= 0
+        assert out.hash_seconds is not None and out.hash_seconds >= 0
+
+    def test_a_frame_written_twice_is_hashed_once(self, tmp_path, monkeypatch):
+        import pandas as pd
+
+        from ubunye.lineage import content_hash
+        from ubunye.lineage.recorder import LineageRecorder
+
+        calls = []
+        real = content_hash.fingerprint
+        monkeypatch.setattr(
+            content_hash, "fingerprint", lambda frame: calls.append(1) or real(frame)
+        )
+
+        class Ctx:
+            run_id, task_name, profile, backend, variables = "r1", "uc/pkg/copy", "DEV", "x", {}
+
+        frame = pd.DataFrame({"id": [1, 2]})
+        outs = {"a": {"format": "s3", "path": "/a"}, "b": {"format": "s3", "path": "/b"}}
+        cfg = {"CONFIG": {"outputs": outs}}
+        recorder = LineageRecorder(base_dir=str(tmp_path))
+        recorder.task_start(context=Ctx(), config=cfg)
+        recorder.task_end(
+            context=Ctx(),
+            config=cfg,
+            outputs={"a": frame, "b": frame},
+            status="success",
+            duration_sec=1,
+        )
+        (record,) = FileSystemLineageStore(str(tmp_path)).list_runs("uc/pkg/copy")
+        a, b = record.outputs
+        assert len(calls) == 1
+        assert a.data_hash == b.data_hash == real(frame).data_hash
+        # The reuse is said, not hidden: no time spent, and whose hash it is.
+        assert a.hash_reused_from is None
+        assert b.hash_reused_from == "output:a" and b.hash_seconds == 0.0
+
+    def test_two_frames_are_never_given_one_hash_through_a_reused_id(self, tmp_path):
+        """A frame whose ``native`` is a fresh object each time (a Spark DataFrame
+        with a column named native) must not be keyed by that object's id: it is
+        freed at once and the next frame's object can get the same id."""
+        from ubunye.lineage.recorder import LineageRecorder
+
+        class Frame:
+            schema = {"id": "int64"}
+
+            def __init__(self, rows):
+                self.rows = rows
+
+            @property
+            def native(self):
+                return object()  # freed at once, its id free for the next one
+
+            def collect(self):
+                return [{"id": r} for r in self.rows]
+
+        class Ctx:
+            run_id, task_name, profile, backend, variables = "r1", "uc/pkg/copy", "DEV", "x", {}
+
+        outs = {f"o{i}": {"format": "s3", "path": f"/o{i}"} for i in range(6)}
+        frames = {f"o{i}": Frame([i, i + 100]) for i in range(6)}
+        cfg = {"CONFIG": {"outputs": outs}}
+        recorder = LineageRecorder(base_dir=str(tmp_path))
+        recorder.task_start(context=Ctx(), config=cfg)
+        recorder.task_end(
+            context=Ctx(), config=cfg, outputs=frames, status="success", duration_sec=1
+        )
+        (record,) = FileSystemLineageStore(str(tmp_path)).list_runs("uc/pkg/copy")
+        hashes = [o.data_hash for o in record.outputs]
+        assert len(set(hashes)) == 6, hashes
+        assert all(o.hash_reused_from is None for o in record.outputs)
+
     def test_old_records_still_load(self):
         step = StepRecord.from_dict(
             {

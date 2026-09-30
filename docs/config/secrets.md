@@ -59,6 +59,58 @@ SecretError: Could not read secret secret://aws-sm/prod/shop-db: ClientError: Ac
   Hint: pip install 'ubunye-engine[aws]'; the login is the AWS SDK's (profile, role, env).
 ```
 
+## What is recorded
+
+A resolved secret never reaches the run record, the lineage record, an OpenLineage
+event or `ubunye plan` output: only the `secret://` reference is kept. This is
+checked by experiment E-04 (`tests/experiments/e04_secrets.py`), which puts a marker
+in every place a secret can go and searches everything a run leaves behind.
+
+`--var` is not for secrets: variables are recorded, because the record says what the
+run was given. As a safety net, a variable whose name says it is a secret (`token`,
+`db_password`, `api_key`, `client_secret` and the like) is recorded as `***`, and its
+value is masked wherever it was templated in (a JDBC URL, a REST query). Names about
+a secret rather than holding one (`max_token`, `auth_mode`, `secret_scope`) are kept.
+Pass a secret through `secret://` instead.
+
+A password written into a URL (`jdbc:postgresql://user:password@host/db`,
+`;password=...`, `?token=...`) is masked in every recorded location, as Spline learned
+to do after lineage leaked JDBC passwords.
+
+### A failed run's error
+
+A failed run's record keeps why it failed (the error's type and message), and
+OpenLineage sends it, `lineage trace` prints it and `ubunye prove` shows it. An error
+message can quote anything, so it is masked before any of them sees it, by one
+function (`ubunye.core.secrets.mask_text`, the same one the REST connector uses for
+its logs and errors). It masks:
+
+- every secret the run knows of: secret-looking `--var` values, every value a
+  `secret://` reference resolved to in this process, literal secrets in the config
+  (under a secret-looking key, an `Authorization` header, an `auth` block), and the
+  values of environment variables with secret-looking names (a config can template one
+  in with `{{ env.DB_PASSWORD }}`);
+- each of them URL-encoded, in base64 (also inside `user:password`, as Basic auth
+  codes it), and broken across a line or a space;
+- the usual shapes of a secret, known or not: `scheme://user:password@host`, a
+  secret-named parameter in a URL or a JDBC string (`?api_key=`, `&sig=`, `?key=`,
+  `;password=`), and the value of an `Authorization`, `Proxy-Authorization` or
+  `X-Api-Key` header.
+
+The error is kept to its first 4,096 characters, then `... (N more characters)`: a
+5 MB message made a 5 MB record. It is masked before it is cut, so the cut cannot
+leave half a secret showing.
+
+Limits: a value shorter than 4 characters is not masked word for word (it would
+shred the text), so a 3 character password in a message stays. An environment
+variable with a secret-looking name is masked even when it is not one (a path in
+`PASSWORD_STORE_DIR`). The Python API still raises the original exception to your
+code: only what is recorded, sent or printed is masked.
+
+The config hash is taken over the config as rendered, so a templated secret is part
+of it. The hash cannot be reversed for a long token, but a short password could be
+guessed against it: another reason to use `secret://`, which is hashed as the reference.
+
 ## Writing a provider
 
 A provider is a class with `get(ref) -> str`, registered under the

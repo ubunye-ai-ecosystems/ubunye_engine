@@ -49,7 +49,15 @@ def test_the_store_keeps_answers_but_never_prompts(provider, tmp_path):
     (line,) = [json.loads(x) for x in text.splitlines()]
     assert line["key"].startswith("sha256:")
     assert line["response"]["text"] == "echo: a secret prompt"
-    assert set(line) == {"key", "backend", "model", "recorded_at", "response"}
+    assert set(line) == {
+        "key",
+        "occurrence",
+        "session",
+        "backend",
+        "model",
+        "recorded_at",
+        "response",
+    }
 
 
 def test_a_replay_miss_fails_closed_and_names_the_key(provider, tmp_path):
@@ -165,3 +173,97 @@ def test_the_store_is_found_by_its_spelling_not_by_asking_the_filesystem(tmp_pat
     task.mkdir(parents=True)
     assert replay.store_for(None, str(task)) is first
     assert replay.store_for(None, str(task) + "/") is first
+
+
+# --- a repeated request: replay is the recorded run, call for call -----------------
+
+
+def _says(provider, *texts):
+    """Queue answers, as a model that answers the same prompt differently each time."""
+    for text in texts:
+        provider.answer(
+            {
+                "type": "message",
+                "model": "c",
+                "content": [{"type": "text", "text": text}],
+                "stop_reason": "end_turn",
+                "usage": {"input_tokens": 3, "output_tokens": 1},
+            }
+        )
+
+
+def test_repeated_prompts_replay_answer_for_answer(provider, tmp_path):
+    # Found on real data: two identical reviews, a model that labelled them
+    # differently, and a replay that gave both the same label.
+    store = tmp_path / "replay.jsonl"
+    prompts = ["same", "same", "other", "same"]
+    _says(provider, "A", "B", "C", "D")
+    with llm.recording():
+        recorded = [r.text for r in _port(provider, store, "record").complete_many(prompts)]
+    assert len(set(recorded)) == 4  # four different answers, in some order
+    with llm.recording():
+        replayed = [r.text for r in _port(provider, store, "replay").complete_many(prompts)]
+    assert replayed == recorded
+    assert len(provider.requests) == 4
+
+
+def test_one_by_one_calls_replay_in_order_too(provider, tmp_path):
+    store = tmp_path / "replay.jsonl"
+    _says(provider, "first", "second")
+    with llm.recording():
+        port = _port(provider, store, "record")
+        recorded = [port.complete("x").text, port.complete("x").text]
+    with llm.recording():
+        port = _port(provider, store, "replay")
+        assert [port.complete("x").text, port.complete("x").text] == recorded == ["first", "second"]
+
+
+def test_more_identical_calls_than_recorded_fails_closed(provider, tmp_path):
+    store = tmp_path / "replay.jsonl"
+    with llm.recording():
+        _port(provider, store, "record").complete("x")
+    with llm.recording():
+        port = _port(provider, store, "replay")
+        port.complete("x")
+        with pytest.raises(LLMError, match="2 times; the recording holds 1"):
+            port.complete("x")
+    assert len(provider.requests) == 1
+
+
+def test_recording_again_replaces_the_earlier_answers(provider, tmp_path):
+    store = tmp_path / "replay.jsonl"
+    _says(provider, "old-1", "old-2", "new-1")
+    with llm.recording():
+        _port(provider, store, "record").complete_many(["x", "x"], max_concurrency=1)
+    with llm.recording():
+        _port(provider, store, "record").complete("x")
+    llm.replay.forget()  # read the file afresh, as another process would
+    with llm.recording():
+        port = _port(provider, store, "replay")
+        assert port.complete("x").text == "new-1"
+        with pytest.raises(LLMError, match="holds 1 answer"):
+            port.complete("x")
+
+
+def test_a_file_recorded_before_occurrences_still_replays(provider, tmp_path):
+    store = tmp_path / "replay.jsonl"
+    with llm.recording():
+        _port(provider, store, "record").complete("x")
+    # Rewrite the line as 0.7.1 wrote it: no occurrence, no session.
+    (line,) = [json.loads(x) for x in store.read_text(encoding="utf-8").splitlines()]
+    del line["occurrence"], line["session"]
+    store.write_text(json.dumps(line) + "\n", encoding="utf-8")
+    llm.replay.forget()
+    with llm.recording():
+        port = _port(provider, store, "replay")
+        assert [port.complete("x").text for _ in range(3)] == ["echo: x"] * 3
+
+
+def test_calls_record_their_occurrence(provider, tmp_path):
+    with llm.recording() as calls:
+        _port(provider, tmp_path / "r.jsonl", "record").complete_many(["x", "y", "x"])
+    # Calls are logged as they finish, so compare which occurrences each prompt got.
+    by_key = {}
+    for c in calls:
+        by_key.setdefault(c["request_key"], set()).add(c["occurrence"])
+    assert sorted(by_key.values(), key=len) == [{0}, {0, 1}]

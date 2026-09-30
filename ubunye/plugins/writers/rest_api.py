@@ -4,7 +4,9 @@ Converts DataFrame rows to JSON payloads and POSTs them to a REST endpoint
 in configurable batch sizes, with retry and exponential backoff.
 
 Authentication, headers, and rate limiting follow the same config shape as
-the RestApiReader (see ubunye/plugins/readers/rest_api.py).
+the RestApiReader, and use the same code (:mod:`ubunye.plugins.rest_http`).
+The rows come from the backend's ``iter_records``, so the payloads are the same
+on Spark and on pandas (F-015).
 
 Example config (config.yaml):
   outputs:
@@ -28,64 +30,26 @@ Success and failure counts are logged at INFO level.
 from __future__ import annotations
 
 import logging
-import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:  # only for type-checkers; requests is an optional dep
     import requests
 
 from ubunye.core import write_modes
+from ubunye.core.capabilities import RECORDS
 from ubunye.core.errors import SinkWriteError
 from ubunye.core.interfaces import Writer
+from ubunye.plugins import rest_http
 
 log = logging.getLogger(__name__)
 
 _DEFAULT_RETRY_ON = [429, 500, 503]
-_DEFAULT_MAX_RETRIES = 3
 _DEFAULT_BATCH_SIZE = 100
-_DEFAULT_BACKOFF_BASE = 1.0  # seconds; doubles each attempt
 
 
 def _build_session(cfg: Dict[str, Any]) -> requests.Session:
-    """Build a requests.Session with auth and headers pre-configured.
-
-    Mirrors the reader's session builder — kept self-contained so each plugin
-    file is independent (matching the existing plugin style in this codebase).
-
-    Supported auth types (cfg['auth']['type']):
-      - bearer         — Authorization: Bearer <token>
-      - api_key_header — custom header name + key
-      - api_key_query  — key injected into query params per-request (not here)
-      - basic          — HTTPBasicAuth(username, password)
-    """
-    import requests
-    from requests.auth import HTTPBasicAuth
-
-    session = requests.Session()
-
-    for header, value in (cfg.get("headers") or {}).items():
-        session.headers[header] = str(value)
-
-    auth_cfg = cfg.get("auth") or {}
-    auth_type = auth_cfg.get("type", "").lower()
-
-    if auth_type == "bearer":
-        session.headers["Authorization"] = f"Bearer {auth_cfg.get('token', '')}"
-
-    elif auth_type == "api_key_header":
-        header_name = auth_cfg.get("header", "X-Api-Key")
-        session.headers[header_name] = str(auth_cfg.get("key", ""))
-
-    elif auth_type == "api_key_query":
-        pass  # injected per-request in _post_batch
-
-    elif auth_type == "basic":
-        session.auth = HTTPBasicAuth(
-            auth_cfg.get("username", ""),
-            auth_cfg.get("password", ""),
-        )
-
-    return session
+    """A session with headers and auth set (see :func:`rest_http.build_session`)."""
+    return rest_http.build_session(cfg, SinkWriteError)
 
 
 def _post_batch(
@@ -94,59 +58,29 @@ def _post_batch(
     payload: Dict[str, Any],
     rate_cfg: Dict[str, Any],
     auth_cfg: Dict[str, Any],
+    secrets: Optional[List[str]] = None,
+    body: Optional[bytes] = None,
 ) -> None:
-    """POST a single batch payload with retry and rate limiting.
+    """POST one batch with rate limiting and retries.
 
-    Parameters
-    ----------
-    session:   pre-configured requests.Session
-    url:       target URL
-    payload:   JSON-serialisable dict to POST
-    rate_cfg:  dict with optional keys requests_per_second, retry_on, max_retries
-    auth_cfg:  dict; used to inject api_key_query param if needed
-
-    Raises
-    ------
-    requests.HTTPError  on non-retryable errors or after all retries exhausted.
+    ``body`` is the batch already encoded (:func:`rest_http.json_body`); without
+    it ``payload`` is encoded here. Raises ``requests.HTTPError`` on an error
+    status, once the retries run out, with ``secrets`` masked in its message
+    (F-050).
     """
-    rps: float = float(rate_cfg.get("requests_per_second", 0) or 0)
-    retry_on: List[int] = list(rate_cfg.get("retry_on") or _DEFAULT_RETRY_ON)
-    max_retries: int = int(rate_cfg.get("max_retries") or _DEFAULT_MAX_RETRIES)
-
-    params: Optional[Dict[str, Any]] = None
-    if auth_cfg.get("type") == "api_key_query":
-        params = {auth_cfg.get("param", "api_key"): auth_cfg.get("key", "")}
-
-    for attempt in range(max_retries + 1):
-        if rps > 0:
-            time.sleep(1.0 / rps)
-
-        resp = session.post(url, json=payload, params=params)
-
-        if resp.status_code in retry_on:
-            if attempt < max_retries:
-                wait = _DEFAULT_BACKOFF_BASE * (2**attempt)
-                log.warning(
-                    "HTTP %s posting to %s — retrying in %.1fs (attempt %d/%d)",
-                    resp.status_code,
-                    url,
-                    wait,
-                    attempt + 1,
-                    max_retries,
-                )
-                time.sleep(wait)
-                continue
-            resp.raise_for_status()
-
-        resp.raise_for_status()
-        return
-
-    raise RuntimeError("Exhausted retries without returning or raising")  # pragma: no cover
-
-
-def _row_to_dict(row) -> Dict[str, Any]:
-    """Convert a PySpark Row to a plain dict."""
-    return row.asDict(recursive=True)
+    if body is None:
+        body = rest_http.json_body(payload.get("records", []))
+    rest_http.send(
+        session,
+        "POST",
+        url,
+        params=None,
+        body=body,
+        rate_cfg=rate_cfg,
+        auth_cfg=auth_cfg,
+        retry_on_default=_DEFAULT_RETRY_ON,
+        secrets=secrets,
+    )
 
 
 def _check_mode(cfg: Dict[str, Any]) -> None:
@@ -175,39 +109,39 @@ def _check_mode(cfg: Dict[str, Any]) -> None:
 
 
 class RestApiWriter(Writer):
-    """Write a Spark DataFrame to a REST API endpoint in JSON batches.
+    """Write a frame to a REST API endpoint in JSON batches.
 
-    Iterates over DataFrame rows, groups them into batches of ``batch_size``,
-    and POSTs each batch as ``{"records": [...]}``. Tracks and logs success/
-    failure counts per batch.
+    Takes the rows from the backend (``iter_records``), groups them into batches
+    of ``batch_size``, and POSTs each batch as ``{"records": [...]}``. Tracks and
+    logs success/failure counts per batch.
     """
 
     # The settings this connector reads (typos in any other key fail validation).
     CONFIG_KEYS = frozenset({"url", "method", "headers", "auth", "batch_size", "rate_limit"})
+
+    # Needs a backend that gives rows back as records; checked before a run (ADR 002).
+    REQUIRES = frozenset({RECORDS})
 
     SUPPORTS_MERGE = False
     MERGE_FILE_FORMATS = frozenset()
 
     @classmethod
     def validate_config(cls, cfg):
-        return [] if cfg.get("url") else ["format 'rest_api' requires 'url'"]
+        problems = [] if cfg.get("url") else ["format 'rest_api' requires 'url'"]
+        return problems + rest_http.config_problems(cfg)
 
-    def write(self, df: Any, cfg: Dict[str, Any], _backend) -> None:
-        """POST DataFrame rows to a REST endpoint in batches.
+    def write(self, df: Any, cfg: Dict[str, Any], backend) -> None:
+        """POST the frame's rows to a REST endpoint in batches.
 
         Parameters
         ----------
-        df : pyspark.sql.DataFrame
-            Source DataFrame.
+        df : frame
+            The output, as the engine hands it to writers.
         cfg : dict
             Writer configuration. Required key: ``url``.
             See module docstring for full reference.
-        backend : SparkBackend
-            Ubunye Spark backend (passed for interface consistency; not used directly).
-
-        Raises
-        ------
-        ValueError  if ``url`` is missing from cfg.
+        backend : Backend
+            Any backend with the ``records`` capability (spark, databricks, pandas).
         """
         if not cfg.get("url"):
             raise SinkWriteError(
@@ -217,6 +151,8 @@ class RestApiWriter(Writer):
             )
 
         _check_mode(cfg)
+        rest_http.check_backend(backend, SinkWriteError)
+        cfg = rest_http.normalized(cfg, SinkWriteError)
 
         url: str = cfg["url"]
         batch_size: int = int(cfg.get("batch_size") or _DEFAULT_BATCH_SIZE)
@@ -227,37 +163,41 @@ class RestApiWriter(Writer):
         success_count = 0
         failure_count = 0
         batch: List[Dict[str, Any]] = []
+        self._secrets = rest_http.secrets_of(cfg)
+        where = rest_http.redact(url, self._secrets)
 
-        try:
-            for row in df.toLocalIterator():
-                batch.append(_row_to_dict(row))
+        # No secret in any log line while the requests run (urllib3 logs URLs).
+        with rest_http.masked(self._secrets, __name__):
+            try:
+                for record in rest_http.records_of(df, backend):
+                    batch.append(record)
 
-                if len(batch) >= batch_size:
+                    if len(batch) >= batch_size:
+                        success_count, failure_count = self._flush_batch(
+                            session, url, batch, rate_cfg, auth_cfg, success_count, failure_count
+                        )
+                        batch = []
+
+                # Flush remaining rows
+                if batch:
                     success_count, failure_count = self._flush_batch(
                         session, url, batch, rate_cfg, auth_cfg, success_count, failure_count
                     )
-                    batch = []
 
-            # Flush remaining rows
-            if batch:
-                success_count, failure_count = self._flush_batch(
-                    session, url, batch, rate_cfg, auth_cfg, success_count, failure_count
-                )
-
-        finally:
-            session.close()
+            finally:
+                session.close()
 
         log.info(
             "RestApiWriter: posted to %s — %d batches succeeded, %d failed",
-            url,
+            where,
             success_count,
             failure_count,
         )
 
         if failure_count > 0:
             raise SinkWriteError(
-                f"RestApiWriter: {failure_count} batch(es) failed posting to {url}.",
-                context={"Format": "rest_api", "URL": url, "Failed batches": failure_count},
+                f"RestApiWriter: {failure_count} batch(es) failed posting to {where}.",
+                context={"Format": "rest_api", "URL": where, "Failed batches": failure_count},
                 hint="Check logs for per-batch HTTP errors.",
             )
 
@@ -273,13 +213,32 @@ class RestApiWriter(Writer):
     ):
         """POST a single batch and update counters.
 
-        Returns updated (success_count, failure_count).
+        The whole batch is encoded first, so a row that cannot be sent stops the
+        write before any of this batch is posted (F-051). Returns updated
+        (success_count, failure_count).
         """
         import requests as _requests
 
         payload = {"records": batch}
         try:
-            _post_batch(session, url, payload, rate_cfg, auth_cfg)
+            body = rest_http.json_body(batch)
+        except ValueError as exc:
+            raise SinkWriteError(
+                f"RestApiWriter: a row cannot be sent as JSON ({exc}). Nothing of this "
+                f"batch was posted; {success_count} earlier batch(es) were.",
+                context={"Format": "rest_api", "Posted batches": success_count},
+                hint="Cast the column to a string, number or date in the transform.",
+            ) from None
+        try:
+            _post_batch(
+                session,
+                url,
+                payload,
+                rate_cfg,
+                auth_cfg,
+                secrets=getattr(self, "_secrets", None),
+                body=body,
+            )
             success_count += 1
             log.debug("RestApiWriter: batch of %d rows posted successfully", len(batch))
         except _requests.HTTPError as exc:
