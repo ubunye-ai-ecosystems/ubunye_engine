@@ -763,6 +763,17 @@ def _read_parquet(files: List[str], schema: Any, counts: Optional[List[int]] = N
     tables = []
     for f in files:
         handle = pq.ParquetFile(f)
+        if schema is not None:
+            # Spark (caseSensitive false) finds each schema field in the file ignoring
+            # case, and stops when two file columns match: "Found duplicate field(s)".
+            present = handle.schema_arrow.names
+            for field in schema:
+                matches = [n for n in present if n.lower() == field.name.lower()]
+                if len(matches) > 1:
+                    raise ValueError(
+                        f"Found duplicate field(s) {field.name!r}: {matches} in "
+                        "case-insensitive mode (as Spark reads it)"
+                    )
         # Spark's legacy INT96 timestamps hold UTC instants; say so.
         legacy = {c.name for c in handle.schema if c.physical_type == "INT96"}
         table = handle.read()
@@ -903,7 +914,7 @@ def read_frame(
             context={"Backend": "pandas", "path": local, "file_format": fmt},
             hint="Spark refuses such data by default (spark.sql.caseSensitive is false: "
             "'Found duplicate column(s) in the data schema'), so the pandas backend does "
-            "too. Rename the columns at the source, or read with a schema.",
+            "too. Rename the columns at the source.",
         )
     frame = PandasDataFrameAdapter(to_pandas(table))
     # The files read, for the run record's source version (F-046); never read again.
@@ -968,12 +979,9 @@ def to_arrow(df: Any, timezone: str) -> Any:
 
     frame = df.native if isinstance(df, PandasDataFrameAdapter) else df
     if isinstance(frame, pd.DataFrame):
-        dupes = case_duplicates([str(c) for c in frame.columns])
-        if dupes:
-            raise _refuse(
-                f"The frame has duplicate column names {dupes} (names that differ only "
-                "by case count as the same, as Spark counts them)."
-            )
+        if frame.columns.duplicated().any():
+            dupes = sorted({str(c) for c in frame.columns[frame.columns.duplicated()]})
+            raise _refuse(f"The frame has duplicate column names {dupes}.")
         if any(name is not None for name in frame.index.names):
             frame = frame.reset_index()
         if len(frame.columns) == 0:
@@ -982,9 +990,6 @@ def to_arrow(df: Any, timezone: str) -> Any:
             return no_columns(len(frame))
         table = pa.Table.from_pandas(frame, preserve_index=False)
     elif isinstance(frame, pa.Table):
-        dupes = case_duplicates(frame.column_names)
-        if dupes:
-            raise _refuse(f"The table has duplicate column names {dupes}.")
         table = frame
     else:
         raise _refuse(
@@ -1537,6 +1542,14 @@ def execute_write(
 
     local = _local_path(path, error=SinkWriteError)
     arrow = to_arrow(df, timezone)
+    dupes = case_duplicates(arrow.column_names)
+    if dupes:
+        raise _refuse(
+            f"The frame has columns whose names differ only by case: {dupes}. Spark "
+            "refuses to write it ('Found duplicate column(s) when inserting into', "
+            "spark.sql.caseSensitive false), so the pandas backend does too.",
+            path=path,
+        )
     # Partition columns and values are checked before anything is written, as
     # Spark checks them before its job starts (F-012).
     cut = pandas_partitions.split(arrow, partition_by, timezone) if partition_by else None

@@ -364,7 +364,7 @@ class TestNamesThatDifferOnlyByCase:
         from ubunye.core.errors import SinkWriteError
         from ubunye.core.write_modes import ResolvedWriteMode
 
-        with pytest.raises(SinkWriteError, match="duplicate column names"):
+        with pytest.raises(SinkWriteError, match="differ only by case"):
             PandasBackend().execute_write(
                 pd.DataFrame({"Col": [1], "col": [2]}),
                 ResolvedWriteMode(mode="overwrite", save_mode="overwrite"),
@@ -373,6 +373,27 @@ class TestNamesThatDifferOnlyByCase:
                 path=str(tmp_path / "out"),
             )
         assert not (tmp_path / "out").exists()
+
+    def test_a_parquet_read_with_a_schema_is_refused_too(self, tmp_path):
+        # Spark's parquet reader: "Found duplicate field(s)" (skeptic review).
+        import pyarrow.parquet as pq
+
+        from ubunye.core.errors import SourceReadError
+
+        pq.write_table(pa.table({"id": [1], "ID": [10], "k": [5]}), tmp_path / "c.parquet")
+        with pytest.raises(SourceReadError, match="duplicate field"):
+            PandasBackend().read_frame("parquet", str(tmp_path / "c.parquet"), schema="id INT")
+        frame = PandasBackend().read_frame("parquet", str(tmp_path / "c.parquet"), schema="k INT")
+        assert frame.native["k"].tolist() == [5]  # a field that is not doubled reads
+
+    def test_the_run_record_hash_and_rest_frames_do_not_refuse(self):
+        # Only a file read or write refuses; the hash of a frame never does.
+        from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
+        from ubunye.lineage.content_hash import fingerprint
+
+        fp = fingerprint(PandasDataFrameAdapter(pd.DataFrame({"Col": [1], "col": [2]})))
+        assert fp.is_complete and fp.row_count == 1
+        assert pandas_io.to_arrow(pd.DataFrame({"Col": [1], "col": [2]}), "UTC").num_columns == 2
 
     def test_other_awkward_names_are_fine(self, tmp_path):
         import pyarrow.parquet as pq

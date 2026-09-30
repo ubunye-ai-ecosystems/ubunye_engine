@@ -36,3 +36,14 @@ Unit: `TestNamesThatDifferOnlyByCase` (3 failed before, 4 pass after). Integrati
 (CI): `test_names_that_differ_only_by_case_are_refused` (parquet and JSON, both engines
 must refuse), `test_a_frame_with_names_that_differ_only_by_case_is_not_written`, and
 `test_awkward_column_names_read_the_same` (types, values and rows-v1 digest).
+
+## Skeptic review (2026-09-30)
+Two gaps, fixed in one commit: the check was in `to_arrow`, which the REST sink and
+the run record's `fingerprint()` also call, so a frame with `Col` and `col` could not
+be sent or hashed (Spark hashes and sends it); the check now runs in the file write.
+And the refusal's hint said "or read with a schema", but a parquet read with
+`schema: "id INT"` over a file holding `id` and `ID` silently read one of them, where
+Spark's parquet reader stops ("Found duplicate field(s) ... in case-insensitive
+mode"). The pandas reader now stops too, only for a schema field that matches two
+columns; other fields read. JSON records whose names differ only by case across
+records are no longer refused: Spark merges them (F-064 follow-up).

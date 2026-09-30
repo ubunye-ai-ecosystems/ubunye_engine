@@ -408,6 +408,17 @@ def test_names_that_differ_only_by_case_are_refused(spark, pandas_backend, tmp_p
     assert _refused(lambda: pandas_backend.read_frame(fmt, path))
 
 
+def test_a_parquet_schema_read_of_names_differing_by_case(spark, pandas_backend, tmp_path):
+    """F-069 (skeptic): a schema field matching two file columns is refused on both."""
+    import pyarrow.parquet as pq
+
+    path = str(tmp_path / "case.parquet")
+    pq.write_table(pa.table({"id": [1], "ID": [10], "k": [5]}), path)
+    assert _refused(lambda: spark.read.schema("id INT").parquet(path).collect())
+    assert _refused(lambda: pandas_backend.read_frame("parquet", path, schema="id INT"))
+    assert_same(*_read_both(spark, pandas_backend, "parquet", path, {}, "k BIGINT"))
+
+
 def test_a_frame_with_names_that_differ_only_by_case_is_not_written(
     spark, pandas_backend, tmp_path
 ):

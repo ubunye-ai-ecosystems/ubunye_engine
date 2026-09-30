@@ -107,6 +107,13 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **Names that differ only by case: refused only where Spark refuses (F-069
+  follow-up, skeptic review).** The refusal sat in the frame-to-Arrow step, so the REST
+  sink and the run record's hash refused such a frame too (the hash then recorded no
+  digest). It now applies to file reads and writes only. And a parquet read with a
+  `schema` naming a field that matches two file columns (`id` and `ID`) read one of
+  them silently; Spark stops ("Found duplicate field(s)"), and so does the pandas
+  backend now.
 - **JSON records whose names differ only by case merge as on Spark (F-064 follow-up,
   skeptic review).** `{"Id":1}` then `{"id":2}` gave two columns on pandas, which the
   engine then refused (F-069). Spark (with `spark.sql.caseSensitive` false) merges two
