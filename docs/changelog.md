@@ -107,6 +107,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A time with a fraction of a second in a daylight saving gap before 1970 moves
+  as Java moves it (F-063 follow-up, skeptic review).** pyarrow judged such a time by
+  the next whole second, so `1950-04-30 02:59:59.5` in New York (in the gap) was read
+  an hour early. The whole second now decides and the fraction is added back. Against
+  Java's `ZonedDateTime.of` at every transition from 1950 to 2037 in 21 zones, the
+  only differences left are where pyarrow's time zone data and Java's differ.
 - **With `nullValue` set, an empty CSV field is still null (F-087, skeptic review).**
   univocity hands Spark the `nullValue` text for an empty field, and Spark reads that as
   null, so `1,,NA,2` with `nullValue: "NA"` is an `int` column `1, null, null, 2`. The

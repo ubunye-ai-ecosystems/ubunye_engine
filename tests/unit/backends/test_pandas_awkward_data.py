@@ -506,6 +506,24 @@ class TestDaylightSavingGapsAndFolds:
         written = pq.read_table(out).column("t").to_pylist()
         assert [str(v) for v in written] == DST_UTC[:2]
 
+    def test_a_fraction_of_a_second_before_1970(self):
+        # Java: 02:59:59.5 on 1950-04-30 is in New York's gap, so it moves an hour
+        # later; pyarrow looked at the next whole second (skeptic review).
+        import datetime as dt
+
+        col = pa.array(
+            [
+                dt.datetime(1950, 4, 30, 2, 59, 59, 500000),
+                dt.datetime(1950, 9, 24, 1, 59, 59, 500000),
+            ],
+            pa.timestamp("us"),
+        )
+        out = pandas_io.assume_zone(col, NY).cast(pa.timestamp("us", tz="UTC")).to_pylist()
+        assert [str(v) for v in out] == [
+            "1950-04-30 07:59:59.500000+00:00",
+            "1950-09-24 05:59:59.500000+00:00",
+        ]
+
     def test_times_outside_daylight_saving_are_unchanged(self):
         import datetime as dt
 

@@ -41,3 +41,13 @@ change; inferred and explicit schema) and `test_json_daylight_saving_with_a_sche
 A pyarrow trap found on the way: `local_timestamp` of `06:59:59.999999999Z` in
 nanoseconds gives the offset after the change; the fix reads the offset a whole
 minute before it.
+
+## Skeptic review (Java 21, 2026-09-30)
+The skeptic compared `assume_zone` with Java's `ZonedDateTime.of` at every transition
+from 1950 to 2037 in 21 zones (24,016 points). Before 1970, a time in the last second
+of a gap or a fold with a fraction of a second (`1950-04-30 02:59:59.5`) got the wrong
+offset: pyarrow finds the offset from the next whole second for times before the
+epoch. Fixed in its own commit: the whole second decides and the fraction is added.
+After it, the only differences left (filtering transitions where pyarrow's time zone
+data and Java's disagree a minute either side) are in Asia/Gaza's 2022 transitions,
+which look like a data difference too; not chased further.

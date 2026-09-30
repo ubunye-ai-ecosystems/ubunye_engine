@@ -229,6 +229,13 @@ def assume_zone(col: Any, timezone: str) -> Any:
     import pyarrow as pa
     import pyarrow.compute as pc
 
+    if col.type.unit != "s":
+        # pyarrow finds the offset of a time before 1970 with a fraction of a second
+        # from the next whole second, so 02:59:59.5 in a gap's last second was not in
+        # the gap (skeptic review). The whole seconds decide; the fraction is added.
+        whole = pc.floor_temporal(col, unit="second")
+        if not pc.all(pc.fill_null(pc.equal(col, whole), True)).as_py():
+            return pc.add(assume_zone(whole, timezone), pc.subtract(col, whole))
     try:
         return pc.assume_timezone(col, timezone=timezone)
     except pa.ArrowInvalid:
