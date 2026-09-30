@@ -64,6 +64,27 @@ def check_backend(backend: Any, error: Type[UbunyeError]) -> None:
         )
 
 
+def frame_of(backend: Any, records: List[Dict[str, Any]], schema: Optional[str]) -> Any:
+    """The backend's frame from records; the Spark way for a backend that predates them.
+
+    A plugin backend with a SparkSession (``backend.spark``) that does not
+    implement ``frame_from_records`` gets ``createDataFrame``, as the connector
+    did before F-015.
+    """
+    try:
+        return backend.frame_from_records(records, schema=schema)
+    except NotImplementedError:
+        try:
+            spark = getattr(backend, "spark", None)
+        except Exception:  # noqa: BLE001 (a session property that needs start())
+            spark = None
+        if spark is None:
+            raise
+    from ubunye.adapters.spark import frame_io
+
+    return frame_io.frame_from_records(spark, records, schema=schema)
+
+
 def records_of(frame: Any, backend: Any) -> Iterator[Dict[str, Any]]:
     """The frame's rows as dicts: the backend's ``iter_records``, else Spark's way.
 

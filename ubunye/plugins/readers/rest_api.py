@@ -407,7 +407,7 @@ class RestApiReader(Reader):
             all_records = _whole_numbers_as_decimals(all_records, schema_cfg)
 
         try:
-            return backend.frame_from_records(all_records, schema=schema)
+            return rest_http.frame_of(backend, all_records, schema)
         except (TypeError, ValueError) as exc:
             # Spark's own type errors (PySparkTypeError is a TypeError,
             # PySparkValueError a ValueError) and the pandas backend's port of them.

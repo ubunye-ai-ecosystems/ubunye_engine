@@ -114,7 +114,7 @@ fixed in its own commit on this branch.
    argument. After the fix the plan refused it ("needs records"), a backend that
    declares nothing hit `NotImplementedError`, and `None` hit `AttributeError`
    (`third_party_backend.py`). Now `spark` implies `records` (`capabilities.provided`),
-   the `Backend` base does both methods the Spark way when `self.spark` exists, and
+   the connector falls back to the Spark route when `backend.spark` exists (in `rest_http`, since the core imports no engine), and
    the writer falls back to `toLocalIterator`. After: plan problems `[]`, writer ok
    with both. Tests: `tests/unit/connectors/test_rest_api_third_party_backends.py`
    (5 fail before, pass after).

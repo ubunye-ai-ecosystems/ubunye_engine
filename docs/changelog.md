@@ -122,7 +122,7 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 - **A plugin Spark backend keeps running the REST connector** (F-015 review). The
   F-015 fix made rest_api require the new `records` feature, so a third party
   backend that declared `spark` (as on 0.7) was refused, and `RestApiWriter().write`
-  with no backend (`None`) crashed. Now `spark` implies `records`, the `Backend` base
+  with no backend (`None`) crashed. Now `spark` implies `records`, the connector
   builds and reads records the Spark way when it has a SparkSession, and the writer
   falls back to the frame's `toLocalIterator`, as before.
 - **The pandas backend writes a map column to JSON as Spark does** (F-015 review): as
