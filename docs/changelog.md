@@ -15,6 +15,13 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Changed
 
+- **The run record's hash treats a map as unordered, and writes its null values
+  (ADR 006).** Every map's entries are sorted by key before the row's line is
+  hashed, on Spark (in the expression, only for columns that hold a map) and on
+  pandas, recursively. A null map value is written as `null`, as Spark's `to_json`
+  writes it; the pandas side left it out, so a map column with a null value hashed
+  differently on the two engines. **Behaviour change:** digests of tables with map
+  columns change. Tables without maps keep their digests.
 - **A Spark run record's hash takes about 45% less time** (F-041). The per row SHA-256
   lanes are summed as 32 bit halves in `long` instead of as decimals; the digest is
   the same. A table past about 2.1 billion rows falls back to the decimal sums.

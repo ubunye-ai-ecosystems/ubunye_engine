@@ -100,6 +100,47 @@ def test_spark_and_pandas_agree(spark, written):
     assert spark_fp.data_hash == pandas_fp.data_hash
 
 
+def test_maps_hash_the_same_whatever_their_entry_order(spark):
+    """Maps are unordered: sorted by key before hashing, null values kept (ADR 006)."""
+    from pyspark.sql import types as T
+
+    inner = T.MapType(T.StringType(), T.LongType())
+    spark_schema = T.StructType(
+        [
+            T.StructField("id", T.LongType()),
+            T.StructField("m", T.MapType(T.StringType(), T.StringType())),
+            T.StructField("mm", T.MapType(T.StringType(), inner)),
+            T.StructField("lm", T.ArrayType(inner)),
+            T.StructField("st", T.StructType([T.StructField("x", inner)])),
+        ]
+    )
+    rows = [
+        (
+            1,
+            {"zip": "0152", "city": None, "area": "5"},
+            {"b": {"y": 2, "x": None}, "a": {}},
+            [{"q": 1, "p": None}, None],
+            ({"k": 1, "j": 2},),
+        ),
+        (2, {}, None, [], None),
+    ]
+    df = spark.createDataFrame(rows, spark_schema)
+
+    s, i = pa.string(), pa.map_(pa.string(), pa.int64())
+    table = pa.table(
+        {
+            "id": pa.array([1, 2], pa.int64()),
+            "m": pa.array([[("area", "5"), ("city", None), ("zip", "0152")], []], pa.map_(s, s)),
+            "mm": pa.array([[("a", []), ("b", [("x", None), ("y", 2)])], None], pa.map_(s, i)),
+            "lm": pa.array([[[("p", None), ("q", 1)], None], []], pa.list_(i)),
+            "st": pa.array([{"x": [("j", 2), ("k", 1)]}, None], pa.struct([("x", i)])),
+        }
+    )
+    spark_fp, pandas_fp = fingerprint_spark(df), fingerprint_arrow(table)
+    assert spark_fp.schema_hash == pandas_fp.schema_hash
+    assert spark_fp.data_hash == pandas_fp.data_hash
+
+
 def test_the_decimal_fallback_gives_the_same_digest(spark, written, monkeypatch):
     # Past about 2.1 billion rows, ANSI Spark raises on the long half lane sums
     # (F-041) and the hash is taken with decimal sums instead.

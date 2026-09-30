@@ -74,3 +74,18 @@ Evidence:
   the same `rows-v1` schema and data hash; the refused record sets are refused on
   both; the writer posts byte-identical payloads. Not run on the dev box (no local
   Spark by rule); CI decides.
+
+## Review fixes (skeptic, on d668f8b)
+
+The skeptic proved six bugs in the fix and older gaps in the connector. Each is
+fixed in its own commit on this branch.
+
+1. **The hash of a map column differed on the two engines.** The pandas side left
+   null map values out (Spark's `to_json` writes them) and hashed a map in its
+   entry order, which no two engines agree on. Now every map is sorted by key
+   before hashing, on both sides, recursively, and null values are written (ADR 006
+   clarified). Proof: `runtime_attacks.py` case D gave two different data hashes
+   for `{"m":{"a":null,"b":"x"}}`; the pandas line was `{"m":{"b":"x"}}`. Tests:
+   `TestMaps` in `tests/unit/lineage/test_content_hash.py` (5 fail before, pass
+   after); `test_maps_hash_the_same_whatever_their_entry_order` in the integration
+   tier (CI).

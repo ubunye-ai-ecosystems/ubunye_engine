@@ -16,7 +16,8 @@ Method ``rows-v1``
 Each row becomes one canonical line: a JSON object with its columns sorted by
 name, written the way Spark's ``to_json`` writes it with :data:`JSON_OPTIONS`
 (timestamps as UTC text to the microsecond, dates as ``yyyy-MM-dd``, doubles the
-Java way, NaN as ``"NaN"``, null fields left out). The line's SHA-256 is cut into
+Java way, NaN as ``"NaN"``, null fields left out; a map's entries sorted by key,
+its null values kept). The line's SHA-256 is cut into
 two unsigned 64-bit numbers, and each is summed over all rows, modulo 2**64.
 Addition does not care about order, so neither does the hash. The data hash is
 the SHA-256 of the method, the canonical schema, the row count and the two sums.
@@ -150,10 +151,12 @@ def value_text(value: Any, kind: str = "") -> str:
     if isinstance(value, (bytes, bytearray, memoryview)):
         return json.dumps(base64.b64encode(bytes(value)).decode("ascii"))
     if isinstance(value, dict):
+        if kind.startswith("map<"):
+            return _map_text(value.items(), kind)
         return _object_text(value.items(), _child_kinds(kind))
     if isinstance(value, (list, tuple)):
         if kind.startswith("map<"):
-            return _object_text(value, _child_kinds(kind))  # Arrow maps are (key, value) pairs
+            return _map_text(value, kind)  # Arrow maps are (key, value) pairs
         inner = kind[5:-1] if kind.startswith("list<") else ""
         return "[" + ",".join(value_text(v, inner) for v in value) + "]"
     return json.dumps(str(value), ensure_ascii=False)
@@ -198,6 +201,32 @@ def _object_text(items: Iterable[Tuple[Any, Any]], kinds: Dict[str, str]) -> str
             continue  # Spark leaves null fields out
         kind = kinds.get(str(key), kinds.get("*", ""))
         members.append(f"{json.dumps(str(key), ensure_ascii=False)}:{value_text(val, kind)}")
+    return "{" + ",".join(members) + "}"
+
+
+def _map_key_text(key: Any) -> str:
+    """A map key as Spark writes it: the key's ``toString``."""
+    if isinstance(key, bool):
+        return "true" if key else "false"
+    if isinstance(key, float):
+        return java_double(key)
+    return str(key)
+
+
+def _map_text(items: Iterable[Tuple[Any, Any]], kind: str) -> str:
+    """A map as its canonical object: entries sorted by key, null values kept.
+
+    A map has no order, so the line must not depend on one: the entries are
+    sorted by key (Spark sorts them the same way before ``to_json``). Unlike a
+    struct's fields, a map's null values are written as ``null``, as Spark's
+    ``to_json`` writes them.
+    """
+    parts = _split_top(kind[4:-1]) if kind.endswith(">") else []
+    value_kind = parts[1] if len(parts) > 1 else ""
+    members = [
+        f"{json.dumps(_map_key_text(key), ensure_ascii=False)}:{value_text(val, value_kind)}"
+        for key, val in sorted(items, key=lambda kv: kv[0])
+    ]
     return "{" + ",".join(members) + "}"
 
 
