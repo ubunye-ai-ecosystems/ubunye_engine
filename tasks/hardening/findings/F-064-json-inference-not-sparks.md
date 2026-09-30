@@ -59,3 +59,15 @@ Nine of the eleven JSON cases matched on Spark 4.2 and all on Spark 3.5. The two
 did not on Spark 4.2 (`number-and-text`, `object-and-text`) are F-084: Spark 4 keeps
 the source text of a value read into a text column. `test_json_empty_string_in_a_number_field`
 (the assumed partial-result rule) passed on both.
+
+## Skeptic review (Spark 4.2's own classes, 2026-09-30)
+`JsonInferSchema` folds with `TypeCoercion.findTightestCommonType` first, and for two
+structs that is `findTypeForComplex`: with `spark.sql.caseSensitive` false, structs of
+as many fields whose sorted names are equal ignoring case, and whose field types each
+have a tightest common type, are one struct with the first struct's names. The port
+merged by exact name, so `{"Id":1}` then `{"id":2}` gave `Id` and `id` (and F-069 then
+refused the read). Fixed: `_tightest` handles structs and arrays; the top-level fold
+applies it to the whole record. Spark's `JacksonParser` then matches names exactly, so
+`id` in the second record reads as null (checked with the JVM oracle); the port reads
+it the same way. Against Spark 4.2 over 4,007 generated record sets: all match except
+a record with a repeated key (`{"a":1,"a":"x"}`), handled separately.

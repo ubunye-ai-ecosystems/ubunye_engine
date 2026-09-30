@@ -107,6 +107,14 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **JSON records whose names differ only by case merge as on Spark (F-064 follow-up,
+  skeptic review).** `{"Id":1}` then `{"id":2}` gave two columns on pandas, which the
+  engine then refused (F-069). Spark (with `spark.sql.caseSensitive` false) merges two
+  structs of the same shape whose names differ only by case into one, with the names
+  seen first (`findTypeForComplex`), at the top level and nested, widening each
+  field's type; and then reads `id` as a different name, so that record's value is
+  null. The pandas reader now does the same. Checked against Spark 4.2's own classes
+  on 4,007 generated record sets: all match but one duplicate-key case.
 - **CSV `inferSchema` numbers follow Spark's rules exactly, in row order (F-067
   follow-up, skeptic review).** Checked against Spark 4.2's own `CSVInferSchema` and
   `UnivocityParser` over 12,506 generated columns: every case matches except the

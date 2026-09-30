@@ -132,7 +132,33 @@ def _tightest(a: Tuple[Any, ...], b: Tuple[Any, ...]) -> Optional[Tuple[Any, ...
         # A decimal that holds every long (20 whole digits or more) takes a long.
         if d[0] == "decimal" and other == LONG and d[1] - d[2] >= 20:
             return d
+    if a[0] == "array" and b[0] == "array":
+        element = _tightest(a[1], b[1])
+        return None if element is None else ("array", element)
+    if a[0] == "struct" and b[0] == "struct":
+        return _same_shape(a[1], b[1])
     return None
+
+
+def _same_shape(a: Tuple[Any, ...], b: Tuple[Any, ...]) -> Optional[Tuple[Any, ...]]:
+    """``TypeCoercion.findTypeForComplex`` for two structs (spark.sql.caseSensitive false).
+
+    Structs with as many fields, whose names (in sorted order) are equal ignoring
+    case, and whose field types each have a tightest common type, are one struct
+    with the first struct's names. So ``{"Id":1}`` then ``{"id":2}`` is one field
+    ``Id`` (and Spark then reads ``id`` as a different name: null).
+    """
+    if len(a) != len(b):
+        return None
+    fields = []
+    for (name, x), (other, y) in zip(a, b):
+        if name.lower() != other.lower():
+            return None
+        common = _tightest(x, y)
+        if common is None:
+            return None
+        fields.append((name, common))
+    return ("struct", tuple(fields))
 
 
 def compatible_type(a: Tuple[Any, ...], b: Tuple[Any, ...]) -> Tuple[Any, ...]:
@@ -190,8 +216,19 @@ def infer_schema(rows: List[Dict[str, Any]]) -> Tuple[Tuple[str, Any], ...]:
                 f"a JSON record must be an object; found {type(row).__name__} "
                 "(Spark reads it as a _corrupt_record, which the pandas backend does not)"
             )
-        for key, value in row.items():
-            kind = infer_field(value)
+        found = {key: infer_field(value) for key, value in row.items()}
+        if kinds and found.keys() != kinds.keys() and len(found) == len(kinds):
+            # The whole record against the type so far, as Spark folds the root:
+            # a record whose names differ only by case merges into the names seen
+            # first (findTypeForComplex).
+            same = _same_shape(
+                tuple(sorted(kinds.items(), key=_by_name)),
+                tuple(sorted(found.items(), key=_by_name)),
+            )
+            if same is not None:
+                kinds = dict(same[1])
+                continue
+        for key, kind in found.items():
             seen = kinds.get(key)
             if seen is None:
                 kinds[key] = kind

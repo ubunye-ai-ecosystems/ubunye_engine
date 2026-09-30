@@ -320,6 +320,9 @@ JSON_CASES = {
     "decimal-and-double": '{"a":123456789012345678901234567890}\n{"a":0.5}\n',
     "empty-names-and-objects": '{"":1,"a":1,"e":{},"l":[{}],"o":{"":2,"k":3},"n":[]}\n',
     "empty-strings": '{"a":""}\n{"a":""}\n{"b":"","c":"x"}\n',
+    "names-differing-by-case": (
+        '{"Id":1,"Name":"x"}\n{"id":2,"name":"y"}\n{"k":1,"s":{"Id":1}}\n{"k":2,"s":{"id":2.5}}\n'
+    ),
     "array-lines": '[{"a":1},{"a":2,"b":"x"}]\n{"a":3}\n',
     "unicode-key-order": '{"\\ud83d\\ude00":1,"\\uff21":2,"a":3,"B":4}\n',
 }

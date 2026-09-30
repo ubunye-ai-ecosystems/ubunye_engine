@@ -151,6 +151,18 @@ class TestJsonInference:
         frame = _read_bytes(tmp_path, "json", b'{"a":[{"y":1},{"x":"s"}]}\n{"a":[]}\n')
         assert _types(frame)["a"] == pa.list_(pa.struct([("x", pa.string()), ("y", pa.int64())]))
 
+    def test_records_whose_names_differ_only_by_case_merge_like_spark(self, tmp_path):
+        # Spark 4.2 JsonInferSchema + JacksonParser (JVM oracle): one field, the
+        # first name; the record spelled the other way reads as null there.
+        frame = _read_bytes(tmp_path, "json", b'{"Id":1,"Name":"x"}\n{"id":2,"name":"y"}\n')
+        assert _types(frame) == {"Id": pa.int64(), "Name": pa.string()}
+        assert frame.native["Id"].isna().tolist() == [False, True]
+
+    def test_nested_names_differing_by_case_merge_and_widen(self, tmp_path):
+        data = b'{"k":1,"s":{"Id":1}}\n{"k":2,"s":{"id":2.5}}\n{"B":2147483648}\n'
+        frame = _read_bytes(tmp_path, "json", data)
+        assert _types(frame)["s"] == pa.struct([("Id", pa.float64())])
+
     def test_names_sort_by_utf16_like_java(self):
         from ubunye.adapters import spark_json
 
