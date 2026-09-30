@@ -107,6 +107,15 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **CSV `inferSchema` on pandas follows Spark's rules (F-067, E-08).** pyarrow chose
+  the types, and differed from Spark on numbers written a little differently: a
+  whole number past 64 bits became a `double` that lost digits (Spark: an exact
+  `decimal`), `1, 2` with a space after the comma stayed `int` (Spark: `double`),
+  `+5` was a `double`, `1.5d` text, `inf` a `double` (Spark: text), `tRuE` text, and
+  timestamps with and without an offset in one column text. Types are now chosen by
+  a port of Spark's `CSVInferSchema`, over every file of a folder at once (each file
+  was inferred alone before). About 20% slower on a plain file (performance guard:
+  40 to 48 ms for 60,000 rows).
 - **Unsigned parquet columns read with Spark's types on pandas (F-066, E-08).** A
   `uint8` to `uint64` column kept its unsigned type, so the schema and the run record
   hash differed from Spark's. They now read as Spark reads them: `smallint`, `int`,

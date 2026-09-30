@@ -10,8 +10,10 @@ backend cannot honour is refused by name rather than quietly ignored:
 
 * CSV: no header unless ``header`` is true (columns are then ``_c0``, ``_c1``);
   every column is text unless ``inferSchema`` is true; an empty field is null.
-  With ``inferSchema``: ``int`` when every value fits in 32 bits, else
-  ``bigint``; an all-null column is text; timestamps are instants.
+  With ``inferSchema``, Spark's own rules (:mod:`ubunye.adapters.csv_infer`):
+  ``int`` when every value fits in 32 bits, else ``bigint``, a whole number past
+  64 bits a ``decimal``; Java's number forms; an all-null column is text;
+  timestamps are instants.
 * JSON: one object per line unless ``multiLine`` is true; columns (and nested
   fields) sorted by name; integers are ``bigint``; timestamps stay text.
 * A path may be a file, a folder of part files (Spark's layout; names starting
@@ -68,12 +70,6 @@ READ_OPTIONS: Dict[str, frozenset] = {
     "json": frozenset({"multiline", "encoding", "mode"}),
     "parquet": frozenset(),
 }
-
-_INT32_MIN, _INT32_MAX = -(2**31), 2**31 - 1
-# Spark reads booleans case blind. pyarrow's defaults also read "1" and "0" as
-# booleans, which Spark never does.
-_TRUE = ["true", "True", "TRUE"]
-_FALSE = ["false", "False", "FALSE"]
 
 
 def _truthy(value: Any) -> bool:
@@ -204,21 +200,6 @@ def _to_spark_types(table: Any) -> Any:
     return table if target.equals(table.schema) else table.cast(target)
 
 
-def _narrow_ints(table: Any) -> Any:
-    """Spark's CSV inference: ``int`` when every value fits in 32 bits."""
-    import pyarrow as pa
-    import pyarrow.compute as pc
-
-    for i, field in enumerate(table.schema):
-        if pa.types.is_int64(field.type):
-            bounds = pc.min_max(table.column(i))
-            lo, hi = bounds["min"].as_py(), bounds["max"].as_py()
-            if lo is None or (_INT32_MIN <= lo and hi <= _INT32_MAX):
-                col = table.column(i).cast(pa.int32())
-                table = table.set_column(i, field.with_type(pa.int32()), col)
-    return table
-
-
 def assume_zone(col: Any, timezone: str) -> Any:
     """Wall clock timestamps as instants in ``timezone``, by Java's rule, as Spark reads them.
 
@@ -338,13 +319,12 @@ def _read_csv(
             else:
                 names = safe_header(names, str(opts.get("nullvalue", "")))
         convert = pcsv.ConvertOptions(
-            # Text unless inference is on; an explicit schema is cast below.
-            column_types=None if infer else {n: pa.string() for n in names},
+            # Always text: inference is Spark's, over every file at once (F-067),
+            # and an explicit schema is cast below.
+            column_types={n: pa.string() for n in names},
             null_values=[str(opts.get("nullvalue", ""))],
             strings_can_be_null=True,
             quoted_strings_can_be_null=True,
-            true_values=_TRUE,
-            false_values=_FALSE,
         )
         read = pcsv.ReadOptions(encoding=encoding, column_names=names, skip_rows=1 if header else 0)
         try:
@@ -373,7 +353,11 @@ def _read_csv(
         return _instants(_apply_schema(table, schema, timezone), timezone)
     table = _to_spark_types(table)
     if infer:
-        table = _narrow_ints(table)
+        from ubunye.adapters import csv_infer
+
+        table = csv_infer.infer_table(
+            table, lambda col: _cast(col, pa.timestamp("us", tz="UTC"), timezone)
+        )
     return _instants(table, timezone)
 
 

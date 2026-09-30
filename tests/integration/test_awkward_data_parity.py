@@ -90,6 +90,51 @@ def test_csv_header_names(spark, pandas_backend, tmp_path, data):
     assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
 
 
+INFER_CASES = {
+    "space-after-comma": "a, b, c\n1, 2, 3\n4, 5, 6\n",
+    "past-64-bits": (
+        "big,huge,edge\n"
+        "9223372036854775807,12345678901234567890123,-9223372036854775808\n"
+        "9223372036854775808,1,-9223372036854775809\n"
+        "1,2," + "9" * 40 + "\n"
+    ),
+    "java-number-forms": (
+        "sign,suffix,hex,tok,lower,spaced,exp\n"
+        "+5,1.5d,0x1.8p1,Inf,inf,1.5 ,1e400\n"
+        "-7,2f,1,-Inf,1, 2,1E5\n"
+        "007,3D,2.5,NaN,2,3,-1e-3\n"
+    ),
+    "arrow-only-forms": "h,n,big\n0x1F,nan,INF\n0x20,1,1\n",
+    "booleans": "b,c\ntRuE,true\nFALSE,1\n",
+    "dates-and-timestamps": (
+        "t,m,d\n"
+        "2024-01-02 03:04:05,2024-01-02,2024-01-02\n"
+        "2024-01-02 03:04:05+02:00,2024-01-02 00:00:01,2024-02-29\n"
+        "2024-01-02T03:04:05.123456Z,2024-01-03T01:02,1999-12-31\n"
+    ),
+    "int-long-double-mix": "a,b,c\n1,2147483648,1\n2,1,1.5\n,,\n",
+    "all-null": "a,b\n,1\n,2\n",
+}
+
+
+@pytest.mark.parametrize("name", sorted(INFER_CASES))
+def test_csv_infer_schema_numbers(spark, pandas_backend, tmp_path, name):
+    """F-067: inferSchema follows Spark's CSVInferSchema."""
+    path = _file(tmp_path, "infer.csv", INFER_CASES[name].encode())
+    options = {"header": "true", "inferSchema": "true"}
+    assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
+
+
+def test_csv_infer_schema_over_many_files(spark, pandas_backend, tmp_path):
+    """F-067: one schema for every file of a folder, inferred over all of them."""
+    folder = tmp_path / "parts"
+    folder.mkdir()
+    (folder / "a.csv").write_bytes(b"v,w\n1,x\n")
+    (folder / "b.csv").write_bytes(b"v,w\n1.5,2\n")
+    options = {"header": "true", "inferSchema": "true"}
+    assert_same(*_read_both(spark, pandas_backend, "csv", str(folder), options))
+
+
 CP1252 = "name,price\nCafé,€5\nTea – green,€3\n".encode("cp1252")
 
 

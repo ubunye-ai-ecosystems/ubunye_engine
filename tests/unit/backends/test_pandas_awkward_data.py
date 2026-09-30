@@ -199,6 +199,72 @@ class TestParquetUnsignedIntegers:
         assert frame.native["u8"][0] == 255
 
 
+class TestCsvInferSchemaNumbers:
+    """F-067: CSV inferSchema follows Spark's CSVInferSchema, not pyarrow's."""
+
+    def _infer(self, tmp_path, data: bytes):
+        return _read_bytes(tmp_path, "csv", data, options={"header": "true", "inferSchema": "true"})
+
+    def test_a_space_after_the_comma_makes_a_double(self, tmp_path):
+        frame = self._infer(tmp_path, b"a, b\n1, 2\n4, 5\n")
+        assert _types(frame) == {"a": pa.int32(), " b": pa.float64()}
+        assert frame.native[" b"].tolist() == [2.0, 5.0]
+
+    def test_whole_numbers_past_64_bits_are_exact_decimals(self, tmp_path):
+        data = b"big,huge\n9223372036854775807,12345678901234567890123\n9223372036854775808,1\n"
+        frame = self._infer(tmp_path, data)
+        assert _types(frame) == {"big": pa.decimal128(20, 0), "huge": pa.decimal128(23, 0)}
+        assert str(frame.native["big"][1]) == "9223372036854775808"
+        assert str(frame.native["huge"][0]) == "12345678901234567890123"
+
+    def test_java_number_forms(self, tmp_path):
+        data = b"sign,suffix,hex,tok,lower\n+5,1.5d,0x1.8p1,Inf,inf\n-7,2f,1,-Inf,1\n"
+        frame = self._infer(tmp_path, data)
+        assert _types(frame) == {
+            "sign": pa.int32(),
+            "suffix": pa.float64(),
+            "hex": pa.float64(),
+            "tok": pa.float64(),
+            "lower": pa.string(),  # Java reads Infinity and NaN, never inf
+        }
+        assert frame.native["suffix"].tolist() == [1.5, 2.0]
+        assert frame.native["hex"].tolist() == [3.0, 1.0]
+        assert frame.native["tok"].tolist() == [float("inf"), float("-inf")]
+
+    def test_arrow_only_forms_stay_text(self, tmp_path):
+        frame = self._infer(tmp_path, b"h,n\n0x1F,nan\n0x20,1\n")
+        assert _types(frame) == {"h": pa.string(), "n": pa.string()}
+
+    def test_booleans_in_any_case(self, tmp_path):
+        frame = self._infer(tmp_path, b"b\ntRuE\nFALSE\n")
+        assert frame.native["b"].tolist() == [True, False]
+
+    def test_timestamps_with_and_without_an_offset_are_timestamps(self, tmp_path):
+        data = (
+            b"t,m\n2024-01-02 03:04:05,2024-01-02\n2024-01-02 03:04:05+02:00,2024-01-02 00:00:01\n"
+        )
+        frame = self._infer(tmp_path, data)
+        assert _types(frame) == {
+            "t": pa.timestamp("us", tz="UTC"),
+            "m": pa.timestamp("us", tz="UTC"),
+        }
+        assert _utc_text(frame.native["t"]) == [
+            "2024-01-02 03:04:05+00:00",
+            "2024-01-02 01:04:05+00:00",
+        ]
+
+    def test_types_are_inferred_over_every_file_at_once(self, tmp_path):
+        folder = tmp_path / "parts"
+        folder.mkdir()
+        (folder / "a.csv").write_bytes(b"v\n1\n")
+        (folder / "b.csv").write_bytes(b"v\n1.5\n")
+        frame = PandasBackend().read_frame(
+            "csv", str(folder), options={"header": "true", "inferSchema": "true"}
+        )
+        assert _types(frame) == {"v": pa.float64()}
+        assert sorted(frame.native["v"].tolist()) == [1.0, 1.5]
+
+
 NY = "America/New_York"
 # 02:30 on 2024-03-10 does not exist in New York (clocks go 02:00 -> 03:00);
 # 01:30 on 2024-11-03 happens twice (EDT, then EST).

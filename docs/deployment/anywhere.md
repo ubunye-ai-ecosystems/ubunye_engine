@@ -50,7 +50,7 @@ copies Spark's defaults instead of pandas' own:
 |---|---|
 | CSV, no options | No header: the first line is data, columns are `_c0`, `_c1`, ... |
 | CSV with `header: "true"` | Columns named from the first line, every value as text. A blank name becomes `_c<position>`; a repeated name (ignoring case) gets its position added to each copy, so `a,a,,A` reads as `a0, a1, _c2, A3` |
-| CSV with `inferSchema: "true"` | `int` if every value fits, else `bigint`; `double`, `boolean`, `date`, `timestamp`; an empty column is text |
+| CSV with `inferSchema: "true"` | Spark's rules, over every file at once: `int` if every value fits, else `bigint`, a whole number past 64 bits a `decimal` (read exactly); `double` (Java's forms: `1.5d`, ` 2` with a space, `Inf`, `NaN`; but `inf` is text), `boolean` in any case, `date`, `timestamp` (with or without an offset); an empty column is text |
 | An empty CSV field | null, not an empty string |
 | A CSV value of any length | Read whole (Spark has no limit; pyarrow alone stopped past 1 MB) |
 | A CSV byte that is not valid in `encoding` (UTF-8 unless set) | The character U+FFFD, as Java decodes it; the read goes on |
