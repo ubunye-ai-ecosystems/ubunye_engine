@@ -107,6 +107,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **Unsigned parquet columns read with Spark's types on pandas (F-066, E-08).** A
+  `uint8` to `uint64` column kept its unsigned type, so the schema and the run record
+  hash differed from Spark's. They now read as Spark reads them: `smallint`, `int`,
+  `bigint` and `decimal(20,0)`, at any depth.
 - **JSON records with no fields are no longer lost on pandas (F-065, E-08).** A file
   of `{}` records (or records holding only fields Spark drops) read as 0 rows, and the
   run succeeded. Spark reads one row per record, with no columns; so does the pandas

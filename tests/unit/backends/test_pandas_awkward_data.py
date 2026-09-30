@@ -164,6 +164,41 @@ class TestJsonRecordsWithNoFields:
         assert out["one"].tolist() == [1, 1]
 
 
+class TestParquetUnsignedIntegers:
+    """F-066: Spark reads parquet UINT_8/16/32/64 as smallint, int, bigint, decimal(20,0)."""
+
+    def test_unsigned_columns_get_sparks_types_and_keep_their_values(self, tmp_path):
+        import decimal
+
+        import pyarrow.parquet as pq
+
+        table = pa.table(
+            {
+                "u8": pa.array([255, None], pa.uint8()),
+                "u16": pa.array([65535, 0], pa.uint16()),
+                "u32": pa.array([2**32 - 1, 0], pa.uint32()),
+                "u64": pa.array([2**64 - 1, 0], pa.uint64()),
+                "nested": pa.array([[1, 2], None], pa.list_(pa.uint8())),
+                "st": pa.array([{"x": 1}, None], pa.struct([("x", pa.uint64())])),
+                "i64": pa.array([-1, 1], pa.int64()),
+            }
+        )
+        path = tmp_path / "u.parquet"
+        pq.write_table(table, path)
+        frame = PandasBackend().read_frame("parquet", str(path))
+        assert _types(frame) == {
+            "u8": pa.int16(),
+            "u16": pa.int32(),
+            "u32": pa.int64(),
+            "u64": pa.decimal128(20, 0),
+            "nested": pa.list_(pa.int16()),
+            "st": pa.struct([("x", pa.decimal128(20, 0))]),
+            "i64": pa.int64(),
+        }
+        assert frame.native["u64"][0] == decimal.Decimal(2**64 - 1)
+        assert frame.native["u8"][0] == 255
+
+
 NY = "America/New_York"
 # 02:30 on 2024-03-10 does not exist in New York (clocks go 02:00 -> 03:00);
 # 01:30 on 2024-11-03 happens twice (EDT, then EST).

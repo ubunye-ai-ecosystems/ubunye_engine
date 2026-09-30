@@ -126,6 +126,94 @@ def test_csv_values_longer_than_a_megabyte(spark, pandas_backend, tmp_path, mult
     assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
 
 
+def _same_digest(spark_df, frame):
+    """The run record's rows-v1 fingerprint is the same on both engines."""
+    from ubunye.adapters.spark.content_hash import fingerprint_spark
+    from ubunye.lineage.content_hash import fingerprint
+
+    left, right = fingerprint_spark(spark_df), fingerprint(frame)
+    assert left.is_complete and right.is_complete, (left.error, right.error)
+    assert (left.row_count, left.schema_hash, left.data_hash) == (
+        right.row_count,
+        right.schema_hash,
+        right.data_hash,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Special numbers
+# --------------------------------------------------------------------------- #
+
+
+def _special_numbers():
+    import decimal
+
+    D = decimal.Decimal
+    return pa.table(
+        {
+            "f": [
+                float("nan"),
+                float("inf"),
+                float("-inf"),
+                -0.0,
+                0.0,
+                5e-324,
+                1.7976931348623157e308,
+                None,
+            ],
+            "f32": pa.array(
+                [float("nan"), float("inf"), -0.0, 0.1, 3.4028235e38, 1e-45, 1.0, None],
+                pa.float32(),
+            ),
+            "dec": pa.array(
+                [
+                    D("12345678901234567890.123456789012345678"),
+                    D("-0.000000000000000001"),
+                    D(0),
+                    None,
+                    D("99999999999999999999.999999999999999999"),
+                    D(1),
+                    D(-1),
+                    D("0.5"),
+                ],
+                pa.decimal128(38, 18),
+            ),
+            "i64": pa.array([2**63 - 1, -(2**63), 0, None, 1, -1, 2**53 + 1, 2**31], pa.int64()),
+        }
+    )
+
+
+def test_parquet_special_numbers(spark, pandas_backend, tmp_path):
+    """E-08 shape 9: NaN, infinities, -0.0, 38 digit decimals, int64 limits."""
+    import pyarrow.parquet as pq
+
+    path = str(tmp_path / "special.parquet")
+    pq.write_table(_special_numbers(), path)
+    spark_df, frame = _read_both(spark, pandas_backend, "parquet", path)
+    assert_same(spark_df, frame)
+    _same_digest(spark_df, frame)
+
+
+def test_parquet_unsigned_integers(spark, pandas_backend, tmp_path):
+    """F-066: unsigned parquet columns read with Spark's types, and hash the same."""
+    import pyarrow.parquet as pq
+
+    table = pa.table(
+        {
+            "u8": pa.array([255, 0, None], pa.uint8()),
+            "u16": pa.array([65535, 0, 1], pa.uint16()),
+            "u32": pa.array([2**32 - 1, 0, 1], pa.uint32()),
+            "u64": pa.array([2**64 - 1, 0, 2**63], pa.uint64()),
+            "nested": pa.array([[1, 255], [], None], pa.list_(pa.uint8())),
+        }
+    )
+    path = str(tmp_path / "unsigned.parquet")
+    pq.write_table(table, path)
+    spark_df, frame = _read_both(spark, pandas_backend, "parquet", path)
+    assert_same(spark_df, frame)
+    _same_digest(spark_df, frame)
+
+
 # --------------------------------------------------------------------------- #
 # Nested and conflicting JSON
 # --------------------------------------------------------------------------- #

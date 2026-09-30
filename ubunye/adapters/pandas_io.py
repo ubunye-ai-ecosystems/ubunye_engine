@@ -709,7 +709,45 @@ def _read_parquet(files: List[str], schema: Any, counts: Optional[List[int]] = N
         if counts is not None:
             counts.append(table.num_rows)
     table = pa.concat_tables(tables, promote_options="permissive")
+    table = _signed(table)
     return _apply_schema(table, schema) if schema is not None else table
+
+
+def _signed_type(t: Any) -> Any:
+    """Spark's type for a parquet unsigned integer, at any depth (F-066).
+
+    ``ParquetSchemaConverter`` (SPARK-34817): UINT_8 is ``smallint``, UINT_16
+    ``int``, UINT_32 ``bigint`` and UINT_64 ``decimal(20,0)``. Spark has no
+    unsigned type, so the same file read as ``uint64`` on pandas gave another
+    schema and another run record hash.
+    """
+    import pyarrow as pa
+
+    if pa.types.is_unsigned_integer(t):
+        return {8: pa.int16(), 16: pa.int32(), 32: pa.int64()}.get(
+            t.bit_width, pa.decimal128(20, 0)
+        )
+    if pa.types.is_list(t) or pa.types.is_large_list(t):
+        inner = _signed_type(t.value_type)
+        if inner.equals(t.value_type):
+            return t
+        return (pa.large_list if pa.types.is_large_list(t) else pa.list_)(inner)
+    if pa.types.is_struct(t):
+        fields = [f.with_type(_signed_type(f.type)) for f in t]
+        return t if all(a.equals(b) for a, b in zip(fields, t)) else pa.struct(fields)
+    if pa.types.is_map(t):
+        key, item = _signed_type(t.key_type), _signed_type(t.item_type)
+        if key.equals(t.key_type) and item.equals(t.item_type):
+            return t
+        return pa.map_(key, item)
+    return t
+
+
+def _signed(table: Any) -> Any:
+    import pyarrow as pa
+
+    target = pa.schema([f.with_type(_signed_type(f.type)) for f in table.schema])
+    return table if target.equals(table.schema) else table.cast(target)
 
 
 def to_pandas(table: Any) -> Any:
