@@ -188,6 +188,14 @@ def test_json_multiline_document(spark, pandas_backend, tmp_path):
     assert_same(*_read_both(spark, pandas_backend, "json", path, {"multiLine": "true"}))
 
 
+def test_json_records_with_no_fields_are_rows(spark, pandas_backend, tmp_path):
+    """F-065: {} is a row with no columns; the pandas reader lost every such row."""
+    path = _file(tmp_path, "empty.json", b'{}\n{}\n{"":1,"e":{}}\n')
+    spark_df, frame = _read_both(spark, pandas_backend, "json", path)
+    assert spark_df.columns == [] and list(frame.native.columns) == []
+    assert spark_df.count() == frame.count() == 3
+
+
 def test_json_empty_string_in_a_number_field(spark, pandas_backend, tmp_path):
     """F-064: "" merges as null; Spark reads it as null in a number column (partial row)."""
     path = _file(tmp_path, "e.json", b'{"c":5,"d":"k"}\n{"c":"","d":"j"}\n')

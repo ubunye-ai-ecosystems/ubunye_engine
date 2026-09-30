@@ -682,6 +682,10 @@ def _read_json(
         table = pa.table(columns) if columns else no_columns(len(rows))
         return _instants(_apply_schema(table, schema, timezone), timezone)
     fields = spark_json.infer_schema(rows)
+    if not fields:
+        # Records with no fields ({}) are still rows: Spark keeps one row per
+        # record, with no columns. pa.table({}) has none (F-065).
+        return no_columns(len(rows))
     return pa.table(
         {name: spark_json.column([r.get(name) for r in rows], kind) for name, kind in fields}
     )

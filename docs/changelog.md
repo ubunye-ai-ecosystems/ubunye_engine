@@ -107,6 +107,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **JSON records with no fields are no longer lost on pandas (F-065, E-08).** A file
+  of `{}` records (or records holding only fields Spark drops) read as 0 rows, and the
+  run succeeded. Spark reads one row per record, with no columns; so does the pandas
+  backend now.
 - **JSON on pandas is typed by Spark's rules (F-064, E-08).** The pandas reader let
   pyarrow infer the types. Nested fields kept the order they were first seen (Spark
   sorts them, so the schema hash differed), and a field that was a number in one

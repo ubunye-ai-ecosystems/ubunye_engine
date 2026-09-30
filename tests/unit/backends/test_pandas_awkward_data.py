@@ -149,6 +149,21 @@ class TestJsonInference:
         assert names == ["a", "\U0001f600", "Ａ"]
 
 
+class TestJsonRecordsWithNoFields:
+    """F-065: records with no fields are rows with no columns, as in Spark."""
+
+    def test_the_rows_are_kept(self, tmp_path):
+        frame = _read_bytes(tmp_path, "json", b'{}\n{}\n{"":1,"e":{}}\n')
+        assert frame.count() == 3
+        assert list(frame.native.columns) == []
+
+    def test_a_transform_can_add_a_column_to_them(self, tmp_path):
+        nw = pytest.importorskip("narwhals")
+        frame = _read_bytes(tmp_path, "json", b"{}\n{}\n")
+        out = nw.from_native(frame.native).with_columns(one=nw.lit(1)).to_native()
+        assert out["one"].tolist() == [1, 1]
+
+
 NY = "America/New_York"
 # 02:30 on 2024-03-10 does not exist in New York (clocks go 02:00 -> 03:00);
 # 01:30 on 2024-11-03 happens twice (EDT, then EST).
