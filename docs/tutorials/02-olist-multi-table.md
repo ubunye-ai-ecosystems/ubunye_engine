@@ -181,8 +181,10 @@ ubunye run -d pipelines -u olist -p sales -t clean --backend pandas --var data_d
 Expected:
 
 ```text
+Starting task: clean (Mode: DEV, Deploy: client)
 [ERROR] Run stopped for clean: An input broke its expectations, so the transform did not run and nothing was written:
   raw_orders: columns (columns): order_purchase_timestamp: expected timestamp, found string
+  Hint: The source has changed. Fix it, or change the input's expectations in CONFIG.expectations if the change is meant.
 ```
 
 One bad value turned the whole column into text. Without the contract, the pipeline
@@ -193,8 +195,9 @@ and wrote nothing: `output-bad` does not exist.
 ## 6. Break it: a join loses orders
 
 The most common silent bug in a fact table: an inner join where a left join was
-needed. Open `pipelines/olist/sales/orders_fact/transformations.py` and change this
-line:
+needed. Open `pipelines/olist/sales/orders_fact/transformations.py` and change **only
+this one line**, the join with `per_order_items` (the file has other joins; a find and
+replace of every `how="left"` would break those too and give a different error):
 
 ```python
             .join(per_order_items, on="order_id", how="left")
@@ -215,13 +218,16 @@ ubunye run -d pipelines -u olist -p sales -t orders_fact --backend pandas --line
 Expected:
 
 ```text
+Starting task: orders_fact (Mode: DEV, Deploy: client)
+expectation warning: orders_fact: payment_gap_between (between) broken by 3 of 59 rows
 [ERROR] Run stopped for orders_fact: Expectations failed, so nothing was written:
   orders_fact: rows_from_orders (reconcile): 60 rows read from orders, 59 reached orders_fact: 1 lost, 0 gained (at most 0 lost, at most 0 gained)
   orders_fact: payments_total_sum_from_payments (reconcile): sum of payment_value in payments 7411.88, of payments_total in orders_fact 7365.98: difference -45.900000000000546 (at most 0.01)
+  Hint: Fix the data or the source, or change the rule's severity to quarantine or warn if this is expected.
 ```
 
 The canceled order has no items, so the inner join dropped it, and its 45.90 payment
-with it. Both reconciles saw it; the run wrote nothing, so yesterday's good table is
+with it. (The warning now counts 3 of 59 rows: the lost order was one of the four.) Both reconciles saw it; the run wrote nothing, so yesterday's good table is
 still there. The run record keeps why:
 
 ```bash
@@ -253,6 +259,21 @@ done
 ubunye prove report evidence --workload r2-olist-orders_fact --reference spark-local
 ```
 
+In PowerShell (Windows), the loops are written like this:
+
+```powershell
+pip install -e "../../..[pandas,spark]"
+foreach ($t in "clean", "orders_fact", "monthly") {
+  ubunye run -d pipelines -u olist -p sales -t $t --backend pandas --lineage --var out_dir=output/pandas
+  ubunye prove observe --workload "r2-olist-$t" --env pandas-local -d pipelines -u olist -p sales -t $t -o evidence
+}
+foreach ($t in "clean", "orders_fact", "monthly") {
+  ubunye run -d pipelines -u olist -p sales -t $t --backend spark --lineage --var out_dir=output/spark
+  ubunye prove observe --workload "r2-olist-$t" --env spark-local -d pipelines -u olist -p sales -t $t -o evidence
+}
+ubunye prove report evidence --workload r2-olist-orders_fact --reference spark-local
+```
+
 (`prove observe` takes one task at a time, hence the loop.) Every dimension should say
 PASS, with the same digest on both engines: `6affe2f5382c` for `clean`,
 `6dcf270328d8` for `orders_fact`, `a0bd206029ca` for `monthly`. The repository's
@@ -265,13 +286,26 @@ licence (CC BY-NC-SA 4.0), so it is not in the repository. Download it when you 
 
 ```bash
 pip install kaggle        # plus a Kaggle API token: https://www.kaggle.com/settings
-bash scripts/fetch_data.sh
+kaggle datasets download -d olistbr/brazilian-ecommerce -p data --unzip
 for t in clean orders_fact monthly; do
   ubunye run -d pipelines -u olist -p sales -t $t --backend pandas --lineage --var data_dir=data --var out_dir=output-real
 done
 ```
 
-Nothing in the pipeline changes: only where the data is.
+The `kaggle` line works in any shell (`scripts/fetch_data.sh` does the same in bash).
+In PowerShell, the loop is:
+
+```powershell
+foreach ($t in "clean", "orders_fact", "monthly") {
+  ubunye run -d pipelines -u olist -p sales -t $t --backend pandas --lineage --var data_dir=data --var out_dir=output-real
+}
+```
+
+Nothing in the pipeline changes: only where the data is. On the full data (99,441
+orders), measured once on one Windows machine with pandas: `clean` 16 s, `orders_fact`
+31 s, `monthly` 3 s. All 99,441 orders reached the fact table, both money reconciles
+passed, and 1,022 orders were paid more or less than their items and freight by over
+one real (the warning).
 
 ## What each feature caught
 
@@ -289,10 +323,16 @@ Nothing in the pipeline changes: only where the data is.
 rm -rf output output-bad output-real data evidence pipelines/.ubunye
 ```
 
+In PowerShell:
+
+```powershell
+Remove-Item -Recurse -Force output, output-bad, output-real, data, evidence, pipelines/.ubunye -ErrorAction SilentlyContinue
+```
+
 ## Common problems
 
 - `ImportError: the example needs narwhals>=2.9 (Expr.floor)`: upgrade Narwhals
   (`pip install -U narwhals`). Every step checks this first.
 - `pyarrow` older than 24 on Windows cannot find a time zone database; upgrade it.
 - `kaggle: command not found` or `401`: install the `kaggle` package and put your API
-  token where `scripts/fetch_data.sh` says.
+  token where https://github.com/Kaggle/kaggle-api says (`kaggle.json`).
