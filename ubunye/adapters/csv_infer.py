@@ -91,9 +91,15 @@ def _whole_kind(values: Any) -> Tuple[Any, ...]:
     precision = pc.max(pc.filter(widths, past_long)).as_py()
     if precision > 38:
         return ("double",)
-    # A long merged with a decimal(p, 0) is a decimal(max(p, 20), 0).
-    if not _all(past_long):
-        precision = max(precision, 20)
+    # A bigint merged with a decimal(p, 0) is a decimal(max(p, 20), 0); an int
+    # fits in decimal(10, 0), so it leaves p as it is (live Spark 3.5 and 4:
+    # "9223372036854775808" and "1" are decimal(19,0)).
+    rest = pc.filter(values, pc.invert(past_long))
+    if len(rest):
+        numbers = pc.replace_substring_regex(rest, pattern=r"^\+", replacement="").cast(pa.int64())
+        low, high = (v.as_py() for v in pc.min_max(numbers).values())
+        if low < -(2**31) or high > _INT_MAX:
+            precision = max(precision, 20)
     return ("decimal", precision)
 
 

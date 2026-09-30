@@ -107,6 +107,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **CSV `inferSchema`: a whole number past 64 bits with small ones is `decimal(19,0)`,
+  as live Spark types it (F-067 follow-up, E-09).** The port widened it to
+  `decimal(20,0)` whenever a smaller number was present; Spark does that only for a
+  number past the `int` range.
 - **The run record hashes a folder of many small files quickly on pandas (F-076,
   E-08).** A read of 5,000 small files keeps one Arrow chunk per file, and the hash
   paid about a millisecond per chunk: 10,000 rows took 1.9 s to hash, most of a

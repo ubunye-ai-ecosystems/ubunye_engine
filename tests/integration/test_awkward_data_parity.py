@@ -114,6 +114,7 @@ INFER_CASES = {
     ),
     "int-long-double-mix": "a,b,c\n1,2147483648,1\n2,1,1.5\n,,\n",
     "all-null": "a,b\n,1\n,2\n",
+    "decimal-and-int": "a,b\n9223372036854775808,9223372036854775808\n1,3000000000\n",
 }
 
 

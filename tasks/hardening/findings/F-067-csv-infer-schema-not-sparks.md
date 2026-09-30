@@ -55,3 +55,10 @@ before); 1,500 columns by 2,000 rows: 1.23 s (0.92 s). Performance guard
 Unit: `TestCsvInferSchemaNumbers` (6 failed before, 7 pass after); the existing
 `test_pandas_reads_like_spark` inference tests still pass. Integration (CI):
 `test_csv_infer_schema_numbers` (8 cases) and `test_csv_infer_schema_over_many_files`.
+
+## After CI on live Spark (E-09, 2026-09-30)
+Spark 3.5 and 4 both typed `9223372036854775808` and `1` as `decimal(19,0)`; the
+port gave `decimal(20,0)` (the E-09 task `messy-csv` had a different schema hash).
+An int fits `decimal(10,0)`, so only a bigint widens a whole-number decimal to 20
+digits. Fixed in its own commit; parity case `decimal-and-int` added. The other eight
+inference cases matched on both versions.
