@@ -516,3 +516,220 @@ def test_csv_invalid_utf8_fuzz(spark, pandas_backend, tmp_path):
         lines.append(str(i).encode() + b"," + b"".join(rng.choice(pieces) for _ in range(6)))
     path = _file(tmp_path, "fuzz.csv", b"\n".join(lines) + b"\n")
     assert_same(*_read_both(spark, pandas_backend, "csv", path, {"header": "true"}))
+
+
+# --------------------------------------------------------------------------- #
+# Open questions: filed, not fixed. xfail(strict=False) so CI shows Spark's side.
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.xfail(strict=False, reason="F-071: Spark reads looser date and time forms")
+@pytest.mark.parametrize(
+    "text",
+    [
+        "d\n2024-1-2\n2024-12-31\n",
+        "d\n2024-01\n2024-02\n",
+        "t\n2024-01-02 03:04:05.123456789\n",
+        "t\n2024-01-02 3:04:05\n",
+    ],
+    ids=["single-digit-month", "year-month", "nanoseconds", "single-digit-hour"],
+)
+def test_csv_looser_date_and_time_forms(spark, pandas_backend, tmp_path, text):
+    path = _file(tmp_path, "loose.csv", text.encode())
+    options = {"header": "true", "inferSchema": "true"}
+    assert_same(*_read_both(spark, pandas_backend, "csv", path, options))
+
+
+@pytest.mark.xfail(strict=False, reason="F-072: Spark matches CSV columns by position")
+def test_csv_folder_with_headers_in_different_orders(spark, pandas_backend, tmp_path):
+    folder = tmp_path / "parts"
+    folder.mkdir()
+    (folder / "a.csv").write_bytes(b"x,y\n1,2\n")
+    (folder / "b.csv").write_bytes(b"y,x\n3,4\n")
+    assert_same(*_read_both(spark, pandas_backend, "csv", str(folder), {"header": "true"}))
+
+
+@pytest.mark.xfail(strict=False, reason="F-073: Spark takes one file's parquet schema")
+def test_parquet_folder_with_different_schemas(spark, pandas_backend, tmp_path):
+    import pyarrow.parquet as pq
+
+    folder = tmp_path / "parts"
+    folder.mkdir()
+    pq.write_table(pa.table({"a": [1], "b": ["x"]}), folder / "part-0.parquet")
+    pq.write_table(pa.table({"a": [2], "c": [1.5]}), folder / "part-1.parquet")
+    assert_same(*_read_both(spark, pandas_backend, "parquet", str(folder)))
+
+
+@pytest.mark.xfail(strict=False, reason="F-074: pandas writes a timestamp_ntz as an instant")
+def test_timestamp_ntz_round_trip(spark, pandas_backend, tmp_path):
+    import datetime as dt
+
+    import pyarrow.parquet as pq
+
+    from ubunye.core.write_modes import ResolvedWriteMode
+
+    source = str(tmp_path / "ntz.parquet")
+    moments = [dt.datetime(2024, 3, 10, 2, 30), dt.datetime(1850, 1, 1), dt.datetime(2300, 1, 1)]
+    pq.write_table(pa.table({"t": pa.array(moments, pa.timestamp("us"))}), source)
+    spark.read.parquet(source).write.parquet(str(tmp_path / "spark"))
+    pandas_backend.execute_write(
+        pandas_backend.read_frame("parquet", source),
+        ResolvedWriteMode(mode="overwrite", save_mode="overwrite"),
+        connector="s3",
+        file_format="parquet",
+        path=str(tmp_path / "pandas"),
+    )
+    from .test_pandas_backend_parity import _rows, _schema, spark_arrow
+
+    left = spark_arrow(spark.read.parquet(str(tmp_path / "spark")))
+    right = spark_arrow(spark.read.parquet(str(tmp_path / "pandas")))
+    assert _schema(left) == _schema(right)
+    assert _rows(left) == _rows(right)
+
+
+@pytest.mark.xfail(strict=False, reason="F-075: pandas cannot hash an instant past year 9999")
+def test_digest_of_instants_outside_python_years(spark, pandas_backend, tmp_path):
+    import pyarrow.parquet as pq
+
+    # 9999-12-31 23:59:59 in New York is 10000-01-01 04:59:59 UTC.
+    micros = [253402318799 * 10**6 + 5 * 3600 * 10**6, 0]
+    path = str(tmp_path / "far.parquet")
+    pq.write_table(pa.table({"t": pa.array(micros, pa.timestamp("us", tz="UTC"))}), path)
+    spark_df, frame = _read_both(spark, pandas_backend, "parquet", path)
+    _same_digest(spark_df, frame)
+
+
+# --------------------------------------------------------------------------- #
+# End to end: one task, both engines, the run records' digests
+# --------------------------------------------------------------------------- #
+
+TRANSFORM = """\
+import narwhals as nw
+
+from ubunye.core.interfaces import Task
+
+
+class Touch(Task):
+    def transform(self, sources):
+        frame = nw.from_native(sources["src"])
+        return {"out": frame.with_columns(e08_one=nw.lit(1, dtype=nw.Int64))}
+"""
+
+
+def _e2e_inputs(root: Path) -> dict:
+    """Small versions of each E-08 shape: (file_format, path, options)."""
+    import pyarrow.parquet as pq
+
+    data = root / "data"
+    data.mkdir()
+    cases = {}
+    wide = pa.table({f"c{i:04d}": pa.array([i, i + 1, None], pa.int64()) for i in range(1200)})
+    pq.write_table(wide, data / "wide.parquet")
+    cases["wide"] = ("parquet", data / "wide.parquet", {})
+    text = _long_text(300_000) + "\x0b\x1f\x7f "
+    pq.write_table(pa.table({"id": [1, 2], "txt": [text, "x\x00y"]}), data / "long.parquet")
+    cases["long-text"] = ("parquet", data / "long.parquet", {})
+    (data / "nested.jsonl").write_text(_nested_lines(), encoding="utf-8")
+    cases["nested-json"] = ("json", data / "nested.jsonl", {})
+    (data / "conflicts.jsonl").write_text(
+        JSON_CASES["number-and-text"] + JSON_CASES["big-whole-numbers"], encoding="utf-8"
+    )
+    cases["conflicting-json"] = ("json", data / "conflicts.jsonl", {})
+    (data / "tz.csv").write_text(DST_TEXT, encoding="utf-8")
+    cases["time-zones"] = ("csv", data / "tz.csv", {"header": "true", "inferSchema": "true"})
+    pq.write_table(_special_numbers(), data / "special.parquet")
+    cases["special-numbers"] = ("parquet", data / "special.parquet", {})
+    (data / "messy.csv").write_bytes(
+        b"id,amount,amount,,spaced\n1,9223372036854775808,5, x,1\n2,1, 6,y, 2\n"
+    )
+    cases["messy-csv"] = ("csv", data / "messy.csv", {"header": "true", "inferSchema": "true"})
+    many = data / "many"
+    many.mkdir()
+    for i in range(300):
+        pq.write_table(pa.table({"id": [i], "v": [i / 7]}), many / f"part-{i:05d}.parquet")
+    cases["many-files"] = ("parquet", many, {})
+    part = data / "partitioned"
+    for i in range(60):
+        leaf = part / f"p={i % 6}" / f"q={i // 6}"
+        leaf.mkdir(parents=True)
+        pq.write_table(pa.table({"id": [i]}), leaf / "part-0.parquet")
+    cases["partitioned"] = ("parquet", part, {})
+    (data / "empty.csv").write_bytes(b"id,name\n")
+    cases["header-only"] = ("csv", data / "empty.csv", {"header": "true", "inferSchema": "true"})
+    return cases
+
+
+@pytest.fixture(scope="module")
+def e2e(tmp_path_factory, spark):
+    """Every E-08 shape run as a task on both engines, with --lineage."""
+    import ubunye
+    from ubunye.backends.databricks_backend import DatabricksBackend
+    from ubunye.lineage.storage import FileSystemLineageStore
+
+    root = tmp_path_factory.mktemp("e08")
+    results = {}
+    for name, (fmt, path, options) in _e2e_inputs(root).items():
+        task = root / "uc" / "e08" / name.replace("-", "_")
+        task.mkdir(parents=True)
+        (task / "transformations.py").write_text(TRANSFORM, encoding="utf-8")
+        opts = "".join(f'        {k}: "{v}"\n' for k, v in options.items())
+        (task / "config.yaml").write_text(
+            "MODEL: etl\n"
+            'VERSION: "1.0.0"\n'
+            "ENGINE:\n  spark_conf:\n"
+            f'    spark.sql.session.timeZone: "{ZONE}"\n'
+            "CONFIG:\n  inputs:\n    src:\n      format: s3\n"
+            f'      path: "{path.as_posix()}"\n      file_format: {fmt}\n'
+            + (f"      options:\n{opts}" if opts else "")
+            + "  transform: {}\n  outputs:\n    out:\n      format: s3\n"
+            '      path: "{{ task_dir }}/output/{{ backend }}"\n'
+            "      file_format: parquet\n      mode: overwrite\n",
+            encoding="utf-8",
+        )
+        ubunye.run_task(
+            str(task),
+            backend=DatabricksBackend(spark=spark),
+            lineage=True,
+            variables={"backend": "spark"},
+        )
+        ubunye.run_task(
+            str(task),
+            backend=PandasBackend(timezone=ZONE),
+            lineage=True,
+            variables={"backend": "pandas"},
+        )
+        store = FileSystemLineageStore(str(root / ".ubunye" / "lineage"))
+        records = store.list_runs(f"uc/e08/{task.name}")
+        results[name] = {r.backend: r for r in records}
+    return results
+
+
+E2E_SHAPES = [
+    "wide",
+    "long-text",
+    "nested-json",
+    "conflicting-json",
+    "time-zones",
+    "special-numbers",
+    "messy-csv",
+    "many-files",
+    "partitioned",
+    "header-only",
+]
+
+
+@pytest.mark.parametrize("shape", E2E_SHAPES)
+def test_the_same_task_gives_the_same_run_record(e2e, shape):
+    """E-08: rows, schema hash and rows-v1 digest match, input and output."""
+    by_backend = e2e[shape]
+    assert set(by_backend) == {"databricks", "pandas"}
+    spark_run, pandas_run = by_backend["databricks"], by_backend["pandas"]
+    assert spark_run.status == pandas_run.status == "success"
+    for side in ("inputs", "outputs"):
+        for left, right in zip(getattr(spark_run, side), getattr(pandas_run, side)):
+            assert left.data_hash and left.data_hash.startswith("sha256:"), (side, left)
+            assert (left.row_count, left.schema_hash, left.data_hash) == (
+                right.row_count,
+                right.schema_hash,
+                right.data_hash,
+            ), (shape, side)
