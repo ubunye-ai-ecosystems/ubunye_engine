@@ -1,3 +1,4 @@
+[% raw %]
 # Tutorial 2: nine messy tables to a fact table, with checks that catch the mess
 
 You will build what a data team builds first on an online shop's data: one row per
@@ -337,3 +338,4 @@ Remove-Item -Recurse -Force output, output-bad, output-real, data, evidence, pip
 - `pyarrow` older than 24 on Windows cannot find a time zone database; upgrade it.
 - `kaggle: command not found` or `401`: install the `kaggle` package and put your API
   token where https://github.com/Kaggle/kaggle-api says (`kaggle.json`).
+[% endraw %]
