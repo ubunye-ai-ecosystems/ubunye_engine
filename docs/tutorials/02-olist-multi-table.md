@@ -223,7 +223,7 @@ expectation warning: orders_fact: payment_gap_between (between) broken by 3 of 5
 [ERROR] Run stopped for orders_fact: Expectations failed, so nothing was written:
   orders_fact: rows_from_orders (reconcile): 60 rows read from orders, 59 reached orders_fact: 1 lost, 0 gained (at most 0 lost, at most 0 gained)
   orders_fact: payments_total_sum_from_payments (reconcile): sum of payment_value in payments 7411.88, of payments_total in orders_fact 7365.98: difference -45.900000000000546 (at most 0.01)
-  Hint: Fix the data or the source, or change the rule's severity to quarantine or warn if this is expected.
+  Hint: A reconcile: look for a join or filter that loses rows, or a source that changed; if the loss is expected, allow a share (max_lost: "1%") or set severity: warn. A reconcile cannot quarantine.
 ```
 
 The canceled order has no items, so the inner join dropped it, and its 45.90 payment

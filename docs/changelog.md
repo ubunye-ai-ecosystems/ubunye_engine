@@ -107,6 +107,12 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A failed expectation's hint names only what the rule can do (F-057).** Every
+  failure said "change the rule's severity to quarantine or warn", but a reconcile,
+  `unique`, `row_count` and `columns` cannot quarantine (the config refuses it). The
+  hint now depends on what broke: quarantine or warn for a rule on rows, a share
+  (`max_lost: "1%"`) or warn for a reconcile, warn for the others, and "the source
+  probably changed" when `max_quarantine_rate` is broken.
 - **`ubunye prove observe -t a -t b` observes every task (F-056).** It took one
   `-t` and click kept the last of several, silently: one observation, of the last
   task, under the name meant for all. Several tasks now give one observation each,

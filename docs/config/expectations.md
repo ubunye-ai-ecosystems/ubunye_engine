@@ -74,6 +74,10 @@ ExpectationError: Expectations failed, so nothing was written:
   or warn if this is expected.
 ```
 
+The hint names only what the broken rules can do: quarantine or warn for a rule on
+rows; a share (`max_lost: "1%"`) or warn for a reconcile; warn for `unique`,
+`row_count` and `columns`, which cannot quarantine.
+
 `ubunye run` prints the message and exits with code 1, with no traceback: the data
 broke a rule, the engine did not crash. (An `ExpectationError` about the setup, such
 as narwhals not installed, still shows its traceback.) The error carries every rule's result, passed
