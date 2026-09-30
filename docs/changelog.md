@@ -452,7 +452,7 @@ they got stuck.
   falls back to the frame's `toLocalIterator`, as before.
 - **The pandas backend writes a map column to JSON as Spark does** (F-015 review): as
   an object, keeping its null values (`{"m":{"a":null,"b":"x"}}`). It wrote Arrow's
-  pairs instead (`{"m":[["a",null],["b","x"]]}`), which Spark reads back as a
+  pairs instead (`{"m": [ ["a",null], ["b","x"] ]}`), which Spark reads back as a
   different type. Maps inside lists and structs too.
 - **On Spark, the run record hashes the rows that were written (F-040), and a checked
   or recorded output is computed once (F-039, F-043).** The record hashed each output
