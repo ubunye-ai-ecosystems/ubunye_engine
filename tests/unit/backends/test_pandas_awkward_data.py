@@ -265,6 +265,33 @@ class TestCsvInferSchemaNumbers:
         assert sorted(frame.native["v"].tolist()) == [1.0, 1.5]
 
 
+class TestEmptyInputsWithASchema:
+    """F-068: an existing empty file or folder read with a schema is zero rows."""
+
+    @pytest.mark.parametrize("fmt", ["csv", "json", "parquet"])
+    def test_an_empty_file(self, tmp_path, fmt):
+        frame = _read_bytes(tmp_path, fmt, b"", schema="id INT, name STRING, t TIMESTAMP")
+        assert frame.count() == 0
+        assert _types(frame) == {
+            "id": pa.int32(),
+            "name": pa.string(),
+            "t": pa.timestamp("us", tz="UTC"),
+        }
+
+    def test_an_empty_folder(self, tmp_path):
+        folder = tmp_path / "none"
+        folder.mkdir()
+        (folder / "_SUCCESS").write_bytes(b"")
+        frame = PandasBackend().read_frame("parquet", str(folder), schema="id BIGINT")
+        assert frame.count() == 0 and _types(frame) == {"id": pa.int64()}
+
+    def test_a_missing_path_is_still_refused(self, tmp_path):
+        from ubunye.core.errors import SourceReadError
+
+        with pytest.raises(SourceReadError, match="does not exist"):
+            PandasBackend().read_frame("parquet", str(tmp_path / "nope"), schema="id BIGINT")
+
+
 NY = "America/New_York"
 # 02:30 on 2024-03-10 does not exist in New York (clocks go 02:00 -> 03:00);
 # 01:30 on 2024-11-03 happens twice (EDT, then EST).

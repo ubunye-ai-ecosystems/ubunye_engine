@@ -771,6 +771,12 @@ def read_frame(
         files = layout.files
     else:
         files = _data_files(local)
+    if not files and arrow_schema is not None and os.path.exists(local):
+        # An empty file, or a folder with no data files, read with a schema:
+        # Spark reads no rows with that schema (it has nothing to infer), F-068.
+        frame = PandasDataFrameAdapter(to_pandas(_instants(arrow_schema.empty_table(), timezone)))
+        frame.source_files = []
+        return frame
     if not files:
         raise SourceReadError(
             f"Path does not exist or holds no data files: {path}",

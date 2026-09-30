@@ -60,7 +60,7 @@ copies Spark's defaults instead of pandas' own:
 | A folder | Every data file in it, skipping `_SUCCESS` and other `_` or `.` files and empty files, so it reads what Spark wrote |
 | A partitioned folder (`dt=2024-01-02/...`) | The partition columns, after the data columns, typed as Spark infers them (see below) |
 | A glob such as `data/*.csv` | Every matching file |
-| `schema: "id INT, name STRING"` | Exactly those columns and types |
+| `schema: "id INT, name STRING"` | Exactly those columns and types; an empty file or a folder with no data files gives zero rows of them |
 | `mode: "FAILFAST"`, `"DROPMALFORMED"`, `"PERMISSIVE"` | What Spark does with a bad row: stop, skip it, or (the default) cut a row with too many fields and pad one with too few |
 
 The frame your task gets is an ordinary pandas DataFrame whose columns are backed

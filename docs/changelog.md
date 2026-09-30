@@ -107,6 +107,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **An empty file or folder read with a schema is zero rows on pandas (F-068, E-08).**
+  A zero byte file, or a folder holding only `_SUCCESS`, read with `schema:` stopped
+  the run ("Path does not exist or holds no data files"). Spark reads zero rows with
+  that schema, and so does the pandas backend now. A missing path is still an error.
 - **CSV `inferSchema` on pandas follows Spark's rules (F-067, E-08).** pyarrow chose
   the types, and differed from Spark on numbers written a little differently: a
   whole number past 64 bits became a `double` that lost digits (Spark: an exact

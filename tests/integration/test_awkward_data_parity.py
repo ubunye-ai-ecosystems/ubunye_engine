@@ -336,6 +336,58 @@ def test_json_empty_string_in_a_number_field(spark, pandas_backend, tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# Empty inputs
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("fmt", ["csv", "json", "parquet"])
+def test_empty_file_with_a_schema(spark, pandas_backend, tmp_path, fmt):
+    """F-068: an empty file read with a schema is zero rows of that schema."""
+    path = _file(tmp_path, f"zero.{fmt}", b"")
+    assert_same(*_read_both(spark, pandas_backend, fmt, path, {}, "id INT, t TIMESTAMP"))
+
+
+def test_empty_folder_with_a_schema(spark, pandas_backend, tmp_path):
+    folder = tmp_path / "none"
+    folder.mkdir()
+    (folder / "_SUCCESS").write_bytes(b"")
+    assert_same(*_read_both(spark, pandas_backend, "parquet", str(folder), {}, "id BIGINT"))
+
+
+def test_zero_rows_with_a_schema_and_a_header_only_csv(spark, pandas_backend, tmp_path):
+    import pyarrow.parquet as pq
+
+    schema = pa.schema([("id", pa.int64()), ("name", pa.string())])
+    path = str(tmp_path / "zero_rows.parquet")
+    pq.write_table(schema.empty_table(), path)
+    assert_same(*_read_both(spark, pandas_backend, "parquet", path))
+    header = _file(tmp_path, "header.csv", b"id,name\n")
+    options = {"header": "true", "inferSchema": "true"}
+    assert_same(*_read_both(spark, pandas_backend, "csv", header, options))
+
+
+@pytest.mark.xfail(
+    strict=False,
+    reason="F-068, not fixed: Spark is expected to read an empty CSV or JSON file "
+    "with no schema as zero rows and no columns; the pandas backend refuses it",
+)
+@pytest.mark.parametrize("fmt", ["csv", "json"])
+def test_empty_file_without_a_schema(spark, pandas_backend, tmp_path, fmt):
+    path = _file(tmp_path, f"zero.{fmt}", b"")
+    try:
+        spark_df = spark.read.format(fmt).load(path)
+        spark_shape = (spark_df.columns, spark_df.count())
+    except Exception:  # noqa: BLE001  Spark refuses too: then pandas must refuse
+        spark_shape = "refused"
+    try:
+        frame = pandas_backend.read_frame(fmt, path)
+        pandas_shape = (list(frame.native.columns), frame.count())
+    except Exception:  # noqa: BLE001
+        pandas_shape = "refused"
+    assert spark_shape == pandas_shape
+
+
+# --------------------------------------------------------------------------- #
 # Time zones
 # --------------------------------------------------------------------------- #
 
