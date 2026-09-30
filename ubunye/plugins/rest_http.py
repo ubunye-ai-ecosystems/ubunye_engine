@@ -81,6 +81,69 @@ def records_of(frame: Any, backend: Any) -> Iterator[Dict[str, Any]]:
     return frame_io.iter_records(frame)
 
 
+AUTH_TYPES = ("bearer", "api_key_header", "api_key_query", "basic")
+
+#: Old names the docs used to print (F-049), still read, with a warning.
+PAGINATION_ALIASES = {"cursor_field": "cursor_response_key", "link_field": "next_key"}
+
+
+def _auth_type(auth_cfg: Dict[str, Any]) -> Any:
+    """The auth type, with the old ``api_key`` resolved; a problem text if it cannot be."""
+    kind = str(auth_cfg.get("type", "") or "").lower()
+    if kind == "api_key":
+        has_header, has_param = "header" in auth_cfg, "param" in auth_cfg
+        if has_header == has_param:
+            return None, (
+                "auth type 'api_key' needs exactly one of 'header' or 'param'; better, "
+                "use type: api_key_header (with header) or api_key_query (with param)"
+            )
+        return ("api_key_header" if has_header else "api_key_query"), None
+    if kind and kind not in AUTH_TYPES:
+        return None, f"unknown auth type '{kind}'; use one of {', '.join(AUTH_TYPES)}"
+    return kind, None
+
+
+def config_problems(cfg: Dict[str, Any]) -> List[str]:
+    """What is wrong with a rest_api config's auth, found before any request."""
+    auth_cfg = cfg.get("auth") or {}
+    if not isinstance(auth_cfg, dict):
+        return ["'auth' must be a mapping"]
+    _, problem = _auth_type(auth_cfg)
+    return [problem] if problem else []
+
+
+def normalized(cfg: Dict[str, Any], error: Type[UbunyeError]) -> Dict[str, Any]:
+    """The config with the old option names turned into the ones the code reads.
+
+    The docs once printed ``auth: {type: api_key}``, ``cursor_field`` and
+    ``link_field``; the code read none of them, so an ``api_key`` config sent no
+    key at all (F-049). They are still accepted, with a warning; an auth type
+    nobody knows is refused instead of silently sending nothing.
+    """
+    problems = config_problems(cfg)
+    if problems:
+        raise error(
+            f"rest_api: {problems[0]}.",
+            context={"Format": "rest_api"},
+            hint="See docs/connectors/rest_api.md, Authentication.",
+        )
+    out = dict(cfg)
+    auth_cfg = dict(cfg.get("auth") or {})
+    if str(auth_cfg.get("type", "")).lower() == "api_key":
+        kind, _ = _auth_type(auth_cfg)
+        log.warning("rest_api: auth type 'api_key' is an old name; use type: %s.", kind)
+        auth_cfg["type"] = kind
+        out["auth"] = auth_cfg
+    pag_cfg = dict(cfg.get("pagination") or {})
+    for old, new in PAGINATION_ALIASES.items():
+        if old in pag_cfg:
+            log.warning("rest_api: pagination '%s' is an old name; use '%s'.", old, new)
+            pag_cfg.setdefault(new, pag_cfg.pop(old))
+    if pag_cfg:
+        out["pagination"] = pag_cfg
+    return out
+
+
 def build_session(cfg: Dict[str, Any], error: Type[UbunyeError]) -> "requests.Session":
     """A ``requests.Session`` with headers and auth set.
 

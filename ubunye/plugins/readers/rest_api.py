@@ -353,7 +353,8 @@ class RestApiReader(Reader):
 
     @classmethod
     def validate_config(cls, cfg):
-        return [] if cfg.get("url") else ["format 'rest_api' requires 'url'"]
+        problems = [] if cfg.get("url") else ["format 'rest_api' requires 'url'"]
+        return problems + rest_http.config_problems(cfg)
 
     def read(self, cfg: Dict[str, Any], backend) -> Any:
         """Fetch all pages from the API and return the backend's frame.
@@ -375,6 +376,7 @@ class RestApiReader(Reader):
         # Refuse before any HTTP call: a backend that cannot hold records, or a
         # schema type no backend knows.
         rest_http.check_backend(backend, SourceReadError)
+        cfg = rest_http.normalized(cfg, SourceReadError)
         schema_cfg = cfg.get("schema")
         schema = _schema_ddl(schema_cfg) if schema_cfg else None
 

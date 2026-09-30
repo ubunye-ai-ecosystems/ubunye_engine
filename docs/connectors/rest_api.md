@@ -39,7 +39,7 @@ CONFIG:
         status: active
 
       auth:
-        type: bearer                     # bearer | api_key | basic
+        type: bearer                     # bearer | api_key_header | api_key_query | basic
         token: "{{ env.API_TOKEN }}"
 
       pagination:
@@ -80,8 +80,8 @@ CONFIG:
 
     ```yaml
     auth:
-      type: api_key
-      header: X-Api-Key
+      type: api_key_header
+      header: X-Api-Key          # the default
       key: "{{ env.API_KEY }}"
     ```
 
@@ -89,8 +89,8 @@ CONFIG:
 
     ```yaml
     auth:
-      type: api_key
-      param: api_key
+      type: api_key_query
+      param: api_key             # the default
       key: "{{ env.API_KEY }}"
     ```
 
@@ -103,16 +103,25 @@ CONFIG:
       password: "{{ env.API_PASS }}"
     ```
 
+An auth `type` the connector does not know is refused by `ubunye validate` and
+before any request, so a typo never sends a request without its key. The old
+name `type: api_key` still works, with a warning: it means `api_key_header` when
+`header` is set and `api_key_query` when `param` is set.
+
 ---
 
 ## Pagination strategies
 
 === "Offset"
 
-    Increments `offset` (or `page`) by `page_size` until fewer than `page_size` records
-    are returned.
+    Sends `offset` (name it with `offset_param`) starting at 0, and adds
+    `page_size` after each page, until a page comes back empty or `max_pages` is
+    reached. `page_size` is not sent to the API: put the API's own page size
+    parameter under `params` if it needs one.
 
     ```yaml
+    params:
+      limit: 200
     pagination:
       type: offset
       page_size: 200
@@ -121,25 +130,31 @@ CONFIG:
 
 === "Cursor"
 
-    Reads a cursor field from each response and passes it as a query parameter
-    in the next request.
+    Reads a cursor from each response and sends it as a query parameter in the
+    next request, until the cursor is missing or empty.
 
     ```yaml
     pagination:
       type: cursor
-      cursor_field: next_cursor      # response JSON key containing the cursor
-      page_size: 500
+      cursor_response_key: next_cursor   # the response's key holding the cursor (default)
+      cursor_param: cursor               # the query parameter it is sent as (default)
+      max_pages: 100
     ```
 
 === "Next link"
 
-    Follows a URL field in each response until the field is absent or `null`.
+    Follows a URL in each response until it is missing or `null`. The URL must be
+    a top level key of the response body; a dotted path and the HTTP `Link` header
+    are not read.
 
     ```yaml
     pagination:
       type: next_link
-      link_field: next              # response JSON key containing the next URL
+      next_key: next                 # the response's key holding the next URL (default)
     ```
+
+The old names `cursor_field` (for `cursor_response_key`) and `link_field` (for
+`next_key`) still work, with a warning.
 
 === "None (single request)"
 
@@ -303,7 +318,7 @@ CONFIG:
         token: "{{ env.CRM_TOKEN }}"
       pagination:
         type: next_link
-        link_field: next
+        next_key: next
       response:
         root_key: results
 

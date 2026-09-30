@@ -128,8 +128,7 @@ auth:
   token: "{{ env.API_TOKEN }}"
 pagination:
   type: cursor
-  cursor_field: next_cursor
-  page_size: 500
+  cursor_response_key: next_cursor
 headers:
   Accept: application/json
 ```

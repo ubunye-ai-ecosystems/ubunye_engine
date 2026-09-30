@@ -119,7 +119,8 @@ class RestApiWriter(Writer):
 
     @classmethod
     def validate_config(cls, cfg):
-        return [] if cfg.get("url") else ["format 'rest_api' requires 'url'"]
+        problems = [] if cfg.get("url") else ["format 'rest_api' requires 'url'"]
+        return problems + rest_http.config_problems(cfg)
 
     def write(self, df: Any, cfg: Dict[str, Any], backend) -> None:
         """POST the frame's rows to a REST endpoint in batches.
@@ -143,6 +144,7 @@ class RestApiWriter(Writer):
 
         _check_mode(cfg)
         rest_http.check_backend(backend, SinkWriteError)
+        cfg = rest_http.normalized(cfg, SinkWriteError)
 
         url: str = cfg["url"]
         batch_size: int = int(cfg.get("batch_size") or _DEFAULT_BATCH_SIZE)

@@ -81,6 +81,14 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   compare maps as sets of entries. Checked against live Spark 4 and 3.5 in
   `tests/integration/test_rest_api_parity.py`. The writer POSTs the same payloads on
   both.
+- **The REST docs name the options the connector reads, and an unknown auth type
+  is refused (F-049).** The docs printed `auth: {type: api_key}`, `cursor_field` and
+  `link_field`; the code reads `api_key_header` / `api_key_query`,
+  `cursor_response_key` and `next_key`, and ignored an auth type it did not know, so
+  the documented API key example sent no key. The docs are fixed, the old names are
+  still read with a warning, and an unknown auth type (or `api_key` with both or
+  neither of `header` and `param`) is refused by `ubunye validate` and before any
+  request.
 - **A REST field declared `double` or `float` takes whole numbers** (F-015 review).
   Spark's schema check refuses a Python `int` in a double column, so a price field
   of `1` and `2.5` could not be read at all, even with a schema, on either backend.

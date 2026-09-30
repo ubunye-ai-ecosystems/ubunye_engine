@@ -81,16 +81,32 @@ class _Api(BaseHTTPRequestHandler):
     posted: List[Any] = []
     base: str = ""
     raw: str = "[]"
+    #: Every request: (method, path with query, headers).
+    seen: List[Any] = []
+    #: Status codes to answer with, one per request, before answering 200.
+    statuses: List[int] = []
+    cursor_key: str = "next_cursor"
+    link_key: str = "next"
 
-    def _send(self, body: Any) -> None:
+    def _send(self, body: Any, status: int = 200) -> None:
         data = json.dumps(body).encode()
-        self.send_response(200)
+        self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
 
+    def _failed(self) -> bool:
+        """Record the request; answer the next queued error status, if any."""
+        type(self).seen.append((self.command, self.path, dict(self.headers)))
+        if type(self).statuses:
+            self._send({"error": True}, type(self).statuses.pop(0))
+            return True
+        return False
+
     def do_GET(self):  # noqa: N802
+        if self._failed():
+            return None
         url = urlparse(self.path)
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         records = type(self).records
@@ -103,9 +119,10 @@ class _Api(BaseHTTPRequestHandler):
             more = nxt < len(records)
             body: Dict[str, Any] = {"data": records[start:nxt]}
             if url.path == "/cursor":
-                body["next_cursor"] = str(nxt) if more else None
+                body[type(self).cursor_key] = str(nxt) if more else None
             else:
-                body["next"] = f"{type(self).base}/linked?from={nxt}" if more else None
+                link = f"{type(self).base}/linked?from={nxt}"
+                body[type(self).link_key] = link if more else None
             return self._send(body)
         if url.path == "/all":
             return self._send(records)
@@ -123,7 +140,10 @@ class _Api(BaseHTTPRequestHandler):
 
     def do_POST(self):  # noqa: N802
         length = int(self.headers.get("Content-Length", 0))
-        type(self).posted.append(json.loads(self.rfile.read(length)))
+        body = self.rfile.read(length)
+        if self._failed():
+            return None
+        type(self).posted.append(json.loads(body))
         self._send({"ok": True})
 
     def log_message(self, *args):
@@ -133,7 +153,8 @@ class _Api(BaseHTTPRequestHandler):
 @contextmanager
 def served(records: Optional[List[Dict[str, Any]]] = None) -> Iterator[Any]:
     """A running API; yields an object with ``url`` and ``posted`` (POST bodies)."""
-    handler = type("Api", (_Api,), {"records": records or RECORDS, "posted": []})
+    fresh = {"records": records or RECORDS, "posted": [], "seen": [], "statuses": []}
+    handler = type("Api", (_Api,), fresh)
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     handler.base = f"http://127.0.0.1:{server.server_address[1]}"
     thread = threading.Thread(target=server.serve_forever, daemon=True)
