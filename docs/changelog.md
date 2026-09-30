@@ -107,6 +107,11 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **A JSON record that repeats a key is refused, as Spark refuses it (F-088, skeptic
+  review).** `{"a":1,"a":"x"}` read on pandas as one column holding the last value
+  (`x`), silently. Spark infers one column per occurrence (`a:bigint, a:string`) and
+  refuses the read ("Found duplicate column(s)"). The pandas reader now refuses it
+  too, naming the key, at any depth.
 - **A time with a fraction of a second in a daylight saving gap before 1970 moves
   as Java moves it (F-063 follow-up, skeptic review).** pyarrow judged such a time by
   the next whole second, so `1950-04-30 02:59:59.5` in New York (in the gap) was read

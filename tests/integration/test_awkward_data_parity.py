@@ -415,6 +415,13 @@ def test_names_that_differ_only_by_case_are_refused(spark, pandas_backend, tmp_p
     assert _refused(lambda: pandas_backend.read_frame(fmt, path))
 
 
+def test_a_json_record_with_a_repeated_key_is_refused(spark, pandas_backend, tmp_path):
+    """F-088: {"a":1,"a":"x"} gives two columns a on Spark, then a refusal."""
+    path = _file(tmp_path, "dup.json", b'{"a":1,"a":"x"}\n{"a":2}\n')
+    assert _refused(lambda: spark.read.json(path).collect())
+    assert _refused(lambda: pandas_backend.read_frame("json", path))
+
+
 def test_a_parquet_schema_read_of_names_differing_by_case(spark, pandas_backend, tmp_path):
     """F-069 (skeptic): a schema field matching two file columns is refused on both."""
     import pyarrow.parquet as pq

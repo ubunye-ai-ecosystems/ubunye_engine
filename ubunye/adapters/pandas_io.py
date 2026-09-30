@@ -697,7 +697,7 @@ def _read_json(
         before = len(rows)
         with open(f, encoding=encoding) as handle:
             if _truthy(opts.get("multiline", "false")):
-                doc = json.load(handle)
+                doc = spark_json.loads(handle.read())
                 rows.extend(doc if isinstance(doc, list) else [doc])
             else:
                 drop = _drop_malformed(opts)
@@ -705,7 +705,7 @@ def _read_json(
                     if not line.strip():
                         continue
                     try:
-                        record = json.loads(line)
+                        record = spark_json.loads(line)
                     except json.JSONDecodeError:
                         if not drop:
                             raise

@@ -45,6 +45,33 @@ _LONG_MIN, _LONG_MAX = -(2**63), 2**63 - 1
 _MAX_PRECISION = 38
 
 
+class DuplicateKey(ValueError):
+    """A JSON object that holds one key twice."""
+
+
+def _no_repeats(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    record = dict(pairs)
+    if len(record) != len(pairs):
+        seen: Dict[str, int] = {}
+        for key, _ in pairs:
+            seen[key] = seen.get(key, 0) + 1
+        twice = sorted(k for k, n in seen.items() if n > 1)
+        raise DuplicateKey(
+            f"a JSON record holds the key(s) {twice} more than once. Spark infers one "
+            "column per occurrence and then refuses the read ('Found duplicate "
+            "column(s) in the data schema'), so the pandas backend refuses it too"
+        )
+    return record
+
+
+_DECODER = json.JSONDecoder(object_pairs_hook=_no_repeats)
+
+
+def loads(text: str) -> Any:
+    """One JSON document, parsed as Spark's reader sees it (a repeated key refused)."""
+    return _DECODER.decode(text)
+
+
 def java_order(name: str) -> bytes:
     """The sort key Java's ``String.compareTo`` gives: UTF-16 code units."""
     return name.encode("utf-16-be", "surrogatepass")
@@ -81,7 +108,7 @@ def infer_field(value: Any) -> Tuple[Any, ...]:
         return NULL if value == "" else STRING
     if isinstance(value, dict):
         fields = sorted(((str(k), infer_field(v)) for k, v in value.items()), key=_by_name)
-        return ("struct", _dedupe(fields))
+        return ("struct", tuple(fields))
     if isinstance(value, list):
         element = NULL
         for item in value:
@@ -92,17 +119,6 @@ def infer_field(value: Any) -> Tuple[Any, ...]:
 
 def _by_name(field: Tuple[str, Any]) -> bytes:
     return java_order(field[0])
-
-
-def _dedupe(fields: List[Tuple[str, Any]]) -> Tuple[Tuple[str, Any], ...]:
-    """A struct's fields with a repeated key merged (a JSON object may repeat one)."""
-    out: List[Tuple[str, Any]] = []
-    for name, kind in fields:
-        if out and out[-1][0] == name:
-            out[-1] = (name, compatible_type(out[-1][1], kind))
-        else:
-            out.append((name, kind))
-    return tuple(out)
 
 
 def _decimal_for_integral(kind: Tuple[Any, ...]) -> Tuple[Any, ...]:

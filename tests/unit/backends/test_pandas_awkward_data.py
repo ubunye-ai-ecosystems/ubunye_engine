@@ -175,6 +175,15 @@ class TestJsonInference:
         frame = _read_bytes(tmp_path, "json", data)
         assert _types(frame)["s"] == pa.struct([("Id", pa.float64())])
 
+    @pytest.mark.parametrize("multiline", ["false", "true"])
+    def test_a_repeated_key_is_refused_as_spark_refuses_it(self, tmp_path, multiline):
+        # F-088: Spark infers a:bigint and a:string, then refuses the duplicate.
+        from ubunye.core.errors import SourceReadError
+
+        data = b'{"a":1,"a":"x"}\n' if multiline == "false" else b'[{"o":{"a":1,"a":2}}]'
+        with pytest.raises(SourceReadError, match="more than once"):
+            _read_bytes(tmp_path, "json", data, options={"multiLine": multiline})
+
     def test_names_sort_by_utf16_like_java(self):
         from ubunye.adapters import spark_json
 
