@@ -195,8 +195,16 @@ def _paginate(
     pag_type: str = (pag_cfg.get("type") or "").lower()
     secrets = rest_http.secrets_of(cfg)
 
-    def fetch(*args: Any) -> Any:
-        return _fetch_page(*args, secrets=secrets)
+    def fetch(
+        session: requests.Session,
+        url: str,
+        method: str,
+        params: Dict[str, Any],
+        body: Optional[Dict[str, Any]],
+        rate_cfg: Dict[str, Any],
+        auth_cfg: Dict[str, Any],
+    ) -> Any:
+        return _fetch_page(session, url, method, params, body, rate_cfg, auth_cfg, secrets=secrets)
 
     # ---- No pagination: single request ----
     if not pag_type:

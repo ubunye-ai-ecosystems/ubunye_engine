@@ -860,7 +860,8 @@ def _map_key(key: Any) -> str:
     if isinstance(key, bool):
         return "true" if key else "false"
     if isinstance(key, float):
-        return _java_double(key)
+        text = _java_double(key)
+        return text if text is not None else str(key)
     return str(key)
 
 

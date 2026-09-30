@@ -398,6 +398,7 @@ def _send(
     for attempt in range(max_retries + 1):
         if rps > 0:
             time.sleep(1.0 / rps)
+        payload: Dict[str, Any]
         if isinstance(body, bytes):  # already encoded (the writer: see json_body)
             payload = {"data": body, "headers": {"Content-Type": "application/json"}}
         else:
