@@ -466,7 +466,9 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
   committed). The tutorial breaks the pipeline on purpose to show a contract, a
   quarantine, a reconcile and a warning each catching its problem. Golden digests on
   pandas in the unit tier, the same on Spark in the integration tier. The portable
-  transforms guide gains "days between two dates" (F-053).
+  transforms guide gains "days between two dates" (F-053). Each step checks for
+  Narwhals 2.9 or later first and says so (`the example needs narwhals>=2.9
+  (Expr.floor)`), instead of failing inside the transform.
 - **A guide to writing portable transforms** (`docs/guides/portable-transforms.md`):
   the places the same Narwhals code gave different numbers on pandas and Spark, each
   found on real data, each with a fix (rounding modes, float sums, a lost cast,

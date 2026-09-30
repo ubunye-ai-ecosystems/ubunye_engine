@@ -284,7 +284,8 @@ rm -rf output output-bad output-real data evidence pipelines/.ubunye
 
 ## Common problems
 
-- `the example needs narwhals>=2.9`: upgrade Narwhals (`pip install -U narwhals`).
+- `ImportError: the example needs narwhals>=2.9 (Expr.floor)`: upgrade Narwhals
+  (`pip install -U narwhals`). Every step checks this first.
 - `pyarrow` older than 24 on Windows cannot find a time zone database; upgrade it.
 - `kaggle: command not found` or `401`: install the `kaggle` package and put your API
   token where `scripts/fetch_data.sh` says.

@@ -26,6 +26,12 @@ import narwhals as nw
 
 from ubunye.core.interfaces import Task
 
+# Expr.floor came in Narwhals 2.9; older ones fail later with a less clear error.
+if not hasattr(nw.Expr, "floor"):
+    raise ImportError(
+        "the example needs narwhals>=2.9 (Expr.floor); upgrade with: pip install -U narwhals"
+    )
+
 
 def micro(expr):
     """A number in whole millionths: integers add up exactly, in any order (F-029)."""

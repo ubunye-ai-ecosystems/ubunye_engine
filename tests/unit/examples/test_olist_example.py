@@ -164,6 +164,14 @@ def test_the_readme_run_gives_the_golden_rows_and_catches_the_bad_ones(example):
     assert "unknown" in set(categories["category"])
 
 
+@pytest.mark.parametrize("step", STEPS)
+def test_an_old_narwhals_gets_the_message_the_tutorial_promises(example, monkeypatch, step):
+    """Narwhals before 2.9 has no Expr.floor; say so, not "'Expr' has no attribute"."""
+    monkeypatch.delattr(nw.Expr, "floor")
+    with pytest.raises(ImportError, match=r"the example needs narwhals>=2\.9 \(Expr\.floor\)"):
+        ubunye.run_task(_task(example, step), backend="pandas")
+
+
 def test_a_raw_file_that_changes_type_stops_the_run_before_the_transform(example):
     """One purchase time written the day-first way turns the column to text."""
     orders = example / "sample" / "olist_orders_dataset.csv"
