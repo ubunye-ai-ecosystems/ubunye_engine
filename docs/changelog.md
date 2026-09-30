@@ -107,6 +107,10 @@ Reviews with a local LLM labelling step), and logged every place they got stuck.
 
 ### Fixed
 
+- **The awkward-data readers pass mypy (E-09 CI).** `spark_json.raw_tree` used the
+  json module's private `WHITESPACE` and `scanstring`; it now uses its own JSON
+  whitespace pattern and the public decoder. The Java-style UTF-8 error handler has
+  the signature `codecs.register_error` expects. No change in what is read.
 - **A CSV with a NUL character reads on Python 3.10 too (F-062 follow-up, E-09 CI).**
   Python 3.10's csv module stops at NUL ("line contains NUL" when reading, "need to
   escape" when writing), where 3.11 and later take it. The pandas CSV reader uses the

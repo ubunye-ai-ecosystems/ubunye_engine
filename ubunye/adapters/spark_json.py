@@ -289,6 +289,10 @@ def column(values: List[Any], kind: Tuple[Any, ...], raws: Any = None) -> Any:
         return pa.array([convert(v, kind, r) for v, r in zip(values, sources)], type=target)
 
 
+#: JSON's whitespace (RFC 8259): space, tab, line feed, carriage return.
+_JSON_BLANKS = re.compile(r"[ \t\n\r]*")
+
+
 def raw_tree(text: str, start: int = 0) -> Tuple[Any, int]:
     """The source text of every value in one JSON document: (tree, end).
 
@@ -297,13 +301,12 @@ def raw_tree(text: str, start: int = 0) -> Tuple[Any, int]:
     column as its exact source text (``1.50``, ``1e2``, ``{ "k" : 1 }`` with its
     spaces and escapes as written); this is how the pandas reader finds that text.
     """
-    import json.decoder
-
-    decoder = json.decoder.JSONDecoder()
-    ws = json.decoder.WHITESPACE
+    decoder = json.JSONDecoder()
+    ws = _JSON_BLANKS  # public API only: the json module's own pattern is private
 
     def skip(i: int) -> int:
-        return ws.match(text, i).end()
+        blanks = ws.match(text, i)
+        return blanks.end() if blanks else i
 
     def value(i: int) -> Tuple[Any, int]:
         i = skip(i)
@@ -313,7 +316,7 @@ def raw_tree(text: str, start: int = 0) -> Tuple[Any, int]:
             if text.startswith("}", i):
                 return members, i + 1
             while True:
-                key, i = json.decoder.scanstring(text, skip(i) + 1)
+                key, i = decoder.raw_decode(text, skip(i))  # a key is a JSON string
                 i = skip(skip(i) + 1)  # past the colon
                 sub, end = value(i)
                 members[key] = (text[i:end], sub)

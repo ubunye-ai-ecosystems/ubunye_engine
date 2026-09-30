@@ -37,7 +37,7 @@ import json
 import logging
 import os
 import re
-from typing import Any, Dict, Iterator, List, Optional, Sequence
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
 from ubunye.adapters import ddl, pandas_partitions
 from ubunye.adapters.pandas_adapter import PandasDataFrameAdapter
@@ -534,7 +534,7 @@ def _csv_source(path: str, encoding: str, dialect: _CsvDialect, opts: Dict[str, 
     return text.encode("utf-8"), "utf8", parse
 
 
-def _java_replace(error: UnicodeDecodeError) -> Any:
+def _java_replace(error: UnicodeError) -> Tuple[str, int]:
     """Python's ``replace``, with one change to match Java's UTF-8 decoder (F-086).
 
     Both give one U+FFFD per malformed sequence, and agree on where each ends,
@@ -543,6 +543,8 @@ def _java_replace(error: UnicodeDecodeError) -> Any:
     byte. Checked against ``new String(bytes, UTF_8)`` on Java 21 over 40,000 random
     byte strings (scratchpad/awkward/java_decode_fuzz.py).
     """
+    if not isinstance(error, UnicodeDecodeError):
+        raise error  # only used for decoding
     raw, i = error.object, error.start
     if (
         error.encoding.replace("-", "").replace("_", "").lower() == "utf8"
