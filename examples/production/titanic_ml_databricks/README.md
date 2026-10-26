@@ -59,21 +59,26 @@ The **train** notebook:
 2. Downloads the Titanic CSV into `/Volumes/workspace/titanic_ml/data/titanic.csv`.
 3. Sets `TITANIC_MODEL_STORE=/Volumes/.../model_store`,
    `MLFLOW_EXPERIMENT_NAME=/Shared/titanic_ml`, `TITANIC_MIN_AUC`.
-4. Calls `ubunye.run_task()` → `train_classifier/transformations.py`
-   which fits the model, logs to MLflow, registers the version, and
-   attempts promotion to `staging`. If the AUC gate blocks promotion, the
-   task raises `PromotionBlockedError` and the job fails.
-5. Writes a one-row audit DataFrame to
-   `workspace.titanic_ml.training_metrics` (append).
+4. Opens a notebook context with `ctx = ubunye.notebook(task_dir, ...)`.
+   `TITANIC_CATALOG` and `TITANIC_SCHEMA` come from the widgets;
+   `TITANIC_INPUT_PATH` is passed with `env=`.
+5. `ctx.read()`, then `ctx.transform()` runs
+   `train_classifier/transformations.py`, which fits the model, logs to
+   MLflow, registers the version, and attempts promotion to `staging`. If
+   the AUC gate blocks promotion, it raises `PromotionBlockedError` and the
+   job fails before anything is written.
+6. `ctx.write()` appends a one-row audit DataFrame to
+   `workspace.titanic_ml.training_metrics`.
 
 The **predict** notebook:
 
 1. Asserts the input CSV is present (train must run first).
-2. Calls `ubunye.run_task()` → `predict_classifier/transformations.py`
-   which loads the current production version — or falls back to
-   staging — from the registry, scores the raw DataFrame, and tags each
-   row with the model version + stage.
-3. Overwrites `workspace.titanic_ml.predictions`.
+2. Opens a notebook context the same way, then `ctx.read()` and
+   `ctx.transform()` run `predict_classifier/transformations.py`, which
+   loads the current production version (or falls back to staging) from
+   the registry, scores the raw DataFrame, and tags each row with the
+   model version and stage.
+3. `ctx.write()` overwrites `workspace.titanic_ml.predictions`.
 
 ---
 

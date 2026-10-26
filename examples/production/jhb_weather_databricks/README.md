@@ -78,7 +78,10 @@ The job uses **serverless compute** — no `new_cluster` block in
 `databricks.yml`. This is required on Databricks Free Edition (which does
 not allow classic-cluster creation) and works identically on paid
 workspaces. Dependencies are installed in-notebook via
-`%pip install ubunye-engine==<ver>` (the notebook pins 0.7.0 today).
+`%pip install ubunye-engine==<ver>` (the notebook pins 0.8.0 today). The
+notebook then runs the task one step at a time with `ubunye.notebook()`:
+`ctx.read()`, `ctx.transform()`, `ctx.write()`. `WEATHER_CATALOG` and
+`WEATHER_SCHEMA` come from the widgets of the same name in lower case.
 
 The default `weather_catalog` is `workspace` because that is the catalog
 Free Edition provisions automatically. On a paid workspace, override to

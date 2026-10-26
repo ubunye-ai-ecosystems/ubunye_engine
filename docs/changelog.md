@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Databricks examples run on serverless again.** Four example configs set
+  `spark.sql.sources.partitionOverwriteMode`, which serverless refuses. Since the
+  engine stopped ignoring refused keys, the scheduled `jhb_weather` job failed every
+  day from 2026-09-26. The key is removed; serverless never applied it, so the
+  writes behave as before.
+
+### Changed
+
+- **The Databricks example notebooks use the notebook API.** They now open a
+  context with `ubunye.notebook()` and run `ctx.read()`, `ctx.transform()` and
+  `ctx.write()` in separate cells, so you can see the data between steps. Catalog
+  and schema come from the widgets on their own (no `os.environ`), and the
+  notebooks install `ubunye-engine==0.8.0`.
+
 ## [0.8.0] (2026-09-30)
 
 The hardening release. Ubunye was tested against real use: newcomers given only the
