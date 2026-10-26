@@ -12,7 +12,8 @@ Any installed package that declares the right entry points is discovered automat
 | Reader | `ubunye.core.interfaces.Reader` | `ubunye.readers` |
 | Writer | `ubunye.core.interfaces.Writer` | `ubunye.writers` |
 | Transform | `ubunye.core.interfaces.Transform` | `ubunye.transforms` |
-| Monitor | `ubunye.telemetry.monitors.Monitor` | `ubunye.monitors` |
+| Monitor | `ubunye.telemetry.monitors.Monitor` (a protocol) | `ubunye.monitors` |
+| Secret provider | a class with `get(ref) -> str` (see [Secrets](../config/secrets.md)) | `ubunye.secrets` |
 
 ---
 
@@ -23,17 +24,23 @@ Any installed package that declares the right entry points is discovered automat
 from ubunye.core.interfaces import Reader
 
 class MyApiReader(Reader):
-    def read(self, cfg: dict, backend) -> "pyspark.sql.DataFrame":
-        spark = backend.spark
-        url = cfg["url"]
-        token = cfg.get("token", "")
-        # ... fetch data, convert to Spark DataFrame
-        rows = _fetch_all(url, token)
-        return spark.createDataFrame(rows)
+    CONFIG_KEYS = frozenset({"url", "token"})   # see "Declare your settings" below
+
+    @classmethod
+    def validate_config(cls, cfg):
+        # Problems found here are reported by `ubunye validate`, before any run.
+        return [] if cfg.get("url") else ["format 'my_api' requires 'url'"]
+
+    def read(self, cfg: dict, backend):
+        rows = _fetch_all(cfg["url"], cfg.get("token", ""))   # a list of dicts
+        # The backend builds its own frame: Spark on spark, pandas on pandas.
+        return backend.frame_from_records(rows)
 ```
 
-`cfg` is the full `IOConfig.model_dump()` for this input — includes `format`, `options`,
-and any extra fields declared in the YAML.
+`cfg` is this input's block from the config as a dict: `format`, `options` and
+every other key in the YAML. `secret://` references in it are already resolved.
+`validate_config` and `CONFIG_KEYS` are optional; leave them out and the
+connector accepts any block.
 
 ---
 
@@ -46,7 +53,7 @@ from ubunye.core.interfaces import Writer
 class MySinkWriter(Writer):
     def write(self, df: "pyspark.sql.DataFrame", cfg: dict, backend) -> None:
         url = cfg["url"]
-        mode = cfg.get("mode", "append")
+        mode = cfg.get("mode") or "append"
         # ... write df to your sink
         _send_to_sink(df.toPandas(), url, mode)
 ```
@@ -64,12 +71,18 @@ class MyTransform(Transform):
         self,
         inputs: dict,           # {logical_name: DataFrame}
         cfg: dict,              # TransformConfig.params dict
-        backend,                # SparkBackend (has .spark)
+        backend,                # the run's backend (see Backend reference)
     ) -> dict:                  # {logical_name: DataFrame}
         df = inputs["source"]
         threshold = cfg.get("threshold", 0.5)
         return {"output": df.filter(f"score > {threshold}")}
 ```
+
+A task folder does not run transform plugins: `ubunye run` always runs the
+task's `transformations.py`, and `transform.type` in its `config.yaml` only gets a
+warning. A transform plugin runs when you build an `Engine`
+(`ubunye.core.runtime.Engine`) yourself and pass it a config, or when your
+`Task` calls it. See [Transform](../config/transform.md).
 
 ---
 
@@ -105,18 +118,21 @@ CONFIG:
     data:
       format: my_api          # matches the entry point key
       url: "https://..."
-      token: "{{ env.TOKEN }}"
+      token: "secret://env/MY_API_TOKEN"
 
   transform:
-    type: my_transform
     params:
-      threshold: 0.7
+      threshold: 0.7          # read in transformations.py from self.config
 
   outputs:
     result:
       format: my_sink
       url: "https://..."
 ```
+
+`ubunye validate` checks that `format` names an installed reader (for an input)
+or writer (for an output). An unknown name is refused with the list of
+installed ones.
 
 ### Declare your settings, so typos fail early
 
@@ -141,14 +157,28 @@ built-in connector declares its keys.
 
 ## Backend reference
 
-The `backend` argument passed to `read`, `write`, and `apply` is a `SparkBackend` instance:
+The `backend` argument passed to `read`, `write`, and `apply` is the run's
+backend: `SparkBackend`, `DatabricksBackend` or `PandasBackend` (`ubunye backends`
+lists them). What every backend offers:
 
 ```python
-backend.spark          # pyspark.sql.SparkSession
-backend.spark_conf     # dict of active Spark config
+backend.is_spark                                  # True on spark and databricks
+backend.frame_from_records(rows, schema=None)     # list of dicts -> frame (schema: Spark DDL)
+backend.iter_records(frame)                       # frame -> each row as a dict
+backend.read_frame(file_format, path, options=..., schema=...)
 ```
 
-For Spark-free plugins (e.g. pure REST connectors), you can ignore `backend`.
+A Spark backend also has `backend.spark` (the `SparkSession`). A connector that
+needs Spark should get it with `ubunye.adapters.spark.session.spark_of`, which
+raises a clear error on the pandas backend, and declare it so the check happens
+before a run:
+
+```python
+from ubunye.core.capabilities import SPARK
+
+class MySparkReader(Reader):
+    REQUIRES = frozenset({SPARK})   # also: PATH_IO, RECORDS
+```
 
 ---
 
@@ -195,4 +225,4 @@ Users install it alongside `ubunye-engine`:
 pip install ubunye-engine my-ubunye-plugin
 ```
 
-Entry points are discovered automatically — no code changes required in Ubunye.
+Entry points are discovered automatically: no code changes required in Ubunye.

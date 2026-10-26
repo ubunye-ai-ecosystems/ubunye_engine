@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <em>Ubunye (oo-BOON-yeh) — isiZulu for "unity"</em>
+  <em>Ubunye (oo-BOON-yeh): isiZulu for "unity"</em>
 </p>
 
 <h3 align="center">One framework. Every pipeline. Any environment.</h3>
@@ -20,11 +20,11 @@
 
 ## Hey there 👋
 
-A **data pipeline** is a program that moves data from one place to another — a database to a file, a REST API to a data warehouse — and usually reshapes the data along the way. Building one from scratch is mostly plumbing: wire up the connection, juggle credentials, learn a framework's quirks, write the same *"read → transform → write"* scaffold for the tenth time this year. It's a lot of glue code standing between you and the three lines that actually matter.
+A **data pipeline** is a program that moves data from one place to another (a database to a file, a REST API to a data warehouse) and usually reshapes the data along the way. Building one from scratch is mostly plumbing: wire up the connection, juggle credentials, learn a framework's quirks, write the same *"read → transform → write"* scaffold for the tenth time this year. It's a lot of glue code standing between you and the three lines that actually matter.
 
-**Ubunye Engine writes that plumbing for you.** You describe the pipeline in a short YAML file and put your transformation in a normal Python class. Ubunye takes care of connections, the compute engine (Apache Spark), and the read/write loop.
+**Ubunye Engine writes that plumbing for you.** You describe the pipeline in a short YAML file and put your transformation in a normal Python class. Ubunye takes care of connections, the compute engine (Apache Spark, or pandas on a laptop with no Java), and the read/write loop.
 
-Same pipeline runs on your laptop today and on a production cluster tomorrow, with no code changes. That sentence is tested, not hoped: a build job runs one pipeline on six environments and fails if the outputs differ by a single byte.
+Same pipeline runs on your laptop today and on a production cluster tomorrow, with no code changes. That sentence is tested, not hoped: a build job runs one pipeline on seven environments and fails if any of them writes different rows.
 
 ---
 
@@ -120,7 +120,7 @@ These are the pages most people need:
 
 ## Why Ubunye
 
-We've all been there. You join a new team, open the repo, and find five Spark projects — each structured differently, each with its own way of handling configs, credentials, and deployment. One uses a JSON file, another has everything hardcoded, a third has a 300-line bash script that "Dave wrote and it just works."
+We've all been there. You join a new team, open the repo, and find five Spark projects, each structured differently, each with its own way of handling configs, credentials, and deployment. One uses a JSON file, another has everything hardcoded, a third has a 300-line bash script that "Dave wrote and it just works."
 
 Ubunye says: **let's agree on how pipelines look.** One folder structure. One config format. One CLI. Whether you're building an ETL job, a feature pipeline, or an ML training run.
 
@@ -129,7 +129,7 @@ Ubunye says: **let's agree on how pipelines look.** One folder structure. One co
 | Every project looks different | One standard: `use_case / pipeline / task` |
 | Spark setup scattered everywhere | Engine handles it from YAML config |
 | Credentials hardcoded or inconsistent | `{{ env.DB_PASSWORD }}` everywhere |
-| "Works on my machine" | Same config runs local, YARN, K8s, Databricks |
+| "Works on my machine" | Same config runs on a laptop, Kubernetes, AWS Glue, GCP Dataproc, Azure and Databricks |
 | New teammate needs a week to onboard | `ubunye init` and they're running in minutes |
 
 ---
@@ -138,11 +138,11 @@ Ubunye says: **let's agree on how pipelines look.** One folder structure. One co
 
 Three simple ideas:
 
-**Config over code.** Your pipeline is a YAML file. Inputs, outputs, Spark settings, scheduling — all declared, not coded.
+**Config over code.** Your pipeline is a YAML file. Inputs, outputs, data checks, Spark settings, scheduling: all declared, not coded.
 
-**Plugins for everything.** The `format` field in your config picks which *connector* to use. A connector is a small Python class that knows how to read from or write to one specific place (a database, a REST API, a cloud bucket). Built-ins include `hive`, `jdbc`, `delta`, `s3`, `unity`, and `rest_api`. Need a new data source? Write one and register it — Ubunye discovers plugins automatically.
+**Plugins for everything.** The `format` field in your config picks which *connector* to use. A connector is a small Python class that knows how to read from or write to one specific place (a database, a REST API, a cloud bucket). Built-ins include `hive`, `jdbc`, `delta`, `s3`, `unity`, `binary` and `rest_api`. Need a new data source? Write one and register it as an entry point; Ubunye discovers plugins automatically. Execution backends (`spark`, `databricks`, `pandas`) are plugins in the same way.
 
-**Folders as architecture.** Pipelines are organized as `project / use_case / pipeline / task`. The CLI uses this structure for scaffolding, execution, and discovery:
+**Folders as architecture.** Pipelines are organized as `use_case / package / task` inside a pipelines folder (the `-d`, `-u`, `-p` and `-t` flags). The CLI uses this structure for scaffolding, execution, and discovery:
 
 ```
 pipelines/
@@ -161,15 +161,15 @@ pipelines/
 
 ## What Can You Build With It
 
-**ETL pipelines** — move data between Hive, JDBC databases, Delta Lake, S3, REST APIs. Config-driven, scheduled, reproducible.
+**ETL pipelines**: move data between Hive, JDBC databases, Delta Lake, S3, REST APIs. Config-driven, scheduled, reproducible.
 
-**ML training and inference** — define your model behind a simple contract, let the engine handle versioning, storage, and deployment.
+**ML training and inference**: define your model behind a simple contract, let the engine handle versioning, storage, and deployment.
 
-**RAG document pipelines** — ingest documents, extract text, chunk, compute embeddings, load into a vector store. All from YAML.
+**RAG document pipelines**: ingest documents, extract text, chunk, compute embeddings, load into a vector store.
 
-**Feature engineering** — compute features once, write to a shared table, reuse across use cases.
+**Feature engineering**: compute features once, write to a shared table, reuse across use cases.
 
-**Data drift detection** — monitor feature distributions between runs, flag when things shift.
+**Data drift checks**: compute drift metrics in a task and gate model promotion on them (a pattern in the docs, not a built-in feature).
 
 Check out the [Examples](https://ubunye-ai-ecosystems.github.io/ubunye_engine/examples/) and the [RAG document pipeline](https://ubunye-ai-ecosystems.github.io/ubunye_engine/patterns/rag/) guide in our docs.
 
@@ -236,7 +236,7 @@ run's record (every input and output row hashed, the schema, the row counts, the
 code) with a local Spark run, and an environment without evidence is reported NOT RUN.
 
 Workload C01 (a portable join, filter, null group keys, money and timestamps cut to a
-day), 2026-09-28, [generated report](docs/proving-ground/latest.md):
+day), 2026-09-30, [generated report](docs/proving-ground/latest.md):
 
 | Environment | How it was launched | Result |
 |---|---|---|
@@ -275,21 +275,38 @@ path: "s3a://bucket/{{ ds }}/"
 
 # Defaults
 path: "s3a://bucket/{{ ds | default('2025-01-01') }}/"
+
+# Built in: the run's data timestamp (-dt 2025-01-01), the mode (-m), the task's own folder
+path: "s3a://bucket/{{ dt }}/"
+path: "{{ task_dir }}/data/people.csv"
 ```
+
+A variable with no value stops the run with an error that names it. Templates fill in
+values only; `{% if %}` blocks are not allowed, so one config cannot quietly become three.
 
 ---
 
 ## CLI
 
 ```bash
-ubunye init     -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # scaffold
-ubunye validate -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # check config
-ubunye plan     -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # preview plan
-ubunye run      -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # execute
-ubunye test run -d ./pipelines -u <use_case> -p <pipeline> -t <task>   # test mode
-ubunye lineage list -d ./pipelines -u <use_case> -p <pipeline> -t <task>  # run history
+ubunye init     -d ./pipelines -u <use_case> -p <package> -t <task>    # scaffold
+ubunye validate -d ./pipelines -u <use_case> -p <package> -t <task>    # check config
+ubunye plan     -d ./pipelines -u <use_case> -p <package> -t <task>    # dry run, moves no data
+ubunye doctor   -d ./pipelines -u <use_case> -p <package> -t <task>    # check this machine and the task
+ubunye run      -d ./pipelines -u <use_case> -p <package> -t <task>    # execute (on Spark)
+ubunye run      ... --backend pandas --lineage                         # no Java; keep a run record
+ubunye run      ... --rerun | --resume                                 # replace a batch | finish a stopped pipeline
+ubunye test run -d ./pipelines -u <use_case> -p <package> -t <task>    # test mode
+ubunye lineage list -d ./pipelines -u <use_case> -p <package> -t <task>  # run history
+ubunye gate     -d ./pipelines -u <use_case> -p <package> -t <task>    # exit 1 if the latest run regressed
+ubunye backends                                                        # what each backend can do
 ubunye models list -u <use_case> -m <model> -s <store>                 # model versions
+ubunye deploy   glue | dataproc | databricks | k8s | container-apps | emr-serverless ...
+ubunye prove    observe | skip | report ...                            # compare runs across environments
+ubunye mcp      -d ./pipelines                                         # serve the engine to agents (needs [mcp])
 ```
+
+Every command and flag: the [CLI reference](https://ubunye-ai-ecosystems.github.io/ubunye_engine/cli/).
 
 ## Python API
 
@@ -298,6 +315,9 @@ import ubunye
 
 # Run from Databricks or any Python environment
 outputs = ubunye.run_task(task_dir="./pipelines/...", mode="DEV", dt="2024-06-01")
+
+# On a laptop with no Java
+outputs = ubunye.run_task("./pipelines/...", backend="pandas")
 
 # Multiple tasks
 results = ubunye.run_pipeline(
@@ -310,9 +330,9 @@ results = ubunye.run_pipeline(
 
 ## What Ubunye Is Not
 
-It's not an agent framework — use LangChain or CrewAI for that.
-It's not an orchestrator — use Airflow, Prefect, or Dagster.
-It's not a compute engine — it runs on Spark.
+It's not an agent framework: use LangChain or CrewAI for that.
+It's not an orchestrator: use Airflow, Prefect, or Dagster (`ubunye export` writes an Airflow DAG or a Databricks job for you).
+It's not a compute engine: it runs on Spark, or on pandas for laptop-sized data.
 
 Ubunye is the **standardization layer** between your data sources and your applications. It makes the plumbing boring so you can focus on what matters.
 
@@ -332,19 +352,26 @@ Ubunye is the **standardization layer** between your data sources and your appli
 - [x] Python API for Databricks
 - [x] Databricks Asset Bundles deployment
 - [x] Dev notebook scaffolding
-- [ ] Data drift detection
-- [ ] `ubunye deploy` CLI command
+- [x] pandas backend (no Java)
+- [x] `ubunye plan` and `ubunye doctor` checks before a run
+- [x] `ubunye deploy` to Databricks, Glue, Dataproc, Kubernetes, Container Apps, EMR Serverless
+- [x] Data checks: input contracts, quarantine, reconcile
+- [x] Safe reruns (`--rerun`, `--resume`)
+- [x] Proving ground (`ubunye prove`) and run gate (`ubunye gate`)
+- [x] MCP server for agents (`ubunye mcp`)
+- [ ] Built-in data drift detection (today a pattern: compute drift in a task, gate on it)
+- [ ] EMR Serverless and Hadoop/YARN proven by a real run
 
 ---
 
 ## Get Involved
 
-We'd love your help. Whether it's a new connector, a bug fix, a typo, or just telling us what you're building — all contributions matter.
+We'd love your help. Whether it's a new connector, a bug fix, a typo, or just telling us what you're building, all contributions matter.
 
 - 🐛 [Report a bug](https://github.com/ubunye-ai-ecosystems/ubunye_engine/issues)
 - 💡 [Request a feature](https://github.com/ubunye-ai-ecosystems/ubunye_engine/discussions)
 - 📖 [Read the contributing guide](CONTRIBUTING.md)
-- ⭐ Star the repo if you find it useful — it helps more than you'd think
+- ⭐ Star the repo if you find it useful; it helps more than you'd think
 
 ---
 

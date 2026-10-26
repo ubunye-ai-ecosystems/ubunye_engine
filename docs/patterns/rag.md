@@ -17,7 +17,7 @@ REST API / S3 (raw docs)
 
 ---
 
-## Step 1 — Ingest raw documents
+## Step 1: Ingest raw documents
 
 Fetch documents from a REST API (or S3, JDBC):
 
@@ -40,9 +40,6 @@ CONFIG:
       response:
         root_key: articles
 
-  transform:
-    type: task
-
   outputs:
     raw_documents:
       format: delta
@@ -50,7 +47,7 @@ CONFIG:
       mode: append
 ```
 
-`transformations.py` — clean HTML, extract text:
+`transformations.py`, to clean HTML and extract text:
 
 ```python
 from ubunye.core.interfaces import Task
@@ -69,7 +66,7 @@ class IngestTask(Task):
 
 ---
 
-## Step 2 — Chunk documents
+## Step 2: Chunk documents
 
 ```yaml
 # pipelines/rag/chunk/documents/config.yaml
@@ -82,9 +79,6 @@ CONFIG:
       format: delta
       path: s3://datalake/rag/raw_documents/
 
-  transform:
-    type: task
-
   outputs:
     chunks:
       format: delta
@@ -92,7 +86,7 @@ CONFIG:
       mode: overwrite
 ```
 
-`transformations.py` — sliding-window chunker:
+`transformations.py`, a sliding-window chunker:
 
 ```python
 from ubunye.core.interfaces import Task
@@ -117,7 +111,7 @@ def _chunk_record(row):
 
 ---
 
-## Step 3 — Embed and index
+## Step 3: Embed and index
 
 Embed each chunk and upsert into your vector store.
 Use a `UbunyeModel` for library-independent embedding:
@@ -194,13 +188,13 @@ ubunye run -d pipelines -u rag -p embed  -t chunks    --lineage
 ```
 
 ```bash
-ubunye lineage list
-ubunye lineage trace --run-id <run_id>
+ubunye lineage list  -d pipelines -u rag -p embed -t chunks
+ubunye lineage trace -d pipelines -u rag -p embed -t chunks --run-id <run_id>
 ```
 
 ---
 
-## Orchestration — Airflow DAG
+## Orchestration: Airflow DAG
 
 ```yaml
 ORCHESTRATION:

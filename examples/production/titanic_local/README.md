@@ -53,7 +53,7 @@ titanic_local/
 | Requirement       | Version            | Why                                        |
 |-------------------|--------------------|--------------------------------------------|
 | Python            | 3.10 to 3.13       | 3.11 is the CI target.                     |
-| Java              | 17                 | Required by PySpark (not by the pandas run). |
+| Java              | 17 or newer        | Required by PySpark (not by the pandas run). |
 | `ubunye-engine`   | `>=0.6.0`, `[spark]` and `[pandas]` extras | The CLI and both backends. |
 | `narwhals`        | `>=2`              | The transform is written with it.          |
 | `pyarrow`         | latest             | Parquet read/write for golden validation.  |
@@ -108,6 +108,11 @@ python examples/production/titanic_local/scripts/validate_output.py \
 OK: 3 rows match golden.
 ```
 
+Each run also prints a warning that the CSV doubles quotes inside quoted text
+while Spark's CSV escape is a backslash. A few passenger names have such
+quotes. The task reads only `Pclass` and `Survived`, so the result still
+matches the golden file.
+
 The on-disk layout after a DEV run:
 
 ```
@@ -145,6 +150,12 @@ bash examples/production/titanic_local/scripts/same_receipt.sh \
 
 ```
   config_hash: sha256:...  (unchanged)
+  code_hash: sha256:...  (unchanged)
+  environment_hash: sha256:...  (unchanged)
+  Input 'titanic':
+      row_count: 891  (unchanged)
+      schema_hash: sha256:...  (unchanged)
+      data_hash: sha256:...  (unchanged)
   Output 'survival_by_class':
       row_count: 3  (unchanged)
       schema_hash: sha256:...  (unchanged)
@@ -174,7 +185,7 @@ Six unit tests run against a session-scoped local `SparkSession` fixture
 | `test_golden_matches_canonical_titanic_stats` | Golden parquet matches Kaggle Titanic known stats.      |
 | `test_pandas_gives_the_same_rows_as_spark` | The same function on pandas gives Spark's rows, in order.  |
 
-Requires Java 17 on PATH (PySpark prerequisite).
+Requires Java 17 or newer on PATH (PySpark prerequisite).
 
 ---
 

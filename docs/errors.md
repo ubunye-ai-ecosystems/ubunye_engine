@@ -9,6 +9,7 @@ inherits from `UbunyeError` **and** the stdlib type it replaces, so existing
 ## Catching errors
 
 ```python
+import ubunye
 from ubunye import UbunyeError
 
 try:
@@ -23,9 +24,9 @@ Narrow catches still work via dual inheritance:
 
 ```python
 except FileNotFoundError:   # catches TaskNotFoundError, RegistryNotFoundError
-except KeyError:            # catches ReaderNotFoundError, WriterNotFoundError
-except ValueError:          # catches ConfigError, RegistryError subtypes
-except RuntimeError:        # catches SparkSessionError, ModelNotFittedError
+except KeyError:            # catches ReaderNotFoundError, WriterNotFoundError, SecretError
+except ValueError:          # catches ConfigError, RegistryError subtypes, ExpectationError
+except RuntimeError:        # catches SparkSessionError, ModelNotFittedError, DeployError, LLMError
 ```
 
 ---
@@ -35,19 +36,25 @@ except RuntimeError:        # catches SparkSessionError, ModelNotFittedError
 ```
 UbunyeError(Exception)
 ├── ConfigError(UbunyeError, ValueError)
-│   ├── ConfigFieldError          — unknown config fields with typo suggestions
-│   ├── ConfigTemplateError       — undefined Jinja template variables
-│   └── ConfigProfileError        — invalid profile name
+│   ├── ConfigFieldError          unknown config fields, with typo suggestions
+│   ├── ConfigTemplateError       undefined Jinja variables, unset env variables
+│   └── ConfigProfileError        a profile name the config does not define
 ├── TaskNotFoundError(UbunyeError, FileNotFoundError)
 ├── TaskClassMissingError(UbunyeError, RuntimeError)
 ├── PluginNotFoundError(UbunyeError, KeyError)
 │   ├── ReaderNotFoundError
 │   ├── WriterNotFoundError
 │   ├── TransformNotFoundError
-│   └── MonitorNotFoundError
+│   ├── MonitorNotFoundError
+│   └── BackendNotFoundError      no backend under that name, or it failed to load
 ├── SourceReadError(UbunyeError, IOError)
 ├── SinkWriteError(UbunyeError, IOError)
 ├── TransformOutputError(UbunyeError, TypeError)
+├── SecretError(UbunyeError, KeyError)          a secret:// reference cannot be read
+├── LLMError(UbunyeError, RuntimeError)         a model call fails or cannot be made
+│   └── LLMBudgetError                          a call refused before sending: it could pass a limit
+├── ExpectationError(UbunyeError, ValueError)   an output breaks a `fail` expectation; nothing written
+├── BackendCapabilityError(UbunyeError, ValueError)  the task needs something the backend cannot do
 ├── SparkSessionError(UbunyeError, RuntimeError)
 ├── ModelLoadError(UbunyeError, ImportError)
 ├── ModelNotFittedError(UbunyeError, RuntimeError)
@@ -56,8 +63,16 @@ UbunyeError(Exception)
 │   ├── VersionNotFoundError
 │   └── PromotionBlockedError
 ├── RegistryNotFoundError(UbunyeError, FileNotFoundError)
-└── LineageRecordNotFoundError(UbunyeError, FileNotFoundError)
+├── LineageRecordNotFoundError(UbunyeError, FileNotFoundError)
+└── DeployError(UbunyeError, RuntimeError)
+    ├── AuthNotFoundError         Databricks credentials are missing
+    ├── AuthInvalidError          Databricks credentials are rejected
+    ├── TargetNotFoundError       the deploy target is not in targets.yaml
+    ├── WorkspaceUploadError      uploading files to the workspace failed
+    └── BundleDeployError         creating or updating the job failed
 ```
+
+`SecretError` and `LLMError` never carry the secret or the key.
 
 ---
 
@@ -80,8 +95,8 @@ ReaderNotFoundError: Reader plugin 'hve' not found.
 
   Format:    hve
   Input:     source
-  Installed: ['hive', 'jdbc', 'rest_api', 's3', 'unity']
-  Hint: Check the 'format' field in CONFIG.inputs.source. Installed reader plugins: hive, jdbc, rest_api, s3, unity
+  Installed: ['binary', 'delta', 'hive', 'jdbc', 'rest_api', 's3', 'unity']
+  Hint: Check the 'format' field in CONFIG.inputs.source. Installed reader plugins: binary, delta, hive, jdbc, rest_api, s3, unity
 ```
 
 **Invalid profile**
@@ -97,10 +112,12 @@ ConfigProfileError: Profile 'staging' not found.
 **Missing env variable (Jinja)**
 
 ```
-ConfigTemplateError: Template resolution failed for config.yaml:
-  Undefined variable 'DB_PASS' in config value '{{ env.DB_PASS }}'.
-  Available variables: ['env']. Use '| default(...)' for optional values.
+ConfigTemplateError: Template resolution failed for pipelines/demo/etl/hello_world/config.yaml:
+  Environment variable 'DB_PASS' is not set (referenced in '{{ env.DB_PASS }}'). Set it in your environment or use {{ env.DB_PASS | default('fallback') }}.
 ```
+
+An undefined variable that is not under `env` gives `Undefined variable 'name' in config value ...`,
+with the list of variables that are available.
 
 ---
 
@@ -119,6 +136,7 @@ from ubunye.core.errors import (
     ReaderNotFoundError,
 )
 
-# Also available from ubunye.core
+# Also available from ubunye.core (all but SecretError, LLMError,
+# LLMBudgetError and ExpectationError, which only ubunye.core.errors has)
 from ubunye.core import TaskNotFoundError
 ```

@@ -14,7 +14,7 @@ ubunye run -d pipelines -u shop -p orders -t clean
 
 `UBUNYE_TELEMETRY=1` turns on the telemetry hooks (it is read when a run starts,
 so setting it in a notebook works). Or pass the hook yourself:
-`Engine(extra_hooks=[OTelHook()])`, `run_task(..., hooks=[OTelHook()])`.
+`Engine(extra_hooks=[OTelHook()])`, or `run_task(..., hooks=[OTelHook()])` (this replaces the default hooks, and with them the run record: see [Hooks](hooks.md)).
 
 ## Configuration
 

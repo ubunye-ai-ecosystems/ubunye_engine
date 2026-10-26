@@ -7,7 +7,10 @@ ENGINE:
   spark_conf:
     spark.sql.shuffle.partitions: "4"
   profiles:
-    prod:
+    DEV:
+      spark_conf:
+        spark.sql.shuffle.partitions: "2"
+    PROD:
       spark_conf:
         spark.sql.shuffle.partitions: "200"
       catalog: "aws-db-prod-aic-catalog"

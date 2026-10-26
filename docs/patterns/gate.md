@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ubunye-ai-ecosystems/ubunye_engine/.github/actions/gate@v0.7.0
+      - uses: ubunye-ai-ecosystems/ubunye_engine/.github/actions/gate@v0.8.0
         with:
           usecase-dir: pipelines
           usecase: shop

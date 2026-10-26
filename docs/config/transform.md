@@ -17,8 +17,9 @@ A task folder always runs the `Task` subclass in its `transformations.py`. That 
 !!! warning "`type:` in a task's config.yaml is not run"
     Before 0.7.1 a task's config could name a transform plugin (`type: model`, or your
     own) and the engine dropped it without a word: `transformations.py` ran instead.
-    Since 0.7.1, `ubunye run`, `ubunye plan` and `ubunye validate` say so. From 0.8.0
-    it is an error. Move the logic into `transformations.py` (see
+    Since 0.7.1, `ubunye run`, `ubunye plan` and `ubunye validate` warn about it. In
+    0.8.0 it is still a warning, not an error, and the type is still not run. Move
+    the logic into `transformations.py` (see
     [Training a model](#training-a-model)) and remove the `type` line. `type: noop` is
     still accepted, and still does nothing.
 

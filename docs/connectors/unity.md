@@ -15,16 +15,9 @@ CONFIG:
       table: main.fraud.feature_store     # three-part name (preferred)
 ```
 
-Alternatively, use `db_name` + `tbl_name` or a SQL query:
+Alternatively, use a SQL query:
 
 ```yaml
-    features:
-      format: unity
-      db_name: fraud                      # schema name
-      tbl_name: feature_store             # table name
-      # catalog is inferred from the active Unity Catalog
-
-    # or with SQL:
     features_filtered:
       format: unity
       sql: >-
@@ -33,7 +26,9 @@ Alternatively, use `db_name` + `tbl_name` or a SQL query:
 ```
 
 !!! note "Requirement"
-    At least one of `table`, (`db_name` + `tbl_name`), or `sql` is required.
+    A read needs `table` or `sql`. Give the full three-part name in `table`.
+    (`ubunye validate` also accepts `db_name` + `tbl_name` on a read, but the
+    reader does not use them, so such a read fails when it runs.)
 
 ---
 
@@ -47,6 +42,29 @@ CONFIG:
       table: main.fraud.model_predictions
       mode: append
 ```
+
+A write needs `table`, or `catalog` + `schema` + `tbl_name`. Tables are written as
+Delta unless `file_format` says otherwise.
+
+### Table comment, properties and maintenance
+
+```yaml
+    claims_curated:
+      format: unity
+      table: main.fraud.claims_curated
+      options:
+        comment: "Curated fraud claims"     # COMMENT ON TABLE after the write
+        tblproperties:
+          quality: "silver"                 # ALTER TABLE ... SET TBLPROPERTIES
+      optimize:
+        enabled: true                       # OPTIMIZE after the write
+        zorder_by: [policy_id]              # ... ZORDER BY (policy_id)
+      vacuum:
+        hours: 168                          # VACUUM ... RETAIN 168 HOURS
+```
+
+`optimize` and `vacuum` need a Delta table. If the engine cannot run them, the
+data is still written and a warning says the maintenance was skipped.
 
 ### MERGE (upsert)
 
@@ -83,28 +101,26 @@ Replace only the partitions in the incoming DataFrame:
 |---|---|---|---|
 | `format` | `"unity"` | Yes | Selects this connector |
 | `table` | string | Conditional | Three-part Unity Catalog name |
-| `db_name` | string | Conditional | Schema name (without catalog) |
-| `tbl_name` | string | Conditional | Table name |
-| `sql` | string | Conditional | Spark SQL query |
+| `catalog`, `schema`, `tbl_name` | string | Conditional | Writes only: the name in three parts, instead of `table` |
+| `sql` | string | Conditional | Reads only: Spark SQL query |
+| `file_format` | string | No | Writes only: `delta` (default) or `parquet` |
 | `mode` | see [Write modes](../config/io.md#write-modes) | No | Default `append`. All six modes supported |
 | `partitionBy` | list | No | Partition columns; required for `mode: overwrite_partitions` unless `replace_where` is set |
 | `merge_keys` | list \| string | Conditional | Required for `mode: merge` |
 | `replace_where` | string | No | Delta predicate for `mode: overwrite_partitions` |
-| `options` | dict | No | Spark reader/writer options |
+| `optimize` | dict | No | Writes only: `enabled`, `zorder_by` |
+| `vacuum` | dict | No | Writes only: `hours` of history to keep |
+| `options` | dict | No | Spark writer options; `comment` and `tblproperties` are applied to the table |
 
 ---
 
 ## Spark configuration for Unity Catalog
 
 On Databricks, Unity Catalog is the default catalog when configured in the workspace.
-For local Spark sessions connecting to Databricks, set:
-
-```yaml
-ENGINE:
-  spark_conf:
-    spark.databricks.service.token: "{{ env.DATABRICKS_TOKEN }}"
-    spark.databricks.service.address: "https://{{ env.DATABRICKS_HOST }}"
-```
+The engine uses the session that is already running there (`--backend databricks`,
+or the default on Databricks). It does not open a remote connection to a workspace
+itself, so run Unity tasks on Databricks. `ENGINE.catalog` and `ENGINE.schema_name`
+set the default catalog and schema (see [Engine & Profiles](../config/engine.md)).
 
 ---
 

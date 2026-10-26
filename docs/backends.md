@@ -31,7 +31,7 @@ Add `--json` for a machine readable list.
 
 | Where | How |
 |---|---|
-| CLI | `ubunye run ... --backend pandas` (also `test run` and `validate`) |
+| CLI | `ubunye run ... --backend pandas` (also `test run`; `validate` and `plan` take it to check without running) |
 | Python | `ubunye.run_task(task_dir, backend="pandas")` (also `run_pipeline` and `notebook`) |
 
 With no choice, Ubunye uses the platform's session if there is one (on

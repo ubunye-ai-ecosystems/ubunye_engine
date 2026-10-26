@@ -1,4 +1,4 @@
-# Connectors — Overview
+# Connectors: Overview
 
 Connectors are the I/O layer of Ubunye. Each connector is a **Reader** or **Writer** plugin
 registered under the `ubunye.readers` or `ubunye.writers` entry point group.
@@ -12,18 +12,23 @@ registered under the `ubunye.readers` or `ubunye.writers` entry point group.
 | Format | Reader | Writer | Notes |
 |---|---|---|---|
 | [`hive`](hive.md) | Yes | Yes | Hive Metastore via Spark SQL |
-| [`jdbc`](jdbc.md) | Yes | Yes | PostgreSQL, MySQL, Oracle, SQL Server, … |
+| [`jdbc`](jdbc.md) | Yes | Yes | PostgreSQL, MySQL, Oracle, SQL Server, ... |
 | [`unity`](unity.md) | Yes | Yes | Databricks Unity Catalog (3-part names) |
-| [`s3`](s3.md) | Yes | Yes | S3, HDFS, ADLS — any Spark-readable path |
-| [`delta`](s3.md) | Yes | Yes | Delta Lake — by path or table name; time travel |
-| [`binary`](s3.md) | Yes | No | Raw files (PDFs, images) — Spark's `binaryFile` source is read-only, so `format: binary` in `CONFIG.outputs` is rejected at config load |
-| [`rest_api`](rest_api.md) | Yes | Yes | HTTP REST with auth, pagination, retry |
+| [`s3`](s3.md) | Yes | Yes | S3, ADLS, GCS, HDFS, local: any path. Also runs on the pandas backend |
+| [`delta`](s3.md) | Yes | Yes | Delta Lake by path or table name; time travel |
+| [`binary`](s3.md) | Yes | No | Raw files (PDFs, images). Spark's `binaryFile` source is read-only, so `format: binary` in `CONFIG.outputs` is rejected at config load |
+| [`rest_api`](rest_api.md) | Yes | Yes | HTTP REST with auth, pagination, retry. Also runs on the pandas backend |
+
+`s3` and `rest_api` work on every shipped backend (`spark`, `databricks`,
+`pandas`). The others need Spark. `ubunye validate --backend pandas` says
+before a run when a task uses a connector its backend cannot serve.
 
 ---
 
 ## How connectors are loaded
 
-The `PluginRegistry` discovers connectors at startup via Python entry points:
+The `PluginRegistry` discovers connectors at startup via Python entry points.
+The built-in ones are declared in Ubunye's own `pyproject.toml`:
 
 ```toml
 # pyproject.toml
@@ -69,12 +74,14 @@ CONFIG:
   outputs:
     <name>:
       format: <format>
-      mode: overwrite           # overwrite | append | merge
+      mode: append              # the default; see Write modes
       options: {}
 ```
 
-`IOConfig` uses `extra="allow"`, so plugin-specific keys (e.g. `auth`, `pagination`)
-pass through unchanged.
+Connector-specific keys (e.g. `auth`, `pagination`) are passed to the connector
+unchanged. Every built-in connector declares the keys it reads, so a key it does
+not read is refused by `ubunye validate`. See
+[Inputs & Outputs](../config/io.md) and its [write modes](../config/io.md#write-modes).
 
 ---
 

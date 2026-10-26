@@ -29,13 +29,17 @@ intermediate dataset is a filesystem path both configs agree on.
   engine's `_with_task_dir_on_path` context manager evicts task-local modules
   from `sys.modules` between tasks so the second task doesn't accidentally import
   the first task's code.
-- **Lineage across tasks**: `--lineage` records provenance for both tasks under
-  a shared `run_id`.
+- **Lineage across tasks**: `--lineage` writes one run record per task, each
+  with its own `run_id`. The `aggregate` record's input location is the
+  `clean_data` record's output location, so `ubunye lineage trace` shows how
+  the two connect.
 
 ## Running locally
 
+Run these from this folder (`examples/production/titanic_multitask_local`).
+
 ```bash
-# 1. Fetch Titanic CSV
+# 1. Fetch Titanic CSV into data/
 bash scripts/fetch_titanic.sh
 
 # 2. Set env vars
@@ -46,22 +50,39 @@ export TITANIC_SUMMARY_PATH="file://$(pwd)/output/summary"
 # 3. Validate both tasks
 ubunye validate -d pipelines -u titanic -p pipeline -t clean_data -t aggregate
 
-# 4. Run the pipeline
+# 4. Dry run: what each task reads and writes
+ubunye plan -d pipelines -u titanic -p pipeline -t clean_data -t aggregate
+
+# 5. Run the pipeline on Spark
 ubunye run -d pipelines -u titanic -p pipeline -t clean_data -t aggregate -m DEV --lineage
 
-# 5. The same pipeline on pandas, no Java, into the same outputs
+# 6. The same pipeline on pandas, no Java, into the same outputs
 ubunye run -d pipelines -u titanic -p pipeline -t clean_data -t aggregate -m DEV --lineage \
   --backend pandas
 
-# 6. Each task's Spark and pandas run records agree, hash for hash
+# 7. Each task's Spark and pandas run records agree, hash for hash
 for task in clean_data aggregate; do
   bash scripts/same_receipt.sh pipelines titanic pipeline "$task"
 done
 ```
 
+Each `run` prints `[OK] Run complete for clean_data` and then
+`[OK] Run complete for aggregate`. With no `-dt`, both paths end in
+`dt=latest`. The run records go under `pipelines/.ubunye/lineage/`.
+Step 7 ends with one line per task:
+
+```
+OK: Spark and pandas left the same receipt for titanic/pipeline/clean_data
+OK: Spark and pandas left the same receipt for titanic/pipeline/aggregate
+```
+
 ## Running tests
+
+From the repo root:
 
 ```bash
 pip install -e ".[spark,dev]"
-pytest tests/ -v
+pytest examples/production/titanic_multitask_local/tests -v
 ```
+
+Eight tests, on a local SparkSession and on pandas. They need Java 17 or newer.

@@ -4,7 +4,7 @@ ENGINE:
   spark_conf:
     spark.sql.shuffle.partitions: "50"
   profiles:
-    dev:
+    DEV:
       spark_conf:
         spark.sql.shuffle.partitions: "8"
 

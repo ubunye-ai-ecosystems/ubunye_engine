@@ -10,7 +10,7 @@ No API key is required - Open-Meteo is free for non-commercial use.
 ## Pipeline shape
 
 ```
-Open-Meteo /v1/forecast  ->  rest_api reader  ->  transform_weather_spark  ->  Unity Catalog
+Open-Meteo /v1/forecast  ->  rest_api reader  ->  transform_weather        ->  Unity Catalog
   (lat=-26.2041, lon=28.0473)    (single doc)    (explode hourly arrays)         (Delta table)
 ```
 
@@ -54,7 +54,7 @@ pytest examples/production/jhb_weather_databricks/tests -v
 The unit tests spin up a local `SparkSession` (session-scoped fixture),
 build a single-row DataFrame in the exact shape produced by the REST
 reader, and assert on the output of `transform_weather` - so the
-production code is the code under test. Requires Java 17 on PATH.
+production code is the code under test. Requires Java 17 or newer on PATH.
 
 ## Deploying to Databricks
 
@@ -78,7 +78,7 @@ The job uses **serverless compute** — no `new_cluster` block in
 `databricks.yml`. This is required on Databricks Free Edition (which does
 not allow classic-cluster creation) and works identically on paid
 workspaces. Dependencies are installed in-notebook via
-`%pip install ubunye-engine==<ver>`.
+`%pip install ubunye-engine==<ver>` (the notebook pins 0.7.0 today).
 
 The default `weather_catalog` is `workspace` because that is the catalog
 Free Edition provisions automatically. On a paid workspace, override to

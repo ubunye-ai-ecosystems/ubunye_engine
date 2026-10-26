@@ -52,6 +52,15 @@ What each one did:
    how many rows came out. Each record also keeps a hash of every row written,
    so two runs can be compared exactly (`ubunye lineage compare`).
 
+    ```
+    RUN_ID     STARTED              STATUS        DUR  ROWS
+    ------------------------------------------------------------
+    a6d3cf8b  2026-10-26T11:58:28  success      1.3s  in:8  out:5
+    ```
+
+If a command fails because of the machine (no Java, an old pyarrow, a missing
+environment variable), `ubunye doctor` says which, and how to fix it.
+
 ---
 
 ## 3. Change it
@@ -67,7 +76,8 @@ class FilterAdults(Task):
 
 Change `18` to `21` and run it again. `ubunye lineage list` now shows two runs;
 `ubunye lineage compare ... --run-id1 <first> --run-id2 <second>` shows that
-the row count and the data hash changed.
+the code hash, the output row count (5 to 4) and the output data hash changed,
+while the input stayed the same.
 
 The line `people[people["age"] >= 18]` means the same thing in pandas and in
 Spark, which is why this task can run on either.

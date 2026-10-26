@@ -13,23 +13,23 @@ Two auth flows are supported. Pick one per workspace.
 The Databricks CLI auto-detects which flow to use: if `DATABRICKS_CLIENT_ID`
 and `DATABRICKS_CLIENT_SECRET` are both set, it uses OAuth M2M (machine-to-
 machine). Otherwise it falls back to PAT. You don't select a flow in the
-workflow — you select it by which secrets you configure.
+workflow; you select it by which secrets you configure.
 
 ---
 
-## Option A — Personal Access Token (Free Edition)
+## Option A: Personal Access Token (Free Edition)
 
 Free Edition has no service principals, so PAT is the only option there.
 
 1. In the workspace UI: **User Settings → Developer → Access tokens → Generate new token**.
 2. In the GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**:
-    - `DATABRICKS_HOST` — e.g. `https://dbc-xxxxxxxx-xxxx.cloud.databricks.com`
-    - `DATABRICKS_TOKEN` — the token from step 1.
+    - `DATABRICKS_HOST`: e.g. `https://dbc-xxxxxxxx-xxxx.cloud.databricks.com`
+    - `DATABRICKS_TOKEN`: the token from step 1.
 3. Leave `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET` unset.
 
 ---
 
-## Option B — Service Principal + OAuth *(recommended)*
+## Option B: Service Principal + OAuth *(recommended)*
 
 On paid workspaces, use a service principal so deploys are not tied to a
 human user's PAT. The principal is a durable workspace identity that can be
@@ -40,21 +40,21 @@ granted only the permissions the CI needs.
 **Account console** (`https://accounts.cloud.databricks.com`) **→ User
 management → Service principals → Add service principal**.
 
-Note the **Application ID** that appears after creation — that is your
+Note the **Application ID** that appears after creation: that is your
 `DATABRICKS_CLIENT_ID`. It is a UUID, not a name.
 
 ### 2. Add the principal to the workspace
 
 **Account console → Workspaces → *your workspace* → Permissions → Add**.
 Grant the principal **User** access. (Admin access is not required for
-`bundle deploy` — see step 4 for the grants you actually need.)
+`bundle deploy`; see step 4 for the grants you actually need.)
 
 ### 3. Generate an OAuth secret
 
 **Workspace UI → Settings → Identity and access → Service principals →
 *your principal* → Secrets → Generate secret**.
 
-Copy the secret once — it is not shown again. That is your
+Copy the secret once: it is not shown again. That is your
 `DATABRICKS_CLIENT_SECRET`.
 
 ### 4. Grant the principal workspace access
@@ -81,7 +81,7 @@ to `workspace` / `ubunye_examples`.)
 
 `CREATE VOLUME` is not optional if you train models: the model registry is a
 directory of files, and a Unity Catalog volume is the only writable path on
-serverless compute — the executors cannot see the driver's `/tmp`.
+serverless compute, and the executors cannot see the driver's `/tmp`.
 
 ### 5. Add the three secrets to GitHub
 
@@ -93,8 +93,17 @@ serverless compute — the executors cannot see the driver's `/tmp`.
 | `DATABRICKS_CLIENT_ID` | The service principal's Application ID (UUID). |
 | `DATABRICKS_CLIENT_SECRET` | The OAuth secret from step 3. |
 
-Do **not** also set `DATABRICKS_TOKEN` — if both are present, the CLI
+Do **not** also set `DATABRICKS_TOKEN`. If both are present, the CLI
 picks OAuth, but leaving a stale PAT around defeats the point of moving off it.
+
+### `ubunye deploy databricks` needs a token
+
+The flows above are for the `databricks bundle` workflows. The engine's own
+`ubunye deploy databricks` uses a token only: it reads it from
+`DATABRICKS_TOKEN`, or from the variable named by `--token` or by `token_env`
+in `targets.yaml`. If that variable is empty it stops with
+`AuthNotFoundError`; a token the workspace rejects gives `AuthInvalidError`.
+See [Errors](errors.md).
 
 ---
 
@@ -141,8 +150,8 @@ green.
    (e.g. edit its README) and merge it.
 2. Watch the `deploy` workflow in the ubunye-examples repository. The
    `databricks bundle deploy` step logs a line like
-   `Uploading bundle files to /Workspace/Users/<principal>/.bundle/...` —
-   if `<principal>` is the service principal's Application ID, OAuth is
+   `Uploading bundle files to /Workspace/Users/<principal>/.bundle/...`.
+   If `<principal>` is the service principal's Application ID, OAuth is
    active. If it's a human email address, the CLI fell back to PAT.
 3. In the workspace UI: **Workflows → *the deployed job* → Run as** should
    show the service principal, not a human user.
@@ -157,7 +166,7 @@ OAuth secrets expire (default 1 year). To rotate:
 2. Update `DATABRICKS_CLIENT_SECRET` in GitHub.
 3. Delete the old secret in the workspace UI.
 
-The `DATABRICKS_CLIENT_ID` does not change — it's the principal's identity.
+The `DATABRICKS_CLIENT_ID` does not change: it is the principal's identity.
 
 ---
 

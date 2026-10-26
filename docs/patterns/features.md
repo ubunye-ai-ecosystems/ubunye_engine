@@ -45,9 +45,6 @@ CONFIG:
       db_name: raw
       tbl_name: customers
 
-  transform:
-    type: task
-
   outputs:
     transaction_features:
       format: delta
@@ -111,9 +108,6 @@ CONFIG:
       db_name: ml
       tbl_name: fraud_labels
 
-  transform:
-    type: task
-
   outputs:
     training_set:
       format: delta
@@ -133,12 +127,13 @@ class TrainingSetTask(Task):
         labels   = sources["labels"]
 
         # Asof join: latest feature snapshot before the label timestamp
+        # (the feature table's timestamp column is event_ts)
         training_set = (
             labels.join(features, "customer_id")
-                  .filter(F.col("feature_ts") <= F.col("label_ts"))
+                  .filter(F.col("event_ts") <= F.col("label_ts"))
                   .groupBy("customer_id", "label_ts", "is_fraud")
-                  .agg(F.max("feature_ts").alias("feature_ts"))
-                  .join(features, ["customer_id", "feature_ts"])
+                  .agg(F.max("event_ts").alias("event_ts"))
+                  .join(features, ["customer_id", "event_ts"])
         )
         return {"training_set": training_set}
 ```
@@ -154,9 +149,6 @@ CONFIG:
     features:
       format: delta
       path: s3://datalake/features/transaction/
-
-  transform:
-    type: task
 
   outputs:
     latest_features:
@@ -187,7 +179,7 @@ class LatestFeaturesTask(Task):
 ```yaml
 ORCHESTRATION:
   type: airflow
-  schedule: "0 1 * * *"   # 01:00 UTC — runs before the training job at 02:00
+  schedule: "0 1 * * *"   # 01:00 UTC, runs before the training job at 02:00
   retries: 2
   tags: [features, fraud]
 ```

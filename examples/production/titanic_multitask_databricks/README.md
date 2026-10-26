@@ -32,6 +32,11 @@ writes to `titanic_cleaned`, task 2 reads the same table via the unity reader.
 ## Deploying
 
 ```bash
+export DATABRICKS_HOST=https://<your-workspace>.cloud.databricks.com
+export DATABRICKS_TOKEN=<pat>
+
+cd examples/production/titanic_multitask_databricks
+
 # Validate the bundle
 databricks bundle validate --target nonprod
 
@@ -44,7 +49,11 @@ databricks bundle run titanic_multitask --target nonprod
 
 ## Running tests
 
+From the repo root:
+
 ```bash
 pip install -e ".[spark,dev]"
-pytest tests/ -v
+pytest examples/production/titanic_multitask_databricks/tests -v
 ```
+
+Seven tests on a local SparkSession. They need Java 17 or newer.

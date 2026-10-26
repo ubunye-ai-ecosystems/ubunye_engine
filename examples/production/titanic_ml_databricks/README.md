@@ -61,7 +61,8 @@ The **train** notebook:
    `MLFLOW_EXPERIMENT_NAME=/Shared/titanic_ml`, `TITANIC_MIN_AUC`.
 4. Calls `ubunye.run_task()` → `train_classifier/transformations.py`
    which fits the model, logs to MLflow, registers the version, and
-   attempts promotion to `staging`.
+   attempts promotion to `staging`. If the AUC gate blocks promotion, the
+   task raises `PromotionBlockedError` and the job fails.
 5. Writes a one-row audit DataFrame to
    `workspace.titanic_ml.training_metrics` (append).
 
@@ -94,7 +95,8 @@ titanic_ml_databricks/
 │   └── predict_titanic.py         # serverless notebook entry — predict
 ├── tests/
 │   ├── conftest.py
-│   └── test_model.py              # pandas-only model contract tests
+│   ├── test_model.py              # pandas-only model contract tests
+│   └── test_promotion_gate.py     # the AUC gate blocks or allows promotion
 ├── databricks.yml                 # Asset Bundle with both jobs
 └── README.md
 ```
@@ -205,7 +207,7 @@ run; steps 3-4 soft-skip with a warning.
 |---------|-------------|
 | Predict job raises `No production or staging version` | Train has never run successfully. Trigger `titanic_train` first. |
 | Train job raises `TITANIC_MODEL_STORE must be set` | The notebook failed to set the env var — usually because schema/volume creation failed earlier in the cell chain. Re-run. |
-| Promotion logs `Promotion blocked — 1 gate(s) failed` | Validation AUC < `min_auc`. Lower the gate, improve the model, or run with more training data. |
+| Train job fails with `PromotionBlockedError: Promotion blocked — 1 gate(s) failed` | Validation AUC < `min_auc`. The version stays registered in `development` and no audit row is written. Lower the gate, improve the model, or train on more data. |
 | `LocalFilesystemAccessDeniedException: Cannot access non /Workspace local filesystem path` | You set `TITANIC_MODEL_STORE` to a `/tmp` path. Must be a UC volume on serverless. |
 | `[DATA_SOURCE_NOT_FOUND] Failed to find the data source: unity` | Engine version < 0.1.6. Upgrade. |
 | MLflow experiment empty | Your workspace has disabled the `/Shared` folder. Set `MLFLOW_EXPERIMENT_NAME` to a path under a folder you have write access to. |

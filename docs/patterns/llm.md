@@ -195,7 +195,7 @@ and `parse()`, and register the class in the `ubunye.llm_backends` entry-point g
 
 ## Failures and retries
 
-Rate limits, overload and server errors (408, 409, 429, 5xx, 529) are retried 3 times
+Rate limits, overload and server errors (408, 409, 429, 500, 502, 503, 504, 529) are retried 3 times
 with a growing wait, or the wait the provider asks for in `retry-after` (at most 60
 seconds). Other refusals, such as a bad key (401) or a bad request (400), fail at once
 with the provider's reason. The key is never shown in an error or a log.

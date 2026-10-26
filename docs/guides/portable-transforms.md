@@ -104,10 +104,14 @@ follows Spark only when asked: `group_by(..., drop_null_keys=False)`.
 Run the task on both engines with `--lineage` and compare:
 
 ```bash
-ubunye run ... --backend pandas --lineage && ubunye prove observe ... --env pandas-local -o evidence
-ubunye run ... --backend spark  --lineage && ubunye prove observe ... --env spark-local  -o evidence
+T="-d pipelines -u shop -p orders -t clean"
+ubunye run $T --backend pandas --lineage && ubunye prove observe --workload my-task --env pandas-local $T -o evidence
+ubunye run $T --backend spark  --lineage && ubunye prove observe --workload my-task --env spark-local  $T -o evidence
 ubunye prove report evidence --workload my-task --reference spark-local
 ```
+
+`prove observe` reads the task's latest run record (`--run-id` picks another), so
+observe each run right after it.
 
 A data FAIL with schema and rows PASS is usually one of the traps above: compare the two
 outputs row by row on the columns that are computed.

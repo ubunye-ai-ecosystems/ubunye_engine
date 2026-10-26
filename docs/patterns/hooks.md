@@ -2,10 +2,10 @@
 
 Hooks let you watch a task run without changing Engine code. Every task and
 every step (Reader / Transform / Writer) is wrapped in a hook context
-manager — so you see the start, the end, and any exception that escaped.
+manager, so you see the start, the end, and any exception that escaped.
 
 Use hooks to add logging, metrics, tracing, alerts, audit records, drift
-checks — anything that observes but does not change the pipeline.
+checks: anything that observes but does not change the pipeline.
 
 ---
 
@@ -23,7 +23,7 @@ class MyHook(Hook):
             yield
             # task succeeded
         except Exception:
-            # task failed — re-raise or you'll swallow the error
+            # task failed: re-raise or you'll swallow the error
             raise
 
     @contextmanager
@@ -36,7 +36,7 @@ class MyHook(Hook):
             raise
 ```
 
-Both methods are optional — inherit from `Hook` and only override what you need.
+Both methods are optional: inherit from `Hook` and only override what you need.
 
 ### What your hook sees
 
@@ -70,7 +70,12 @@ engine.run(cfg)
 ```
 
 Explicit hooks **replace** the default set. Add `LegacyMonitorsHook(cfg)`
-yourself if you still want user monitors from `CONFIG.monitors`.
+yourself if you still want user monitors from `CONFIG.monitors`. To keep the
+default set and add yours to it, pass `Engine(extra_hooks=[MyHook()])` instead.
+
+From the Python API, `run_task(task_dir, hooks=[...])` also replaces the
+default set. Note that the run record (`lineage=True`) is itself added as an
+extra hook, so it is not written when you pass `hooks=`.
 
 ### Environment (default set)
 
@@ -88,7 +93,7 @@ Ship your own hook from a separate package:
 slack = "your_package.hooks:SlackAlertHook"
 ```
 
-After `pip install your-package`, Ubunye picks it up automatically — no
+After `pip install your-package`, Ubunye picks it up automatically, with no
 Engine changes, no config changes. Hooks needing constructor arguments
 should still be passed via `Engine(hooks=[...])`.
 
@@ -210,9 +215,9 @@ from ubunye.telemetry.hooks import EventLoggerHook, PrometheusHook
 chain = HookChain([EventLoggerHook(), PrometheusHook(), MyHook()])
 ```
 
-- **Enter order** — as listed.
-- **Exit order** — reverse (LIFO), so outermost hook sees inner hooks' work.
-- **Broken hooks** — if one raises on `__enter__`, the others still run.
+- **Enter order**: as listed.
+- **Exit order**: reverse (LIFO), so outermost hook sees inner hooks' work.
+- **Broken hooks**: if one raises on `__enter__`, the others still run.
 
 ---
 
@@ -239,4 +244,4 @@ If you need to change pipeline behavior, write a plugin
 | `ubunye/telemetry/hooks/otel.py` | OpenTelemetry spans and metrics ([OpenTelemetry](opentelemetry.md)) |
 | `ubunye/telemetry/hooks/prometheus.py` | Prometheus metrics |
 | `ubunye/telemetry/hooks/monitors.py` | Legacy `CONFIG.monitors` bridge |
-| `tests/unit/test_hooks.py` | Reference tests — recording hook, failure propagation, dry-run |
+| `tests/unit/test_hooks.py` | Reference tests: recording hook, failure propagation, dry-run |

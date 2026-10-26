@@ -51,7 +51,7 @@ results = ubunye.run_pipeline(
 
 Step-by-step execution for prototyping in Databricks notebooks.
 Environment variables referenced via `{{ env.VAR }}` in config.yaml are
-auto-resolved from widgets and secrets — no manual `os.environ` setup.
+auto-resolved from widgets and secrets, with no manual `os.environ` setup.
 
 ```python
 import ubunye
@@ -286,7 +286,7 @@ csv, json and parquet exactly as Spark does.
 
 ---
 
-## Plugins — Readers
+## Plugins: Readers
 
 ::: ubunye.plugins.readers.rest_api.RestApiReader
     options:
@@ -296,7 +296,7 @@ csv, json and parquet exactly as Spark does.
 
 ---
 
-## Plugins — Writers
+## Plugins: Writers
 
 ::: ubunye.plugins.writers.rest_api.RestApiWriter
     options:
@@ -306,7 +306,7 @@ csv, json and parquet exactly as Spark does.
 
 ---
 
-## Plugins — Transforms
+## Plugins: Transforms
 
 ::: ubunye.plugins.transforms.model_transform.ModelTransform
     options:
