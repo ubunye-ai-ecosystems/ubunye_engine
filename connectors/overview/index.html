@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -2997,7 +2997,7 @@
   
 
 
-<h1 id="connectors-overview">Connectors — Overview<a class="headerlink" href="#connectors-overview" title="Permanent link">&para;</a></h1>
+<h1 id="connectors-overview">Connectors: Overview<a class="headerlink" href="#connectors-overview" title="Permanent link">&para;</a></h1>
 <p>Connectors are the I/O layer of Ubunye. Each connector is a <strong>Reader</strong> or <strong>Writer</strong> plugin
 registered under the <code>ubunye.readers</code> or <code>ubunye.writers</code> entry point group.</p>
 <p><img alt="Input readers → engine transform → output writers" src="../../assets/ubunye_etl.png" /></p>
@@ -3023,7 +3023,7 @@ registered under the <code>ubunye.readers</code> or <code>ubunye.writers</code> 
 <td><a href="../jdbc/"><code>jdbc</code></a></td>
 <td>Yes</td>
 <td>Yes</td>
-<td>PostgreSQL, MySQL, Oracle, SQL Server, …</td>
+<td>PostgreSQL, MySQL, Oracle, SQL Server, ...</td>
 </tr>
 <tr>
 <td><a href="../unity/"><code>unity</code></a></td>
@@ -3035,31 +3035,35 @@ registered under the <code>ubunye.readers</code> or <code>ubunye.writers</code> 
 <td><a href="../s3/"><code>s3</code></a></td>
 <td>Yes</td>
 <td>Yes</td>
-<td>S3, HDFS, ADLS — any Spark-readable path</td>
+<td>S3, ADLS, GCS, HDFS, local: any path. Also runs on the pandas backend</td>
 </tr>
 <tr>
 <td><a href="../s3/"><code>delta</code></a></td>
 <td>Yes</td>
 <td>Yes</td>
-<td>Delta Lake — by path or table name; time travel</td>
+<td>Delta Lake by path or table name; time travel</td>
 </tr>
 <tr>
 <td><a href="../s3/"><code>binary</code></a></td>
 <td>Yes</td>
 <td>No</td>
-<td>Raw files (PDFs, images) — Spark's <code>binaryFile</code> source is read-only, so <code>format: binary</code> in <code>CONFIG.outputs</code> is rejected at config load</td>
+<td>Raw files (PDFs, images). Spark's <code>binaryFile</code> source is read-only, so <code>format: binary</code> in <code>CONFIG.outputs</code> is rejected at config load</td>
 </tr>
 <tr>
 <td><a href="../rest_api/"><code>rest_api</code></a></td>
 <td>Yes</td>
 <td>Yes</td>
-<td>HTTP REST with auth, pagination, retry</td>
+<td>HTTP REST with auth, pagination, retry. Also runs on the pandas backend</td>
 </tr>
 </tbody>
 </table>
+<p><code>s3</code> and <code>rest_api</code> work on every shipped backend (<code>spark</code>, <code>databricks</code>,
+<code>pandas</code>). The others need Spark. <code>ubunye validate --backend pandas</code> says
+before a run when a task uses a connector its backend cannot serve.</p>
 <hr />
 <h2 id="how-connectors-are-loaded">How connectors are loaded<a class="headerlink" href="#how-connectors-are-loaded" title="Permanent link">&para;</a></h2>
-<p>The <code>PluginRegistry</code> discovers connectors at startup via Python entry points:</p>
+<p>The <code>PluginRegistry</code> discovers connectors at startup via Python entry points.
+The built-in ones are declared in Ubunye's own <code>pyproject.toml</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># pyproject.toml</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">[project.entry-points.</span><span class="s2">"ubunye.readers"</span><span class="k">]</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">hive</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"ubunye.plugins.readers.hive:HiveReader"</span>
@@ -3095,11 +3099,13 @@ List all discovered connectors:</p>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="nt">&lt;name&gt;</span><span class="p">:</span>
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;format&gt;</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite</span><span class="w">           </span><span class="c1"># overwrite | append | merge</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">append</span><span class="w">              </span><span class="c1"># the default; see Write modes</span>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
 </code></pre></div>
-<p><code>IOConfig</code> uses <code>extra="allow"</code>, so plugin-specific keys (e.g. <code>auth</code>, <code>pagination</code>)
-pass through unchanged.</p>
+<p>Connector-specific keys (e.g. <code>auth</code>, <code>pagination</code>) are passed to the connector
+unchanged. Every built-in connector declares the keys it reads, so a key it does
+not read is refused by <code>ubunye validate</code>. See
+<a href="../../config/io/">Inputs &amp; Outputs</a> and its <a href="../../config/io/#write-modes">write modes</a>.</p>
 <hr />
 <h2 id="writing-your-own-connector">Writing your own connector<a class="headerlink" href="#writing-your-own-connector" title="Permanent link">&para;</a></h2>
 <p>See <a href="../plugin_guide/">Writing a Plugin</a> for a step-by-step guide to building a
@@ -3126,7 +3132,7 @@ custom Reader or Writer and registering it with the entry point system.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 17:39:52 UTC">July 12, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3213,10 +3219,10 @@ custom Reader or Writer and registering it with the entry point system.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

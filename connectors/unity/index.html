@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -919,6 +919,17 @@
   
     <nav class="md-nav" aria-label="Write">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-comment-properties-and-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table comment, properties and maintenance
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#merge-upsert" class="md-nav__link">
@@ -3002,6 +3013,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#table-comment-properties-and-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table comment, properties and maintenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#merge-upsert" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3108,23 +3130,18 @@
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unity</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.fraud.feature_store</span><span class="w">     </span><span class="c1"># three-part name (preferred)</span>
 </code></pre></div>
-<p>Alternatively, use <code>db_name</code> + <code>tbl_name</code> or a SQL query:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">    </span><span class="nt">features</span><span class="p">:</span>
+<p>Alternatively, use a SQL query:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">    </span><span class="nt">features_filtered</span><span class="p">:</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unity</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">      </span><span class="nt">db_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fraud</span><span class="w">                      </span><span class="c1"># schema name</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">      </span><span class="nt">tbl_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">feature_store</span><span class="w">             </span><span class="c1"># table name</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="c1"># catalog is inferred from the active Unity Catalog</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="c1"># or with SQL:</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">features_filtered</span><span class="p">:</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unity</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;-</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">        </span><span class="no">SELECT * FROM main.fraud.feature_store</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">        </span><span class="no">WHERE dt = '{{ dt }}'</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;-</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">        </span><span class="no">SELECT * FROM main.fraud.feature_store</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">        </span><span class="no">WHERE dt = '{{ dt }}'</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Requirement</p>
-<p>At least one of <code>table</code>, (<code>db_name</code> + <code>tbl_name</code>), or <code>sql</code> is required.</p>
+<p>A read needs <code>table</code> or <code>sql</code>. Give the full three-part name in <code>table</code>.
+(<code>ubunye validate</code> also accepts <code>db_name</code> + <code>tbl_name</code> on a read, but the
+reader does not use them, so such a read fails when it runs.)</p>
 </div>
 <hr />
 <h2 id="write">Write<a class="headerlink" href="#write" title="Permanent link">&para;</a></h2>
@@ -3135,24 +3152,42 @@
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.fraud.model_predictions</span>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">append</span>
 </code></pre></div>
-<h3 id="merge-upsert">MERGE (upsert)<a class="headerlink" href="#merge-upsert" title="Permanent link">&para;</a></h3>
-<p>Matched rows are updated on <code>merge_keys</code>, unmatched rows inserted. The first run
-creates the table.</p>
+<p>A write needs <code>table</code>, or <code>catalog</code> + <code>schema</code> + <code>tbl_name</code>. Tables are written as
+Delta unless <code>file_format</code> says otherwise.</p>
+<h3 id="table-comment-properties-and-maintenance">Table comment, properties and maintenance<a class="headerlink" href="#table-comment-properties-and-maintenance" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="w">    </span><span class="nt">claims_curated</span><span class="p">:</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unity</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.fraud.claims_curated</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">merge_keys</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">policy_id</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ds</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">        </span><span class="nt">comment</span><span class="p">:</span><span class="w"> </span><span class="s">"Curated</span><span class="nv"> </span><span class="s">fraud</span><span class="nv"> </span><span class="s">claims"</span><span class="w">     </span><span class="c1"># COMMENT ON TABLE after the write</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">        </span><span class="nt">tblproperties</span><span class="p">:</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">          </span><span class="nt">quality</span><span class="p">:</span><span class="w"> </span><span class="s">"silver"</span><span class="w">                 </span><span class="c1"># ALTER TABLE ... SET TBLPROPERTIES</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">      </span><span class="nt">optimize</span><span class="p">:</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                       </span><span class="c1"># OPTIMIZE after the write</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">        </span><span class="nt">zorder_by</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">policy_id</span><span class="p p-Indicator">]</span><span class="w">              </span><span class="c1"># ... ZORDER BY (policy_id)</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">      </span><span class="nt">vacuum</span><span class="p">:</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">        </span><span class="nt">hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168</span><span class="w">                          </span><span class="c1"># VACUUM ... RETAIN 168 HOURS</span>
+</code></pre></div>
+<p><code>optimize</code> and <code>vacuum</code> need a Delta table. If the engine cannot run them, the
+data is still written and a warning says the maintenance was skipped.</p>
+<h3 id="merge-upsert">MERGE (upsert)<a class="headerlink" href="#merge-upsert" title="Permanent link">&para;</a></h3>
+<p>Matched rows are updated on <code>merge_keys</code>, unmatched rows inserted. The first run
+creates the table.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w">    </span><span class="nt">claims_curated</span><span class="p">:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unity</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.fraud.claims_curated</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">      </span><span class="nt">merge_keys</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">policy_id</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ds</span><span class="p p-Indicator">]</span>
 </code></pre></div>
 <h3 id="partition-overwrite-backfills">Partition overwrite (backfills)<a class="headerlink" href="#partition-overwrite-backfills" title="Permanent link">&para;</a></h3>
 <p>Replace only the partitions in the incoming DataFrame:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w">    </span><span class="nt">claims_daily</span><span class="p">:</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unity</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.fraud.claims_daily</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">      </span><span class="nt">partitionBy</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ds</span><span class="p p-Indicator">]</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="c1"># or, as a Delta predicate:</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="c1"># replace_where: "ds = '{{ dt }}'"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="w">    </span><span class="nt">claims_daily</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unity</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main.fraud.claims_daily</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">      </span><span class="nt">partitionBy</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ds</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">      </span><span class="c1"># or, as a Delta predicate:</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">      </span><span class="c1"># replace_where: "ds = '{{ dt }}'"</span>
 </code></pre></div>
 <hr />
 <h2 id="fields">Fields<a class="headerlink" href="#fields" title="Permanent link">&para;</a></h2>
@@ -3179,22 +3214,22 @@ creates the table.</p>
 <td>Three-part Unity Catalog name</td>
 </tr>
 <tr>
-<td><code>db_name</code></td>
+<td><code>catalog</code>, <code>schema</code>, <code>tbl_name</code></td>
 <td>string</td>
 <td>Conditional</td>
-<td>Schema name (without catalog)</td>
-</tr>
-<tr>
-<td><code>tbl_name</code></td>
-<td>string</td>
-<td>Conditional</td>
-<td>Table name</td>
+<td>Writes only: the name in three parts, instead of <code>table</code></td>
 </tr>
 <tr>
 <td><code>sql</code></td>
 <td>string</td>
 <td>Conditional</td>
-<td>Spark SQL query</td>
+<td>Reads only: Spark SQL query</td>
+</tr>
+<tr>
+<td><code>file_format</code></td>
+<td>string</td>
+<td>No</td>
+<td>Writes only: <code>delta</code> (default) or <code>parquet</code></td>
 </tr>
 <tr>
 <td><code>mode</code></td>
@@ -3221,22 +3256,32 @@ creates the table.</p>
 <td>Delta predicate for <code>mode: overwrite_partitions</code></td>
 </tr>
 <tr>
+<td><code>optimize</code></td>
+<td>dict</td>
+<td>No</td>
+<td>Writes only: <code>enabled</code>, <code>zorder_by</code></td>
+</tr>
+<tr>
+<td><code>vacuum</code></td>
+<td>dict</td>
+<td>No</td>
+<td>Writes only: <code>hours</code> of history to keep</td>
+</tr>
+<tr>
 <td><code>options</code></td>
 <td>dict</td>
 <td>No</td>
-<td>Spark reader/writer options</td>
+<td>Spark writer options; <code>comment</code> and <code>tblproperties</code> are applied to the table</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="spark-configuration-for-unity-catalog">Spark configuration for Unity Catalog<a class="headerlink" href="#spark-configuration-for-unity-catalog" title="Permanent link">&para;</a></h2>
 <p>On Databricks, Unity Catalog is the default catalog when configured in the workspace.
-For local Spark sessions connecting to Databricks, set:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">ENGINE</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">spark_conf</span><span class="p">:</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">spark.databricks.service.token</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">env.DATABRICKS_TOKEN</span><span class="nv"> </span><span class="s">}}"</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="nt">spark.databricks.service.address</span><span class="p">:</span><span class="w"> </span><span class="s">"https://{{</span><span class="nv"> </span><span class="s">env.DATABRICKS_HOST</span><span class="nv"> </span><span class="s">}}"</span>
-</code></pre></div>
+The engine uses the session that is already running there (<code>--backend databricks</code>,
+or the default on Databricks). It does not open a remote connection to a workspace
+itself, so run Unity tasks on Databricks. <code>ENGINE.catalog</code> and <code>ENGINE.schema_name</code>
+set the default catalog and schema (see <a href="../../config/engine/">Engine &amp; Profiles</a>).</p>
 <hr />
 <h2 id="access-control">Access control<a class="headerlink" href="#access-control" title="Permanent link">&para;</a></h2>
 <p>Unity Catalog enforces column-level and row-level security.
@@ -3297,7 +3342,7 @@ on the target table via the Databricks Catalog Explorer or <code>GRANT</code> SQ
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 17:38:46 UTC">July 12, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3384,10 +3429,10 @@ on the target table via the Databricks Catalog Explorer or <code>GRANT</code> SQ
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

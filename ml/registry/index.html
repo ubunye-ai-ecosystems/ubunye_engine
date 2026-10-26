@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3308,8 +3308,8 @@
 
 
 <h1 id="model-registry">Model Registry<a class="headerlink" href="#model-registry" title="Permanent link">&para;</a></h1>
-<p>The Ubunye model registry manages the full ML lifecycle — versioning, promotion,
-demotion, rollback, and gated releases — without coupling to any specific ML library.</p>
+<p>The Ubunye model registry manages the full ML lifecycle (versioning, promotion,
+demotion, rollback, and gated releases) without coupling to any specific ML library.</p>
 <hr />
 <h2 id="lifecycle-stages">Lifecycle stages<a class="headerlink" href="#lifecycle-stages" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>development → staging → production
@@ -3356,7 +3356,7 @@ Promotion moves a version up the chain; demotion moves it down or to <code>archi
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>                ├── metadata.json  ← model.metadata() output
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                └── metrics.json   ← train() metrics
 </code></pre></div>
-<p>The engine calls <code>model.save(path)</code> — the artifact format (pickle, ONNX, pt, …) is yours.</p>
+<p>The engine calls <code>model.save(path)</code>. The artifact format (pickle, ONNX, pt, …) is yours.</p>
 <hr />
 <h2 id="cli-commands">CLI commands<a class="headerlink" href="#cli-commands" title="Permanent link">&para;</a></h2>
 <h3 id="list-versions">List versions<a class="headerlink" href="#list-versions" title="Permanent link">&para;</a></h3>
@@ -3368,10 +3368,12 @@ Promotion moves a version up the chain; demotion moves it down or to <code>archi
 <p>Output:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>  Version      Stage          Registered                    Key metrics
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  ------------ -------------- ---------------------------- ------------------------------
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  1.3.0        production     2024-06-15T02:10:00Z          auc=0.930, f1=0.880
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  1.2.0        staging        2024-06-10T01:45:00Z          auc=0.910, f1=0.870
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  1.1.0        archived       2024-06-01T00:30:00Z          auc=0.880, f1=0.850
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  1.3.0        production     2024-06-15T02:10:00.512301   auc=0.930, f1=0.880
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  1.2.0        staging        2024-06-10T01:45:00.104877   auc=0.910, f1=0.870
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  1.1.0        archived       2024-06-01T00:30:00.861020   auc=0.880, f1=0.850
 </code></pre></div>
+<p>Add <code>--json</code> to <code>list</code> (and to <code>compare</code>) for one JSON document, for scripts and
+agents.</p>
 <h3 id="show-version-details">Show version details<a class="headerlink" href="#show-version-details" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
@@ -3389,7 +3391,10 @@ Promotion moves a version up the chain; demotion moves it down or to <code>archi
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span>--promoted-by<span class="w"> </span>alice<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
-<p>Promoting to <code>production</code> automatically archives the current production version.</p>
+<p>Promoting to <code>production</code> automatically archives the current production version.
+<code>--to</code> takes <code>staging</code> or <code>production</code>. The version must pass the promotion gates
+stored with the model (see below); <code>--force</code> skips them, prints a warning and
+records on the version that it was forced.</p>
 <h3 id="demote">Demote<a class="headerlink" href="#demote" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>demote<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
@@ -3417,9 +3422,10 @@ Promotion moves a version up the chain; demotion moves it down or to <code>archi
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>compare<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span>--versions<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span>--versions<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span>--versions<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
+<p>Give <code>--versions</code> twice, once per version. <code>--versions 1.2.0 1.3.0</code> is refused.</p>
 <p>Output:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>  Comparing fraud_detection/FraudRiskModel: 1.2.0 vs 1.3.0
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
@@ -3469,74 +3475,78 @@ its actual value and threshold, and does <strong>not</strong> promote. The versi
 <code>development</code>. Gates passed to <code>register(..., promotion_gates=...)</code> are stored with the
 model and checked again by every later promotion, including <code>ubunye models promote</code>.</p>
 <h3 id="cli-promote-with-gates">CLI promote with gates<a class="headerlink" href="#cli-promote-with-gates" title="Permanent link">&para;</a></h3>
-<p>Gates can also be evaluated via <code>ubunye models promote</code> if you specify them in the
-registry's <code>registry.json</code> on the version. The Python API is:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.models.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelRegistry</span><span class="p">,</span> <span class="n">ModelStage</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.models.gates</span><span class="w"> </span><span class="kn">import</span> <span class="n">PromotionGate</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">ModelRegistry</span><span class="p">(</span><span class="s2">".ubunye/model_store"</span><span class="p">)</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">gates</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"min_auc"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"min_f1"</span><span class="p">:</span> <span class="mf">0.80</span><span class="p">}</span>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="n">mv</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">promote</span><span class="p">(</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="n">use_case</span><span class="o">=</span><span class="s2">"fraud_detection"</span><span class="p">,</span>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">"FraudRiskModel"</span><span class="p">,</span>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    <span class="n">version</span><span class="o">=</span><span class="s2">"1.3.0"</span><span class="p">,</span>
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    <span class="n">to_stage</span><span class="o">=</span><span class="n">ModelStage</span><span class="o">.</span><span class="n">PRODUCTION</span><span class="p">,</span>
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    <span class="n">gates</span><span class="o">=</span><span class="n">gates</span><span class="p">,</span>
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    <span class="n">promoted_by</span><span class="o">=</span><span class="s2">"alice"</span><span class="p">,</span>
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="p">)</span>
+<p><code>ubunye models promote</code> has no flag for gates. It checks the gates stored with
+the model, which you set when you register it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">mv</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">promotion_gates</span><span class="o">=</span><span class="p">{</span><span class="s2">"min_auc"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"min_f1"</span><span class="p">:</span> <span class="mf">0.80</span><span class="p">},</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="p">)</span>
+</code></pre></div>
+<p><code>gates=</code> on <code>registry.promote()</code> checks these gates instead of the stored ones,
+for that one promotion:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.models.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelRegistry</span><span class="p">,</span> <span class="n">ModelStage</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">ModelRegistry</span><span class="p">(</span><span class="s2">".ubunye/model_store"</span><span class="p">)</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">gates</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"min_auc"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"min_f1"</span><span class="p">:</span> <span class="mf">0.80</span><span class="p">}</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">mv</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">promote</span><span class="p">(</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    <span class="n">use_case</span><span class="o">=</span><span class="s2">"fraud_detection"</span><span class="p">,</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">"FraudRiskModel"</span><span class="p">,</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="n">version</span><span class="o">=</span><span class="s2">"1.3.0"</span><span class="p">,</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    <span class="n">to_stage</span><span class="o">=</span><span class="n">ModelStage</span><span class="o">.</span><span class="n">PRODUCTION</span><span class="p">,</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    <span class="n">gates</span><span class="o">=</span><span class="n">gates</span><span class="p">,</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    <span class="n">promoted_by</span><span class="o">=</span><span class="s2">"alice"</span><span class="p">,</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelRegistry</span><span class="p">,</span> <span class="n">ModelStage</span><span class="p">,</span> <span class="n">ModelVersion</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">ModelRegistry</span><span class="p">(</span><span class="s2">".ubunye/model_store"</span><span class="p">)</span>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="c1"># List all versions (newest first)</span>
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">versions</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">list_versions</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">)</span>
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="c1"># Get the production artifact path</span>
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="n">artifact_path</span><span class="p">,</span> <span class="n">mv</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span>
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    <span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="n">ModelStage</span><span class="o">.</span><span class="n">PRODUCTION</span>
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="p">)</span>
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="c1"># Load via your own model class</span>
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="kn">from</span><span class="w"> </span><span class="nn">model</span><span class="w"> </span><span class="kn">import</span> <span class="n">FraudRiskModel</span>
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="n">model</span> <span class="o">=</span> <span class="n">FraudRiskModel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">artifact_path</span><span class="p">)</span>
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>
-<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="c1"># Promote</span>
-<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a><span class="n">registry</span><span class="o">.</span><span class="n">promote</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="s2">"1.3.0"</span><span class="p">,</span> <span class="n">ModelStage</span><span class="o">.</span><span class="n">PRODUCTION</span><span class="p">)</span>
-<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>
-<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="c1"># Rollback to a previous version</span>
-<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a><span class="n">registry</span><span class="o">.</span><span class="n">rollback</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="s2">"1.2.0"</span><span class="p">)</span>
-<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>
-<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a><span class="c1"># Compare</span>
-<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a><span class="n">diff</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">compare_versions</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="s2">"1.2.0"</span><span class="p">,</span> <span class="s2">"1.3.0"</span><span class="p">)</span>
-<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a><span class="c1"># Returns: {"auc": {"a": 0.91, "b": 0.93, "delta": 0.02}, ...}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelRegistry</span><span class="p">,</span> <span class="n">ModelStage</span><span class="p">,</span> <span class="n">ModelVersion</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">ModelRegistry</span><span class="p">(</span><span class="s2">".ubunye/model_store"</span><span class="p">)</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1"># List all versions (newest first)</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="n">versions</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">list_versions</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">)</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="c1"># Get the production artifact path</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="n">artifact_path</span><span class="p">,</span> <span class="n">mv</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    <span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="n">ModelStage</span><span class="o">.</span><span class="n">PRODUCTION</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="p">)</span>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="c1"># Load via your own model class</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="kn">from</span><span class="w"> </span><span class="nn">model</span><span class="w"> </span><span class="kn">import</span> <span class="n">FraudRiskModel</span>
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="n">model</span> <span class="o">=</span> <span class="n">FraudRiskModel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">artifact_path</span><span class="p">)</span>
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a><span class="c1"># Promote</span>
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a><span class="n">registry</span><span class="o">.</span><span class="n">promote</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="s2">"1.3.0"</span><span class="p">,</span> <span class="n">ModelStage</span><span class="o">.</span><span class="n">PRODUCTION</span><span class="p">)</span>
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a><span class="c1"># Rollback to a previous version</span>
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a><span class="n">registry</span><span class="o">.</span><span class="n">rollback</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="s2">"1.2.0"</span><span class="p">)</span>
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>
+<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a><span class="c1"># Compare</span>
+<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a><span class="n">diff</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">compare_versions</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="s2">"1.2.0"</span><span class="p">,</span> <span class="s2">"1.3.0"</span><span class="p">)</span>
+<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a><span class="c1"># Returns: {"auc": {"a": 0.91, "b": 0.93, "delta": 0.02}, ...}</span>
 </code></pre></div>
 <hr />
 <h2 id="auto-versioning">Auto-versioning<a class="headerlink" href="#auto-versioning" title="Permanent link">&para;</a></h2>
-<p>When <code>auto_version: true</code> and no explicit <code>version</code> is set, the registry bumps the
-<strong>patch</strong> component of the highest existing version:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>(no versions yet) → 1.0.0
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>1.0.0 → 1.0.1
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>1.2.3 → 1.2.4
+<p>When <code>register()</code> is given <code>version=None</code>, the registry bumps the <strong>patch</strong>
+component of the highest existing version:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>(no versions yet) → 1.0.0
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>1.0.0 → 1.0.1
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>1.2.3 → 1.2.4
 </code></pre></div>
-<p>To pin a specific version:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nt">registry</span><span class="p">:</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="nt">store</span><span class="p">:</span><span class="w"> </span><span class="s">".ubunye/model_store"</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span><span class="nt">use_case</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fraud_detection</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span><span class="nt">auto_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">"2.0.0"</span>
+<p>To pin a specific version, pass it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="s2">"2.0.0"</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
 </code></pre></div>
+<p>A version that already exists is refused with <code>VersionExistsError</code>.</p>
 <hr />
 <h2 id="lineage-integration">Lineage integration<a class="headerlink" href="#lineage-integration" title="Permanent link">&para;</a></h2>
-<p>When <code>--lineage</code> is passed to <code>ubunye run</code>, the run ID is automatically attached
-to the registered <code>ModelVersion.lineage_run_id</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>ubunye<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>ml<span class="w"> </span>-t<span class="w"> </span>train<span class="w"> </span>--lineage
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>ubunye<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span>--store<span class="w"> </span>.ubunye/model_store
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c1"># → lineage_run_id: "abc123..."</span>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span>--run-id<span class="w"> </span>abc123...
+<p>A model registered inside a run (from a task's <code>transformations.py</code>) gets that
+run's ID in <code>ModelVersion.lineage_run_id</code>, unless you pass <code>lineage_run_id=</code>
+yourself. Run with <code>--lineage</code> so there is a run record to look the ID up in:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>ubunye<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>ml<span class="w"> </span>-t<span class="w"> </span>train<span class="w"> </span>--lineage
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>ubunye<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span>--store<span class="w"> </span>.ubunye/model_store
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># → "lineage_run_id": "abc123..."</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>ml<span class="w"> </span>-t<span class="w"> </span>train<span class="w"> </span>--run-id<span class="w"> </span>abc123...
 </code></pre></div>
 <p>This lets you trace exactly which data, config hash, and code produced each model version.</p>
 
@@ -3561,7 +3571,7 @@ to the registered <code>ModelVersion.lineage_run_id</code>.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 28, 2026 08:59:46 UTC">September 28, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3648,10 +3658,10 @@ to the registered <code>ModelVersion.lineage_run_id</code>.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

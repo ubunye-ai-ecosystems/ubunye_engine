@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3128,10 +3128,15 @@ Spark all share, and the engine supports it directly.</p>
 command. They take a Python file. The engine ships one:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>spark-submit<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--py-files<span class="w"> </span>deps.zip<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>-m<span class="w"> </span>ubunye<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>/path/to/site-packages/ubunye/__main__.py<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>--task-dir<span class="w"> </span>/path/or/bucket/to/pipelines/sales/etl/daily<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span>--mode<span class="w"> </span>PROD<span class="w"> </span>--dt<span class="w"> </span><span class="m">2026</span>-07-14
 </code></pre></div>
+<p>Where you do have a shell, <code>python -m ubunye --task-dir ... --mode PROD --dt ...</code>
+does the same. Its flags: <code>--task-dir</code> (the folder holding <code>config.yaml</code>,
+required), <code>--mode</code> (default <code>PROD</code>), <code>--dt</code>, <code>--lineage</code> and <code>--log-level</code>.
+The <code>ubunye deploy</code> commands for Glue, Dataproc and containers upload or bake in
+a small <code>ubunye_entry.py</code> that does this job for you (<a href="../serverless/">Serverless</a>).</p>
 <p>It deliberately does not create a Spark session. spark-submit already made
 one, with the platform's master, executors and settings, and the engine
 attaches to it. Creating a second would quietly ignore the cluster and run
@@ -3408,10 +3413,13 @@ what to do instead.</p>
 <h2 id="scheduling">Scheduling<a class="headerlink" href="#scheduling" title="Permanent link">&para;</a></h2>
 <p>Any scheduler that can run a command can own the timetable. For Airflow, the
 engine generates the DAG for you:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ubunye<span class="w"> </span><span class="nb">export</span><span class="w"> </span>airflow<span class="w"> </span>-d<span class="w"> </span>./pipelines<span class="w"> </span>-u<span class="w"> </span>sales<span class="w"> </span>-p<span class="w"> </span>etl<span class="w"> </span>-t<span class="w"> </span>daily<span class="w"> </span>-o<span class="w"> </span>dags/sales_daily.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ubunye<span class="w"> </span><span class="nb">export</span><span class="w"> </span>airflow<span class="w"> </span>-c<span class="w"> </span>pipelines/sales/etl/daily/config.yaml<span class="w"> </span>-o<span class="w"> </span>dags/sales_daily.py
 </code></pre></div>
-<p>The generated file is one task calling <code>ubunye run</code> with the right flags.
-Review it, commit it to your Airflow repository, done.</p>
+<p>The generated file is one DAG (Airflow 2.4+ and 3) with one <code>BashOperator</code> that
+calls <code>ubunye run ... -m prod -dt {{ ds }}</code>. <code>--profile</code> sets the mode (default
+<code>prod</code>), <code>--usecase-dir</code> sets the pipelines folder as Airflow sees it, and
+<code>--backend</code> and <code>--lineage</code> are passed on to the run. Review it, commit it to
+your Airflow repository, done.</p>
 <h2 id="the-checklist-for-a-new-platform">The checklist for a new platform<a class="headerlink" href="#the-checklist-for-a-new-platform" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Can it run spark-submit or an equivalent? Then compute is solved.</li>
@@ -3446,7 +3454,7 @@ and a pull request with your runner script is very welcome.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 30, 2026 10:19:04 UTC">September 30, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3533,10 +3541,10 @@ and a pull request with your runner script is very welcome.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

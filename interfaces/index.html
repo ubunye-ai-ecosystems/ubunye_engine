@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -2135,7 +2135,7 @@
   <a href="#decision-1-non-blocking-metadata-writes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decision 1 — Non-blocking metadata writes
+        Decision 1: Non-blocking metadata writes
       
     </span>
   </a>
@@ -2146,7 +2146,7 @@
   <a href="#decision-2-graceful-degradation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decision 2 — Graceful degradation
+        Decision 2: Graceful degradation
       
     </span>
   </a>
@@ -2157,7 +2157,7 @@
   <a href="#decision-3-schema-evolution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decision 3 — Schema evolution
+        Decision 3: Schema evolution
       
     </span>
   </a>
@@ -3541,7 +3541,7 @@
   <a href="#decision-1-non-blocking-metadata-writes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decision 1 — Non-blocking metadata writes
+        Decision 1: Non-blocking metadata writes
       
     </span>
   </a>
@@ -3552,7 +3552,7 @@
   <a href="#decision-2-graceful-degradation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decision 2 — Graceful degradation
+        Decision 2: Graceful degradation
       
     </span>
   </a>
@@ -3563,7 +3563,7 @@
   <a href="#decision-3-schema-evolution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decision 3 — Schema evolution
+        Decision 3: Schema evolution
       
     </span>
   </a>
@@ -4194,14 +4194,14 @@
 <h1 id="interfaces-protocol-apis">Interfaces (Protocol APIs)<a class="headerlink" href="#interfaces-protocol-apis" title="Permanent link">&para;</a></h1>
 <p>Ubunye Engine defines four formal <code>typing.Protocol</code> interfaces for its
 pluggable seams.  Any class that implements the required methods satisfies
-the protocol — no inheritance needed.</p>
+the protocol. No inheritance is needed.</p>
 <p>Implementations are discovered at runtime via
 <a href="https://packaging.python.org/en/latest/specifications/entry-points/">entry-point groups</a>
 and environment-based auto-detection.</p>
 <hr />
 <h2 id="design-principles">Design principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
 <p>Three production-policy decisions shape how every interface behaves:</p>
-<h3 id="decision-1-non-blocking-metadata-writes">Decision 1 — Non-blocking metadata writes<a class="headerlink" href="#decision-1-non-blocking-metadata-writes" title="Permanent link">&para;</a></h3>
+<h3 id="decision-1-non-blocking-metadata-writes">Decision 1: Non-blocking metadata writes<a class="headerlink" href="#decision-1-non-blocking-metadata-writes" title="Permanent link">&para;</a></h3>
 <p><code>record()</code>, <code>register()</code>, and <code>promote()</code> dispatch their metadata updates
 to a <strong>background worker thread</strong> with a bounded queue (default 1 000,
 configurable via <code>UBUNYE_METADATA_QUEUE_SIZE</code>).</p>
@@ -4209,25 +4209,25 @@ configurable via <code>UBUNYE_METADATA_QUEUE_SIZE</code>).</p>
 <li>Queue overflow: drop oldest pending write, log a warning.</li>
 <li>Shutdown: <code>flush()</code> drains with a configurable timeout (default 30 s,
   <code>UBUNYE_METADATA_FLUSH_TIMEOUT</code>).</li>
-<li>Artifact writes (model files) remain synchronous — the method returns
+<li>Artifact writes (model files) remain synchronous: the method returns
   only after the model is safely stored.</li>
 </ul>
-<p>Uses a worker-thread pattern, not <code>async</code>/<code>await</code> — async fights Spark's
+<p>Uses a worker-thread pattern, not <code>async</code>/<code>await</code>, because async fights Spark's
 threading model in Python.</p>
-<h3 id="decision-2-graceful-degradation">Decision 2 — Graceful degradation<a class="headerlink" href="#decision-2-graceful-degradation" title="Permanent link">&para;</a></h3>
+<h3 id="decision-2-graceful-degradation">Decision 2: Graceful degradation<a class="headerlink" href="#decision-2-graceful-degradation" title="Permanent link">&para;</a></h3>
 <p>When a metadata write fails, the record is appended to a local <strong>fallback
 manifest</strong> at <code>~/.ubunye/fallback/{run_id}/{kind}.jsonl</code>.  Pipeline
 execution continues.  <code>ubunye sync lineage</code> (or <code>ubunye sync registry</code>)
 replays the manifest with idempotent deduplication (key:
 <code>run_id + task + recorded_at</code>).</p>
-<p><strong>Auth is excluded</strong> — authentication failures always propagate
+<p><strong>Auth is excluded</strong>: authentication failures always propagate
 immediately.  A pipeline must not execute with invalid credentials.</p>
-<h3 id="decision-3-schema-evolution">Decision 3 — Schema evolution<a class="headerlink" href="#decision-3-schema-evolution" title="Permanent link">&para;</a></h3>
+<h3 id="decision-3-schema-evolution">Decision 3: Schema evolution<a class="headerlink" href="#decision-3-schema-evolution" title="Permanent link">&para;</a></h3>
 <p>Every cross-boundary dataclass separates <strong>strict core fields</strong> from a
 flexible <code>metadata: Dict[str, str]</code>:</p>
 <ul>
 <li>Core fields never change without a major engine version bump.</li>
-<li>New data goes into <code>metadata</code> — old clients ignore unknown keys, new
+<li>New data goes into <code>metadata</code>: old clients ignore unknown keys, new
   clients write new keys without touching the schema.</li>
 <li>Every record stamps <code>engine_version</code> so downstream consumers can filter
   by writer version.</li>
@@ -4495,7 +4495,7 @@ id, etc.) without polluting the core fields.</p>
 
     </div>
 
-</div><p><strong>Built-in</strong>: <code>DatabricksDeployAdapter</code> — entry point <code>ubunye.deploy_adapters:databricks</code>.</p>
+</div><p><strong>Built-in</strong>: <code>DatabricksDeployAdapter</code>, entry point <code>ubunye.deploy_adapters:databricks</code>.</p>
 <hr />
 <h3 id="registrybackend">RegistryBackend<a class="headerlink" href="#registrybackend" title="Permanent link">&para;</a></h3>
 <p>Model lifecycle management: register, promote, demote, delete.</p>
@@ -4753,10 +4753,10 @@ filter by writer version.</p>
 
 </div><p><strong>Built-in</strong>:</p>
 <ul>
-<li><code>FilesystemRegistryBackend</code> — entry point <code>ubunye.registry_backends:filesystem</code>.</li>
-<li><code>MLflowRegistryBackend</code> — entry point <code>ubunye.registry_backends:mlflow</code>.
+<li><code>FilesystemRegistryBackend</code>, entry point <code>ubunye.registry_backends:filesystem</code>.</li>
+<li><code>MLflowRegistryBackend</code>, entry point <code>ubunye.registry_backends:mlflow</code>.
   Layers MLflow experiment/run logging on top of filesystem storage.
-  MLflow logging is best-effort — never blocks the pipeline.</li>
+  MLflow logging is best-effort and never blocks the pipeline.</li>
 </ul>
 <hr />
 <h3 id="lineagebackend">LineageBackend<a class="headerlink" href="#lineagebackend" title="Permanent link">&para;</a></h3>
@@ -4971,10 +4971,10 @@ writer version.</p>
 
 </div><p><strong>Built-in</strong>:</p>
 <ul>
-<li><code>FileSystemLineageStore</code> — entry point <code>ubunye.lineage_backends:filesystem</code>.
-  Uses a <code>run_id→Path</code> index for O(1) lookups and an in-memory
+<li><code>FileSystemLineageStore</code>, entry point <code>ubunye.lineage_backends:filesystem</code>.
+  Uses a <code>run_id</code> to path index for O(1) lookups and an in-memory
   <code>RunContext</code> cache to avoid repeated JSON parsing on search.</li>
-<li><code>DeltaLineageBackend</code> — entry point <code>ubunye.lineage_backends:delta</code>.
+<li><code>DeltaLineageBackend</code>, entry point <code>ubunye.lineage_backends:delta</code>.
   Writes to a Delta table via Spark SQL on Databricks; falls back to
   JSONL files locally.</li>
 </ul>
@@ -5137,8 +5137,9 @@ scope, tenant ID) without polluting the core fields.</p>
 
 </div><p><strong>Built-in</strong>:</p>
 <ul>
-<li><code>TokenAuthBackend</code> — entry point <code>ubunye.auth_backends:token</code>.</li>
-<li><code>ServicePrincipalAuthBackend</code> — entry point <code>ubunye.auth_backends:service_principal</code>.
+<li><code>TokenAuthBackend</code>, entry point <code>ubunye.auth_backends:token</code>.
+  Reads the token from <code>DATABRICKS_TOKEN</code> (or the env var named by <code>token_env</code> in <code>targets.yaml</code>).</li>
+<li><code>ServicePrincipalAuthBackend</code>, entry point <code>ubunye.auth_backends:service_principal</code>.
   Uses <code>DATABRICKS_CLIENT_ID</code> + <code>DATABRICKS_CLIENT_SECRET</code> for OAuth M2M auth.</li>
 </ul>
 <hr />
@@ -5188,6 +5189,11 @@ scope, tenant ID) without polluting the core fields.</p>
 <td><code>service_principal</code></td>
 <td><code>ServicePrincipalAuthBackend</code></td>
 </tr>
+<tr>
+<td><code>ubunye.artifact_stores</code></td>
+<td><code>file</code></td>
+<td><code>LocalArtifactStore</code> (model files; a third party adds a storage scheme here)</td>
+</tr>
 </tbody>
 </table>
 <p>Third-party packages register backends by adding entry points under these
@@ -5204,6 +5210,11 @@ environment:</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>Registry</td>
+<td><code>UBUNYE_REGISTRY_BACKEND</code> set</td>
+<td>that name</td>
+</tr>
 <tr>
 <td>Registry</td>
 <td><code>DATABRICKS_RUNTIME_VERSION</code> + <code>mlflow</code> importable</td>
@@ -5300,7 +5311,7 @@ archived to <code>~/.ubunye/fallback/synced/</code>.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="May 19, 2026 21:17:01 UTC">May 19, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -5387,10 +5398,10 @@ archived to <code>~/.ubunye/fallback/synced/</code>.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3136,12 +3136,50 @@ without changing the schema.</p>
 <hr />
 <h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <ol>
-<li><code>ConfigLoader.load(path, variables)</code> reads the raw YAML.</li>
+<li><code>load_config(path, variables)</code> (in <code>ubunye.config</code>) parses the YAML.</li>
 <li>The resolver renders every string value through Jinja2.</li>
-<li>The rendered YAML is parsed and validated by Pydantic.</li>
+<li>The result is validated by Pydantic.</li>
 </ol>
-<p>Jinja expressions can appear in <strong>any string value</strong> — paths, table names, SQL,
-header values, tokens, etc.</p>
+<p>Jinja expressions can appear in <strong>any string value</strong>: paths, table names, SQL,
+header values, tokens, etc. Jinja renders values, not structure: keys and
+<code>{% if %}</code> blocks around keys are not templated.</p>
+<p>The variables a template can use:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Where it comes from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dt</code></td>
+<td><code>-dt</code> / <code>--data-timestamp</code> (or <code>--var dt=...</code>)</td>
+</tr>
+<tr>
+<td><code>dtf</code></td>
+<td><code>-dtf</code> / <code>--data-timestamp-format</code></td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td><code>-m</code> / <code>--mode</code> (default <code>DEV</code>)</td>
+</tr>
+<tr>
+<td><code>task_dir</code></td>
+<td>the task's own folder, always set</td>
+</tr>
+<tr>
+<td><code>env</code></td>
+<td>the environment: <code>{{ env.NAME }}</code></td>
+</tr>
+<tr>
+<td>any other name</td>
+<td><code>--var name=value</code></td>
+</tr>
+</tbody>
+</table>
+<p>A flag that was not given leaves its variable undefined, so <code>| default(...)</code> works
+for it.</p>
 <hr />
 <h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">CONFIG</span><span class="p">:</span>
@@ -3204,7 +3242,7 @@ everywhere, so prefer it for anything next to the task.</p>
 <hr />
 <h2 id="string-filters">String filters<a class="headerlink" href="#string-filters" title="Permanent link">&para;</a></h2>
 <p>Any Jinja2 filter works:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">"s3://{{</span><span class="nv"> </span><span class="s">env.BUCKET</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">lower</span><span class="nv"> </span><span class="s">}}/{{</span><span class="nv"> </span><span class="s">use_case</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">upper</span><span class="nv"> </span><span class="s">}}/{{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">replace('-',</span><span class="nv"> </span><span class="s">'/')</span><span class="nv"> </span><span class="s">}}/"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">"s3://{{</span><span class="nv"> </span><span class="s">env.BUCKET</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">lower</span><span class="nv"> </span><span class="s">}}/{{</span><span class="nv"> </span><span class="s">mode</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">lower</span><span class="nv"> </span><span class="s">}}/{{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">replace('-',</span><span class="nv"> </span><span class="s">'/')</span><span class="nv"> </span><span class="s">}}/"</span>
 </code></pre></div>
 <p>Common filters:</p>
 <table>
@@ -3269,9 +3307,11 @@ Run it in CI to catch missing variables early:
 </code></pre></div></p>
 </div>
 <div class="admonition note">
-<p class="admonition-title">Values must still be valid YAML after rendering</p>
-<p>Jinja renders to a string, which is then parsed as YAML.
-Make sure numeric values that must stay numeric are quoted or cast appropriately.</p>
+<p class="admonition-title">A templated value is always a string</p>
+<p>The YAML is parsed first, then each string is rendered. The result is not
+parsed again, so <code>"{{ n }}"</code> gives the string <code>"8"</code>, never the number 8, and a
+rendered <code>"true"</code> stays text. Write a value that must be a number or a list
+without a template.</p>
 </div>
 <hr />
 <h2 id="full-example">Full example<a class="headerlink" href="#full-example" title="Permanent link">&para;</a></h2>
@@ -3289,14 +3329,13 @@ Make sure numeric values that must stay numeric are quoted or cast appropriately
 <a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="w">      </span><span class="nt">db_name</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">env.RAW_DB</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default('raw')</span><span class="nv"> </span><span class="s">}}"</span>
 <a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="w">      </span><span class="nt">tbl_name</span><span class="p">:</span><span class="w"> </span><span class="s">"events_{{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default('2024-01-01')</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">replace('-',</span><span class="nv"> </span><span class="s">'_')</span><span class="nv"> </span><span class="s">}}"</span>
 <a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="w">  </span><span class="nt">transform</span><span class="p">:</span>
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">task</span>
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
-<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="w">    </span><span class="nt">clean_events</span><span class="p">:</span>
-<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
-<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">"s3://{{</span><span class="nv"> </span><span class="s">env.BUCKET</span><span class="nv"> </span><span class="s">}}/clean/events/dt={{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default('2024-01-01')</span><span class="nv"> </span><span class="s">}}/"</span>
-<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">'overwrite'</span><span class="nv"> </span><span class="s">if</span><span class="nv"> </span><span class="s">full_refresh</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default('false')</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">'true'</span><span class="nv"> </span><span class="s">else</span><span class="nv"> </span><span class="s">'append'</span><span class="nv"> </span><span class="s">}}"</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="w">  </span><span class="nt">transform</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="w">    </span><span class="nt">clean_events</span><span class="p">:</span>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delta</span>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">"s3://{{</span><span class="nv"> </span><span class="s">env.BUCKET</span><span class="nv"> </span><span class="s">}}/clean/events/dt={{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default('2024-01-01')</span><span class="nv"> </span><span class="s">}}/"</span>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">'overwrite'</span><span class="nv"> </span><span class="s">if</span><span class="nv"> </span><span class="s">full_refresh</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default('false')</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">'true'</span><span class="nv"> </span><span class="s">else</span><span class="nv"> </span><span class="s">'append'</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 
 
@@ -3320,7 +3359,7 @@ Make sure numeric values that must stay numeric are quoted or cast appropriately
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 25, 2026 01:23:53 UTC">September 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3407,10 +3446,10 @@ Make sure numeric values that must stay numeric are quoted or cast appropriately
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

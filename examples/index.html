@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -2961,8 +2961,68 @@ there is a small toggle showing how to run it on each environment.</p>
 every page shows you the Databricks way. Click Laptop and everything switches.
 The pipelines themselves never change between tabs. That is the whole point of
 the engine.</p>
-<p>All example code lives in one repository:</p>
+<p>The examples on these pages live in a companion repository. It installs the
+engine from PyPI and pins the release it was tested with, <code>ubunye-engine==0.7.0</code>:</p>
 <p><a class="md-button md-button--primary" href="https://github.com/ubunye-ai-ecosystems/ubunye-examples"><strong>ubunye-ai-ecosystems/ubunye-examples</strong> on GitHub</a></p>
+<p>More examples ship inside the engine repository, under
+<a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/tree/main/examples"><code>examples/</code></a>.
+Each has its own README with the commands to run it:</p>
+<table>
+<thead>
+<tr>
+<th>Folder</th>
+<th>What it shows</th>
+<th>Runs on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>proving/c01_portable_etl</code></td>
+<td>one Narwhals transform, the same rows on pandas and Spark, checked with <code>ubunye prove</code></td>
+<td>laptop, no Java with pandas</td>
+</tr>
+<tr>
+<td><code>real-world/food_prices_africa</code></td>
+<td>WFP food prices: clean, then flag price jumps</td>
+<td>laptop, no Java</td>
+</tr>
+<tr>
+<td><code>real-world/olist_ecommerce</code></td>
+<td>nine raw tables to an order fact table, with input contracts, quarantine and reconcile</td>
+<td>laptop, no Java</td>
+</tr>
+<tr>
+<td><code>production/titanic_local</code></td>
+<td>the Titanic task on Spark and pandas, same run record hashes</td>
+<td>laptop</td>
+</tr>
+<tr>
+<td><code>production/titanic_multitask_local</code></td>
+<td>two chained tasks on Spark and pandas</td>
+<td>laptop</td>
+</tr>
+<tr>
+<td><code>production/llm_replay</code></td>
+<td>model calls replayed from a committed file: no key, no network, no cost</td>
+<td>laptop, no Java</td>
+</tr>
+<tr>
+<td><code>production/titanic_databricks</code>, <code>titanic_multitask_databricks</code>, <code>jhb_weather_databricks</code>, <code>titanic_ml_databricks</code></td>
+<td>the same tasks as Asset Bundles on serverless with Unity Catalog</td>
+<td>Databricks</td>
+</tr>
+<tr>
+<td><code>python_api</code></td>
+<td><code>ubunye.run_task()</code> and <code>ubunye.run_pipeline()</code> from Python</td>
+<td>laptop with Spark, or Databricks</td>
+</tr>
+<tr>
+<td><code>titanic_end_to_end.ipynb</code></td>
+<td>the model lifecycle: train, gates, registry, rollback, lineage</td>
+<td>a notebook, no Spark</td>
+</tr>
+</tbody>
+</table>
 <h2 id="before-you-start-once-per-environment">Before you start, once per environment<a class="headerlink" href="#before-you-start-once-per-environment" title="Permanent link">&para;</a></h2>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Databricks</label><label for="__tabbed_1_2">Laptop</label><label for="__tabbed_1_3">Docker</label><label for="__tabbed_1_4">Kubernetes</label></div>
 <div class="tabbed-content">
@@ -2976,7 +3036,7 @@ and run.</p>
 <p>You need Python, Java 17 and an internet connection.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ubunye-ai-ecosystems/ubunye-examples
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>ubunye-examples
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"pyspark==3.5.3"</span><span class="w"> </span><span class="s2">"delta-spark==3.2.0"</span><span class="w"> </span><span class="s2">"ubunye-engine[spark,ml]"</span><span class="w"> </span><span class="s2">"requests"</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"pyspark==3.5.3"</span><span class="w"> </span><span class="s2">"delta-spark==3.2.0"</span><span class="w"> </span><span class="s2">"ubunye-engine[spark,ml]==0.7.0"</span><span class="w"> </span><span class="s2">"requests"</span>
 </code></pre></div>
 <p>The scripts under <code>platforms/</code> handle Spark, Delta and a local metastore.
 Examples that read the Databricks sample tables need seeded stand-ins with
@@ -3029,7 +3089,7 @@ them produced the same output, byte for byte. See <a href="run_anywhere/">Run an
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 14, 2026 14:18:50 UTC">July 14, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3116,10 +3176,10 @@ them produced the same output, byte for byte. See <a href="run_anywhere/">Run an
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

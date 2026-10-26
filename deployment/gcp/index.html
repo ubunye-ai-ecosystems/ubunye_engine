@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3054,14 +3054,20 @@
 
 
 <h1 id="deploying-on-gcp">Deploying on GCP<a class="headerlink" href="#deploying-on-gcp" title="Permanent link">&para;</a></h1>
-<p>Same honest status as the AWS page: written, reviewed, wired into CI, and not
-yet executed, because Dataproc Serverless has no free tier. The CI jobs say
-plainly when they were skipped. Four secrets turn them on with no code change.</p>
+<p>The engine's own command for GCP is <code>ubunye deploy dataproc</code>, described in
+<a href="../serverless/">One command to the cloud</a>. It has been run for real: the
+<a href="../../proving-ground/latest/">proving ground</a> runs its workloads on Dataproc
+Serverless and gets the same data as local Spark.</p>
+<p>The rest of this page is the older, script-based path. The scripts live in the
+<a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples">examples repository</a>
+(<code>platforms/gcp/</code>), not in this one. The CI jobs there say plainly when they
+were skipped. Four secrets turn them on with no code change.</p>
 <h2 id="where-a-pipeline-runs-on-gcp-dataproc-serverless">Where a pipeline runs on GCP: Dataproc Serverless<a class="headerlink" href="#where-a-pipeline-runs-on-gcp-dataproc-serverless" title="Permanent link">&para;</a></h2>
 <p>Dataproc Serverless runs Spark batches without a cluster to manage. Like EMR,
 it takes a Python file for spark-submit, which <code>python -m ubunye</code> exists to
 be.</p>
 <h3 id="1-one-time-setup">1. One-time setup<a class="headerlink" href="#1-one-time-setup" title="Permanent link">&para;</a></h3>
+<p>From a clone of the examples repository:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bash<span class="w"> </span>platforms/gcp/setup.sh
 </code></pre></div>
 <p>This enables the APIs, creates a bucket, and creates a service account that
@@ -3108,7 +3114,7 @@ live, can stay inside your GCP project.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 14, 2026 14:41:23 UTC">July 14, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3195,10 +3201,10 @@ live, can stay inside your GCP project.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3346,73 +3346,91 @@
 <hr />
 <h2 id="architecture-overview">Architecture overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Entry points:
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    CLI (ubunye run)  ──┐
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    Python API        ──┤
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                        ↓
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                    ConfigLoader          ← YAML + Jinja2 → Pydantic v2
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                        ↓
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                    Engine.run(cfg)
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                        ├── Backend.start()     ← SparkBackend or DatabricksBackend
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                        ├── Registry.get_reader(format) → Reader.read()  [per input]
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                        ├── Registry.get_transform(type) → Transform.apply()
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                        ├── Registry.get_writer(format) → Writer.write() [per output]
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                        └── Backend.stop()
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                                ↓
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                        LineageRecorder (if --lineage)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    CLI (ubunye run)  --+
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    Python API        --+
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                        |
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                        v
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                    load_config()         YAML + Jinja2, then Pydantic v2
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                        |
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                        v
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                    task_runner.execute_user_task()
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                        |
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                        v
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                    Engine.run(cfg)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                        +-- Backend.start()   spark, databricks, pandas or a plugin
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                        +-- registry.readers[format]().read()     [per input]
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                        +-- Transform.apply()                     [the user's Task]
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                        +-- registry.writers[format]().write()    [per output]
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                        +-- Backend.stop()
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>                        |
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                        v
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>                    LineageRecorder (if --lineage), as a hook
 </code></pre></div>
 <hr />
 <h2 id="config-loading-pipeline">Config loading pipeline<a class="headerlink" href="#config-loading-pipeline" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Read raw YAML</strong> — <code>ConfigLoader.load(path, variables)</code>.</li>
-<li><strong>Jinja2 render</strong> — <code>ConfigResolver.resolve(raw_yaml, variables)</code> renders all string values.
-   Variables come from: <code>--var</code> flags, <code>os.environ</code> (as <code>env.*</code>), and any extra context.</li>
-<li><strong>Pydantic validation</strong> — rendered YAML is parsed into <code>UbunyeConfig</code>.
-   Strict validation; unknown top-level keys raise an error.</li>
-<li><strong>Profile merge</strong> — <code>UbunyeConfig.merged_spark_conf(profile)</code> merges base + profile Spark conf.</li>
+<li><strong>Read raw YAML</strong>: <code>load_config(path, variables)</code> in <code>ubunye/config/loader.py</code>.</li>
+<li><strong>Jinja2 render</strong>: <code>resolve_config(raw, cli_vars=...)</code> renders every string value.
+   Variables come from <code>-dt</code>, <code>-dtf</code>, <code>-m</code> (as <code>dt</code>, <code>dtf</code>, <code>mode</code>), <code>--var</code> flags,
+   <code>os.environ</code> (as <code>env.*</code>), and <code>task_dir</code> (the task's own folder).</li>
+<li><strong>Pydantic validation</strong>: the rendered YAML is parsed into <code>UbunyeConfig</code>.
+   Validation is strict; an unknown field raises <code>ConfigFieldError</code> with a suggestion.</li>
+<li><strong>Profile merge</strong>: <code>UbunyeConfig.merged_spark_conf(mode)</code> merges base and profile Spark conf.
+   A mode that names no profile raises <code>ConfigProfileError</code> when the config has profiles.</li>
 </ol>
 <p>Key files:</p>
 <ul>
-<li><code>ubunye/config/loader.py</code> — <code>ConfigLoader</code></li>
-<li><code>ubunye/config/resolver.py</code> — Jinja resolver</li>
-<li><code>ubunye/config/schema.py</code> — all Pydantic models</li>
+<li><code>ubunye/config/loader.py</code>: <code>load_config</code></li>
+<li><code>ubunye/config/resolver.py</code>: the Jinja resolver</li>
+<li><code>ubunye/config/schema.py</code>: all Pydantic models</li>
 </ul>
 <hr />
 <h2 id="plugin-registry">Plugin registry<a class="headerlink" href="#plugin-registry" title="Permanent link">&para;</a></h2>
-<p><code>ubunye.core.registry.PluginRegistry</code> discovers plugins at startup via <code>importlib.metadata.entry_points</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Entry point groups</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">ubunye</span><span class="o">.</span><span class="n">readers</span>     <span class="err">→</span>  <span class="n">Reader</span> <span class="n">subclasses</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">ubunye</span><span class="o">.</span><span class="n">writers</span>     <span class="err">→</span>  <span class="n">Writer</span> <span class="n">subclasses</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">ubunye</span><span class="o">.</span><span class="n">transforms</span>  <span class="err">→</span>  <span class="n">Transform</span> <span class="n">subclasses</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">ubunye</span><span class="o">.</span><span class="n">monitors</span>    <span class="err">→</span>  <span class="n">Monitor</span> <span class="n">implementations</span>
+<p><code>ubunye.core.runtime.Registry.from_entrypoints()</code> discovers readers, writers and
+transforms via <code>importlib.metadata.entry_points</code>. Other groups are loaded where
+they are used.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a># Entry point groups
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ubunye.readers     Reader subclasses
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>ubunye.writers     Writer subclasses
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>ubunye.transforms  Transform subclasses
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>ubunye.backends    Backend subclasses (see Execution backends)
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>ubunye.hooks       Hook classes (loaded when UBUNYE_TELEMETRY is set)
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>ubunye.monitors    Monitor implementations (CONFIG.monitors)
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>ubunye.ml          ML model adapters
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>ubunye.secrets     secret:// stores
 </code></pre></div>
-<p><code>registry.get_reader("hive")</code> looks up the <code>hive</code> key and returns the class.
-The class is instantiated fresh for each task run.</p>
+<p><code>registry.readers["hive"]</code> returns the class registered as <code>hive</code>.
+The class is instantiated fresh for each read or write.</p>
 <hr />
 <h2 id="engine-runtime">Engine runtime<a class="headerlink" href="#engine-runtime" title="Permanent link">&para;</a></h2>
 <p><code>Engine.run(cfg)</code> in <code>ubunye/core/runtime.py</code>:</p>
 <ol>
+<li>Check the config before anything runs: inputs and outputs, transforms exist,
+   and the backend can do what the task needs (<code>BackendCapabilityError</code> if not).</li>
 <li>Build the hook chain (defaults + <code>extra_hooks</code>, or <code>hooks=</code> override).</li>
-<li>Open <code>chain.task(ctx, cfg, state)</code> — wraps the entire run.</li>
+<li>Open <code>chain.task(ctx, cfg, state)</code>, which wraps the entire run.</li>
 <li>If <code>manage_backend=True</code>, start the backend.</li>
-<li>Read each input: <code>chain.step("read.&lt;name&gt;")</code> → <code>Reader.read(io_cfg, backend)</code>.</li>
-<li>Apply the transform: <code>chain.step("transform")</code> → <code>Transform.apply(...)</code>.</li>
-<li>Write each output: <code>chain.step("write.&lt;name&gt;")</code> → <code>Writer.write(...)</code>.</li>
+<li>Read each input in a <code>Reader:&lt;format&gt;</code> step: <code>Reader.read(io_cfg, backend)</code>.</li>
+<li>Apply the transform in a <code>Transform:&lt;type&gt;</code> step: <code>Transform.apply(...)</code>.</li>
+<li>Check the output expectations (<code>ExpectationError</code> stops the run before any write).</li>
+<li>Write each output in a <code>Writer:&lt;format&gt;</code> step: <code>Writer.write(...)</code>.</li>
 <li>Populate <code>state["outputs"]</code> so hooks can inspect them on exit.</li>
 <li>If <code>manage_backend=True</code>, stop the backend.</li>
 </ol>
-<p><code>task_runner.execute_user_task</code> adds <code>task_dir</code> to <code>sys.path</code> for the duration
-of step 5 so <code>transformations.py</code> can do <code>from model import ...</code>.</p>
+<p><code>task_runner.execute_user_task</code> puts <code>task_dir</code> on <code>sys.path</code> for the duration
+of the run, so <code>transformations.py</code> can do <code>from model import ...</code>.</p>
 <hr />
 <h2 id="backends">Backends<a class="headerlink" href="#backends" title="Permanent link">&para;</a></h2>
 <h3 id="sparkbackend">SparkBackend<a class="headerlink" href="#sparkbackend" title="Permanent link">&para;</a></h3>
 <p><code>ubunye/backends/spark_backend.py</code>:</p>
 <ul>
-<li>Lazily imports <code>pyspark</code> — no import error if PySpark is not installed and Spark isn't used.</li>
-<li>Implements context manager (<code>with SparkBackend(...) as be:</code>).</li>
-<li><code>be.spark</code> — the <code>SparkSession</code>.</li>
-<li><code>be.conf_effective</code> — dict of active configuration.</li>
+<li>Lazily imports <code>pyspark</code>: no import error if PySpark is not installed and Spark is not used.</li>
+<li>Implements a context manager (<code>with SparkBackend(app_name=..., conf={...}) as be:</code>).</li>
+<li><code>be.spark</code>: the <code>SparkSession</code>.</li>
+<li><code>be.conf_effective</code>: dict of active configuration.</li>
 <li>Safe for multiple <code>start()</code> calls (idempotent).</li>
-<li><code>stop()</code> terminates the session.</li>
+<li><code>stop()</code> stops the session only if <code>start()</code> created it. A session that was
+  already running belongs to whoever started it.</li>
 </ul>
 <h3 id="databricksbackend">DatabricksBackend<a class="headerlink" href="#databricksbackend" title="Permanent link">&para;</a></h3>
 <p><code>ubunye/backends/databricks_backend.py</code>:</p>
@@ -3420,27 +3438,30 @@ of step 5 so <code>transformations.py</code> can do <code>from model import ...<
 <li>Wraps an <strong>existing</strong> SparkSession instead of creating a new one.</li>
 <li>If no session is passed explicitly, retrieves the active session via <code>SparkSession.getActiveSession()</code>.</li>
 <li><code>start()</code> attaches to the active session (or no-ops if already attached).</li>
-<li><code>stop()</code> is a <strong>no-op</strong> — we don't own the session, so we never stop it.</li>
+<li><code>stop()</code> is a <strong>no-op</strong>: we do not own the session, so we never stop it.</li>
 <li>Use this on Databricks where a SparkSession is always available.</li>
 </ul>
 <h3 id="auto-detection-in-the-python-api">Auto-detection in the Python API<a class="headerlink" href="#auto-detection-in-the-python-api" title="Permanent link">&para;</a></h3>
 <p><code>ubunye.run_task()</code> and <code>ubunye.run_pipeline()</code> auto-detect the backend:</p>
 <ol>
-<li>If <code>spark=</code> is passed explicitly → <code>DatabricksBackend(spark=session)</code></li>
-<li>If an active SparkSession exists → <code>DatabricksBackend</code></li>
-<li>Otherwise → <code>SparkBackend</code> with config-driven Spark conf</li>
+<li>If <code>backend=</code> is passed (a name such as <code>"pandas"</code>, or a <code>Backend</code> instance), that backend</li>
+<li>If <code>spark=</code> is passed explicitly, <code>DatabricksBackend(spark=session)</code></li>
+<li>If an active SparkSession exists, <code>DatabricksBackend</code></li>
+<li>Otherwise the default backend (<code>spark</code>) with config-driven Spark conf</li>
 </ol>
+<p>Passing both <code>backend=</code> and <code>spark=</code> is an error. See
+<a href="../architecture/adr-003-backend-resolution/">ADR 003</a>.</p>
 <hr />
 <h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
-<p><code>ubunye/api.py</code> exposes <code>run_task()</code> and <code>run_pipeline()</code> — the same execution
+<p><code>ubunye/api.py</code> exposes <code>run_task()</code> and <code>run_pipeline()</code>: the same execution
 pipeline as the CLI but callable from Python code (notebooks, scripts, tests).</p>
 <p>Key differences from the CLI path:</p>
 <ul>
-<li><strong>Backend auto-detection</strong>: picks <code>DatabricksBackend</code> if an active session exists, otherwise <code>SparkBackend</code>.</li>
+<li><strong>Backend auto-detection</strong>: picks <code>DatabricksBackend</code> if an active session exists, otherwise the default backend, unless <code>backend=</code> names one.</li>
 <li><strong>No subprocess</strong>: runs in-process, so the caller can inspect returned DataFrames directly.</li>
 <li><strong>Shared session lifecycle</strong>: when using <code>DatabricksBackend</code>, the session stays alive after the run.</li>
 </ul>
-<p>Both functions are re-exported from <code>ubunye.__init__</code>:</p>
+<p>Both functions (and <code>notebook()</code>) are re-exported from <code>ubunye.__init__</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ubunye</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span><span class="n">task_dir</span><span class="o">=</span><span class="s2">"..."</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"DEV"</span><span class="p">)</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
@@ -3457,9 +3478,9 @@ path means hooks, lineage, and lifecycle behave identically across all three
 entry points.</p>
 <p>The <code>Engine</code> exposes two flags that this helper relies on:</p>
 <ul>
-<li><code>manage_backend=False</code> — caller owns <code>backend.start()</code> / <code>backend.stop()</code>,
+<li><code>manage_backend=False</code>: the caller owns <code>backend.start()</code> / <code>backend.stop()</code>,
   letting the CLI share one Spark session across many tasks.</li>
-<li><code>extra_hooks=[...]</code> — appended to the default hook set. Used to attach a
+<li><code>extra_hooks=[...]</code>: appended to the default hook set. Used to attach a
   <code>MonitorHook</code> wrapping the optional <code>LineageRecorder</code> without replacing the
   built-in telemetry hooks.</li>
 </ul>
@@ -3476,27 +3497,41 @@ entry points.</p>
 <tbody>
 <tr>
 <td><code>context.py</code></td>
-<td><code>RunContext</code> frozen dataclass — run ID, task metadata, timestamps</td>
+<td><code>RunContext</code> and <code>StepRecord</code>: run ID, task metadata, timestamps, facts per input and output</td>
 </tr>
 <tr>
 <td><code>recorder.py</code></td>
-<td><code>LineageRecorder</code> — implements <code>Monitor</code> protocol; writes step records</td>
+<td><code>LineageRecorder</code>: <code>task_start</code> / <code>task_end</code>, run as a hook through <code>MonitorHook</code></td>
 </tr>
 <tr>
 <td><code>storage.py</code></td>
-<td><code>FileSystemLineageStore</code> — reads/writes JSON under <code>.ubunye/lineage/</code></td>
+<td><code>FileSystemLineageStore</code>: reads and writes JSON under <code>.ubunye/lineage/</code></td>
 </tr>
 <tr>
-<td><code>hasher.py</code></td>
-<td><code>hash_dataframe()</code> — SHA-256 of sampled rows + schema (Spark-optional)</td>
+<td><code>content_hash.py</code></td>
+<td>The content hash (<code>rows-v1</code>): every row, any order, the same on Spark and pandas</td>
+</tr>
+<tr>
+<td><code>source_version.py</code></td>
+<td>The version of each input source when it is read and when it is hashed</td>
+</tr>
+<tr>
+<td><code>openlineage.py</code></td>
+<td>OpenLineage events from run records</td>
+</tr>
+<tr>
+<td><code>focus.py</code></td>
+<td>FOCUS cost rows for a run's model calls</td>
 </tr>
 </tbody>
 </table>
-<p>The <code>LineageRecorder</code> is attached as a monitor and called at task start and end.
-On task end it writes a <code>RunRecord</code> JSON file keyed by <code>run_id</code>.</p>
+<p>The <code>LineageRecorder</code> is wrapped in a <code>MonitorHook</code> and called at task start and end.
+On task end it writes the run record to
+<code>.ubunye/lineage/&lt;usecase&gt;/&lt;package&gt;/&lt;task&gt;/&lt;run_id&gt;.json</code>. See
+<a href="../architecture/adr-006-run-record/">ADR 006</a>.</p>
 <hr />
 <h2 id="observability-hooks">Observability (hooks)<a class="headerlink" href="#observability-hooks" title="Permanent link">&para;</a></h2>
-<p>The Engine observes task runs through <strong>hooks</strong> — a single abstraction that
+<p>The Engine observes task runs through <strong>hooks</strong>: a single abstraction that
 wraps every task and every step in a context manager. The Engine itself does
 not know about Prometheus, OpenTelemetry, MLflow, or event logs.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Hook</span><span class="p">:</span>
@@ -3507,7 +3542,7 @@ not know about Prometheus, OpenTelemetry, MLflow, or event logs.</p>
 <a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">meta</span><span class="p">):</span> <span class="k">yield</span>
 </code></pre></div>
 <p><code>ubunye/core/hooks.py</code> defines <code>Hook</code> and <code>HookChain</code> (multiplexer).
-<code>ubunye/telemetry/hooks/</code> ships four built-in hooks:</p>
+<code>ubunye/telemetry/hooks/</code> ships four built-in hooks (plus <code>MonitorHook</code>, which wraps one monitor such as the <code>LineageRecorder</code>):</p>
 <table>
 <thead>
 <tr>
@@ -3541,11 +3576,12 @@ not know about Prometheus, OpenTelemetry, MLflow, or event logs.</p>
 </table>
 <p>Environment flags still apply:</p>
 <ul>
-<li><code>UBUNYE_TELEMETRY=1</code> — enable the three built-in telemetry hooks</li>
-<li><code>UBUNYE_PROM_PORT=8000</code> — start Prometheus HTTP endpoint</li>
+<li><code>UBUNYE_TELEMETRY=1</code>: enable every hook registered under <code>ubunye.hooks</code> (the three
+  built-in telemetry hooks, and any a third party ships)</li>
+<li><code>UBUNYE_PROM_PORT=8000</code>: start a Prometheus HTTP endpoint</li>
 </ul>
 <p>Legacy user monitors (<code>CONFIG.monitors</code>) run independently of the telemetry
-flag — same behavior as before.</p>
+flag, as before.</p>
 <p>Override the hook set directly:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.runtime</span><span class="w"> </span><span class="kn">import</span> <span class="n">Engine</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">my_package.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">SlackAlertHook</span>
@@ -3569,12 +3605,12 @@ flag — same behavior as before.</p>
 <tr>
 <td>Internal wrappers</td>
 <td><code>ubunye/plugins/ml/</code></td>
-<td><code>SklearnModel</code>, <code>SparkMLModel</code> — engine-owned adapters</td>
+<td><code>SklearnModel</code>, <code>SparkMLModel</code>: engine-owned adapters</td>
 </tr>
 <tr>
 <td>User contract</td>
 <td><code>ubunye/models/</code></td>
-<td><code>UbunyeModel</code> ABC — user-implemented; engine never imports ML libs</td>
+<td><code>UbunyeModel</code> ABC: user-implemented; the engine never imports ML libs</td>
 </tr>
 </tbody>
 </table>
@@ -3602,7 +3638,7 @@ filesystem. JSON serialization uses <code>dataclasses.asdict()</code>.</p>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">"session"</span><span class="p">)</span>
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">spark</span><span class="p">():</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="k">with</span> <span class="n">SparkBackend</span><span class="p">(</span><span class="n">app_name</span><span class="o">=</span><span class="s2">"test"</span><span class="p">,</span> <span class="n">spark_conf</span><span class="o">=</span><span class="p">{</span><span class="s2">"spark.sql.shuffle.partitions"</span><span class="p">:</span> <span class="s2">"1"</span><span class="p">})</span> <span class="k">as</span> <span class="n">be</span><span class="p">:</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="k">with</span> <span class="n">SparkBackend</span><span class="p">(</span><span class="n">app_name</span><span class="o">=</span><span class="s2">"test"</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="p">{</span><span class="s2">"spark.sql.shuffle.partitions"</span><span class="p">:</span> <span class="s2">"1"</span><span class="p">})</span> <span class="k">as</span> <span class="n">be</span><span class="p">:</span>
 <a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        <span class="k">yield</span> <span class="n">be</span><span class="o">.</span><span class="n">spark</span>
 <a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
 <a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">integration</span>
@@ -3616,26 +3652,29 @@ filesystem. JSON serialization uses <code>dataclasses.asdict()</code>.</p>
 <h2 id="orchestration-exporters">Orchestration exporters<a class="headerlink" href="#orchestration-exporters" title="Permanent link">&para;</a></h2>
 <p><code>ubunye/orchestration/</code>:</p>
 <ul>
-<li><code>base.py</code> — <code>OrchestratorExporter</code> ABC with
+<li><code>base.py</code>: <code>OrchestratorExporter</code> ABC with
   <code>export(config_path, *, output_path, options) -&gt; Path</code>.</li>
-<li><code>airflow_exporter.py</code> — <code>AirflowExporter</code>, generates a DAG Python file whose
-  single <code>BashOperator</code> runs <code>ubunye run ...</code>.</li>
-<li><code>databricks_exporter.py</code> — <code>DatabricksExporter</code>, generates a Databricks Jobs
+<li><code>airflow_exporter.py</code>: <code>AirflowExporter</code>, generates a DAG Python file (Airflow
+  2.4+ and 3) whose single <code>BashOperator</code> runs <code>ubunye run ...</code>.</li>
+<li><code>databricks_exporter.py</code>: <code>DatabricksExporter</code>, generates a Databricks Jobs
   API spec (<code>job.json</code>).</li>
+<li><code>spark_pipeline_exporter.py</code>: <code>SparkPipelineExporter</code>, writes the task as a
+  Spark Declarative Pipeline (Spark 4.1+).</li>
 </ul>
-<p>Exporters are reached via <code>ubunye export airflow|databricks</code>. The CLI
+<p>Exporters are reached via <code>ubunye export airflow|databricks|spark-pipeline</code>. The CLI
 (<code>ubunye/cli/export.py</code>) loads the task's <code>config.yaml</code>, dumps the
 <code>ORCHESTRATION</code> block to a plain dict, and hands it to the exporter as
 <code>options</code>. For the Databricks exporter the nested <code>databricks</code> cluster block
 is flattened into top-level options so the exporter can splat it into
-<code>new_cluster</code>. They do <strong>not</strong> interact with the running cluster — they only
+<code>new_cluster</code>. They do <strong>not</strong> interact with the running cluster: they only
 produce configuration artifacts.</p>
 <hr />
 <h2 id="adding-a-new-orchestration-target">Adding a new orchestration target<a class="headerlink" href="#adding-a-new-orchestration-target" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Subclass <code>OrchestratorExporter</code> and implement <code>export(config_path, *,
    output_path, options)</code>.</li>
-<li>Add a new value to <code>OrchestrationType</code> enum in <code>ubunye/config/schema.py</code>.</li>
+<li>Add a new value to the <code>OrchestrationType</code> enum in <code>ubunye/config/schema.py</code>
+   (it already lists <code>prefect</code> and <code>dagster</code>, which have no exporter yet).</li>
 <li>Export the class from <code>ubunye/orchestration/__init__.py</code>.</li>
 <li>Add a new Typer command in <code>ubunye/cli/export.py</code> that maps
    <code>OrchestrationConfig</code> fields to the exporter's <code>options</code>.</li>
@@ -3662,7 +3701,7 @@ produce configuration artifacts.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 21:19:42 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3749,10 +3788,10 @@ produce configuration artifacts.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

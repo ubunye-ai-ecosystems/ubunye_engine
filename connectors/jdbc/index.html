@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3035,7 +3035,8 @@ Redshift, Snowflake (via JDBC driver), and more.</p>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">        </span><span class="nt">fetchsize</span><span class="p">:</span><span class="w"> </span><span class="s">"10000"</span>
 </code></pre></div>
-<p>Parallelised read (requires a numeric partition column):</p>
+<p>Parallelised read (requires a numeric partition column). The tuning keys can be
+top-level keys or go under <code>options</code>; both reach Spark the same way:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">    </span><span class="nt">large_table</span><span class="p">:</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jdbc</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">"jdbc:postgresql://db-host:5432/mydb"</span>
@@ -3059,7 +3060,8 @@ Redshift, Snowflake (via JDBC driver), and more.</p>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Requirement</p>
-<p><code>url</code> is required. Either <code>table</code> <strong>or</strong> <code>sql</code> is required.</p>
+<p><code>url</code> is required. A read needs <code>table</code> (or <code>dbtable</code>) <strong>or</strong> <code>sql</code>. A write
+needs <code>table</code>.</p>
 </div>
 <hr />
 <h2 id="write">Write<a class="headerlink" href="#write" title="Permanent link">&para;</a></h2>
@@ -3104,13 +3106,25 @@ Redshift, Snowflake (via JDBC driver), and more.</p>
 <td><code>table</code></td>
 <td>string</td>
 <td>Conditional</td>
-<td>Fully qualified table name (required unless <code>sql</code> set)</td>
+<td>Fully qualified table name (required for writes; for reads unless <code>sql</code> is set)</td>
+</tr>
+<tr>
+<td><code>dbtable</code></td>
+<td>string</td>
+<td>No</td>
+<td>Spark's own name for <code>table</code>; reads accept either</td>
 </tr>
 <tr>
 <td><code>sql</code></td>
 <td>string</td>
 <td>Conditional</td>
-<td>SQL query for reads (alternative to <code>table</code>)</td>
+<td>SQL query, reads only (alternative to <code>table</code>)</td>
+</tr>
+<tr>
+<td><code>driver</code></td>
+<td>string</td>
+<td>No</td>
+<td>JDBC driver class, e.g. <code>org.postgresql.Driver</code></td>
 </tr>
 <tr>
 <td><code>user</code></td>
@@ -3122,7 +3136,13 @@ Redshift, Snowflake (via JDBC driver), and more.</p>
 <td><code>password</code></td>
 <td>string</td>
 <td>No</td>
-<td>Database password — use <code>{{ env.VAR }}</code></td>
+<td>Database password: use <a href="../../config/secrets/"><code>secret://</code></a> or <code>{{ env.VAR }}</code></td>
+</tr>
+<tr>
+<td><code>fetchsize</code>, <code>partitionColumn</code>, <code>lowerBound</code>, <code>upperBound</code>, <code>numPartitions</code></td>
+<td>string or int</td>
+<td>No</td>
+<td>Read tuning, passed to Spark</td>
 </tr>
 <tr>
 <td><code>mode</code></td>
@@ -3134,7 +3154,7 @@ Redshift, Snowflake (via JDBC driver), and more.</p>
 <td><code>options</code></td>
 <td>dict</td>
 <td>No</td>
-<td>Spark JDBC options</td>
+<td>Spark JDBC options, applied last</td>
 </tr>
 </tbody>
 </table>
@@ -3179,7 +3199,10 @@ Redshift, Snowflake (via JDBC driver), and more.</p>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="c1"># or for multiple JARs:</span>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="c1"># spark.jars: "/opt/spark/jars/pg.jar,/opt/spark/jars/mysql.jar"</span>
 </code></pre></div>
-<p>On Databricks, install the driver via the cluster Libraries UI.</p>
+<p><code>spark.jars</code> is fixed when the Spark session starts, so this works only when
+Ubunye creates the session (<code>ubunye run</code> on the <code>spark</code> backend). On Databricks,
+install the driver via the cluster Libraries UI; elsewhere pass it to
+<code>spark-submit --jars</code>.</p>
 
 
 
@@ -3202,7 +3225,7 @@ Redshift, Snowflake (via JDBC driver), and more.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 12, 2026 17:38:46 UTC">July 12, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3289,10 +3312,10 @@ Redshift, Snowflake (via JDBC driver), and more.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

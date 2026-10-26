@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3108,56 +3108,63 @@ written, on every change, so they work as shown.</p>
 <p><strong><code>lineage list</code></strong> shows the record the run left: when it ran, how it went,
    how many rows came out. Each record also keeps a hash of every row written,
    so two runs can be compared exactly (<code>ubunye lineage compare</code>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>RUN_ID     STARTED              STATUS        DUR  ROWS
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>------------------------------------------------------------
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>a6d3cf8b  2026-10-26T11:58:28  success      1.3s  in:8  out:5
+</code></pre></div>
 </li>
 </ol>
+<p>If a command fails because of the machine (no Java, an old pyarrow, a missing
+environment variable), <code>ubunye doctor</code> says which, and how to fix it.</p>
 <hr />
 <h2 id="3-change-it">3. Change it<a class="headerlink" href="#3-change-it" title="Permanent link">&para;</a></h2>
 <p>Open <code>transformations.py</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">FilterAdults</span><span class="p">(</span><span class="n">Task</span><span class="p">):</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sources</span><span class="p">):</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="n">people</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="s2">"people"</span><span class="p">]</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="k">return</span> <span class="p">{</span><span class="s2">"adults"</span><span class="p">:</span> <span class="n">people</span><span class="p">[</span><span class="n">people</span><span class="p">[</span><span class="s2">"age"</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">18</span><span class="p">]}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">FilterAdults</span><span class="p">(</span><span class="n">Task</span><span class="p">):</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sources</span><span class="p">):</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        <span class="n">people</span> <span class="o">=</span> <span class="n">sources</span><span class="p">[</span><span class="s2">"people"</span><span class="p">]</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="k">return</span> <span class="p">{</span><span class="s2">"adults"</span><span class="p">:</span> <span class="n">people</span><span class="p">[</span><span class="n">people</span><span class="p">[</span><span class="s2">"age"</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">18</span><span class="p">]}</span>
 </code></pre></div>
 <p>Change <code>18</code> to <code>21</code> and run it again. <code>ubunye lineage list</code> now shows two runs;
 <code>ubunye lineage compare ... --run-id1 &lt;first&gt; --run-id2 &lt;second&gt;</code> shows that
-the row count and the data hash changed.</p>
+the code hash, the output row count (5 to 4) and the output data hash changed,
+while the input stayed the same.</p>
 <p>The line <code>people[people["age"] &gt;= 18]</code> means the same thing in pandas and in
 Spark, which is why this task can run on either.</p>
 <hr />
 <h2 id="4-run-the-same-folder-on-spark">4. Run the same folder on Spark<a class="headerlink" href="#4-run-the-same-folder-on-spark" title="Permanent link">&para;</a></h2>
 <p>With Java installed and <code>pip install "ubunye-engine[spark]"</code>, leave out
 <code>--backend</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ubunye<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>demo<span class="w"> </span>-p<span class="w"> </span>starter<span class="w"> </span>-t<span class="w"> </span>filter_adults<span class="w"> </span>--lineage
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ubunye<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>demo<span class="w"> </span>-p<span class="w"> </span>starter<span class="w"> </span>-t<span class="w"> </span>filter_adults<span class="w"> </span>--lineage
 </code></pre></div>
 <p>Same folder, same config, same result: the run record carries the same data
 hash as the pandas run. On Databricks the notebook's session is used
 automatically.</p>
 <hr />
 <h2 id="5-from-python">5. From Python<a class="headerlink" href="#5-from-python" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ubunye</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span><span class="s2">"pipelines/demo/starter/filter_adults"</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">"pandas"</span><span class="p">)</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="s2">"adults"</span><span class="p">]))</span>   <span class="c1"># a pandas DataFrame</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ubunye</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span><span class="s2">"pipelines/demo/starter/filter_adults"</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">"pandas"</span><span class="p">)</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="s2">"adults"</span><span class="p">]))</span>   <span class="c1"># a pandas DataFrame</span>
 </code></pre></div>
 <hr />
 <h2 id="common-errors">Common errors<a class="headerlink" href="#common-errors" title="Permanent link">&para;</a></h2>
 <p>Every error says what went wrong, where, and what to try.</p>
 <p><strong>A typo in a field name</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Unknown fields in pipelines/demo/starter/filter_adults/config.yaml:
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  (top level):
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    Unknown field 'ENGNE'
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    Did you mean 'ENGINE'?
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Unknown fields in pipelines/demo/starter/filter_adults/config.yaml:
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  (top level):
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    Unknown field 'ENGNE'
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    Did you mean 'ENGINE'?
 </code></pre></div>
 <p><strong>A template variable with no value</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Template resolution failed for .../config.yaml:
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>  Undefined variable 'region' in config value '.../{{ region }}'. ...
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Template resolution failed for .../config.yaml:
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  Undefined variable 'region' in config value '.../{{ region }}'. ...
 </code></pre></div>
 <p>Pass it with <code>--var region=gauteng</code>, or give it a default:
 <code>{{ region | default('gauteng') }}</code>.</p>
 <p><strong>Something the backend cannot do</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>This task cannot run on the pandas backend:
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  - input 'orders' uses the 'hive' connector, which needs spark; the pandas backend does not provide it.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>This task cannot run on the pandas backend:
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  - input 'orders' uses the 'hive' connector, which needs spark; the pandas backend does not provide it.
 </code></pre></div>
 <p><code>ubunye plan --backend pandas</code> finds these before anything runs.</p>
 <p>See the full <a href="../../errors/">Error Reference</a>.</p>
@@ -3223,7 +3230,7 @@ automatically.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 25, 2026 01:23:53 UTC">September 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3310,10 +3317,10 @@ automatically.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

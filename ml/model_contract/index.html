@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1100,7 +1100,7 @@
   <a href="#train-return-value" class="md-nav__link">
     <span class="md-ellipsis">
       
-        train() — return value
+        train(): return value
       
     </span>
   </a>
@@ -1111,7 +1111,7 @@
   <a href="#predict-return-value" class="md-nav__link">
     <span class="md-ellipsis">
       
-        predict() — return value
+        predict(): return value
       
     </span>
   </a>
@@ -1122,7 +1122,7 @@
   <a href="#metadata-required-keys" class="md-nav__link">
     <span class="md-ellipsis">
       
-        metadata() — required keys
+        metadata(): required keys
       
     </span>
   </a>
@@ -3020,7 +3020,7 @@
   <a href="#train-return-value" class="md-nav__link">
     <span class="md-ellipsis">
       
-        train() — return value
+        train(): return value
       
     </span>
   </a>
@@ -3031,7 +3031,7 @@
   <a href="#predict-return-value" class="md-nav__link">
     <span class="md-ellipsis">
       
-        predict() — return value
+        predict(): return value
       
     </span>
   </a>
@@ -3042,7 +3042,7 @@
   <a href="#metadata-required-keys" class="md-nav__link">
     <span class="md-ellipsis">
       
-        metadata() — required keys
+        metadata(): required keys
       
     </span>
   </a>
@@ -3107,9 +3107,9 @@
   
 
 
-<h1 id="model-contract-ubunyemodel">Model Contract — <code>UbunyeModel</code><a class="headerlink" href="#model-contract-ubunyemodel" title="Permanent link">&para;</a></h1>
+<h1 id="model-contract-ubunyemodel">Model Contract: <code>UbunyeModel</code><a class="headerlink" href="#model-contract-ubunyemodel" title="Permanent link">&para;</a></h1>
 <p><code>UbunyeModel</code> is the abstract base class every user-defined ML model must implement.
-It is the <strong>only</strong> interface the engine ever calls — no ML library is imported by the engine itself.</p>
+It is the <strong>only</strong> interface the engine ever calls. No ML library is imported by the engine itself.</p>
 <hr />
 <h2 id="the-contract">The contract<a class="headerlink" href="#the-contract" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
@@ -3127,7 +3127,7 @@ It is the <strong>only</strong> interface the engine ever calls — no ML librar
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="nd">@abstractmethod</span>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">        </span><span class="sd">"""Serialize model to path. Pick any format — pickle, joblib, ONNX, …"""</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">        </span><span class="sd">"""Serialize model to path. Pick any format: pickle, joblib, ONNX, …"""</span>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="nd">@classmethod</span>
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="nd">@abstractmethod</span>
@@ -3145,13 +3145,13 @@ It is the <strong>only</strong> interface the engine ever calls — no ML librar
 <hr />
 <h2 id="why-this-contract">Why this contract?<a class="headerlink" href="#why-this-contract" title="Permanent link">&para;</a></h2>
 <p>The engine never imports <code>sklearn</code>, <code>torch</code>, <code>xgboost</code>, or any ML library.
-It only calls <code>train()</code>, <code>predict()</code>, <code>save()</code>, and <code>load()</code> — the implementation is entirely yours.</p>
+It only calls <code>train()</code>, <code>predict()</code>, <code>save()</code>, and <code>load()</code>. The implementation is entirely yours.</p>
 <p>This gives you:</p>
 <ul>
-<li><strong>Library freedom</strong> — wrap any ML framework without engine changes.</li>
-<li><strong>Testability</strong> — test your model class with unit tests and <code>MockDF</code>; no Spark needed.</li>
-<li><strong>Registry integration</strong> — the engine calls <code>save()</code> and reads <code>metadata()</code> + <code>train()</code> metrics
-  automatically when <code>registry</code> is configured in the transform params.</li>
+<li><strong>Library freedom</strong>: wrap any ML framework without engine changes.</li>
+<li><strong>Testability</strong>: test your model class with unit tests and <code>MockDF</code>; no Spark needed.</li>
+<li><strong>Registry integration</strong>: <code>ModelRegistry.register()</code> calls <code>save()</code> and stores
+  <code>metadata()</code> and the metrics <code>train()</code> returned.</li>
 </ul>
 <hr />
 <h2 id="minimal-implementation-sklearn">Minimal implementation (sklearn)<a class="headerlink" href="#minimal-implementation-sklearn" title="Permanent link">&para;</a></h2>
@@ -3204,7 +3204,7 @@ It only calls <code>train()</code>, <code>predict()</code>, <code>save()</code>,
 <a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>        <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="train-return-value"><code>train()</code> — return value<a class="headerlink" href="#train-return-value" title="Permanent link">&para;</a></h2>
+<h2 id="train-return-value"><code>train()</code>: return value<a class="headerlink" href="#train-return-value" title="Permanent link">&para;</a></h2>
 <p><code>train()</code> must return a <code>dict</code> of metric name → numeric value.
 These metrics are stored in the registry and used by promotion gates.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">return</span> <span class="p">{</span>
@@ -3215,12 +3215,13 @@ These metrics are stored in the registry and used by promotion gates.</p>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="predict-return-value"><code>predict()</code> — return value<a class="headerlink" href="#predict-return-value" title="Permanent link">&para;</a></h2>
+<h2 id="predict-return-value"><code>predict()</code>: return value<a class="headerlink" href="#predict-return-value" title="Permanent link">&para;</a></h2>
 <p><code>predict()</code> receives the same type of object <code>train()</code> received (a PySpark DataFrame
 or any duck-typed DataFrame-like) and should return a DataFrame-like with prediction
-columns added. The return value is written to <code>CONFIG.outputs</code> by the engine.</p>
+columns added. Return it from your task's <code>transform()</code> under an output name and
+the engine writes it like any other output.</p>
 <hr />
-<h2 id="metadata-required-keys"><code>metadata()</code> — required keys<a class="headerlink" href="#metadata-required-keys" title="Permanent link">&para;</a></h2>
+<h2 id="metadata-required-keys"><code>metadata()</code>: required keys<a class="headerlink" href="#metadata-required-keys" title="Permanent link">&para;</a></h2>
 <p>The <code>metadata()</code> dict must contain at minimum:</p>
 <table>
 <thead>
@@ -3288,7 +3289,8 @@ to it and imports as <code>from model import FraudRiskModel</code>. A model regi
 records that run's id. The full example is in
 <a href="../../config/transform/#training-a-model">Transform: Training a model</a>.</p>
 <p>A task's <code>config.yaml</code> cannot run the model by naming <code>type: model</code>: a task always runs
-its <code>transformations.py</code> (since 0.7.1 the engine warns, from 0.8.0 it is an error).</p>
+its <code>transformations.py</code>. The <code>type</code> is not run: <code>ubunye run</code> warns
+(<code>FutureWarning</code>), and <code>ubunye plan</code> and <code>ubunye validate</code> report it.</p>
 <p>See <a href="../registry/">Model Registry</a> for the full registry reference.</p>
 <hr />
 <h2 id="abstract-enforcement">Abstract enforcement<a class="headerlink" href="#abstract-enforcement" title="Permanent link">&para;</a></h2>
@@ -3323,7 +3325,7 @@ its <code>transformations.py</code> (since 0.7.1 the engine warns, from 0.8.0 it
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 28, 2026 08:59:46 UTC">September 28, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3410,10 +3412,10 @@ its <code>transformations.py</code> (since 0.7.1 the engine warns, from 0.8.0 it
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

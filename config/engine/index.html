@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3143,7 +3143,19 @@ overrides without duplicating your config.</p>
 <td><code>profiles</code></td>
 <td><code>Dict[str, EngineProfile]</code></td>
 <td><code>{}</code></td>
-<td>Named profiles that override <code>spark_conf</code></td>
+<td>Named profiles that override <code>spark_conf</code>, <code>catalog</code> and <code>schema_name</code></td>
+</tr>
+<tr>
+<td><code>catalog</code></td>
+<td>string</td>
+<td><code>null</code></td>
+<td>Catalog to switch to before the task runs (<code>USE CATALOG</code>)</td>
+</tr>
+<tr>
+<td><code>schema_name</code></td>
+<td>string</td>
+<td><code>null</code></td>
+<td>Schema to switch to before the task runs (<code>USE SCHEMA</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -3164,20 +3176,41 @@ overrides without duplicating your config.</p>
 <td><code>{}</code></td>
 <td>Spark conf overrides for this profile</td>
 </tr>
+<tr>
+<td><code>catalog</code></td>
+<td>string</td>
+<td><code>null</code></td>
+<td>Replaces <code>ENGINE.catalog</code> for this profile</td>
+</tr>
+<tr>
+<td><code>schema_name</code></td>
+<td>string</td>
+<td><code>null</code></td>
+<td>Replaces <code>ENGINE.schema_name</code> for this profile</td>
+</tr>
 </tbody>
 </table>
+<p><code>catalog</code> and <code>schema_name</code> apply on a Spark backend only. Open-source Spark has
+no <code>USE CATALOG</code>; when the switch fails, the engine logs it and carries on, so
+fully qualified table names still work.</p>
 <hr />
 <h2 id="profile-merge-rules">Profile merge rules<a class="headerlink" href="#profile-merge-rules" title="Permanent link">&para;</a></h2>
-<p>When <code>--profile &lt;name&gt;</code> is passed, the engine calls <code>merged_spark_conf(profile)</code>:</p>
+<p>When <code>-m &lt;name&gt;</code> (<code>--mode</code>) is passed, the engine calls <code>merged_spark_conf(name)</code>:</p>
 <ol>
 <li>Start with the base <code>ENGINE.spark_conf</code> dict.</li>
 <li>Update with the named profile's <code>spark_conf</code> (profile values <strong>win</strong> on conflict).</li>
 </ol>
-<p>Profile-only keys are additive; base keys not overridden by the profile are kept.</p>
+<p>Profile-only keys are additive; base keys not overridden by the profile are kept.
+A profile's <code>catalog</code> or <code>schema_name</code>, when set, replaces the base value.</p>
 <hr />
 <h2 id="using-profiles-at-runtime">Using profiles at runtime<a class="headerlink" href="#using-profiles-at-runtime" title="Permanent link">&para;</a></h2>
-<p><code>run</code> picks a profile with <code>-m</code> (<code>validate</code> also takes <code>--profile</code>). The name must
-match a key under <code>profiles:</code> exactly, including its case.</p>
+<p><code>run</code> picks a profile with <code>-m</code> (<code>--mode</code>). <code>validate</code> takes <code>-m</code> or <code>--profile</code>
+(the same thing). The name must match a key under <code>profiles:</code> exactly, including
+its case.</p>
+<p><code>-m</code> defaults to <code>DEV</code> (upper case). When a config defines <code>profiles:</code> and the
+mode names none of them, the run stops with <code>ConfigProfileError</code> and lists the
+valid names. So with profiles named <code>dev</code> and <code>prod</code>, always pass <code>-m</code>. A config
+with no <code>profiles:</code> ignores the mode and uses the base <code>spark_conf</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Development: small cluster, few shuffle partitions</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ubunye<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>etl<span class="w"> </span>-t<span class="w"> </span>claims<span class="w"> </span>-m<span class="w"> </span>dev
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
@@ -3208,8 +3241,17 @@ match a key under <code>profiles:</code> exactly, including its case.</p>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>All values must be <strong>strings</strong> — Spark's configuration API accepts only strings.
+<p>All values must be <strong>strings</strong>: Spark's configuration API accepts only strings.
 Use <code>"true"</code> not <code>true</code>, <code>"200"</code> not <code>200</code>.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Settings fixed when the JVM starts</p>
+<p>Keys such as <code>spark.sql.extensions</code>, <code>spark.jars</code>, <code>spark.driver.*</code> and
+<code>spark.sql.catalogImplementation</code> only take effect when Ubunye creates the
+Spark session (<code>ubunye run</code> with the <code>spark</code> backend). On Databricks, or any
+session the platform started, such a key in <code>spark_conf</code> is refused with an
+error. Set them on the platform (cluster settings, <code>spark-submit --conf</code>).
+A config may not set <code>spark.master</code> when the platform already chose one.</p>
 </div>
 <hr />
 <h2 id="engine-is-optional">ENGINE is optional<a class="headerlink" href="#engine-is-optional" title="Permanent link">&para;</a></h2>
@@ -3244,7 +3286,7 @@ Use <code>"true"</code> not <code>true</code>, <code>"200"</code> not <code>200<
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 25, 2026 01:23:53 UTC">September 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3331,10 +3373,10 @@ Use <code>"true"</code> not <code>true</code>, <code>"200"</code> not <code>200<
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

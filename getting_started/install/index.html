@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3049,7 +3049,8 @@ and no Java, reading and writing exactly as Spark does. See
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"ubunye-engine[ml]"</span>
 </code></pre></div>
-<p>Adds <code>scikit-learn</code>, <code>mlflow</code>, and the ML plugin wrappers.</p>
+<p>Adds <code>scikit-learn</code> and <code>mlflow</code>, which the built-in ML wrappers and the MLflow
+registry use. <code>ml-torch</code> adds <code>torch</code> as well.</p>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ubunye-ai-ecosystems/ubunye_engine.git
@@ -3061,16 +3062,72 @@ and no Java, reading and writing exactly as Spark does. See
 </div>
 </div>
 </div>
+<p>Extras combine: <code>pip install "ubunye-engine[pandas,spark]"</code>. The others:</p>
+<table>
+<thead>
+<tr>
+<th>Extra</th>
+<th>Adds</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>delta</code></td>
+<td><code>delta-spark</code> 4</td>
+<td>Delta Lake on Spark outside Databricks</td>
+</tr>
+<tr>
+<td><code>rest</code></td>
+<td><code>requests</code></td>
+<td>the <code>rest_api</code> connector</td>
+</tr>
+<tr>
+<td><code>objectstore</code></td>
+<td><code>fsspec</code></td>
+<td>model artifacts on <code>s3://</code>, <code>gs://</code> (add <code>s3fs</code> or <code>gcsfs</code>)</td>
+</tr>
+<tr>
+<td><code>databricks</code></td>
+<td><code>databricks-sdk</code></td>
+<td><code>ubunye deploy databricks</code>, <code>secret://databricks</code></td>
+</tr>
+<tr>
+<td><code>otel</code></td>
+<td>OpenTelemetry SDK and OTLP exporter</td>
+<td>traces and metrics</td>
+</tr>
+<tr>
+<td><code>aws</code>, <code>gcp</code>, <code>azure</code></td>
+<td>each cloud's secret store client</td>
+<td><code>secret://aws-sm</code>, <code>secret://gcp-sm</code>, <code>secret://azure-kv</code></td>
+</tr>
+<tr>
+<td><code>mcp</code></td>
+<td><code>mcp</code></td>
+<td><code>ubunye mcp</code>, the engine as an MCP server for agents</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="verify-the-install">Verify the install<a class="headerlink" href="#verify-the-install" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ubunye<span class="w"> </span>version
 </code></pre></div>
 <p>prints the version you installed, for example:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Ubunye Engine v0.7.0
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Ubunye Engine v0.8.0
 </code></pre></div>
 <p>See which engines you can run on, and what each can do:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>ubunye<span class="w"> </span>backends
 </code></pre></div>
+<p>With only the <code>pandas</code> extra, part of it looks like this:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pandas
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  features:     partitioned_writes, path_io, records
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  file formats: csv, json, parquet
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  write modes:  append, errorifexists, ignore, overwrite, overwrite_partitions
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  distributed:  no   needs Java: no
+</code></pre></div>
+<p><code>ubunye doctor</code> goes further: it checks the backends, the plugins and, given a task,
+the environment variables its config needs, and says what would fail and why.</p>
 <hr />
 <h2 id="system-requirements">System requirements<a class="headerlink" href="#system-requirements" title="Permanent link">&para;</a></h2>
 <table>
@@ -3105,7 +3162,7 @@ exactly those and runs the tests on them.</p>
 <p class="admonition-title">Databricks</p>
 <p>On Databricks the cluster already has PySpark installed.
 Install only the core package on the driver:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>%pip<span class="w"> </span>install<span class="w"> </span>ubunye-engine
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>%pip<span class="w"> </span>install<span class="w"> </span>ubunye-engine
 </code></pre></div></p>
 </div>
 <hr />
@@ -3136,7 +3193,7 @@ Install only the core package on the driver:
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 25, 2026 01:23:53 UTC">September 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3223,10 +3280,10 @@ Install only the core package on the driver:
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

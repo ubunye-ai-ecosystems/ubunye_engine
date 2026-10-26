@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -29,10 +29,10 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3040,11 +3040,15 @@ records by the <a href="proving-ground/">proving ground</a>
 <tbody>
 <tr>
 <td>I/O boilerplate</td>
-<td>Declarative connectors (Hive, JDBC, S3, Delta, REST API, Unity Catalog)</td>
+<td>Declarative connectors (Hive, JDBC, S3 and local files, Delta, REST API, Unity Catalog, binary files)</td>
 </tr>
 <tr>
 <td>Config drift between environments</td>
 <td>Jinja2 templating + per-profile Spark overrides</td>
+</tr>
+<tr>
+<td>Bad data</td>
+<td>Expectations: input contracts, quarantine of bad rows, reconcile between input and output</td>
 </tr>
 <tr>
 <td>ML lifecycle management</td>
@@ -3052,11 +3056,15 @@ records by the <a href="proving-ground/">proving ground</a>
 </tr>
 <tr>
 <td>Observability</td>
-<td>Pluggable lineage tracking, Prometheus, OpenTelemetry, MLflow</td>
+<td>Run records with <code>--lineage</code>, OpenLineage export, Prometheus, OpenTelemetry, MLflow</td>
 </tr>
 <tr>
 <td>Orchestration</td>
-<td>One-command export to Airflow or Databricks job definitions</td>
+<td>One-command export to an Airflow DAG, a Databricks job or a Spark Declarative Pipeline</td>
+</tr>
+<tr>
+<td>Deployment</td>
+<td><code>ubunye deploy</code> to Databricks, AWS Glue, GCP Dataproc, EMR Serverless, Kubernetes, Azure Container Apps</td>
 </tr>
 <tr>
 <td>Testing</td>
@@ -3066,12 +3074,16 @@ records by the <a href="proving-ground/">proving ground</a>
 </table>
 <h2 id="key-features">Key Features<a class="headerlink" href="#key-features" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Config-first</strong> — all I/O, compute, and orchestration is YAML-driven; no hardcoded credentials or paths.</li>
-<li><strong>Plugin system</strong> — extend via Python entry points (<code>ubunye.readers</code>, <code>ubunye.writers</code>, <code>ubunye.transforms</code>).</li>
-<li><strong>Model registry</strong> — version, promote, rollback, and gate ML models without coupling to any ML library.</li>
-<li><strong>Lineage tracking</strong> — automatic run provenance written to <code>.ubunye/lineage/</code>.</li>
-<li><strong>Telemetry-ready</strong> — Prometheus, OpenTelemetry, and JSON event logs via the <code>monitors</code> protocol.</li>
-<li><strong>Orchestration export</strong>: generate Airflow DAGs or Databricks job JSON from the same config.</li>
+<li><strong>Config-first</strong>: all I/O, compute, and orchestration is YAML-driven; no hardcoded credentials or paths.</li>
+<li><strong>Backends</strong>: run on Spark, Databricks, or pandas with no Java (<code>--backend</code>); <code>ubunye backends</code> lists what each can do.</li>
+<li><strong>Checks before a run</strong>: <code>ubunye validate</code>, <code>ubunye plan</code> (a dry run) and <code>ubunye doctor</code> (this machine).</li>
+<li><strong>Plugin system</strong>: extend via Python entry points (<code>ubunye.readers</code>, <code>ubunye.writers</code>, <code>ubunye.transforms</code>, <code>ubunye.backends</code> and more).</li>
+<li><strong>Model registry</strong>: version, promote, rollback, and gate ML models without coupling to any ML library.</li>
+<li><strong>Run records</strong>: <code>--lineage</code> writes one per run to <code>.ubunye/lineage/</code>, with a hash of every row; <code>ubunye gate</code> and <code>ubunye prove</code> compare them.</li>
+<li><strong>Safe reruns</strong>: a batch that was already appended is refused unless you pass <code>--rerun</code>; <code>--resume</code> finishes a pipeline that stopped half way.</li>
+<li><strong>Telemetry-ready</strong>: Prometheus, OpenTelemetry, and JSON event logs through hooks (<code>ubunye.hooks</code>).</li>
+<li><strong>Orchestration export</strong>: generate Airflow DAGs, Databricks job JSON or a Spark Declarative Pipeline from the same config.</li>
+<li><strong>Agents</strong>: <code>ubunye mcp</code> serves the engine over MCP (read-only unless you pass <code>--allow-run</code>).</li>
 </ul>
 <h2 id="two-entry-points">Two entry points<a class="headerlink" href="#two-entry-points" title="Permanent link">&para;</a></h2>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Python API (Databricks)</label></div>
@@ -3093,7 +3105,8 @@ records by the <a href="proving-ground/">proving ground</a>
 </div>
 </div>
 <p>The Python API auto-detects and reuses an active SparkSession on Databricks.
-When no session exists, it creates one — same as the CLI.</p>
+When no session exists, it creates one, the same as the CLI. Pass <code>backend="pandas"</code>
+to run with no Spark at all.</p>
 <h2 id="quick-example">Quick Example<a class="headerlink" href="#quick-example" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># pipelines/fraud/etl/claims/config.yaml</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">MODEL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">etl</span>
@@ -3112,20 +3125,26 @@ When no session exists, it creates one — same as the CLI.</p>
 <a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://data-lake/clean/claims</span>
 <a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ubunye<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>etl<span class="w"> </span>-t<span class="w"> </span>claims<span class="w"> </span>-m<span class="w"> </span>PROD
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ubunye<span class="w"> </span>plan<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>etl<span class="w"> </span>-t<span class="w"> </span>claims<span class="w">   </span><span class="c1"># what it will read and write</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ubunye<span class="w"> </span>run<span class="w">  </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>etl<span class="w"> </span>-t<span class="w"> </span>claims
 </code></pre></div>
+<p><code>-m PROD</code> selects a profile under <code>ENGINE.profiles</code>; this config has none, so it runs
+in the default mode, <code>DEV</code>.</p>
 <h2 id="documentation-map">Documentation Map<a class="headerlink" href="#documentation-map" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="getting_started/install/">Installation</a> — install, verify, extras</li>
-<li><a href="getting_started/quickstart/">Quickstart</a> — end-to-end in 5 minutes</li>
-<li><a href="config/overview/">Config Reference</a> — full YAML schema</li>
-<li><a href="connectors/overview/">Connectors</a> — all built-in readers and writers</li>
-<li><a href="ml/model_contract/">ML — Model Contract</a> — the <code>UbunyeModel</code> ABC</li>
-<li><a href="ml/registry/">ML — Registry</a> — versioning, promotion, gates</li>
-<li><a href="cli/">CLI Reference</a> — all commands and flags</li>
-<li><a href="api/">API Reference</a> — Python API (<code>run_task</code>, <code>run_pipeline</code>)</li>
-<li><a href="deployment/">Deployment</a> — Databricks Asset Bundles + GitHub Actions</li>
-<li><a href="dev_guide/">Developer Guide</a> — architecture, plugins, testing</li>
+<li><a href="getting_started/install/">Installation</a>: install, verify, extras</li>
+<li><a href="getting_started/quickstart/">Quickstart</a>: end-to-end in 5 minutes</li>
+<li><a href="tutorials/01-local-parity/">Tutorials</a>: same result on pandas and Spark; a multi-table pipeline with data checks</li>
+<li><a href="config/overview/">Config Reference</a>: full YAML schema</li>
+<li><a href="connectors/overview/">Connectors</a>: all built-in readers and writers</li>
+<li><a href="backends/">Execution Backends</a>: Spark, Databricks, pandas</li>
+<li><a href="ml/model_contract/">ML: Model Contract</a>: the <code>UbunyeModel</code> ABC</li>
+<li><a href="ml/registry/">ML: Registry</a>: versioning, promotion, gates</li>
+<li><a href="cli/">CLI Reference</a>: all commands and flags</li>
+<li><a href="api/">API Reference</a>: Python API (<code>run_task</code>, <code>run_pipeline</code>)</li>
+<li><a href="deployment/">Deployment</a>: Databricks, AWS, GCP, Azure, Kubernetes</li>
+<li><a href="proving-ground/">Proving ground</a>: one workload compared across environments</li>
+<li><a href="dev_guide/">Developer Guide</a>: architecture, plugins, testing</li>
 </ul>
 
 
@@ -3149,7 +3168,7 @@ When no session exists, it creates one — same as the CLI.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 28, 2026 23:44:16 UTC">September 28, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3236,10 +3255,10 @@ When no session exists, it creates one — same as the CLI.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

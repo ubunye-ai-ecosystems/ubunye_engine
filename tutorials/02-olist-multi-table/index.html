@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -3189,14 +3189,12 @@ purpose to watch them work.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>ubunye_engine/examples/real-world/olist_ecommerce
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>.<span class="w"> </span>.venv/bin/activate<span class="w">            </span><span class="c1"># Windows: .venv\Scripts\activate</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">"../../..[pandas]"</span><span class="w"> </span><span class="s2">"narwhals&gt;=2.9"</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"ubunye-engine[pandas]"</span><span class="w"> </span><span class="s2">"narwhals&gt;=2.9"</span>
 </code></pre></div>
-<p>The last line installs Ubunye from the repository you just cloned (<code>../../..</code> is its
-top folder). <strong>This example needs a newer Ubunye than 0.7.1, the latest release on
-PyPI</strong>: 0.7.1 has no <code>columns</code> input contracts and none of the fixes this example
-led to (F-052, F-054, F-055), so <code>pip install ubunye-engine</code> would fail at step 2.
-Once the next release is out, <code>pip install "ubunye-engine[pandas]" "narwhals&gt;=2.9"</code>
-will do.</p>
+<p>This needs Ubunye 0.8.0 or newer: 0.7.1 and older have no <code>columns</code> input contracts
+and none of the fixes this example led to (F-052, F-054, F-055), so they fail at
+step 2. To run against the repository you just cloned instead, use
+<code>pip install -e "../../..[pandas]" "narwhals&gt;=2.9"</code> (<code>../../..</code> is its top folder).</p>
 <p>Every command below runs from this folder.</p>
 <h2 id="1-look-at-the-data">1. Look at the data<a class="headerlink" href="#1-look-at-the-data" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ls<span class="w"> </span>sample
@@ -3358,7 +3356,7 @@ still there. The run record keeps why:</p>
 <h2 id="7-optional-the-same-answer-on-spark">7. Optional: the same answer on Spark<a class="headerlink" href="#7-optional-the-same-answer-on-spark" title="Permanent link">&para;</a></h2>
 <p>Every step is written once with Narwhals, so it runs on Spark unchanged. With Java 17
 or 21 installed (Windows also needs <code>HADOOP_HOME</code> with <code>winutils.exe</code>):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">"../../..[pandas,spark]"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"ubunye-engine[pandas,spark]"</span>
 <a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="k">for</span><span class="w"> </span>t<span class="w"> </span><span class="k">in</span><span class="w"> </span>clean<span class="w"> </span>orders_fact<span class="w"> </span>monthly<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">  </span>ubunye<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>olist<span class="w"> </span>-p<span class="w"> </span>sales<span class="w"> </span>-t<span class="w"> </span><span class="nv">$t</span><span class="w"> </span>--backend<span class="w"> </span>pandas<span class="w"> </span>--lineage<span class="w"> </span>--var<span class="w"> </span><span class="nv">out_dir</span><span class="o">=</span>output/pandas
 <a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="w">  </span>ubunye<span class="w"> </span>prove<span class="w"> </span>observe<span class="w"> </span>--workload<span class="w"> </span>r2-olist-<span class="nv">$t</span><span class="w"> </span>--env<span class="w"> </span>pandas-local<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>olist<span class="w"> </span>-p<span class="w"> </span>sales<span class="w"> </span>-t<span class="w"> </span><span class="nv">$t</span><span class="w"> </span>-o<span class="w"> </span>evidence
@@ -3370,7 +3368,7 @@ or 21 installed (Windows also needs <code>HADOOP_HOME</code> with <code>winutils
 <a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>ubunye<span class="w"> </span>prove<span class="w"> </span>report<span class="w"> </span>evidence<span class="w"> </span>--workload<span class="w"> </span>r2-olist-orders_fact<span class="w"> </span>--reference<span class="w"> </span>spark-local
 </code></pre></div>
 <p>In PowerShell (Windows), the loops are written like this:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">pip</span> <span class="n">install</span> <span class="n">-e</span> <span class="s2">"../../..[pandas,spark]"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">pip</span> <span class="n">install</span> <span class="s2">"ubunye-engine[pandas,spark]"</span>
 <a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="k">foreach</span> <span class="p">(</span><span class="nv">$t</span> <span class="k">in</span> <span class="s2">"clean"</span><span class="p">,</span> <span class="s2">"orders_fact"</span><span class="p">,</span> <span class="s2">"monthly"</span><span class="p">)</span> <span class="p">{</span>
 <a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>  <span class="n">ubunye</span> <span class="n">run</span> <span class="n">-d</span> <span class="n">pipelines</span> <span class="n">-u</span> <span class="n">olist</span> <span class="n">-p</span> <span class="n">sales</span> <span class="n">-t</span> <span class="nv">$t</span> <span class="p">-</span><span class="n">-backend</span> <span class="n">pandas</span> <span class="p">-</span><span class="n">-lineage</span> <span class="p">-</span><span class="n">-var</span> <span class="n">out_dir</span><span class="p">=</span><span class="n">output</span><span class="p">/</span><span class="n">pandas</span>
 <a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>  <span class="n">ubunye</span> <span class="n">prove</span> <span class="n">observe</span> <span class="p">-</span><span class="n">-workload</span> <span class="s2">"r2-olist-$t"</span> <span class="p">-</span><span class="n">-env</span> <span class="n">pandas-local</span> <span class="n">-d</span> <span class="n">pipelines</span> <span class="n">-u</span> <span class="n">olist</span> <span class="n">-p</span> <span class="n">sales</span> <span class="n">-t</span> <span class="nv">$t</span> <span class="n">-o</span> <span class="n">evidence</span>
@@ -3479,7 +3477,7 @@ one real (the warning).</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 30, 2026 16:33:18 UTC">September 30, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3566,10 +3564,10 @@ one real (the warning).</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

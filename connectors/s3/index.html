@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -929,12 +929,12 @@
   <a href="#s3-path-based-reads-and-writes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        s3 — Path-based reads and writes
+        s3: path-based reads and writes
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="s3 — Path-based reads and writes">
+    <nav class="md-nav" aria-label="s3: path-based reads and writes">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -985,12 +985,12 @@
   <a href="#delta-delta-lake" class="md-nav__link">
     <span class="md-ellipsis">
       
-        delta — Delta Lake
+        delta: Delta Lake
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="delta — Delta Lake">
+    <nav class="md-nav" aria-label="delta: Delta Lake">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1079,7 +1079,7 @@
   <a href="#fields-s3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields — s3
+        Fields: s3
       
     </span>
   </a>
@@ -1090,7 +1090,7 @@
   <a href="#fields-delta" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields — delta
+        Fields: delta
       
     </span>
   </a>
@@ -1101,7 +1101,7 @@
   <a href="#fields-binary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields — binary
+        Fields: binary
       
     </span>
   </a>
@@ -3093,12 +3093,12 @@
   <a href="#s3-path-based-reads-and-writes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        s3 — Path-based reads and writes
+        s3: path-based reads and writes
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="s3 — Path-based reads and writes">
+    <nav class="md-nav" aria-label="s3: path-based reads and writes">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3149,12 +3149,12 @@
   <a href="#delta-delta-lake" class="md-nav__link">
     <span class="md-ellipsis">
       
-        delta — Delta Lake
+        delta: Delta Lake
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="delta — Delta Lake">
+    <nav class="md-nav" aria-label="delta: Delta Lake">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3243,7 +3243,7 @@
   <a href="#fields-s3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields — s3
+        Fields: s3
       
     </span>
   </a>
@@ -3254,7 +3254,7 @@
   <a href="#fields-delta" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields — delta
+        Fields: delta
       
     </span>
   </a>
@@ -3265,7 +3265,7 @@
   <a href="#fields-binary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields — binary
+        Fields: binary
       
     </span>
   </a>
@@ -3322,11 +3322,12 @@
 <h1 id="s3-delta-connector">S3 / Delta Connector<a class="headerlink" href="#s3-delta-connector" title="Permanent link">&para;</a></h1>
 <p>Two closely related connectors handle path-based and Delta Lake storage.</p>
 <ul>
-<li><strong><code>s3</code></strong> — any Spark-readable path (S3, HDFS, ADLS, local). Supports Parquet, CSV, JSON, ORC, Avro.</li>
-<li><strong><code>delta</code></strong> — Delta Lake tables, accessed by path <strong>or</strong> by three-part table name.</li>
+<li><strong><code>s3</code></strong>: any path (S3, ADLS, GCS, HDFS, local). Supports Parquet, CSV, JSON, ORC,
+  Avro and Delta. It also runs on the pandas backend (no Spark, no Java).</li>
+<li><strong><code>delta</code></strong>: Delta Lake tables, accessed by path <strong>or</strong> by table name. Needs Spark.</li>
 </ul>
 <hr />
-<h2 id="s3-path-based-reads-and-writes"><code>s3</code> — Path-based reads and writes<a class="headerlink" href="#s3-path-based-reads-and-writes" title="Permanent link">&para;</a></h2>
+<h2 id="s3-path-based-reads-and-writes"><code>s3</code>: path-based reads and writes<a class="headerlink" href="#s3-path-based-reads-and-writes" title="Permanent link">&para;</a></h2>
 <h3 id="read">Read<a class="headerlink" href="#read" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">CONFIG</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">inputs</span><span class="p">:</span>
@@ -3336,16 +3337,18 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">        </span><span class="nt">mergeSchema</span><span class="p">:</span><span class="w"> </span><span class="s">"true"</span>
 </code></pre></div>
-<p>Default format is Parquet. Override with <code>options.format</code> or by specifying a Spark
-data source format in <code>options</code>:</p>
+<p>Default file format is Parquet. Choose another with <code>file_format</code> (<code>format</code> is
+already taken: it picks the connector). Reader options go under <code>options</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">    </span><span class="nt">csv_data</span><span class="p">:</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/exports/customers.csv</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">        </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csv</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">      </span><span class="nt">file_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csv</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">        </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">"true"</span>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">        </span><span class="nt">inferSchema</span><span class="p">:</span><span class="w"> </span><span class="s">"true"</span>
 </code></pre></div>
+<p>To skip schema inference, give <code>schema</code> as a DDL string:
+<code>schema: "id BIGINT, name STRING"</code>.</p>
 <h4 id="csv-with-text-that-holds-quotes-or-line-breaks">CSV with text that holds quotes or line breaks<a class="headerlink" href="#csv-with-text-that-holds-quotes-or-line-breaks" title="Permanent link">&para;</a></h4>
 <p>Ubunye reads CSV the way Spark does, on both backends, so the same file gives the
 same rows. Spark's default escape character is a backslash. Most CSV files written by
@@ -3369,12 +3372,12 @@ mark at the start of a file is dropped, as Spark does.</p>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3</span>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/clean/events/</span>
 <a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">        </span><span class="nt">partitionBy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">event_date</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="nt">partitionBy</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">event_date</span><span class="p p-Indicator">]</span><span class="w">     </span><span class="c1"># a top-level list, not an option</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span>
 <a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">        </span><span class="nt">compression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snappy</span>
 </code></pre></div>
 <hr />
-<h2 id="delta-delta-lake"><code>delta</code> — Delta Lake<a class="headerlink" href="#delta-delta-lake" title="Permanent link">&para;</a></h2>
+<h2 id="delta-delta-lake"><code>delta</code>: Delta Lake<a class="headerlink" href="#delta-delta-lake" title="Permanent link">&para;</a></h2>
 <h3 id="read-by-path">Read by path<a class="headerlink" href="#read-by-path" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">CONFIG</span><span class="p">:</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">inputs</span><span class="p">:</span>
@@ -3416,7 +3419,7 @@ unpinned, as before. The run record says which it was (<code>pinned_by: engine</
 <a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">        </span><span class="nt">mergeSchema</span><span class="p">:</span><span class="w"> </span><span class="s">"true"</span>
 <a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">        </span><span class="nt">overwriteSchema</span><span class="p">:</span><span class="w"> </span><span class="s">"true"</span>
 </code></pre></div>
-<p><code>format: delta</code> and <code>format: s3</code> + <code>file_format: delta</code> are equivalent — use whichever
+<p><code>format: delta</code> and <code>format: s3</code> + <code>file_format: delta</code> are equivalent; use whichever
 reads better. The <code>delta</code> connector addresses a table (by name or path); the <code>s3</code>
 connector addresses a path that happens to hold Delta files. Both support all six
 <a href="../../config/io/#write-modes">write modes</a>.</p>
@@ -3430,7 +3433,7 @@ creates the table (there is nothing to merge into yet).</p>
 <a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">      </span><span class="nt">merge_keys</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">id</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">dt</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># or options.merge_keys: "id,dt"</span>
 </code></pre></div>
 <h3 id="partition-overwrite-backfills">Partition overwrite (backfills)<a class="headerlink" href="#partition-overwrite-backfills" title="Permanent link">&para;</a></h3>
-<p>Replace only the partitions in the incoming DataFrame — the rest of the table is
+<p>Replace only the partitions in the incoming DataFrame; the rest of the table is
 untouched. Use <code>partitionBy</code> for Spark's dynamic partition overwrite, or
 <code>replace_where</code> for a Delta predicate.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="w">    </span><span class="nt">daily_sales</span><span class="p">:</span>
@@ -3439,7 +3442,7 @@ untouched. Use <code>partitionBy</code> for Spark's dynamic partition overwrite,
 <a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
 <a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">      </span><span class="nt">partitionBy</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">dt</span><span class="p p-Indicator">]</span>
 <a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">    </span><span class="c1"># Delta predicate form — replaces exactly what the expression matches</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">    </span><span class="c1"># Delta predicate form: replaces exactly what the expression matches</span>
 <a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">    </span><span class="nt">daily_sales_delta</span><span class="p">:</span>
 <a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3</span>
 <a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://my-bucket/delta/sales/</span>
@@ -3447,13 +3450,14 @@ untouched. Use <code>partitionBy</code> for Spark's dynamic partition overwrite,
 <a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overwrite_partitions</span>
 <a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">      </span><span class="nt">replace_where</span><span class="p">:</span><span class="w"> </span><span class="s">"dt</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">'{{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">}}'"</span>
 </code></pre></div>
-<p>Without <code>partitionBy</code> or <code>replace_where</code> this mode is refused — dynamic overwrite
-of an unpartitioned target is a full-table wipe.</p>
+<p>Without <code>partitionBy</code> or <code>replace_where</code> this mode is refused (<code>ubunye plan</code>
+reports it before a run): dynamic overwrite of an unpartitioned target is a
+full-table wipe.</p>
 <p>The <code>partitionBy</code> form also runs on the pandas backend (no Java), with the same
 folders and the same result as Spark; <code>replace_where</code> needs Delta, so Spark. See
 <a href="../../deployment/anywhere/#partition-folders">the pandas backend</a>.</p>
 <hr />
-<h2 id="fields-s3">Fields — <code>s3</code><a class="headerlink" href="#fields-s3" title="Permanent link">&para;</a></h2>
+<h2 id="fields-s3">Fields: <code>s3</code><a class="headerlink" href="#fields-s3" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -3474,13 +3478,19 @@ folders and the same result as Spark; <code>replace_where</code> needs Delta, so
 <td><code>path</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>S3 / HDFS / local path</td>
+<td>S3 / ADLS / GCS / HDFS / local path</td>
 </tr>
 <tr>
 <td><code>file_format</code></td>
 <td>string</td>
 <td>No</td>
 <td><code>parquet</code> (default), <code>delta</code>, <code>csv</code>, <code>json</code>, <code>orc</code>, <code>avro</code></td>
+</tr>
+<tr>
+<td><code>schema</code></td>
+<td>string</td>
+<td>No</td>
+<td>Reads only: a DDL schema string; skips inference</td>
 </tr>
 <tr>
 <td><code>mode</code></td>
@@ -3514,7 +3524,7 @@ folders and the same result as Spark; <code>replace_where</code> needs Delta, so
 </tr>
 </tbody>
 </table>
-<h2 id="fields-delta">Fields — <code>delta</code><a class="headerlink" href="#fields-delta" title="Permanent link">&para;</a></h2>
+<h2 id="fields-delta">Fields: <code>delta</code><a class="headerlink" href="#fields-delta" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -3535,19 +3545,25 @@ folders and the same result as Spark; <code>replace_where</code> needs Delta, so
 <td><code>path</code></td>
 <td>string</td>
 <td>Conditional</td>
-<td>Delta table path (required unless <code>table</code> set)</td>
+<td>Delta table path (required unless a table is named)</td>
 </tr>
 <tr>
 <td><code>table</code></td>
 <td>string</td>
 <td>Conditional</td>
-<td>Table name, or <code>db_name</code> + <code>tbl_name</code></td>
+<td>Table name, e.g. <code>main.fraud.claims</code></td>
+</tr>
+<tr>
+<td><code>db_name</code> + <code>tbl_name</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>The table name in two parts, instead of <code>table</code></td>
 </tr>
 <tr>
 <td><code>sql</code></td>
 <td>string</td>
-<td>Conditional</td>
-<td>Spark SQL query (reads only)</td>
+<td>No</td>
+<td>Spark SQL query, reads only. Give <code>path</code> or a table name too</td>
 </tr>
 <tr>
 <td><code>mode</code></td>
@@ -3593,10 +3609,10 @@ folders and the same result as Spark; <code>replace_where</code> needs Delta, so
 </tr>
 </tbody>
 </table>
-<h2 id="fields-binary">Fields — <code>binary</code><a class="headerlink" href="#fields-binary" title="Permanent link">&para;</a></h2>
+<h2 id="fields-binary">Fields: <code>binary</code><a class="headerlink" href="#fields-binary" title="Permanent link">&para;</a></h2>
 <p>Reads raw files (PDFs, images, audio) one row per file, with columns <code>path</code>,
 <code>modificationTime</code>, <code>length</code>, <code>content</code>. Spark's <code>binaryFile</code> source is
-<strong>read-only</strong> — <code>format: binary</code> in <code>CONFIG.outputs</code> is rejected at config load.</p>
+<strong>read-only</strong>: <code>format: binary</code> in <code>CONFIG.outputs</code> is rejected at config load.</p>
 <table>
 <thead>
 <tr>
@@ -3646,12 +3662,18 @@ folders and the same result as Spark; <code>replace_where</code> needs Delta, so
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="nt">spark.hadoop.fs.s3a.access.key</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">env.AWS_ACCESS_KEY_ID</span><span class="nv"> </span><span class="s">}}"</span>
 <a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">    </span><span class="nt">spark.hadoop.fs.s3a.secret.key</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">env.AWS_SECRET_ACCESS_KEY</span><span class="nv"> </span><span class="s">}}"</span>
 <a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">    </span><span class="nt">spark.hadoop.fs.s3a.endpoint</span><span class="p">:</span><span class="w"> </span><span class="s">"s3.amazonaws.com"</span>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">    </span><span class="c1"># For Delta Lake on open-source Spark:</span>
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">    </span><span class="nt">spark.jars.packages</span><span class="p">:</span><span class="w"> </span><span class="s">"io.delta:delta-core_2.12:2.4.0"</span>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">    </span><span class="nt">spark.sql.extensions</span><span class="p">:</span><span class="w"> </span><span class="s">"io.delta.sql.DeltaSparkSessionExtension"</span>
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">    </span><span class="nt">spark.sql.catalog.spark_catalog</span><span class="p">:</span><span class="w"> </span><span class="s">"org.apache.spark.sql.delta.catalog.DeltaCatalog"</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">    </span><span class="c1"># For Delta Lake on open-source Spark. Match the Delta build to your Spark:</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">    </span><span class="c1"># (Spark 4.0: delta-spark_2.13:4.0.0; Spark 3.5: delta-spark_2.12:3.2.0)</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">    </span><span class="nt">spark.jars.packages</span><span class="p">:</span><span class="w"> </span><span class="s">"io.delta:delta-spark_2.13:4.0.0"</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">    </span><span class="nt">spark.sql.extensions</span><span class="p">:</span><span class="w"> </span><span class="s">"io.delta.sql.DeltaSparkSessionExtension"</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="w">    </span><span class="nt">spark.sql.catalog.spark_catalog</span><span class="p">:</span><span class="w"> </span><span class="s">"org.apache.spark.sql.delta.catalog.DeltaCatalog"</span>
 </code></pre></div>
-<p>On Databricks, Delta and S3 are pre-configured — no extra Spark settings needed.</p>
+<p><code>spark.jars.packages</code> and <code>spark.sql.extensions</code> are fixed when the Spark session
+starts, so they work only when Ubunye creates the session (<code>ubunye run</code> on the
+<code>spark</code> backend). Where the platform starts the session (EMR, Dataproc,
+<code>spark-submit</code>), set them there; in <code>ENGINE.spark_conf</code> they are refused. The
+Python package is <code>pip install "ubunye-engine[delta]"</code>.</p>
+<p>On Databricks, Delta and S3 are pre-configured, so no extra Spark settings are needed.</p>
 <hr />
 <h2 id="partitioned-paths-with-jinja">Partitioned paths with Jinja<a class="headerlink" href="#partitioned-paths-with-jinja" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
@@ -3682,7 +3704,7 @@ folders and the same result as Spark; <code>replace_where</code> needs Delta, so
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 30, 2026 01:04:14 UTC">September 30, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3769,10 +3791,10 @@ folders and the same result as Spark; <code>replace_where</code> needs Delta, so
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1455,7 +1455,7 @@
   <a href="#option-a-personal-access-token-free-edition" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Option A — Personal Access Token (Free Edition)
+        Option A: Personal Access Token (Free Edition)
       
     </span>
   </a>
@@ -1466,12 +1466,12 @@
   <a href="#option-b-service-principal-oauth-recommended" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Option B — Service Principal + OAuth (recommended)
+        Option B: Service Principal + OAuth (recommended)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Option B — Service Principal + OAuth (recommended)">
+    <nav class="md-nav" aria-label="Option B: Service Principal + OAuth (recommended)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1523,6 +1523,17 @@
     <span class="md-ellipsis">
       
         5. Add the three secrets to GitHub
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye-deploy-databricks-needs-a-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ubunye deploy databricks needs a token
       
     </span>
   </a>
@@ -3015,7 +3026,7 @@
   <a href="#option-a-personal-access-token-free-edition" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Option A — Personal Access Token (Free Edition)
+        Option A: Personal Access Token (Free Edition)
       
     </span>
   </a>
@@ -3026,12 +3037,12 @@
   <a href="#option-b-service-principal-oauth-recommended" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Option B — Service Principal + OAuth (recommended)
+        Option B: Service Principal + OAuth (recommended)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Option B — Service Principal + OAuth (recommended)">
+    <nav class="md-nav" aria-label="Option B: Service Principal + OAuth (recommended)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3083,6 +3094,17 @@
     <span class="md-ellipsis">
       
         5. Add the three secrets to GitHub
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ubunye-deploy-databricks-needs-a-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ubunye deploy databricks needs a token
       
     </span>
   </a>
@@ -3191,37 +3213,37 @@
 <p>The Databricks CLI auto-detects which flow to use: if <code>DATABRICKS_CLIENT_ID</code>
 and <code>DATABRICKS_CLIENT_SECRET</code> are both set, it uses OAuth M2M (machine-to-
 machine). Otherwise it falls back to PAT. You don't select a flow in the
-workflow — you select it by which secrets you configure.</p>
+workflow; you select it by which secrets you configure.</p>
 <hr />
-<h2 id="option-a-personal-access-token-free-edition">Option A — Personal Access Token (Free Edition)<a class="headerlink" href="#option-a-personal-access-token-free-edition" title="Permanent link">&para;</a></h2>
+<h2 id="option-a-personal-access-token-free-edition">Option A: Personal Access Token (Free Edition)<a class="headerlink" href="#option-a-personal-access-token-free-edition" title="Permanent link">&para;</a></h2>
 <p>Free Edition has no service principals, so PAT is the only option there.</p>
 <ol>
 <li>In the workspace UI: <strong>User Settings → Developer → Access tokens → Generate new token</strong>.</li>
 <li>In the GitHub repo: <strong>Settings → Secrets and variables → Actions → New repository secret</strong>:<ul>
-<li><code>DATABRICKS_HOST</code> — e.g. <code>https://dbc-xxxxxxxx-xxxx.cloud.databricks.com</code></li>
-<li><code>DATABRICKS_TOKEN</code> — the token from step 1.</li>
+<li><code>DATABRICKS_HOST</code>: e.g. <code>https://dbc-xxxxxxxx-xxxx.cloud.databricks.com</code></li>
+<li><code>DATABRICKS_TOKEN</code>: the token from step 1.</li>
 </ul>
 </li>
 <li>Leave <code>DATABRICKS_CLIENT_ID</code> / <code>DATABRICKS_CLIENT_SECRET</code> unset.</li>
 </ol>
 <hr />
-<h2 id="option-b-service-principal-oauth-recommended">Option B — Service Principal + OAuth <em>(recommended)</em><a class="headerlink" href="#option-b-service-principal-oauth-recommended" title="Permanent link">&para;</a></h2>
+<h2 id="option-b-service-principal-oauth-recommended">Option B: Service Principal + OAuth <em>(recommended)</em><a class="headerlink" href="#option-b-service-principal-oauth-recommended" title="Permanent link">&para;</a></h2>
 <p>On paid workspaces, use a service principal so deploys are not tied to a
 human user's PAT. The principal is a durable workspace identity that can be
 granted only the permissions the CI needs.</p>
 <h3 id="1-create-a-service-principal">1. Create a service principal<a class="headerlink" href="#1-create-a-service-principal" title="Permanent link">&para;</a></h3>
 <p><strong>Account console</strong> (<code>https://accounts.cloud.databricks.com</code>) <strong>→ User
 management → Service principals → Add service principal</strong>.</p>
-<p>Note the <strong>Application ID</strong> that appears after creation — that is your
+<p>Note the <strong>Application ID</strong> that appears after creation: that is your
 <code>DATABRICKS_CLIENT_ID</code>. It is a UUID, not a name.</p>
 <h3 id="2-add-the-principal-to-the-workspace">2. Add the principal to the workspace<a class="headerlink" href="#2-add-the-principal-to-the-workspace" title="Permanent link">&para;</a></h3>
 <p><strong>Account console → Workspaces → <em>your workspace</em> → Permissions → Add</strong>.
 Grant the principal <strong>User</strong> access. (Admin access is not required for
-<code>bundle deploy</code> — see step 4 for the grants you actually need.)</p>
+<code>bundle deploy</code>; see step 4 for the grants you actually need.)</p>
 <h3 id="3-generate-an-oauth-secret">3. Generate an OAuth secret<a class="headerlink" href="#3-generate-an-oauth-secret" title="Permanent link">&para;</a></h3>
 <p><strong>Workspace UI → Settings → Identity and access → Service principals →
 <em>your principal</em> → Secrets → Generate secret</strong>.</p>
-<p>Copy the secret once — it is not shown again. That is your
+<p>Copy the secret once: it is not shown again. That is your
 <code>DATABRICKS_CLIENT_SECRET</code>.</p>
 <h3 id="4-grant-the-principal-workspace-access">4. Grant the principal workspace access<a class="headerlink" href="#4-grant-the-principal-workspace-access" title="Permanent link">&para;</a></h3>
 <p>The principal needs to be able to:</p>
@@ -3242,7 +3264,7 @@ The <a href="https://github.com/ubunye-ai-ecosystems/ubunye-examples">examples r
 to <code>workspace</code> / <code>ubunye_examples</code>.)</p>
 <p><code>CREATE VOLUME</code> is not optional if you train models: the model registry is a
 directory of files, and a Unity Catalog volume is the only writable path on
-serverless compute — the executors cannot see the driver's <code>/tmp</code>.</p>
+serverless compute, and the executors cannot see the driver's <code>/tmp</code>.</p>
 <h3 id="5-add-the-three-secrets-to-github">5. Add the three secrets to GitHub<a class="headerlink" href="#5-add-the-three-secrets-to-github" title="Permanent link">&para;</a></h3>
 <p><strong>Settings → Secrets and variables → Actions → New repository secret</strong>:</p>
 <table>
@@ -3267,8 +3289,15 @@ serverless compute — the executors cannot see the driver's <code>/tmp</code>.<
 </tr>
 </tbody>
 </table>
-<p>Do <strong>not</strong> also set <code>DATABRICKS_TOKEN</code> — if both are present, the CLI
+<p>Do <strong>not</strong> also set <code>DATABRICKS_TOKEN</code>. If both are present, the CLI
 picks OAuth, but leaving a stale PAT around defeats the point of moving off it.</p>
+<h3 id="ubunye-deploy-databricks-needs-a-token"><code>ubunye deploy databricks</code> needs a token<a class="headerlink" href="#ubunye-deploy-databricks-needs-a-token" title="Permanent link">&para;</a></h3>
+<p>The flows above are for the <code>databricks bundle</code> workflows. The engine's own
+<code>ubunye deploy databricks</code> uses a token only: it reads it from
+<code>DATABRICKS_TOKEN</code>, or from the variable named by <code>--token</code> or by <code>token_env</code>
+in <code>targets.yaml</code>. If that variable is empty it stops with
+<code>AuthNotFoundError</code>; a token the workspace rejects gives <code>AuthInvalidError</code>.
+See <a href="../errors/">Errors</a>.</p>
 <hr />
 <h2 id="how-the-workflows-consume-these-secrets">How the workflows consume these secrets<a class="headerlink" href="#how-the-workflows-consume-these-secrets" title="Permanent link">&para;</a></h2>
 <p>Every Databricks workflow in <code>.github/workflows/*_databricks*.yml</code> exports
@@ -3300,8 +3329,8 @@ green.</p>
    (e.g. edit its README) and merge it.</li>
 <li>Watch the <code>deploy</code> workflow in the ubunye-examples repository. The
    <code>databricks bundle deploy</code> step logs a line like
-   <code>Uploading bundle files to /Workspace/Users/&lt;principal&gt;/.bundle/...</code> —
-   if <code>&lt;principal&gt;</code> is the service principal's Application ID, OAuth is
+   <code>Uploading bundle files to /Workspace/Users/&lt;principal&gt;/.bundle/...</code>.
+   If <code>&lt;principal&gt;</code> is the service principal's Application ID, OAuth is
    active. If it's a human email address, the CLI fell back to PAT.</li>
 <li>In the workspace UI: <strong>Workflows → <em>the deployed job</em> → Run as</strong> should
    show the service principal, not a human user.</li>
@@ -3314,7 +3343,7 @@ green.</p>
 <li>Update <code>DATABRICKS_CLIENT_SECRET</code> in GitHub.</li>
 <li>Delete the old secret in the workspace UI.</li>
 </ol>
-<p>The <code>DATABRICKS_CLIENT_ID</code> does not change — it's the principal's identity.</p>
+<p>The <code>DATABRICKS_CLIENT_ID</code> does not change: it is the principal's identity.</p>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <table>
@@ -3369,7 +3398,7 @@ green.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 14, 2026 11:26:29 UTC">July 14, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
   </span>
 
     
@@ -3456,10 +3485,10 @@ green.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>
