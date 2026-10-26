@@ -31,18 +31,21 @@ titanic_survival_by_class (Job)
 
 The notebook:
 
-1. Reads widgets populated by the job's `base_parameters`.
-2. `%pip install`s `ubunye-engine==0.7.0` from PyPI.
+1. `%pip install`s `ubunye-engine==0.8.0` from PyPI and restarts Python.
+2. Reads widgets populated by the job's `base_parameters`.
 3. `CREATE SCHEMA IF NOT EXISTS workspace.titanic` and
-   `CREATE VOLUME IF NOT EXISTS workspace.titanic.data` — UC volumes are
-   the only serverless-compatible local file path
+   `CREATE VOLUME IF NOT EXISTS workspace.titanic.data`. UC volumes are
+   the only local file path serverless allows
    (`file:///tmp/...` is blocked by `SharedUCWorkspaceLocalFileSystem`).
 4. Downloads the Titanic CSV to `/Volumes/workspace/titanic/data/titanic.csv`
-   at runtime — idempotent, no manual upload.
-5. Exports `TITANIC_INPUT_PATH`, `TITANIC_CATALOG`, `TITANIC_SCHEMA` so the
-   config resolves via Jinja.
-6. Calls `ubunye.run_task(task_dir, dt, mode, lineage=True)`, which writes
-   `workspace.titanic.survival_by_class`.
+   once. Later runs reuse it; no manual upload.
+5. Opens a notebook context with
+   `ctx = ubunye.notebook(task_dir, mode=mode, dt=dt, env={"TITANIC_INPUT_PATH": csv_path}, lineage=True)`.
+   `TITANIC_CATALOG` and `TITANIC_SCHEMA` come from the widgets of the same
+   name in lower case, so there is no `os.environ` to set.
+6. Runs `ctx.read()`, `ctx.transform()` and `ctx.write()` in separate cells,
+   showing the data between steps. The write creates
+   `workspace.titanic.survival_by_class` and records the run.
 
 ---
 

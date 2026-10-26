@@ -1,159 +1,169 @@
 # Developer Guide
 
+For people working on the engine itself. Users want [README.md](README.md) and the
+[docs](https://ubunye-ai-ecosystems.github.io/ubunye_engine/).
+
 ## Environment
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -U pip
-pip install -e .[dev]
+pip install -e ".[dev]"
+pre-commit install
 ```
+
+`[dev]` includes pandas and pyarrow, so the unit tier runs with no Java. For the Spark
+tier add `pip install -e ".[spark,delta]"` and Java 17 or 21.
 
 ## Test
 ```bash
-pytest -q
+pytest tests/unit -m "not integration"   # unit tier, no Java, what CI runs on every OS
+pytest tests/integration                 # Spark tier, includes the pandas/Spark parity suite
+python -m mypy ubunye                    # types
+pre-commit run --all-files               # black + ruff
 ```
 
+[CONTRIBUTING.md](CONTRIBUTING.md) lists every tier and what each needs.
+
 ## Local docs
-You can document with MkDocs or Sphinx (choose one). Placeholder docs are in `/docs`.
+The docs are MkDocs (`mkdocs.yml`, pages in `docs/`):
+```bash
+pip install -r docs/requirements.txt
+mkdocs serve           # preview
+mkdocs build --strict  # what CI runs
+```
 
 
 ## Framework Directory Tree
 
+The main folders (not every file):
+
 ```bash
-ubunye-engine/
-├── pyproject.toml
-├── README.md              # User-facing docs (how to install & use)
-├── DEV_README.md          # For developers (running tests, dev env)
-├── CONTRIBUTING.md        # PR rules, style, testing
-├── LICENSE
-├── .gitignore
-├── .github/workflows/ci.yml
+ubunye_engine/
+├── pyproject.toml         # version, extras, entry points (plugins are registered here)
+├── README.md              # user-facing docs (how to install and use)
+├── DEV_README.md          # this file
+├── CONTRIBUTING.md        # PR rules, style, test tiers
+├── mkdocs.yml
+├── .github/workflows/     # tests.yml (unit + Spark matrix), ci.yml, docs.yml, ...
 │
-├── docs/                  # MkDocs or Sphinx
-│   ├── index.md
-│   ├── quickstart.md
-│   ├── cli.md
-│   ├── config_reference.md
-│   └── plugins.md
+├── docs/                  # MkDocs site
+│   ├── getting_started/   # install, quickstart, structure
+│   ├── tutorials/
+│   ├── config/  connectors/  deployment/  ml/  patterns/
+│   ├── architecture/      # ADRs
+│   ├── cli.md  api.md  backends.md  errors.md
+│   └── proving-ground/    # results of `ubunye prove`
 │
-├── examples/
-│   ├── pipelines/fraud_detection/ingestion/claim_etl/
-│   │   ├── config.yaml
-│   │   └── transformations.py
-│   └── README.md
+├── examples/              # proving/, real-world/, production/, fraud_detection/, rest_api/, python_api/
+├── benchmarks/            # guard.py, the performance guard
 │
 ├── tests/
-│   ├── test_config.py
-│   ├── test_runtime.py
-│   ├── test_plugins.py
-│   └── resources/tiny_parquet.parquet
+│   ├── unit/              # no Java
+│   ├── integration/       # needs Spark
+│   ├── fixtures/  data/
+│   └── conftest.py
 │
 └── ubunye/
-    ├── __init__.py
-    ├── core/
-    │   ├── __init__.py
-    │   ├── interfaces.py
-    │   ├── runtime.py
-    │   ├── graph.py
-    │   └── errors.py
-    ├── config/
-    │   ├── __init__.py
-    │   ├── loader.py
-    │   ├── schema.py
-    │   └── variables.py
-    ├── backends/
-    │   ├── __init__.py
-    │   ├── spark_backend.py
-    │   └── pandas_backend.py
-    ├── cli/
-    │   ├── __init__.py
-    │   └── main.py
-    ├── orchestration/
-    │   ├── __init__.py
-    │   ├── base.py
-    │   ├── airflow_exporter.py
-    │   └── databricks_exporter.py
-    ├── telemetry/
-    │   ├── __init__.py
-    │   ├── otel.py
-    │   ├── prometheus.py
-    │   └── events.py
-    ├── plugins/
-    │   ├── __init__.py
-    │   ├── readers/hive.py
-    │   ├── writers/s3.py
-    │   ├── transforms/noop.py
-    │   └── ml/sklearn.py
-    └── compat/
-        └── analytics_engine_shim.py
+    ├── api.py             # run_task, run_pipeline
+    ├── notebook.py        # notebook helpers
+    ├── mcp_server.py      # `ubunye mcp`
+    ├── core/              # runtime, task_runner, interfaces, expectations, planning, runs, hooks, errors
+    ├── config/            # loader, schema (Pydantic), resolver (Jinja), variables
+    ├── backends/          # spark_backend, databricks_backend, pandas_backend
+    ├── cli/               # main plus one module per command group
+    ├── plugins/           # readers/, writers/, transforms/, ml/, secrets, llm
+    ├── models/            # UbunyeModel contract, registry, gates, artifact stores
+    ├── lineage/           # run records, hashing, OpenLineage, FOCUS
+    ├── proving/           # the proving ground behind `ubunye prove`
+    ├── deploy/            # Databricks, Glue, Dataproc, EMR Serverless, Kubernetes, Container Apps
+    ├── orchestration/     # Airflow, Databricks job and Spark pipeline exporters
+    ├── telemetry/         # events, OpenTelemetry, Prometheus, MLflow, hooks/
+    └── llm/               # language model steps: replay, budgets, cost estimates
 ```
 
 ## Ubunye CLI Commands
 
+`ubunye <command> --help` is the reference; the [CLI page](docs/cli.md) has every flag.
 
 ```bash
 ubunye --help
 ```
 
+When working on the engine, make sure `ubunye` is your checkout, not an older install:
+`pip install -e .` in the checkout, then `ubunye version`. (`python -m ubunye
+--task-dir <folder>` is something else: it runs one task, for platforms with no shell.)
+
 ### Commands
 
 - **`init`**
-  Scaffold a new usecase/pipeline/task with config and transformations module.
+  Scaffold a task folder with config, transformations module, a sample CSV and a dev notebook.
   ```bash
-  ubunye init -d <dir> -u <usecase> -p <pipeline> -t <task>
+  ubunye init -d <dir> -u <usecase> -p <package> -t <task>
   ```
-  - Options: `--with-ml sklearn|xgboost|h2o`, `--overwrite`
-  - Creates: `<dir>/<usecase>/<pipeline>/<task>/config.yaml`, `<dir>/<usecase>/<pipeline>/<task>/transformations.py`
+  - Options: `--template local|databricks` (default `local`), `--overwrite`
+  - Creates: `<dir>/<usecase>/<package>/<task>/config.yaml`, `transformations.py`,
+    `data/people.csv` (local template) and `notebooks/<task>_dev.ipynb`
+  - `ubunye init github-actions ...` writes a CI workflow instead.
 
 - **`run`**
-  Execute tasks locally, on-prem, or in the cloud.
+  Run one or more tasks.
   ```bash
-  ubunye run -d ./pipelines -u fraudetection -p ingestion -t claim_etl --profile dev
+  ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl -m DEV
   ```
-  - Options: `-d, --dir`, `-u, --usecase`, `-p, --pipeline`, `-t, --task`, `--all-packages`, `--all-tasks`, `--profile dev|prod|staging`, `--spark-conf key=value`, `--dry-run`, `--backend spark|pandas`
+  - Options: `-d/--usecase-dir`, `-u/--usecase`, `-p/--package`, `-t/--task-list`
+    (repeatable), `--all`, `-m/--mode` (default `DEV`), `-dt/--data-timestamp`,
+    `--var key=value`, `--backend spark|databricks|pandas`, `--lineage`,
+    `--rerun`, `--resume`
 
 - **`plan`**
-  Visualize the resolved DAG (inputs → transform → outputs).
+  Dry run: what each task will read and write, and what will stop it. Moves no data.
   ```bash
-  ubunye plan -d ./pipelines -u fraudetection -p ingestion -t claim_etl
+  ubunye plan -d ./pipelines -u fraud_detection -p ingestion -t claim_etl --backend pandas
   ```
-  - Example output:
+  - Example output (the `ubunye init` sample task):
     ```
-    Task: pipelines/fraudetection/ingestion/claim_etl
-    Inputs:
-      - hive: fraud_db.raw_claims
-      - jdbc: insurance.policy_dim
-    Transform: transformations.ClaimEtl
-    Outputs:
-      - s3: s3a://fraud-bronze/claims/{{ ds }}
-      - iceberg: cur_fraud.claim_curated
+    Task demo/starter/filter_adults   (backend: pandas)
+      Inputs
+        people       s3 csv         .../filter_adults/data/people.csv
+                     found: 1 file(s), 172 bytes
+      Transform  FilterAdults  (transformations.py)
+      Outputs
+        adults       s3 parquet     .../filter_adults/output/adults
+                     mode overwrite
+
+    Plan OK: 1 task(s) can run.
     ```
 
+- **`validate`** and **`doctor`**
+  `validate` checks configs without running them. `doctor` checks the machine (backends,
+  plugins, environment variables) and, with `-d -u -p -t`, the tasks too.
+
 - **`export`**
-  Generate orchestrator artifacts.
+  Generate orchestrator artifacts from a task's config.
   ```bash
-  ubunye export airflow   -d ./pipelines -u fraudetection -p ingestion -t claim_etl -o dag.py
-  ubunye export databricks -d ./pipelines -u fraudetection -p ingestion -t claim_etl -o job.json
+  ubunye export airflow        -c pipelines/fraud_detection/ingestion/claim_etl/config.yaml -o dag.py
+  ubunye export databricks     -c pipelines/fraud_detection/ingestion/claim_etl/config.yaml -o job.json
+  ubunye export spark-pipeline -c pipelines/fraud_detection/ingestion/claim_etl/config.yaml -o sdp/
   ```
 
 - **`config`**
-  Inspect or validate configs.
+  Load and validate one task's config.
   ```bash
-  ubunye config show pipelines/fraudetection/ingestion/claim_etl/config.yaml
-  ubunye config validate pipelines/fraudetection/ingestion/claim_etl/config.yaml
+  ubunye config -d pipelines -u fraud_detection -p ingestion -t claim_etl
   ```
 
 - **`plugins`**
-  List available plugins (readers, writers, transforms, ML).
+  List the readers, writers and transforms that are installed.
   ```bash
   ubunye plugins
   ```
   - Example output:
     ```
-    Readers: hive, jdbc, api, mongo
-    Writers: hive, s3, iceberg, opensearch
-    Transforms: noop, sql
-    ML: sklearn, xgboost, h2o, mlflow
+    Readers:   binary, delta, hive, jdbc, rest_api, s3, unity
+    Writers:   delta, hive, jdbc, rest_api, s3, unity
+    Transforms:model, noop
     ```
+  - `ubunye backends` lists the execution backends and what each can do.
 
 - **`version`**
   Show Ubunye version.
@@ -162,15 +172,18 @@ ubunye --help
   ```
   - Example output:
     ```
-    Ubunye Engine v0.1.0
-    Python 3.11.8
-    Spark 3.5.1
+    Ubunye Engine v0.8.0
     ```
+
+Other command groups: `test run`, `lineage`, `models`, `deploy`, `prove`, `gate`,
+`mcp`, `sync`. See the [CLI page](docs/cli.md).
 
 ## Features
 
-- **Scaffolding**: Quick start with `init`.
-- **Execution**: Flexible `run` with local/dev/prod support.
-- **Orchestration**: Export to Airflow or Databricks.
-- **Config Management**: Validate and inspect with `config`.
-- **Extensibility**: Discover plugins with `plugins`.
+- **Scaffolding**: a runnable task with `init`.
+- **Execution**: `run` on Spark, Databricks or pandas (no Java), with safe reruns (`--rerun`, `--resume`).
+- **Checks before a run**: `validate`, `plan` and `doctor`.
+- **Run records**: `--lineage` keeps one per run; `lineage`, `gate` and `prove` read them.
+- **Orchestration**: export to Airflow, a Databricks job or a Spark Declarative Pipeline.
+- **Deployment**: `deploy` to Databricks, Glue, Dataproc, EMR Serverless, Kubernetes or Container Apps.
+- **Extensibility**: plugins are entry points in `pyproject.toml`; list them with `plugins`.

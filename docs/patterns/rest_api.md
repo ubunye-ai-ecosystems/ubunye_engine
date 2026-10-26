@@ -79,7 +79,7 @@ Pass the last-seen cursor or date as a Jinja variable:
 ```bash
 ubunye run -d pipelines -u crm -p ingest -t contacts \
     --var since=2024-06-01 \
-    --profile prod \
+    --mode prod \
     --lineage
 ```
 
@@ -161,9 +161,8 @@ CONFIG:
       url: "https://api.elastic.example.com/search"
       method: POST
       headers:
-        Content-Type: application/json
         Authorization: "Bearer {{ env.ES_TOKEN }}"
-      params:
+      body:                     # sent as the JSON body; params would go in the URL
         query: "fraud risk"
         size: 100
 ```

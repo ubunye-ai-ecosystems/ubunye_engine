@@ -1,6 +1,6 @@
 # Deploy to Databricks
 
-Deploy a pipeline task to Databricks as a scheduled job — from `config.yaml`
+Deploy a pipeline task to Databricks as a job, from `config.yaml`
 to a running job in one command.
 
 ---
@@ -44,17 +44,22 @@ targets:
     host: "https://adb-dev-123.azuredatabricks.net"
     token_env: DATABRICKS_TOKEN        # env var holding the PAT
     workspace_path: /Workspace/ubunye   # where files are uploaded
-    spark_version: "13.3.x-scala2.12"
-    node_type_id: "i3.xlarge"
-    num_workers: 0                      # 0 = single-node cluster
+    # serverless: true is the default: the job gets no cluster block
 
   prod:
     host: "https://adb-prod-456.azuredatabricks.net"
     token_env: DATABRICKS_TOKEN_PROD
     workspace_path: /Workspace/ubunye
+    serverless: false                   # run on a job cluster instead
+    spark_version: "13.3.x-scala2.12"
     node_type_id: "i3.2xlarge"
     num_workers: 4
 ```
+
+With `serverless: true` (the default) the job runs on serverless compute and
+the cluster fields (`spark_version`, `node_type_id`, `num_workers`,
+`spark_conf`, `aws_attributes`) are not used. Set `serverless: false` to get a
+`new_cluster` built from them.
 
 ### Task-level overrides
 
@@ -63,8 +68,8 @@ A task can override specific fields by adding its own `targets.yaml`:
 ```yaml
 # fraud_detection/ingestion/claim_etl/targets.yaml
 targets:
-  dev:
-    num_workers: 2                     # this task needs more compute
+  prod:
+    num_workers: 8                     # this task needs more compute
     spark_conf:
       spark.sql.shuffle.partitions: "200"
 ```
@@ -108,7 +113,15 @@ This:
    `ubunye-fraud_detection-ingestion-claim_etl-dev`
 
 If the job already exists (same name), it is updated in place. Every Ubunye-managed
-job is tagged with `ubunye_managed: "true"` so it can be identified later.
+job is tagged with `ubunye_managed: "true"` (plus `ubunye_usecase`,
+`ubunye_pipeline`, `ubunye_task` and `ubunye_target`) so it can be identified
+later. If the task's `config.yaml` has `ORCHESTRATION.schedule` (a Quartz cron
+expression), the job gets that schedule in UTC; without it the job has no
+schedule and runs when you start it.
+
+`deploy databricks` signs in with a personal access token read from the
+`token_env` variable. For service principal (OAuth) sign-in in CI, see
+[Databricks authentication](../databricks-auth.md).
 
 ---
 
@@ -134,11 +147,15 @@ ubunye deploy databricks \
 | `host` | str | **required** | Databricks workspace URL |
 | `token_env` | str | `DATABRICKS_TOKEN` | Environment variable holding the PAT |
 | `workspace_path` | str | `/Workspace/ubunye` | Root path for uploaded files |
-| `spark_version` | str | `13.3.x-scala2.12` | Databricks Runtime version |
-| `node_type_id` | str | `i3.xlarge` | Instance type for the job cluster |
-| `num_workers` | int | `0` | Number of workers (0 = single-node) |
-| `spark_conf` | dict | `{}` | Spark configuration overrides |
-| `aws_attributes` | dict | `{}` | AWS-specific cluster attributes |
+| `serverless` | bool | `true` | Run on serverless compute; `false` builds a job cluster from the fields below |
+| `spark_version` | str | `13.3.x-scala2.12` | Databricks Runtime version (job cluster only) |
+| `node_type_id` | str | `i3.xlarge` | Instance type (job cluster only) |
+| `num_workers` | int | none, sent as `0` | Number of workers, 0 = single node (job cluster only) |
+| `spark_conf` | dict | `{}` | Spark configuration overrides (job cluster only) |
+| `aws_attributes` | dict | `{}` | AWS-specific cluster attributes (job cluster only) |
+| `max_concurrent_runs` | int | `1` | How many runs of the job may run at once |
+
+Unknown fields are refused.
 
 ---
 

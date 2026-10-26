@@ -1,16 +1,27 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # JHB Hourly Weather - Open-Meteo -> Unity Catalog
+# MAGIC # Johannesburg Weather: hourly forecast (Databricks serverless)
 # MAGIC
 # MAGIC Invoked by the `jhb_weather_forecast` job defined in `databricks.yml`.
-# MAGIC Parameters are supplied by the job at runtime via widgets.
+# MAGIC The job passes its parameters in as widgets. You can also open this
+# MAGIC notebook and run it cell by cell.
 # MAGIC
-# MAGIC The notebook is a thin wrapper around `ubunye.run_task()` - the same
-# MAGIC portable entry point used by the titanic examples. No framework
-# MAGIC changes: `DatabricksBackend` auto-detects the active SparkSession.
+# MAGIC It uses the notebook API: `ubunye.notebook()` gives a context, then
+# MAGIC `ctx.read()`, `ctx.transform()` and `ctx.write()` run one step each, so
+# MAGIC you can look at the data between steps.
 
 # COMMAND ----------
 
+# MAGIC %pip install "ubunye-engine==0.8.0"
+
+# COMMAND ----------
+
+dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# Widgets come after the restart, so they are read once. A job run fills them
+# from base_parameters; the defaults are for running the notebook by hand.
 dbutils.widgets.text("task_dir", "", "Workspace task directory (absolute)")
 dbutils.widgets.text("dt", "2026-04-15", "Data timestamp")
 dbutils.widgets.dropdown("mode", "PROD", ["DEV", "PROD"], "Run mode")
@@ -27,51 +38,36 @@ assert task_dir, "task_dir must be supplied by the job (see databricks.yml)"
 
 # COMMAND ----------
 
-# MAGIC %pip install "ubunye-engine==0.7.0"
-
-# COMMAND ----------
-
-dbutils.library.restartPython()
-
-# COMMAND ----------
-
-# Re-read widgets after the Python restart and expose the env vars that
-# config.yaml resolves via Jinja.
-import os
-
-task_dir = dbutils.widgets.get("task_dir")
-dt = dbutils.widgets.get("dt")
-mode = dbutils.widgets.get("mode")
-weather_catalog = dbutils.widgets.get("weather_catalog")
-weather_schema = dbutils.widgets.get("weather_schema")
-
-os.environ["WEATHER_CATALOG"] = weather_catalog
-os.environ["WEATHER_SCHEMA"] = weather_schema
-
-# COMMAND ----------
-
-# Ensure the target schema exists. Unity Catalog raises on a missing schema
-# when the writer issues CREATE TABLE, and provisioning the schema from the
-# job run keeps the example self-contained.
+# Unity Catalog raises on a missing schema when the writer creates the table,
+# so the run makes sure it exists.
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {weather_catalog}.{weather_schema}")
 
 # COMMAND ----------
 
 import ubunye
 
-outputs = ubunye.run_task(
-    task_dir=task_dir,
-    dt=dt,
-    mode=mode,
-    lineage=True,
-)
-
-print(f"Outputs written: {list(outputs.keys())}")
+# config.yaml uses {{ env.WEATHER_CATALOG }} and {{ env.WEATHER_SCHEMA }}.
+# ubunye.notebook() fills them from the widgets of the same name in lower
+# case (weather_catalog, weather_schema), so there is no os.environ to set.
+ctx = ubunye.notebook(task_dir, mode=mode, dt=dt, lineage=True)
+print(f"Values taken from widgets: {ctx.env_vars}")
 
 # COMMAND ----------
 
-# Surface the result in the notebook for job-run inspection.
+sources = ctx.read()
+for name, df in sources.items():
+    print(f"--- input: {name} ---")
+    df.show(5, truncate=False)
+
+# COMMAND ----------
+
+outputs = ctx.transform(sources)
 for name, df in outputs.items():
-    print(f"--- {name} ---")
+    print(f"--- output: {name} ---")
     df.show(10, truncate=False)
-    print(f"Row count: {df.count()}")
+
+# COMMAND ----------
+
+ctx.write(outputs)
+print(f"Outputs written: {list(outputs.keys())}")
+ctx.close()

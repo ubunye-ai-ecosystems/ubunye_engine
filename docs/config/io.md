@@ -1,7 +1,7 @@
 # Inputs & Outputs
 
 `CONFIG.inputs` and `CONFIG.outputs` are dictionaries where each key is a logical name
-and each value is an `IOConfig` — a connector declaration.
+and each value is an `IOConfig`: a connector declaration.
 
 ---
 
@@ -33,10 +33,13 @@ CONFIG:
 | `hive` | read / write | Hive Metastore tables via Spark |
 | `jdbc` | read / write | Any JDBC-compatible database |
 | `unity` | read / write | Databricks Unity Catalog |
-| `s3` | read / write | S3 or HDFS paths (Parquet, CSV, JSON…) |
+| `s3` | read / write | Any path: S3, ADLS, GCS, HDFS, local (Parquet, CSV, JSON...) |
 | `delta` | read / write | Delta Lake tables by path or name |
 | `binary` | read | Raw binary files |
 | `rest_api` | read / write | HTTP REST endpoints |
+
+`format` may also name any connector installed as a plugin. `ubunye plugins`
+lists what is installed; an unknown `format` is refused with that list.
 
 ---
 
@@ -49,6 +52,8 @@ These fields apply to most formats:
 | `format` | string | Required. One of the format types above. |
 | `options` | dict | Spark reader/writer options (e.g. `header`, `delimiter`). |
 | `mode` | see [Write modes](#write-modes) | Write mode (outputs only). |
+| `merge_keys` | list or string | Key columns for `mode: merge` (outputs only). |
+| `replace_where` | string | Delta predicate for `mode: overwrite_partitions` (outputs only). |
 
 ---
 
@@ -60,16 +65,18 @@ These fields apply to most formats:
 format: hive
 db_name: raw             # required if sql is not set
 tbl_name: claims         # required if sql is not set
-sql: "SELECT ..."        # alternative to db_name + tbl_name
+sql: "SELECT ..."        # alternative to db_name + tbl_name (inputs only)
 ```
+
+As an output, `hive` needs `db_name` + `tbl_name`.
 
 ### `jdbc`
 
 ```yaml
 format: jdbc
 url: "jdbc:postgresql://host:5432/db"   # required
-table: public.claims                    # required unless sql is set
-sql: "SELECT * FROM public.claims"      # alternative to table
+table: public.claims                    # required unless sql is set (always for outputs)
+sql: "SELECT * FROM public.claims"      # alternative to table (inputs only)
 user: "{{ env.DB_USER }}"
 password: "{{ env.DB_PASS }}"
 options:
@@ -86,26 +93,26 @@ options:
 format: unity
 table: main.fraud.claims       # three-part Unity Catalog name
 # or:
-db_name: fraud
-tbl_name: claims
-sql: "SELECT ..."
+sql: "SELECT ..."              # inputs only
+# outputs also take catalog + schema + tbl_name instead of table
 ```
 
 ### `s3` / `delta`
 
 ```yaml
-# S3 — path-based (any Spark-readable format)
+# S3: path-based; file_format picks the file type (default parquet)
 format: s3
 path: s3://my-bucket/data/claims/
+file_format: csv
 options:
   header: "true"
 
-# Delta — by path
+# Delta: by path
 format: delta
 path: s3://my-bucket/delta/claims
 mode: overwrite
 
-# Delta — by table name
+# Delta: by table name
 format: delta
 table: main.fraud.claims
 mode: append
@@ -116,6 +123,8 @@ mode: append
 ```yaml
 format: binary
 path: /mnt/raw/documents/
+path_glob_filter: "*.pdf"   # optional
+recursive: true             # optional
 ```
 
 ### `rest_api`
@@ -137,18 +146,29 @@ See [REST API Connector](../connectors/rest_api.md) for the full REST API refere
 
 ---
 
-## Extra fields pass-through
+## Connector keys are checked
 
-`IOConfig` uses `extra="allow"`, so any plugin-specific keys you add are passed
-through to the connector via `model_dump()`. This is how the REST API connector
-receives `auth`, `pagination`, and `headers` without schema changes.
+An input or output block carries whatever keys its connector reads, and the
+whole block is passed to the connector. This is how the REST API connector
+receives `auth`, `pagination` and `headers` without schema changes.
+
+Each built-in connector declares the keys it reads, so any other key is refused
+by `ubunye validate`, with the closest real one:
+
+```text
+outputs.clean: 'paht' is not a setting of 's3'; did you mean 'path'?
+```
+
+Each connector also says what it requires (`s3` needs `path`, `jdbc` needs `url`,
+and so on), checked the same way. Options for Spark itself go under `options`.
+A third-party connector that declares no keys accepts any key.
 
 ---
 
 ## Write modes
 
 The first four are Spark's native `SaveMode` values. `merge` and
-`overwrite_partitions` are Ubunye's lakehouse modes — Spark has no save mode for
+`overwrite_partitions` are Ubunye's lakehouse modes: Spark has no save mode for
 either. The engine splits the work along the hexagon: the backend-agnostic
 *resolution* (validating a mode against what a connector supports) lives in
 `ubunye.core.write_modes`, while the Spark *execution* (`MERGE INTO`, dynamic
@@ -164,7 +184,7 @@ partition overwrite) lives in the Spark adapter, `ubunye.adapters.spark.write_ex
 | `overwrite_partitions` | Replace only the partitions present in the DataFrame; leave the rest of the table intact |
 
 Not every connector can honour every mode. Asking for one it cannot do raises
-`SinkWriteError` **before any rows are written** — it is never silently downgraded.
+`SinkWriteError` **before any rows are written**. It is never silently downgraded.
 
 | Connector | Supported modes | Default |
 |---|---|---|
@@ -172,16 +192,16 @@ Not every connector can honour every mode. Asking for one it cannot do raises
 | `unity` | all six | `append` |
 | `s3` | all six (`merge` and `replace_where` need `file_format: delta`) | `append` |
 | `hive` | all six (`merge` needs `file_format: delta`) | `append` |
-| `jdbc` | native four only — no `merge` / `overwrite_partitions` | `append` |
+| `jdbc` | native four only: no `merge` / `overwrite_partitions` | `append` |
 | `rest_api` | `append` (a REST sink has no table to merge into) | `append` |
-| `binary` | none — read-only; rejected in `CONFIG.outputs` | — |
+| `binary` | none: read-only, rejected in `CONFIG.outputs` | none |
 
 Every writer defaults to `append`: the mode that cannot destroy data you did not
 mean to destroy. Set `mode` explicitly when you want anything else.
 
 ### `merge`
 
-Requires `merge_keys` — the columns that identify a row. Matched rows are updated,
+Requires `merge_keys`: the columns that identify a row. Matched rows are updated,
 unmatched rows inserted. On the first run the target does not exist yet, so the
 engine creates it with a plain overwrite instead of a MERGE.
 
@@ -196,25 +216,25 @@ engine creates it with a plain overwrite instead of a MERGE.
 
 ### `overwrite_partitions`
 
-The backfill mode: re-run one day without wiping the rest of the table. Two ways
-to say which partitions to replace —
+The backfill mode: re-run one day without wiping the rest of the table. Three ways
+to say which partitions to replace:
 
 ```yaml
-    # 1. Dynamic — replace whatever partitions the DataFrame contains
+    # 1. Dynamic: replace whatever partitions the DataFrame contains
     daily_sales:
       format: s3
       path: s3://my-bucket/sales/
       mode: overwrite_partitions
       partitionBy: [dt]
 
-    # 2. Predicate — replace exactly what the expression matches (Delta only)
+    # 2. Predicate: replace exactly what the expression matches (Delta only)
     daily_sales:
       format: delta
       path: s3://my-bucket/delta/sales/
       mode: overwrite_partitions
       replace_where: "dt = '{{ dt }}'"
 
-    # 3. A table — INSERT OVERWRITE of just the incoming partitions
+    # 3. A table: INSERT OVERWRITE of just the incoming partitions
     daily_sales:
       format: hive
       db_name: clean
@@ -224,7 +244,8 @@ to say which partitions to replace —
 ```
 
 Without `partitionBy` or `replace_where`, dynamic overwrite silently degrades to a
-full-table wipe — so the engine refuses the config instead.
+full-table wipe, so the engine refuses it instead. `ubunye plan` reports this
+before a run.
 
 Under the hood the engine picks the mechanism the target actually supports: Delta's
 own write option for Delta, `INSERT OVERWRITE` for an existing table, and Spark's

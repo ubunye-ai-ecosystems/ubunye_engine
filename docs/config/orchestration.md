@@ -1,8 +1,8 @@
 # Orchestration
 
 The `ORCHESTRATION` section provides metadata for exporting your task to an
-orchestration platform. It does **not** affect how `ubunye run` executes the task —
-it is used only by `ubunye export`.
+orchestration platform. It does **not** affect how `ubunye run` executes the task:
+it is used only by `ubunye export airflow` and `ubunye export databricks`.
 
 ---
 
@@ -17,8 +17,8 @@ ORCHESTRATION:
   tags:
     - fraud
     - etl
-  databricks:             # Databricks-specific cluster settings
-    cluster_id: "0123-456789-abcde"
+  databricks:             # Databricks job cluster settings
+    spark_version: "13.3.x-scala2.12"
     node_type_id: "Standard_DS3_v2"
     num_workers: 4
 ```
@@ -31,12 +31,21 @@ ORCHESTRATION:
 |---|---|---|---|
 | `type` | `airflow` or `databricks` | required | Target platform. `prefect` and `dagster` are accepted by the schema but have no exporter yet (see issue #29) |
 | `schedule` | string | `null` | Cron expression for the DAG/workflow schedule |
-| `retries` | int | `2` | Number of automatic retries on failure |
+| `retries` | int | `2` | Number of automatic retries on failure (Airflow) |
 | `owner` | string | `null` | Team or person responsible (shown in Airflow UI) |
 | `tags` | list of strings | `[]` | Labels for filtering in the orchestration UI |
-| `databricks` | dict | `null` | Databricks-specific job cluster settings |
+| `databricks` | dict | `null` | Databricks job settings, read by `export databricks` |
 
-Extra fields are allowed and passed through to the relevant exporter.
+No other key is allowed: a typo under `ORCHESTRATION` is refused by `ubunye validate`.
+
+When a field is left out, the Airflow DAG uses its own default: schedule
+`@daily`, owner `ubunye`, tags `[ubunye]`. With no `ORCHESTRATION` block at all,
+`export airflow` still works and uses 1 retry.
+
+The keys `export databricks` reads from `databricks:` are `spark_version`
+(default `13.3.x-scala2.12`), `node_type_id` (default `i3.xlarge`), `num_workers`
+(default 2), `spark_conf`, `aws_attributes`, `job_name`, `wheel_dbfs_path` and
+`timezone_id` (default `UTC`). Other keys there are ignored.
 
 ---
 
@@ -52,8 +61,14 @@ ubunye export airflow \
 The generated DAG contains a single `BashOperator` that runs:
 
 ```bash
-ubunye run -d pipelines -u fraud -p etl -t claims --profile prod
+ubunye run -d <pipelines folder> -u fraud -p etl -t claims -m prod -dt {{ ds }}
 ```
+
+`--profile` on `export` becomes `-m` in the command (`ubunye run` has no
+`--profile`). `{{ ds }}` is Airflow's logical date, so each scheduled run gets its
+own `dt`. The pipelines folder is the absolute path of the one the config sits
+in; pass `--usecase-dir` when Airflow sees it at another path. `--backend` and
+`--lineage` on `export airflow` are added to the command too.
 
 Schedule, retries, owner, and tags are read from `ORCHESTRATION`.
 
@@ -76,10 +91,13 @@ databricks jobs run-now --job-id <ID>
 ```
 
 Cluster settings from `ORCHESTRATION.databricks` are embedded in the job JSON.
+The job runs the CLI with `-d -u -p -t` and `-m <profile>`. `ORCHESTRATION.schedule`
+becomes the job's `quartz_cron_expression`, so write it in Quartz syntax
+(`"0 30 1 * * ?"`), not five-field cron.
 
 ---
 
-## Example — full Airflow config
+## Example: full Airflow config
 
 ```yaml
 MODEL: etl

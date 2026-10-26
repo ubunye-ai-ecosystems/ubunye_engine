@@ -12,10 +12,16 @@ command. They take a Python file. The engine ships one:
 ```bash
 spark-submit \
   --py-files deps.zip \
-  -m ubunye \
+  /path/to/site-packages/ubunye/__main__.py \
   --task-dir /path/or/bucket/to/pipelines/sales/etl/daily \
   --mode PROD --dt 2026-07-14
 ```
+
+Where you do have a shell, `python -m ubunye --task-dir ... --mode PROD --dt ...`
+does the same. Its flags: `--task-dir` (the folder holding `config.yaml`,
+required), `--mode` (default `PROD`), `--dt`, `--lineage` and `--log-level`.
+The `ubunye deploy` commands for Glue, Dataproc and containers upload or bake in
+a small `ubunye_entry.py` that does this job for you ([Serverless](serverless.md)).
 
 It deliberately does not create a Spark session. spark-submit already made
 one, with the platform's master, executors and settings, and the engine
@@ -252,11 +258,14 @@ Any scheduler that can run a command can own the timetable. For Airflow, the
 engine generates the DAG for you:
 
 ```bash
-ubunye export airflow -d ./pipelines -u sales -p etl -t daily -o dags/sales_daily.py
+ubunye export airflow -c pipelines/sales/etl/daily/config.yaml -o dags/sales_daily.py
 ```
 
-The generated file is one task calling `ubunye run` with the right flags.
-Review it, commit it to your Airflow repository, done.
+The generated file is one DAG (Airflow 2.4+ and 3) with one `BashOperator` that
+calls `ubunye run ... -m prod -dt {{ ds }}`. `--profile` sets the mode (default
+`prod`), `--usecase-dir` sets the pipelines folder as Airflow sees it, and
+`--backend` and `--lineage` are passed on to the run. Review it, commit it to
+your Airflow repository, done.
 
 ## The checklist for a new platform
 

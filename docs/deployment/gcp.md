@@ -1,8 +1,14 @@
 # Deploying on GCP
 
-Same honest status as the AWS page: written, reviewed, wired into CI, and not
-yet executed, because Dataproc Serverless has no free tier. The CI jobs say
-plainly when they were skipped. Four secrets turn them on with no code change.
+The engine's own command for GCP is `ubunye deploy dataproc`, described in
+[One command to the cloud](serverless.md). It has been run for real: the
+[proving ground](../proving-ground/latest.md) runs its workloads on Dataproc
+Serverless and gets the same data as local Spark.
+
+The rest of this page is the older, script-based path. The scripts live in the
+[examples repository](https://github.com/ubunye-ai-ecosystems/ubunye-examples)
+(`platforms/gcp/`), not in this one. The CI jobs there say plainly when they
+were skipped. Four secrets turn them on with no code change.
 
 ## Where a pipeline runs on GCP: Dataproc Serverless
 
@@ -11,6 +17,8 @@ it takes a Python file for spark-submit, which `python -m ubunye` exists to
 be.
 
 ### 1. One-time setup
+
+From a clone of the examples repository:
 
 ```bash
 bash platforms/gcp/setup.sh

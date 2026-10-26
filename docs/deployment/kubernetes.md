@@ -1,8 +1,18 @@
 # Deploying on Kubernetes
 
-This page shows how to run pipelines on a Kubernetes cluster. Everything here
-is working code from the examples repository, exercised in CI on every pull
-request against a disposable cluster.
+This page shows how to run pipelines on a Kubernetes cluster.
+
+The shortest way is the engine's own command: `ubunye deploy dockerfile
+container` writes an image's Dockerfile, and `ubunye deploy k8s` runs a task as
+a Kubernetes Job in kubectl's current context. See
+[One command to the cloud](serverless.md#kubernetes-and-azure-container-apps).
+The [proving ground](../proving-ground/latest.md) runs its workloads this way on
+a kind cluster.
+
+The rest of this page uses the scripts and manifests in the
+[examples repository](https://github.com/ubunye-ai-ecosystems/ubunye-examples)
+(`platforms/docker/`, `platforms/k8s/`), not this one. They are exercised in CI
+there against a disposable cluster. Run the commands below from a clone of it.
 
 ## The shape
 

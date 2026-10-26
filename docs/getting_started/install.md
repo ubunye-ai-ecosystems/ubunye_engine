@@ -44,7 +44,8 @@ The engines that move data are **optional** extras: pick the one you need.
     pip install "ubunye-engine[ml]"
     ```
 
-    Adds `scikit-learn`, `mlflow`, and the ML plugin wrappers.
+    Adds `scikit-learn` and `mlflow`, which the built-in ML wrappers and the MLflow
+    registry use. `ml-torch` adds `torch` as well.
 
 === "Dev (contributors)"
 
@@ -57,6 +58,18 @@ The engines that move data are **optional** extras: pick the one you need.
 
     See [Contributing](../contributing.md) for the test tiers.
 
+Extras combine: `pip install "ubunye-engine[pandas,spark]"`. The others:
+
+| Extra | Adds | For |
+|---|---|---|
+| `delta` | `delta-spark` 4 | Delta Lake on Spark outside Databricks |
+| `rest` | `requests` | the `rest_api` connector |
+| `objectstore` | `fsspec` | model artifacts on `s3://`, `gs://` (add `s3fs` or `gcsfs`) |
+| `databricks` | `databricks-sdk` | `ubunye deploy databricks`, `secret://databricks` |
+| `otel` | OpenTelemetry SDK and OTLP exporter | traces and metrics |
+| `aws`, `gcp`, `azure` | each cloud's secret store client | `secret://aws-sm`, `secret://gcp-sm`, `secret://azure-kv` |
+| `mcp` | `mcp` | `ubunye mcp`, the engine as an MCP server for agents |
+
 ---
 
 ## Verify the install
@@ -68,7 +81,7 @@ ubunye version
 prints the version you installed, for example:
 
 ```
-Ubunye Engine v0.7.0
+Ubunye Engine v0.8.0
 ```
 
 See which engines you can run on, and what each can do:
@@ -76,6 +89,19 @@ See which engines you can run on, and what each can do:
 ```bash
 ubunye backends
 ```
+
+With only the `pandas` extra, part of it looks like this:
+
+```
+pandas
+  features:     partitioned_writes, path_io, records
+  file formats: csv, json, parquet
+  write modes:  append, errorifexists, ignore, overwrite, overwrite_partitions
+  distributed:  no   needs Java: no
+```
+
+`ubunye doctor` goes further: it checks the backends, the plugins and, given a task,
+the environment variables its config needs, and says what would fail and why.
 
 ---
 

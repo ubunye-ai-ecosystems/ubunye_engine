@@ -28,7 +28,16 @@ ubunye run  -d examples/production/llm_replay/pipelines -u shop -p reviews -t la
   --backend pandas --lineage
 ```
 
-`ubunye lineage trace` then shows the 6 calls, all `replay`.
+`plan` lists the 6 recorded calls and an estimated cost of $0. The run record
+goes under `examples/production/llm_replay/pipelines/.ubunye/lineage/`.
+`ubunye lineage trace -d examples/production/llm_replay/pipelines -u shop -p reviews -t label`
+then shows the 6 calls under `MODEL CALLS`, and
+`python examples/production/llm_replay/scripts/check_golden.py --lineage-dir examples/production/llm_replay/pipelines/.ubunye/lineage`
+checks that every call replayed and the rows match the golden file:
+
+```
+OK: 6 calls replayed, 6 rows match golden
+```
 
 ## Record real answers
 

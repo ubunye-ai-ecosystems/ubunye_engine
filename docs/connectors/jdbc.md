@@ -20,7 +20,8 @@ CONFIG:
         fetchsize: "10000"
 ```
 
-Parallelised read (requires a numeric partition column):
+Parallelised read (requires a numeric partition column). The tuning keys can be
+top-level keys or go under `options`; both reach Spark the same way:
 
 ```yaml
     large_table:
@@ -49,7 +50,8 @@ Custom SQL:
 ```
 
 !!! note "Requirement"
-    `url` is required. Either `table` **or** `sql` is required.
+    `url` is required. A read needs `table` (or `dbtable`) **or** `sql`. A write
+    needs `table`.
 
 ---
 
@@ -78,12 +80,15 @@ CONFIG:
 |---|---|---|---|
 | `format` | `"jdbc"` | Yes | Selects this connector |
 | `url` | string | Yes | JDBC connection URL |
-| `table` | string | Conditional | Fully qualified table name (required unless `sql` set) |
-| `sql` | string | Conditional | SQL query for reads (alternative to `table`) |
+| `table` | string | Conditional | Fully qualified table name (required for writes; for reads unless `sql` is set) |
+| `dbtable` | string | No | Spark's own name for `table`; reads accept either |
+| `sql` | string | Conditional | SQL query, reads only (alternative to `table`) |
+| `driver` | string | No | JDBC driver class, e.g. `org.postgresql.Driver` |
 | `user` | string | No | Database username |
-| `password` | string | No | Database password — use `{{ env.VAR }}` |
+| `password` | string | No | Database password: use [`secret://`](../config/secrets.md) or `{{ env.VAR }}` |
+| `fetchsize`, `partitionColumn`, `lowerBound`, `upperBound`, `numPartitions` | string or int | No | Read tuning, passed to Spark |
 | `mode` | `append` \| `overwrite` \| `errorifexists` \| `ignore` | No | Default `append`. Spark's native save modes only; `merge` and `overwrite_partitions` are Delta-only and are rejected by this connector |
-| `options` | dict | No | Spark JDBC options |
+| `options` | dict | No | Spark JDBC options, applied last |
 
 ---
 
@@ -111,4 +116,7 @@ ENGINE:
     # spark.jars: "/opt/spark/jars/pg.jar,/opt/spark/jars/mysql.jar"
 ```
 
-On Databricks, install the driver via the cluster Libraries UI.
+`spark.jars` is fixed when the Spark session starts, so this works only when
+Ubunye creates the session (`ubunye run` on the `spark` backend). On Databricks,
+install the driver via the cluster Libraries UI; elsewhere pass it to
+`spark-submit --jars`.

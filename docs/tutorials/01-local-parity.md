@@ -72,8 +72,10 @@ ENGINE:
     spark.sql.session.timeZone: Africa/Johannesburg
 ```
 
-and rerunning only the Spark half. The report now says `identity FAIL` and `data FAIL`,
-with the reason: the two runs cut time into days in different zones. This is the first
+and rerunning only the Spark half (both commands of step 2), then the report. The
+`pandas-local` row now says `FAIL`, with `Identity` and `Data` FAIL, and under
+`Why:` the reason: the two runs cut time into days in different zones (`session time
+zone UTC, reference Africa/Johannesburg`). This is the first
 thing the proving ground found (finding F-021): before ADR 007, a Spark session on a
 laptop outside UTC did this silently.
 

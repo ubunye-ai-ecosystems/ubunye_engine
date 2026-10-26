@@ -28,8 +28,8 @@ Alternatively, supply a `sql` query:
 ```
 
 !!! note "Requirement"
-    Either (`db_name` + `tbl_name`) **or** `sql` is required. Providing neither raises a
-    validation error.
+    For a read, either (`db_name` + `tbl_name`) **or** `sql` is required. For a
+    write, `db_name` + `tbl_name` is required. Anything else is a validation error.
 
 ---
 
@@ -55,13 +55,13 @@ CONFIG:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `format` | `"hive"` | Yes | Selects this connector |
-| `db_name` | string | Conditional | Database name (required unless `sql` / `table` is set) |
-| `tbl_name` | string | Conditional | Table name (required unless `sql` / `table` is set) |
-| `table` | string | Conditional | `db.table`, as an alternative to `db_name` + `tbl_name` |
-| `sql` | string | Conditional | SQL query for reads (alternative to `db_name` + `tbl_name`) |
-| `file_format` | string | No | `parquet` (default), `orc`, `delta` |
+| `db_name` | string | Conditional | Database name (required unless a read sets `sql`) |
+| `tbl_name` | string | Conditional | Table name (required unless a read sets `sql`) |
+| `sql` | string | Conditional | SQL query, reads only (alternative to `db_name` + `tbl_name`) |
+| `file_format` | string | No | Writes only: `parquet` (default), `orc`, `delta` |
 | `mode` | see [Write modes](../config/io.md#write-modes) | No | Default `append`. All six modes supported; `mode: merge` requires `file_format: delta` |
-| `partitionBy` | list | No | Partition columns |
+| `merge_keys` | list \| string | Conditional | Required for `mode: merge` |
+| `partitionBy` | list | No | Writes only: partition columns |
 | `options` | dict | No | Spark reader/writer options |
 
 ---
@@ -75,6 +75,12 @@ ENGINE:
     spark.sql.warehouse.dir: "/user/hive/warehouse"
     hive.metastore.uris: "thrift://metastore-host:9083"
 ```
+
+These keys are fixed when the Spark session starts, so they work only when
+Ubunye creates the session (`ubunye run` on the `spark` backend). Where the
+platform starts the session (Databricks, EMR, `spark-submit`), set them there
+instead; in `ENGINE.spark_conf` they are refused. See
+[Engine & Profiles](../config/engine.md).
 
 ---
 
@@ -105,5 +111,3 @@ To re-run a single day without dropping the rest of the table, use
       partitionBy: [event_date]
 ```
 
-Or use Spark's `partitionBy` via the options dict — keys are passed as
-`df.write.options(**options)` before `.saveAsTable()`.

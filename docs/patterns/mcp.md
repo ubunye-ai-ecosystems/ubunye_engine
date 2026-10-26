@@ -11,6 +11,10 @@ ubunye mcp -d pipelines                 # read-only tools
 ubunye mcp -d pipelines --allow-run     # also the `run` tool
 ```
 
+`-d` defaults to the current folder. `--lineage-dir` (default `.ubunye/lineage`)
+is where run records are read and written, and `--allow-live-llm` lets `run` call
+models live (see below).
+
 ## Tools
 
 | Tool | What it does |

@@ -1,7 +1,7 @@
-# Model Contract — `UbunyeModel`
+# Model Contract: `UbunyeModel`
 
 `UbunyeModel` is the abstract base class every user-defined ML model must implement.
-It is the **only** interface the engine ever calls — no ML library is imported by the engine itself.
+It is the **only** interface the engine ever calls. No ML library is imported by the engine itself.
 
 ---
 
@@ -23,7 +23,7 @@ class UbunyeModel(ABC):
 
     @abstractmethod
     def save(self, path: str) -> None:
-        """Serialize model to path. Pick any format — pickle, joblib, ONNX, …"""
+        """Serialize model to path. Pick any format: pickle, joblib, ONNX, …"""
 
     @classmethod
     @abstractmethod
@@ -44,14 +44,14 @@ class UbunyeModel(ABC):
 ## Why this contract?
 
 The engine never imports `sklearn`, `torch`, `xgboost`, or any ML library.
-It only calls `train()`, `predict()`, `save()`, and `load()` — the implementation is entirely yours.
+It only calls `train()`, `predict()`, `save()`, and `load()`. The implementation is entirely yours.
 
 This gives you:
 
-- **Library freedom** — wrap any ML framework without engine changes.
-- **Testability** — test your model class with unit tests and `MockDF`; no Spark needed.
-- **Registry integration** — the engine calls `save()` and reads `metadata()` + `train()` metrics
-  automatically when `registry` is configured in the transform params.
+- **Library freedom**: wrap any ML framework without engine changes.
+- **Testability**: test your model class with unit tests and `MockDF`; no Spark needed.
+- **Registry integration**: `ModelRegistry.register()` calls `save()` and stores
+  `metadata()` and the metrics `train()` returned.
 
 ---
 
@@ -109,7 +109,7 @@ class FraudRiskModel(UbunyeModel):
 
 ---
 
-## `train()` — return value
+## `train()`: return value
 
 `train()` must return a `dict` of metric name → numeric value.
 These metrics are stored in the registry and used by promotion gates.
@@ -125,15 +125,16 @@ return {
 
 ---
 
-## `predict()` — return value
+## `predict()`: return value
 
 `predict()` receives the same type of object `train()` received (a PySpark DataFrame
 or any duck-typed DataFrame-like) and should return a DataFrame-like with prediction
-columns added. The return value is written to `CONFIG.outputs` by the engine.
+columns added. Return it from your task's `transform()` under an output name and
+the engine writes it like any other output.
 
 ---
 
-## `metadata()` — required keys
+## `metadata()`: required keys
 
 The `metadata()` dict must contain at minimum:
 
@@ -188,7 +189,8 @@ records that run's id. The full example is in
 [Transform: Training a model](../config/transform.md#training-a-model).
 
 A task's `config.yaml` cannot run the model by naming `type: model`: a task always runs
-its `transformations.py` (since 0.7.1 the engine warns, from 0.8.0 it is an error).
+its `transformations.py`. The `type` is not run: `ubunye run` warns
+(`FutureWarning`), and `ubunye plan` and `ubunye validate` report it.
 
 See [Model Registry](registry.md) for the full registry reference.
 

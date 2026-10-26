@@ -8,12 +8,27 @@ without changing the schema.
 
 ## How it works
 
-1. `ConfigLoader.load(path, variables)` reads the raw YAML.
+1. `load_config(path, variables)` (in `ubunye.config`) parses the YAML.
 2. The resolver renders every string value through Jinja2.
-3. The rendered YAML is parsed and validated by Pydantic.
+3. The result is validated by Pydantic.
 
-Jinja expressions can appear in **any string value** — paths, table names, SQL,
-header values, tokens, etc.
+Jinja expressions can appear in **any string value**: paths, table names, SQL,
+header values, tokens, etc. Jinja renders values, not structure: keys and
+`{% if %}` blocks around keys are not templated.
+
+The variables a template can use:
+
+| Variable | Where it comes from |
+|---|---|
+| `dt` | `-dt` / `--data-timestamp` (or `--var dt=...`) |
+| `dtf` | `-dtf` / `--data-timestamp-format` |
+| `mode` | `-m` / `--mode` (default `DEV`) |
+| `task_dir` | the task's own folder, always set |
+| `env` | the environment: `{{ env.NAME }}` |
+| any other name | `--var name=value` |
+
+A flag that was not given leaves its variable undefined, so `| default(...)` works
+for it.
 
 ---
 
@@ -108,7 +123,7 @@ tbl_name: "events_{{ dt | default('2024-01-01') | replace('-', '_') }}"
 Any Jinja2 filter works:
 
 ```yaml
-path: "s3://{{ env.BUCKET | lower }}/{{ use_case | upper }}/{{ dt | replace('-', '/') }}/"
+path: "s3://{{ env.BUCKET | lower }}/{{ mode | lower }}/{{ dt | replace('-', '/') }}/"
 ```
 
 Common filters:
@@ -158,9 +173,11 @@ sql: >-
         --var dt=$(date +%F)
     ```
 
-!!! note "Values must still be valid YAML after rendering"
-    Jinja renders to a string, which is then parsed as YAML.
-    Make sure numeric values that must stay numeric are quoted or cast appropriately.
+!!! note "A templated value is always a string"
+    The YAML is parsed first, then each string is rendered. The result is not
+    parsed again, so `"{{ n }}"` gives the string `"8"`, never the number 8, and a
+    rendered `"true"` stays text. Write a value that must be a number or a list
+    without a template.
 
 ---
 
@@ -181,8 +198,7 @@ CONFIG:
       db_name: "{{ env.RAW_DB | default('raw') }}"
       tbl_name: "events_{{ dt | default('2024-01-01') | replace('-', '_') }}"
 
-  transform:
-    type: task
+  transform: {}
 
   outputs:
     clean_events:

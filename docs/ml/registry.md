@@ -1,7 +1,7 @@
 # Model Registry
 
-The Ubunye model registry manages the full ML lifecycle — versioning, promotion,
-demotion, rollback, and gated releases — without coupling to any specific ML library.
+The Ubunye model registry manages the full ML lifecycle (versioning, promotion,
+demotion, rollback, and gated releases) without coupling to any specific ML library.
 
 ---
 
@@ -39,7 +39,7 @@ Promotion moves a version up the chain; demotion moves it down or to `archived`.
                 └── metrics.json   ← train() metrics
 ```
 
-The engine calls `model.save(path)` — the artifact format (pickle, ONNX, pt, …) is yours.
+The engine calls `model.save(path)`. The artifact format (pickle, ONNX, pt, …) is yours.
 
 ---
 
@@ -59,10 +59,13 @@ Output:
 ```
   Version      Stage          Registered                    Key metrics
   ------------ -------------- ---------------------------- ------------------------------
-  1.3.0        production     2024-06-15T02:10:00Z          auc=0.930, f1=0.880
-  1.2.0        staging        2024-06-10T01:45:00Z          auc=0.910, f1=0.870
-  1.1.0        archived       2024-06-01T00:30:00Z          auc=0.880, f1=0.850
+  1.3.0        production     2024-06-15T02:10:00.512301   auc=0.930, f1=0.880
+  1.2.0        staging        2024-06-10T01:45:00.104877   auc=0.910, f1=0.870
+  1.1.0        archived       2024-06-01T00:30:00.861020   auc=0.880, f1=0.850
 ```
+
+Add `--json` to `list` (and to `compare`) for one JSON document, for scripts and
+agents.
 
 ### Show version details
 
@@ -89,6 +92,9 @@ ubunye models promote \
 ```
 
 Promoting to `production` automatically archives the current production version.
+`--to` takes `staging` or `production`. The version must pass the promotion gates
+stored with the model (see below); `--force` skips them, prints a warning and
+records on the version that it was forced.
 
 ### Demote
 
@@ -129,9 +135,11 @@ ubunye models archive \
 ubunye models compare \
     --use-case fraud_detection \
     --model FraudRiskModel \
-    --versions 1.2.0 1.3.0 \
+    --versions 1.2.0 --versions 1.3.0 \
     --store .ubunye/model_store
 ```
+
+Give `--versions` twice, once per version. `--versions 1.2.0 1.3.0` is refused.
 
 Output:
 
@@ -178,12 +186,21 @@ model and checked again by every later promotion, including `ubunye models promo
 
 ### CLI promote with gates
 
-Gates can also be evaluated via `ubunye models promote` if you specify them in the
-registry's `registry.json` on the version. The Python API is:
+`ubunye models promote` has no flag for gates. It checks the gates stored with
+the model, which you set when you register it:
+
+```python
+mv = registry.register(
+    "fraud_detection", "FraudRiskModel", None, model, metrics,
+    promotion_gates={"min_auc": 0.85, "min_f1": 0.80},
+)
+```
+
+`gates=` on `registry.promote()` checks these gates instead of the stored ones,
+for that one promotion:
 
 ```python
 from ubunye.models.registry import ModelRegistry, ModelStage
-from ubunye.models.gates import PromotionGate
 
 registry = ModelRegistry(".ubunye/model_store")
 gates = {"min_auc": 0.85, "min_f1": 0.80}
@@ -232,8 +249,8 @@ diff = registry.compare_versions("fraud_detection", "FraudRiskModel", "1.2.0", "
 
 ## Auto-versioning
 
-When `auto_version: true` and no explicit `version` is set, the registry bumps the
-**patch** component of the highest existing version:
+When `register()` is given `version=None`, the registry bumps the **patch**
+component of the highest existing version:
 
 ```
 (no versions yet) → 1.0.0
@@ -241,30 +258,29 @@ When `auto_version: true` and no explicit `version` is set, the registry bumps t
 1.2.3 → 1.2.4
 ```
 
-To pin a specific version:
+To pin a specific version, pass it:
 
-```yaml
-registry:
-  store: ".ubunye/model_store"
-  use_case: fraud_detection
-  auto_version: false
-  version: "2.0.0"
+```python
+registry.register("fraud_detection", "FraudRiskModel", "2.0.0", model, metrics)
 ```
+
+A version that already exists is refused with `VersionExistsError`.
 
 ---
 
 ## Lineage integration
 
-When `--lineage` is passed to `ubunye run`, the run ID is automatically attached
-to the registered `ModelVersion.lineage_run_id`.
+A model registered inside a run (from a task's `transformations.py`) gets that
+run's ID in `ModelVersion.lineage_run_id`, unless you pass `lineage_run_id=`
+yourself. Run with `--lineage` so there is a run record to look the ID up in:
 
 ```bash
 ubunye run -d pipelines -u fraud -p ml -t train --lineage
 ubunye models info --use-case fraud_detection --model FraudRiskModel \
     --version 1.3.0 --store .ubunye/model_store
-# → lineage_run_id: "abc123..."
+# → "lineage_run_id": "abc123..."
 
-ubunye lineage show --run-id abc123...
+ubunye lineage show -d pipelines -u fraud -p ml -t train --run-id abc123...
 ```
 
 This lets you trace exactly which data, config hash, and code produced each model version.

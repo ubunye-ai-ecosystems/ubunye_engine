@@ -2,7 +2,7 @@
 
 The notebook API lets data scientists prototype Ubunye tasks step by step
 in Databricks notebooks. Environment variables are auto-resolved from
-widgets and secrets — no manual `os.environ` setup.
+widgets and secrets, with no manual `os.environ` setup.
 
 ## Quick start
 
@@ -28,16 +28,16 @@ That single call:
 ## Step-by-step execution
 
 ```python
-# Cell 2 — read and inspect inputs
+# Cell 2: read and inspect inputs
 sources = ctx.read()
 sources["raw_claims"].display()
 sources["raw_claims"].printSchema()
 
-# Cell 3 — transform and inspect outputs
+# Cell 3: transform and inspect outputs
 outputs = ctx.transform(sources)
 outputs["bronze_claims"].show(20, truncate=False)
 
-# Cell 4 — write when satisfied
+# Cell 4: write when satisfied
 ctx.write(outputs)
 ```
 

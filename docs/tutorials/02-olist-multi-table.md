@@ -19,15 +19,13 @@ git clone https://github.com/ubunye-ai-ecosystems/ubunye_engine
 cd ubunye_engine/examples/real-world/olist_ecommerce
 python -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
-pip install -e "../../..[pandas]" "narwhals>=2.9"
+pip install "ubunye-engine[pandas]" "narwhals>=2.9"
 ```
 
-The last line installs Ubunye from the repository you just cloned (`../../..` is its
-top folder). **This example needs a newer Ubunye than 0.7.1, the latest release on
-PyPI**: 0.7.1 has no `columns` input contracts and none of the fixes this example
-led to (F-052, F-054, F-055), so `pip install ubunye-engine` would fail at step 2.
-Once the next release is out, `pip install "ubunye-engine[pandas]" "narwhals>=2.9"`
-will do.
+This needs Ubunye 0.8.0 or newer: 0.7.1 and older have no `columns` input contracts
+and none of the fixes this example led to (F-052, F-054, F-055), so they fail at
+step 2. To run against the repository you just cloned instead, use
+`pip install -e "../../..[pandas]" "narwhals>=2.9"` (`../../..` is its top folder).
 
 Every command below runs from this folder.
 
@@ -248,7 +246,7 @@ Every step is written once with Narwhals, so it runs on Spark unchanged. With Ja
 or 21 installed (Windows also needs `HADOOP_HOME` with `winutils.exe`):
 
 ```bash
-pip install -e "../../..[pandas,spark]"
+pip install "ubunye-engine[pandas,spark]"
 for t in clean orders_fact monthly; do
   ubunye run -d pipelines -u olist -p sales -t $t --backend pandas --lineage --var out_dir=output/pandas
   ubunye prove observe --workload r2-olist-$t --env pandas-local -d pipelines -u olist -p sales -t $t -o evidence
@@ -263,7 +261,7 @@ ubunye prove report evidence --workload r2-olist-orders_fact --reference spark-l
 In PowerShell (Windows), the loops are written like this:
 
 ```powershell
-pip install -e "../../..[pandas,spark]"
+pip install "ubunye-engine[pandas,spark]"
 foreach ($t in "clean", "orders_fact", "monthly") {
   ubunye run -d pipelines -u olist -p sales -t $t --backend pandas --lineage --var out_dir=output/pandas
   ubunye prove observe --workload "r2-olist-$t" --env pandas-local -d pipelines -u olist -p sales -t $t -o evidence

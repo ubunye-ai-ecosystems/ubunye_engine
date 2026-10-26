@@ -7,6 +7,8 @@ It runs on every shipped backend: `spark`, `databricks` and `pandas`. On a lapto
 `--backend pandas` pulls from an API with no Spark and no Java. Both backends give
 the same rows and types (see [Types](#types)).
 
+It needs the `requests` package: `pip install "ubunye-engine[rest]"`.
+
 ---
 
 ## Read
@@ -30,6 +32,7 @@ CONFIG:
       format: rest_api
       url: "https://api.example.com/v1/customers"
       method: GET                        # GET (default) | POST
+      # body: {...}                      # JSON body, for POST
 
       headers:
         Accept: application/json
@@ -55,7 +58,7 @@ CONFIG:
         retry_on: [429, 503]
         max_retries: 3
 
-      schema:                            # optional — inferred if omitted
+      schema:                            # optional; inferred if omitted
         - name: customer_id
           type: string
         - name: created_at
@@ -161,12 +164,14 @@ name `type: api_key` still works, with a warning: it means `api_key_header` when
       next_key: next                 # the response's key holding the next URL (default)
     ```
 
-The old names `cursor_field` (for `cursor_response_key`) and `link_field` (for
-`next_key`) still work, with a warning.
-
 === "None (single request)"
 
     Omit the `pagination` key entirely.
+
+The old names `cursor_field` (for `cursor_response_key`) and `link_field` (for
+`next_key`) still work, with a warning. The cursor, like the next link, must be a
+top level key of the response body. An unknown pagination `type` stops the read
+with an error.
 
 ---
 
@@ -257,6 +262,7 @@ schema:
 ```
 
 Supported types: `string`, `integer`, `long`, `float`, `double`, `boolean`, `timestamp`, `date`, `binary`.
+The short names `str`, `int`, `bigint` and `bool` work too.
 
 A value must have the column's kind, as Spark checks it. A whole number in a
 `double` or `float` column is read as that decimal number (`1` becomes `1.0`), on
@@ -275,7 +281,6 @@ CONFIG:
     predictions_api:
       format: rest_api
       url: "https://api.example.com/v1/predictions"
-      method: POST
       headers:
         Content-Type: application/json
       auth:
@@ -284,9 +289,15 @@ CONFIG:
       batch_size: 100            # records per request
       rate_limit:
         requests_per_second: 5
-        retry_on: [429, 503]
+        retry_on: [429, 503]               # default for writes: [429, 500, 503]
         max_retries: 3
 ```
+
+The writer always sends `POST`. It accepts `url`, `headers`, `auth`, `batch_size`
+(default 100), `rate_limit`, and `mode: append` (the default; `merge` and
+`overwrite_partitions` are refused, other save modes only warn). A batch that
+still fails after its retries is counted, and the write fails at the end with the
+number of failed batches.
 
 The writer batches rows into JSON payloads of `batch_size` records and POSTs each batch
 as `{"records": [...]}`. A map column is sent as an object. Spark and pandas send the
@@ -318,15 +329,18 @@ of its batch is posted (earlier batches were, and the error says how many).
 | `method` | `GET` \| `POST` | `GET` | HTTP method |
 | `headers` | dict | `{}` | Additional HTTP headers |
 | `params` | dict | `{}` | Query string parameters |
+| `body` | dict | `null` | JSON request body |
 | `auth` | dict | `null` | Authentication config |
-| `pagination` | dict | `null` | Pagination strategy |
+| `pagination` | dict | `null` | Pagination strategy: `type`, `page_size` (default 100), `max_pages` (default 0, no cap), `offset_param`, `cursor_response_key`, `cursor_param`, `next_key` |
 | `response.root_key` | string | `null` | Key to extract records from |
-| `rate_limit` | dict | `null` | Rate limiting and retry config |
+| `rate_limit` | dict | `null` | `requests_per_second` (default 0, no limit), `retry_on` (default `[429, 503]`), `max_retries` (default 3) |
 | `schema` | list of dicts | `null` | Field name + type declarations |
+
+A retry waits 1 second, then 2, then 4, and so on.
 
 ---
 
-## Example — customer sync pipeline
+## Example: customer sync pipeline
 
 ```yaml
 MODEL: etl

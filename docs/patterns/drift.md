@@ -15,7 +15,7 @@ This pattern shows how to compute drift metrics with Ubunye and gate model promo
 
 ---
 
-## Step 1 — Compute drift metrics
+## Step 1: Compute drift metrics
 
 Calculate PSI (Population Stability Index) or KL divergence between a reference
 distribution (from training) and the current serving window.
@@ -39,9 +39,6 @@ CONFIG:
         SELECT * FROM raw.transactions
         WHERE event_date >= date_sub(current_date(), 7)
 
-  transform:
-    type: task
-
   outputs:
     drift_metrics:
       format: delta
@@ -49,7 +46,7 @@ CONFIG:
       mode: overwrite
 ```
 
-`transformations.py` — PSI per numeric feature:
+`transformations.py`, PSI per numeric feature:
 
 ```python
 import math
@@ -93,10 +90,11 @@ def _histogram(df, col, breaks):
 
 ---
 
-## Step 2 — Gate model promotion on drift check
+## Step 2: Gate model promotion on drift check
 
-The `require_drift_check` promotion gate checks that `metadata["drift_check_passed"]`
-is `True` before allowing promotion to staging or production.
+The `require_drift_check` promotion gate checks that the version's metadata has
+`drift_check_passed: True` before allowing promotion. The registry stores
+whatever your model's `metadata()` returns, so that is where the flag goes.
 
 In your training pipeline's `model.py`:
 
@@ -106,33 +104,38 @@ from ubunye.models.base import UbunyeModel
 class FraudRiskModel(UbunyeModel):
     def train(self, df):
         # ... training logic
-        metrics = {"auc": 0.91, "f1": 0.87}
-        # Read drift results and attach to metrics/metadata
-        drift_ok = self._check_drift()
-        return {**metrics, "_drift_check_passed": drift_ok}
+        self._drift_ok = self._check_drift()   # read the drift results
+        return {"auc": 0.91, "f1": 0.87}
+
+    def metadata(self):
+        return {"library": "sklearn", "drift_check_passed": self._drift_ok}
     ...
 ```
 
 In the training task's `transformations.py`, after training:
 
 ```python
+from ubunye.models import ModelRegistry, ModelStage
+
+registry = ModelRegistry("s3://models/")
 mv = registry.register("fraud", "FraudRiskModel", None, model, metrics)
 registry.promote(
     "fraud",
     "FraudRiskModel",
     mv.version,
     ModelStage.STAGING,
-    # Blocks promotion if drift_check_passed is false.
+    # Blocks promotion if drift_check_passed is not True.
     gates={"min_auc": 0.85, "min_f1": 0.80, "require_drift_check": True},
 )
 ```
 
-Or pass `drift_check_passed` via metadata at registration time (from the CLI or
-a pre-training orchestration step that computes drift first).
+Instead of passing `gates` on each promotion, you can store them once with the
+model: `registry.register(..., promotion_gates={...})`. Every later promotion,
+including `ubunye models promote`, then checks them.
 
 ---
 
-## Step 3 — Inspect drift over time
+## Step 3: Inspect drift over time
 
 Query the drift metrics Delta table:
 
@@ -142,11 +145,16 @@ FROM delta.`s3://datalake/ml/drift/fraud/`
 ORDER BY run_date DESC, psi DESC
 ```
 
-Or use the Ubunye lineage CLI to trace which runs had drift:
+Run records do not carry drift results, so the lineage CLI cannot filter on
+them. It can list the drift task's runs, for example the ones that failed:
 
 ```bash
-ubunye lineage search --tag drift_check=FAIL
+ubunye lineage search -d pipelines -u fraud -p drift -t psi --status error
 ```
+
+To make a run fail when PSI crosses a line, put an
+[expectation](../config/expectations.md) on the `psi` column (see
+[Gate on a number](gate.md#gate-on-a-number-accuracy-agreement-error-rate)).
 
 ---
 
@@ -187,12 +195,17 @@ return {
 | `max_<metric>` | float | Metric must be `<=` threshold |
 | `require_drift_check` | bool | `metadata["drift_check_passed"]` must be `True` |
 
-```yaml
-promotion_gates:
-  min_auc: 0.85
-  max_loss: 0.15
-  require_drift_check: true
+To store gates with the model, pass them when you register it, in
+`transformations.py`:
+
+```python
+registry.register(
+    "fraud", "FraudRiskModel", None, model, metrics,
+    promotion_gates={"min_auc": 0.85, "max_loss": 0.15, "require_drift_check": True},
+)
 ```
 
-When any gate fails, `registry.promote()` raises `ValueError` listing each failing gate
-with the actual value and threshold. The CLI surfaces this as an `[ERROR]` message.
+When any gate fails, `registry.promote()` raises `PromotionBlockedError` (a
+`ValueError`) listing each failing gate with the actual value and threshold.
+The CLI prints it as an `[ERROR]` message and exits 1; `ubunye models promote
+--force` skips the gates and records that it did.

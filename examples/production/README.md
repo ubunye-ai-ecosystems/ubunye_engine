@@ -1,14 +1,15 @@
-# Ubunye Engine — Production Reference Examples
+# Ubunye Engine: production reference examples
 
-Two fully worked, CI-deployed pipelines that compute the same thing — survival
-rate by passenger class on the canonical Kaggle Titanic training set — on two
-different runtimes. They exist to answer one specific question:
+Worked pipelines, each with its own README, tests and CI workflow. Most of
+them compute survival rate by passenger class on the Kaggle Titanic training
+set, on a laptop and on Databricks. They answer one question:
 
 > *How much code changes when I move a Ubunye pipeline from my laptop to
 > Databricks?*
 
-The short answer: the business logic does not change. The config shifts from
-`file://` to `dbfs:/` and gains a deployment wrapper. That is all.
+The short answer: the business logic does not change. The config swaps a
+local Parquet output for a Unity Catalog table, and a notebook plus an Asset
+Bundle wrap the run. That is all.
 
 ---
 
@@ -16,36 +17,37 @@ The short answer: the business logic does not change. The config shifts from
 
 | Example                                           | Runtime                               | Input                        | Output                       |
 |---------------------------------------------------|---------------------------------------|------------------------------|------------------------------|
-| [`titanic_local/`](./titanic_local/)              | Local SparkSession                    | CSV on disk                  | Parquet on disk              |
-| [`titanic_databricks/`](./titanic_databricks/)    | Databricks serverless + UC            | CSV on UC volume             | Unity Catalog Delta table    |
-| [`jhb_weather_databricks/`](./jhb_weather_databricks/) | Databricks + Unity Catalog        | Open-Meteo REST API (no auth)| Unity Catalog Delta table    |
-| [`titanic_ml_databricks/`](./titanic_ml_databricks/) | Databricks serverless + UC (ML)     | CSV on UC volume             | Training audit log + predictions (UC Delta); MLflow + Model Registry |
-| [`titanic_multitask_local/`](./titanic_multitask_local/) | Local SparkSession             | CSV on disk                  | Intermediate + summary Parquet on disk |
-| [`titanic_multitask_databricks/`](./titanic_multitask_databricks/) | Databricks serverless + UC | CSV on UC volume | Unity Catalog Delta tables (intermediate + summary) |
+| [`titanic_local/`](./titanic_local/)              | Local Spark, or pandas with no Java   | CSV on disk                  | Parquet on disk              |
+| [`titanic_databricks/`](./titanic_databricks/)    | Databricks serverless + Unity Catalog | CSV on a UC volume           | Unity Catalog Delta table    |
+| [`jhb_weather_databricks/`](./jhb_weather_databricks/) | Databricks serverless + Unity Catalog | Open-Meteo REST API (no auth) | Unity Catalog Delta table |
+| [`titanic_ml_databricks/`](./titanic_ml_databricks/) | Databricks serverless + Unity Catalog (ML) | CSV on a UC volume   | Training audit log + predictions (UC Delta); MLflow + model registry |
+| [`titanic_multitask_local/`](./titanic_multitask_local/) | Local Spark, or pandas with no Java | CSV on disk              | Intermediate + summary Parquet on disk |
+| [`titanic_multitask_databricks/`](./titanic_multitask_databricks/) | Databricks serverless + Unity Catalog | CSV on a UC volume | Unity Catalog Delta tables (intermediate + summary) |
+| [`llm_replay/`](./llm_replay/)                    | pandas, no Java                       | CSV on disk                  | Parquet on disk, with replayed model calls |
 
-The first two answer *"how much code changes when I move from laptop to
-Databricks?"* — the business logic is byte-identical across them. The third
-shows REST ingestion + Unity Catalog sinks with a scheduled Databricks job.
-The fourth is the end-to-end ML lifecycle counterpart: `UbunyeModel` +
-MLflow logging + filesystem-backed Model Registry on a UC volume, with
-promotion gates. The last two are a **multi-task chaining** pair: two
-tasks run sequentially via `ubunye run -t task1 -t task2` (local) or
-`ubunye.run_pipeline()` (Databricks), validating that the engine's
-sibling-module isolation works correctly. Their `transformations.py` files
-are byte-identical — only the configs change (s3 → unity).
+The first two answer "how much code changes when I move from laptop to
+Databricks?": their `transformations.py` is byte-identical. The third shows
+REST ingestion into a Unity Catalog table on a scheduled Databricks job. The
+fourth is the ML lifecycle: `UbunyeModel`, MLflow logging and a
+filesystem-backed model registry on a UC volume, with a promotion gate. The
+two multitask examples chain two tasks: `ubunye run -t clean_data -t aggregate`
+locally, `ubunye.run_pipeline()` on Databricks. Their `transformations.py`
+files are byte-identical too; only the configs change (`s3` paths to `unity`
+tables). The last one calls a language model through `ubunye.llm` and replays
+the committed answers, so it runs with no key, no network and no cost.
 
-Each example is self-contained: its own `README.md`, tests, and CI workflow.
-Start with the one that matches your runtime.
+Each example is self-contained. Start with the one that matches your runtime.
 
 ---
 
 ## The portability contract
 
-The file that contains the business logic —
-`pipelines/titanic/analytics/survival_by_class/transformations.py` —
-is **byte-identical** between the two examples.
+The file that holds the business logic,
+`pipelines/titanic/analytics/survival_by_class/transformations.py`,
+is byte-identical in `titanic_local` and `titanic_databricks`.
 
-This is enforced in CI. The Databricks workflow includes a step that runs:
+CI enforces this. `.github/workflows/databricks_deploy.yml` has a step that
+runs:
 
 ```bash
 diff -q \
@@ -54,112 +56,81 @@ diff -q \
 ```
 
 If the two files drift, the workflow fails with a unified diff and an
-`::error` annotation pointing at the file. The portability claim is therefore
-a build-time invariant, not a documentation promise.
+`::error` annotation that points at the file. So the portability claim is
+checked on every build. `.github/workflows/multitask_databricks.yml` does the
+same for the two multitask examples.
 
-Nothing else is shared — `config.yaml`, deployment wrappers, and CI workflows
-are free to diverge per runtime.
+Nothing else is shared. `config.yaml`, the run wrappers and the CI workflows
+are free to differ per runtime.
 
 ---
 
 ## Side-by-side config comparison
 
-Both configs share `MODEL`, `VERSION`, the `ENGINE.profiles` shape, and the
-`CONFIG.inputs` / `CONFIG.outputs` structure. Only the highlighted lines
-differ.
+Both configs share `MODEL`, `VERSION`, the `ENGINE` profiles and the input.
+They differ in the PROD partition count and in the output.
 
-| Section / key                             | `titanic_local`                                                | `titanic_databricks`                                      |
-|-------------------------------------------|----------------------------------------------------------------|-----------------------------------------------------------|
-| `ENGINE.spark_conf`                       | `shuffle.partitions: 4`                                        | `shuffle.partitions: 4`                                   |
-| `ENGINE.profiles.DEV.spark_conf`          | `shuffle.partitions: 2`                                        | `shuffle.partitions: 2`                                   |
-| `ENGINE.profiles.PROD.spark_conf`         | `shuffle.partitions: 50`                                       | `shuffle.partitions: 8` *(CE is single-node)*             |
-| `CONFIG.inputs.titanic.format`            | `s3`                                                           | `s3`                                                      |
-| `CONFIG.inputs.titanic.file_format`       | `csv`                                                          | `csv`                                                     |
-| `CONFIG.inputs.titanic.path` *(resolved)* | `file:///.../data/titanic.csv`                                 | `dbfs:/FileStore/titanic/titanic.csv`                     |
-| `CONFIG.outputs.*.format`                 | `s3`                                                           | `s3`                                                      |
-| `CONFIG.outputs.*.file_format`            | `parquet`                                                      | `parquet`                                                 |
-| `CONFIG.outputs.*.path` *(resolved)*      | `file:///.../output/mode=DEV/dt=2026-04-15`                    | `dbfs:/FileStore/titanic/output/mode=PROD/dt=2026-04-15`  |
-| Default `mode` in output path Jinja        | `DEV`                                                          | `PROD`                                                    |
-
-Everything that differs is isolated to the two `env.TITANIC_*` values and the
-CE-appropriate partition count. The config *schema* is the same; only its
-concrete bindings move.
+| Section / key                             | `titanic_local`                                     | `titanic_databricks`                                      |
+|-------------------------------------------|-----------------------------------------------------|-----------------------------------------------------------|
+| `ENGINE.spark_conf`                       | `shuffle.partitions: 4`, dynamic partition overwrite | same                                                     |
+| `ENGINE.profiles.DEV.spark_conf`          | `shuffle.partitions: 2`                             | `shuffle.partitions: 2`                                   |
+| `ENGINE.profiles.PROD.spark_conf`         | `shuffle.partitions: 50`                            | `shuffle.partitions: 8`                                   |
+| `CONFIG.inputs.titanic`                   | `format: s3`, `file_format: csv`, `{{ env.TITANIC_INPUT_PATH }}` | same                                         |
+| Input path *(resolved)*                   | `file:///.../data/titanic.csv`                      | `/Volumes/workspace/titanic/data/titanic.csv`             |
+| `CONFIG.outputs.survival_by_class.format` | `s3` with `file_format: parquet`                    | `unity`                                                   |
+| Output location                           | `{{ env.TITANIC_OUTPUT_PATH }}/mode={{ mode }}/dt={{ dt }}` | `table: {{ env.TITANIC_CATALOG }}.{{ env.TITANIC_SCHEMA }}.survival_by_class` (defaults `workspace.titanic`) |
+| Output *(resolved)*                       | `file:///.../output/mode=DEV/dt=2026-04-15`         | `workspace.titanic.survival_by_class`                     |
+| `mode` used by the run                    | `DEV` (the CLI default)                             | `PROD` (set by the job)                                   |
 
 ### What the runtime wrappers do
 
 | Concern                          | `titanic_local`                                        | `titanic_databricks`                                            |
 |----------------------------------|--------------------------------------------------------|-----------------------------------------------------------------|
-| SparkSession lifecycle           | Created by `SparkBackend.start()`                      | Reused from the notebook context via `DatabricksBackend`        |
-| How the CSV gets staged          | `scripts/fetch_titanic.sh` (curl; local or CI)         | `notebooks/run_titanic.py` does `urllib.urlretrieve` into DBFS  |
-| How env vars are set             | `export TITANIC_INPUT_PATH=...` before `ubunye run`    | `os.environ["TITANIC_INPUT_PATH"] = dbutils.widgets.get(...)`   |
-| How the pipeline is invoked      | `ubunye run -d ... -t survival_by_class`               | `ubunye.run_task(task_dir=..., dt=..., mode=...)`               |
-| Output validation                | `scripts/validate_output.py` diffs vs. golden parquet  | PySpark unit tests read the golden parquet via the SparkSession fixture |
+| Engine session                   | Created by `SparkBackend`, or none with `--backend pandas` | The notebook's session, reused by `DatabricksBackend`       |
+| How the CSV gets staged          | `scripts/fetch_titanic.sh` (curl; local or CI)         | `notebooks/run_titanic.py` downloads it into a UC volume with `urllib.request.urlretrieve` |
+| How env vars are set             | `export TITANIC_INPUT_PATH=...` before `ubunye run`    | `os.environ[...]` in the notebook, from job widgets             |
+| How the pipeline is invoked      | `ubunye run -d ... -t survival_by_class`               | `ubunye.run_task(task_dir=..., dt=..., mode=..., lineage=True)` |
+| Output validation                | `scripts/validate_output.py` diffs against the golden parquet; `scripts/same_receipt.sh` compares the Spark and pandas run records | PySpark unit tests check the golden parquet; query the table after a run |
 
 ---
 
-## Decision guide — which runtime to use when
+## Decision guide: which runtime to use when
 
 Pick the runtime that matches where the *data* lives. Ubunye does not care;
-the bottleneck is always I/O locality.
+the bottleneck is I/O locality.
 
 | Scenario                                                           | Use                  | Why                                                                                       |
 |--------------------------------------------------------------------|----------------------|-------------------------------------------------------------------------------------------|
-| Developing and iterating locally, data fits on a laptop            | `titanic_local`      | Fast feedback loop; no auth, no workspace, no cluster startup cost.                       |
-| CI validation of config + logic on pull requests                   | `titanic_local`      | GitHub runners have JDK and can run a local Spark session deterministically in ~1 minute. |
-| Unit tests of the aggregation itself                               | Either               | Both use a session-scoped local SparkSession fixture — same code runs in CI.              |
-| Data lives in DBFS, Unity Catalog, or a Databricks Delta table     | `titanic_databricks` | Reading from DBFS/UC requires a Databricks runtime; running elsewhere pays a transfer cost. |
-| Production batch job on a schedule with Databricks Jobs orchestration | `titanic_databricks` | Asset Bundles give you job-as-code, versioned deploys, and lineage in one workflow.       |
-| Ad-hoc analysis in a notebook by a data scientist                  | `titanic_databricks` | `ubunye.run_task()` reuses the active SparkSession so the notebook "just works".          |
-| Training run where the input has already been prepared locally     | `titanic_local`      | Avoids a round-trip through DBFS for ephemeral inputs.                                    |
+| Developing and iterating locally, data fits on a laptop            | `titanic_local`      | Fast feedback; no auth, no workspace, no cluster start. `--backend pandas` needs no Java. |
+| CI checks of config and logic on pull requests                     | `titanic_local`      | GitHub runners can run a local Spark session, or pandas, in about a minute.               |
+| Unit tests of the aggregation itself                               | Either               | Both use a session-scoped local SparkSession fixture, so the same code runs in CI.        |
+| Data lives in Unity Catalog or a Databricks Delta table            | `titanic_databricks` | Reading UC tables and volumes needs a Databricks runtime; elsewhere you pay to move data. |
+| Production batch job on a schedule with Databricks Jobs            | `titanic_databricks` | Asset Bundles give you the job as code and versioned deploys.                             |
+| Ad-hoc analysis in a notebook                                      | `titanic_databricks` | `ubunye.run_task()` reuses the active SparkSession, so the notebook just works.           |
 
-Heuristic: if your input path starts with `dbfs:/` or `<catalog>.<schema>.<table>`,
-you want the Databricks example. Otherwise the local one is almost certainly
-faster and cheaper to iterate on.
+Rule of thumb: if your input is a `/Volumes/...` path or a
+`<catalog>.<schema>.<table>` name, use the Databricks example. Otherwise the
+local one is faster and cheaper to iterate on.
 
 ---
 
-## Community Edition vs. a standard Databricks workspace
+## Free Edition and paid workspaces
 
-The Databricks example is targeted at **Community Edition** so it works on a
-free tier. Every decision in `databricks.yml` that looks unusual exists
-because of a specific CE constraint. The table below tells you what to do
-differently if you are on a paid workspace.
+The Databricks examples were run end to end on Databricks Free Edition. Free
+Edition is serverless only and gives you a `workspace` catalog. The same
+bundles work on a paid workspace with small changes.
 
-| Aspect                                    | On Community Edition                                                                 | On a standard Databricks workspace                                                                  |
-|-------------------------------------------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| **Authentication**                        | Personal access token (PAT) only — no service principals.                            | Prefer service principal + OAuth (`DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET`).             |
-| **Cluster sizing**                        | Single-node (`num_workers: 0`, `spark.master: local[*]`).                            | Multi-node autoscaling. Delete the `spark.databricks.cluster.profile: singleNode` conf.             |
-| **Storage layer**                         | DBFS (`dbfs:/FileStore/...`). Deprecated for new workspaces.                         | Unity Catalog (`<catalog>.<schema>.<table>`). Swap `format: s3` for `format: unity`.                |
-| **Asset Bundle `jobs.create` API**        | Often restricted. `bundle deploy` may 403; fall back to `existing_cluster_id`.       | Works out of the box. `new_cluster` is the right default.                                           |
-| **Cluster lifecycle**                     | Auto-terminates; no warm pools.                                                      | Use instance pools for faster cold starts.                                                          |
-| **Observability**                         | Notebook `print()` + `ubunye lineage` records copied out of DBFS.                    | MLflow, Ubunye lineage written to UC volumes, OTel hooks shipped to your APM.                        |
-| **Secrets**                               | `DATABRICKS_TOKEN` in GitHub Actions secrets.                                        | Same shape; consider using GitHub OIDC + Databricks federated identity instead of a long-lived PAT. |
-| **Cost model**                            | Free; 15 GB memory single-node; workspace idle-expires.                              | Pay per DBU + cloud compute. Size clusters to your SLA, not to CE limits.                           |
-| **Runtime availability**                  | `13.3.x-scala2.12` is the safe pin; newer runtimes may not be offered.               | Track the latest LTS. Update `spark_version` in `databricks.yml` during each LTS bump.              |
-| **Delta / Iceberg**                       | Delta works; Iceberg typically not provisioned.                                      | Both. Unity Catalog governs Iceberg tables as of DBR 14.                                            |
+| Aspect               | Free Edition                                             | Paid workspace                                                        |
+|----------------------|----------------------------------------------------------|-----------------------------------------------------------------------|
+| **Authentication**   | Personal access token (`DATABRICKS_TOKEN`).              | Prefer a service principal. The CI workflows also accept `DATABRICKS_CLIENT_ID` + `DATABRICKS_CLIENT_SECRET`. |
+| **Compute**          | Serverless only. The bundles have no cluster block, so tasks run on serverless. | Same bundles work. Add a cluster block only if you need classic compute. |
+| **Catalog**          | `workspace` (the bundle default).                        | Usually `main`: `databricks bundle deploy --target nonprod --var="titanic_catalog=main"`. |
+| **Input files**      | UC volumes (`/Volumes/...`). Serverless blocks `file:///tmp/...`. | Same.                                                        |
+| **Engine install**   | Each notebook runs `%pip install ubunye-engine==0.7.0`.  | Same. Pin a newer version when you upgrade.                           |
 
-**Net:** the *shape* of `databricks.yml` and the entry notebook is the same
-on both. If you copy this example to a paid workspace you will delete the
-single-node cluster conf, change the storage format, and swap PAT for OAuth
-— roughly a ten-line diff. The pipeline and `transformations.py` do not move.
+The `databricks.yml` in each example is a reference bundle. `ubunye deploy
+databricks` can build an equivalent job for one task instead; add `--dry-run`
+to print the job spec without deploying.
 
-### Community Edition-specific risks you should know about
-
-These are not fixable from inside the example — they are constraints of the
-platform itself and are documented honestly in
-[`titanic_databricks/README.md`](./titanic_databricks/README.md):
-
-1. New CE signups have been closed. Existing workspaces still work but new
-   ones may need to use the Databricks "Free Edition" successor, which has
-   different defaults.
-2. `databricks bundle deploy` against CE can fail on the `jobs.create` API
-   depending on your tier; the README documents the `existing_cluster_id`
-   fallback.
-3. DBFS is deprecated for net-new workspaces. The example uses it because CE
-   has no Unity Catalog alternative; on a paid workspace you should migrate
-   to UC volumes.
-4. Workspaces time out. Expect to re-authenticate and possibly recreate the
-   job if you do not return for months.
-
-None of these are worked around silently. If any of them bite in CI, the
-workflow fails with the underlying tool's own error message.
+If something fails in CI, the workflow fails with the underlying tool's own
+error message. Nothing is worked around silently.

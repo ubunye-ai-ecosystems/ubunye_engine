@@ -1,19 +1,31 @@
 # Deploying on AWS
 
-This page is honest about its status: everything below is written, reviewed
-and wired into CI, and none of it has been executed, because EMR Serverless is
-not covered by any free tier and running it needs a paid account. The CI jobs
-say in plain words when they were skipped rather than run. Four secrets turn
-them on with no code change.
+The engine has two commands for AWS, both described in
+[One command to the cloud](serverless.md):
+
+- `ubunye deploy glue` runs a task on AWS Glue 5. This has been run for real:
+  the [proving ground](../proving-ground/latest.md) runs its workloads on Glue
+  and gets the same data as local Spark.
+- `ubunye deploy emr-serverless` starts a task on EMR Serverless. It is tested
+  as a plan only: an AWS account on the free plan cannot use EMR.
+
+The rest of this page is the older, script-based path for EMR Serverless. The
+scripts live in the
+[examples repository](https://github.com/ubunye-ai-ecosystems/ubunye-examples)
+(`platforms/aws/`), not in this one. They are written and wired into CI there,
+and have not been executed, for the same account reason. The CI jobs say in
+plain words when they were skipped rather than run. Four secrets turn them on
+with no code change.
 
 ## Where a pipeline runs on AWS: EMR Serverless
 
-EMR Serverless is AWS's run-Spark-without-managing-a-cluster service, and it
-is the natural home for these pipelines. It does not give you a shell. It
-takes a Python file and hands it to spark-submit, which is exactly why the
-engine ships `python -m ubunye` as an entry point.
+EMR Serverless is AWS's run-Spark-without-managing-a-cluster service. It does
+not give you a shell. It takes a Python file and hands it to spark-submit,
+which is exactly why the engine ships `python -m ubunye` as an entry point.
 
 ### 1. One-time setup
+
+From a clone of the examples repository:
 
 ```bash
 bash platforms/aws/setup.sh
@@ -54,8 +66,9 @@ addition so the decision is visible rather than forgotten.
 
 ## What about EMR on EC2, or Glue?
 
-Classic EMR clusters speak YARN: set `SPARK_MASTER=yarn` in the launcher and
-the same task runs. AWS Glue pre-creates a Spark session, which the engine
-attaches to automatically, the same way it attaches on Databricks. Neither
-path has been executed yet, for the same account reason, and this page will
-say so until one has.
+Classic EMR clusters speak YARN: set `SPARK_MASTER=yarn` in the examples
+repository's launcher and the same task runs. This path has not been executed
+yet, and this page will say so until it has.
+
+Glue is covered by `ubunye deploy glue` (see above). Glue pre-creates a Spark
+session, and the engine attaches to it, the same way it attaches on Databricks.
