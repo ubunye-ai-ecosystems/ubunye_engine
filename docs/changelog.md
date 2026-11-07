@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **`SECURITY.md` is current.** It was `security.md` and said only 0.1.x was
+  supported. It now names the supported release (0.8.x), asks for reports through
+  GitHub's private vulnerability reporting first, and says what counts as an
+  Ubunye vulnerability and what does not.
+
 ### Fixed
 
 - **The Databricks examples run on serverless again.** Four example configs set
