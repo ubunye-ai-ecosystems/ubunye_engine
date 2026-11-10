@@ -7,11 +7,16 @@ e-commerce set: nine CSV files, each with its own problems. On the way you will 
 four Ubunye features stop four kinds of bad data, and then break the pipeline on
 purpose to watch them work.
 
+This tutorial teaches data checks: **quarantine** (set bad rows aside with a label),
+**reconcile** (prove no rows or money went missing) and **input contracts** (stop a run
+when a source file changes shape). The reference for every check is
+[Expectations](../config/expectations.md).
+
 About 20 minutes. No cloud, no account, no Java (Spark is an optional last step).
 
 ## You need
 
-- Python 3.10 to 3.13.
+- Python, in a version listed in [Installation](../getting_started/install.md).
 - The Ubunye repository (the example lives in it):
 
 ```bash
@@ -22,9 +27,10 @@ python -m venv .venv
 pip install "ubunye-engine[pandas]" "narwhals>=2.9"
 ```
 
-This needs Ubunye 0.8.0 or newer: 0.7.1 and older have no `columns` input contracts
-and none of the fixes this example led to (F-052, F-054, F-055), so they fail at
-step 2. To run against the repository you just cloned instead, use
+This needs Ubunye 0.8.0 or newer. Older versions have no `columns` input contracts and
+miss fixes this example led to (clean reasons on quarantined rows, the error kept in a
+failed run's record, a short message instead of a traceback when a check stops a run),
+so they fail at step 2. To run against the repository you just cloned instead, use
 `pip install -e "../../..[pandas]" "narwhals>=2.9"` (`../../..` is its top folder).
 
 Every command below runs from this folder.
@@ -242,8 +248,8 @@ Change `inner` back to `left` before going on.
 
 ## 7. Optional: the same answer on Spark
 
-Every step is written once with Narwhals, so it runs on Spark unchanged. With Java 17
-or 21 installed (Windows also needs `HADOOP_HOME` with `winutils.exe`):
+Every step is written once with Narwhals, so it runs on Spark unchanged. With Java
+installed (versions in [Installation](../getting_started/install.md); Windows also needs `HADOOP_HOME` with `winutils.exe`):
 
 ```bash
 pip install "ubunye-engine[pandas,spark]"
