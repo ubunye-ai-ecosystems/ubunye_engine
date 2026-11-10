@@ -47,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   record (`lineage=True`) and the `CONFIG.monitors` hook when given hooks. Your hooks
   now run with them. `Engine(hooks=...)` is unchanged.
 
+- **A unity read that names its table with `db_name` fails `ubunye validate`**
+  (F-102). It passed validation and failed at run time: the reader never read
+  `db_name`. The message says what to use: `table: 'catalog.schema.table'`, or
+  `catalog` + `schema` + `tbl_name` (now accepted by validate, as the reader always
+  read it), or `sql`.
+
 - Registering with `promotion_gates={}` clears a model's stored gates on every
   backend. Before, only the default filesystem path cleared them; MLflow and the
   others kept the old gates.
