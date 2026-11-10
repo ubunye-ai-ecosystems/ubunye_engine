@@ -17,6 +17,7 @@ import typer
 
 from ubunye.cli.lineage import lineage_backend_option, open_store
 from ubunye.cli.output import emit, fail, json_option
+from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.lineage import health as health_q
 from ubunye.lineage import upstream as upstream_q
@@ -44,15 +45,15 @@ _COLOURS = {
 }
 
 
-@runs_app.command("health")
+@runs_app.command("health", cls=PipelineCommand)
 def health(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", help="Root of the pipelines."),
     usecase: Optional[str] = typer.Option(
         None, "-u", "--usecase", help="Every task of this use case (folders and records)."
     ),
-    package: Optional[str] = typer.Option(None, "-p", "--package", help="Only this package."),
+    package: Optional[str] = pipeline_option(None, help="Only this pipeline."),
     tasks: Optional[List[str]] = typer.Option(
-        None, "--task", help="A task as usecase/package/task. Repeatable."
+        None, "--task", help="A task as usecase/pipeline/task. Repeatable."
     ),
     max_age: Optional[str] = typer.Option(
         None,
@@ -76,7 +77,7 @@ def health(
     age = _duration(max_age, "--max-age", as_json)
     stuck = _duration(stuck_after, "--stuck-after", as_json)
     if not usecase and not tasks:
-        fail("Say which tasks: -u <usecase> [-p <package>] or --task uc/pkg/t.", as_json=as_json)
+        fail("Say which tasks: -u <usecase> [-p <pipeline>] or --task uc/pkg/t.", as_json=as_json)
     store = open_store(usecase_dir, lineage_dir, lineage_backend, as_json=as_json)
     names: List[str] = list(tasks or [])
     if usecase:
@@ -121,7 +122,7 @@ def _print(report: List[Any]) -> None:
 
 @runs_app.command("wait-for")
 def wait_for(
-    task: str = typer.Argument(..., help="The upstream task, usecase/package/task."),
+    task: str = typer.Argument(..., help="The upstream task, usecase/pipeline/task."),
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", help="Root of the pipelines."),
     data_timestamp: Optional[str] = typer.Option(
         None, "-dt", "--data-timestamp", help="The batch's dt."

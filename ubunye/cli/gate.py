@@ -23,6 +23,7 @@ import typer
 
 from ubunye.cli.lineage import lineage_backend_option
 from ubunye.cli.output import emit, fail, json_option
+from ubunye.cli.pipeline_flag import pipeline_option
 from ubunye.core import gate as gate_rules
 from ubunye.lineage import stores
 from ubunye.lineage.context import RunContext
@@ -89,7 +90,7 @@ def gate_command(
     ),
     usecase_dir: Optional[Path] = typer.Option(None, "-d", "--usecase-dir"),
     usecase: Optional[str] = typer.Option(None, "-u", "--usecase"),
-    package: Optional[str] = typer.Option(None, "-p", "--package"),
+    package: Optional[str] = pipeline_option(None),
     task: Optional[str] = typer.Option(None, "-t", "--task"),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
     lineage_backend: Optional[str] = lineage_backend_option(),

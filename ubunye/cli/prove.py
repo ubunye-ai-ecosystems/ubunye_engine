@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional
 
 import typer
 
+from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
+
 prove_app = typer.Typer(
     name="prove",
     help="The proving ground: compare one workload's run records across environments.",
@@ -45,7 +47,7 @@ def _record(
     return _from_store(f"{usecase}/{package}/{task}", lineage_dir, which).to_dict()
 
 
-@prove_app.command("observe")
+@prove_app.command("observe", cls=PipelineCommand)
 def observe(
     workload: str = typer.Option(
         ..., "--workload", help="The workload's id, e.g. c01-portable-etl."
@@ -55,7 +57,7 @@ def observe(
     record: Optional[Path] = typer.Option(None, "--record", help="A run record JSON file."),
     usecase_dir: Optional[Path] = typer.Option(None, "-d", "--usecase-dir"),
     usecase: Optional[str] = typer.Option(None, "-u", "--usecase"),
-    package: Optional[str] = typer.Option(None, "-p", "--package"),
+    package: Optional[str] = pipeline_option(None),
     task: Optional[List[str]] = typer.Option(
         None,
         "-t",

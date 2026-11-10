@@ -5,7 +5,7 @@ others) call tools. This server exposes the commands a person uses, over one
 pipelines folder:
 
 ========================  =========================================================
-``tasks``                 The tasks under the folder (``usecase/package/task``).
+``tasks``                 The tasks under the folder (``usecase/pipeline/task``).
 ``doctor``                What will fail on this machine, and why.
 ``plan``                  What a task will read and write, the bill before the run,
                           and what will stop it. Reads no data.
@@ -42,7 +42,7 @@ _NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
 
 INSTRUCTIONS = (
     "Ubunye Engine runs config-first data pipelines. A task is named "
-    "usecase/package/task. Call `tasks` to see them, `plan` before `run` (it shows "
+    "usecase/pipeline/task. Call `tasks` to see them, `plan` before `run` (it shows "
     "what will be read and written, what will stop the run, and the model bill), and "
     "`gate` to compare a run with the previous one. Tools read only, except `run`."
 )
@@ -75,7 +75,7 @@ class _Tools:
     def task_dir(self, task: str) -> Path:
         parts = task.strip("/").split("/")
         if len(parts) != 3 or not all(_NAME.match(p) and p not in (".", "..") for p in parts):
-            raise ValueError(f"'{task}' is not a task name: use usecase/package/task")
+            raise ValueError(f"'{task}' is not a task name: use usecase/pipeline/task")
         path = self.root.joinpath(*parts)
         if not (path / "config.yaml").is_file():
             raise ValueError(f"no task '{task}' under {self.root} (no config.yaml)")
@@ -214,20 +214,25 @@ class _Tools:
         self,
         tasks: Optional[List[str]] = None,
         usecase: Optional[str] = None,
-        package: Optional[str] = None,
+        pipeline: Optional[str] = None,
         max_age: Optional[str] = None,
         stuck_after: str = "6h",
+        package: Optional[str] = None,
     ) -> Dict[str, Any]:
         from ubunye.lineage import health as checks
 
+        if package is not None:  # the old name of pipeline, still accepted
+            if pipeline is not None:
+                raise ValueError("give pipeline only; package is its old name")
+            pipeline = package
         names = [self._task_name(t) for t in tasks or []]
         if usecase:
-            if not _NAME.match(usecase) or (package and not _NAME.match(package)):
-                raise ValueError("usecase and package are plain names")
-            found = checks.tasks_for(self._store(), self.root, usecase, package)
+            if not _NAME.match(usecase) or (pipeline and not _NAME.match(pipeline)):
+                raise ValueError("usecase and pipeline are plain names")
+            found = checks.tasks_for(self._store(), self.root, usecase, pipeline)
             names += [t for t in found if t not in names]
         if not names:
-            raise ValueError("say which tasks: tasks=[usecase/package/task] or usecase=...")
+            raise ValueError("say which tasks: tasks=[usecase/pipeline/task] or usecase=...")
         report = checks.check(self._store(), names, max_age=max_age, stuck_after=stuck_after)
         return {"ok": all(h.healthy for h in report), "tasks": [h.as_dict() for h in report]}
 
@@ -247,7 +252,7 @@ class _Tools:
         """A task name, checked for shape only: its records may come from another machine."""
         parts = task.strip("/").split("/")
         if len(parts) != 3 or not all(_NAME.match(p) and p not in (".", "..") for p in parts):
-            raise ValueError(f"'{task}' is not a task name: use usecase/package/task")
+            raise ValueError(f"'{task}' is not a task name: use usecase/pipeline/task")
         return "/".join(parts)
 
     def _store(self) -> Any:
@@ -350,7 +355,7 @@ def build_server(
 
     @server.tool(annotations=read_only)
     def tasks() -> Dict[str, Any]:
-        """The tasks under the pipelines folder, as usecase/package/task."""
+        """The tasks under the pipelines folder, as usecase/pipeline/task."""
         return guarded(tools.tasks)()
 
     @server.tool(annotations=read_only)
@@ -406,13 +411,17 @@ def build_server(
     def health(
         tasks: Optional[List[str]] = None,
         usecase: Optional[str] = None,
-        package: Optional[str] = None,
+        pipeline: Optional[str] = None,
         max_age: Optional[str] = None,
         stuck_after: str = "6h",
+        package: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Job health per task: last status, last success, failures in a row, runs
-        likely dead (still running after stuck_after), and stale (max_age, e.g. 36h)."""
-        return guarded(tools.health)(tasks, usecase, package, max_age, stuck_after)
+        likely dead (still running after stuck_after), and stale (max_age, e.g. 36h).
+        package is the old name of pipeline (deprecated)."""
+        return guarded(tools.health)(
+            tasks, usecase, pipeline, max_age, stuck_after, package=package
+        )
 
     @server.tool(annotations=read_only)
     def upstream(task: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

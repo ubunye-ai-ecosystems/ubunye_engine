@@ -18,7 +18,7 @@ Usage
     results = ubunye.run_pipeline(
         usecase_dir="pipelines",
         usecase="fraud_detection",
-        package="ingestion",
+        pipeline="ingestion",
         tasks=["claim_etl", "feature_engineering"],
         mode="nonprod",
         dt="202510",
@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+import warnings
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
@@ -44,6 +45,27 @@ from ubunye.core.task_runner import execute_user_task
 from ubunye.telemetry.hooks import MonitorHook
 
 logger = logging.getLogger(__name__)
+
+
+def _pipeline_name(
+    pipeline: Optional[str], package: Optional[str], where: str, required: bool = True
+) -> Optional[str]:
+    """``pipeline``, or the old ``package`` with a DeprecationWarning (both: TypeError)."""
+    if package is not None:
+        if pipeline is not None:
+            raise TypeError(
+                f"{where}() got both pipeline= and package=; give pipeline= only "
+                "(package= is its old name)."
+            )
+        warnings.warn(
+            f"{where}(package=...) is renamed pipeline=; package= will be removed in 1.0.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        pipeline = package
+    if required and pipeline is None:
+        raise TypeError(f"{where}() missing required argument: 'pipeline'")
+    return pipeline
 
 
 def _make_app_name(
@@ -243,8 +265,8 @@ def run_task(
 def run_pipeline(
     usecase_dir: str,
     usecase: str,
-    package: str,
-    tasks: List[str],
+    pipeline: Optional[str] = None,
+    tasks: Optional[List[str]] = None,
     *,
     mode: str = "DEV",
     dt: Optional[str] = None,
@@ -259,6 +281,7 @@ def run_pipeline(
     rerun: bool = False,
     lineage_backend: Optional[str] = None,
     resume: bool = False,
+    package: Optional[str] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Run multiple tasks sequentially and return all outputs.
 
@@ -268,8 +291,8 @@ def run_pipeline(
         Root directory for use cases (e.g. ``"./pipelines"``).
     usecase : str
         Use case name.
-    package : str
-        Package/pipeline name.
+    pipeline : str
+        Pipeline name (the folder between the use case and the tasks).
     tasks : List[str]
         Task names to run in order.
     mode, dt, dtf, spark, backend, variables, lineage, lineage_dir, profile, hooks, rerun,
@@ -279,12 +302,18 @@ def run_pipeline(
         Finish a pipeline that stopped half way: a task that already finished this
         batch is skipped (with a warning, and is not in the result); the rest run.
         Without it, such a task is refused (:class:`~ubunye.core.runs.BatchFinished`).
+    package : str, optional
+        Old name of ``pipeline``. Still works, with a DeprecationWarning; removed in 1.0.
 
     Returns
     -------
     Dict[str, Dict[str, Any]]
         Mapping of task name → outputs map (without tasks skipped by ``resume``).
     """
+    package = _pipeline_name(pipeline, package, "run_pipeline")
+    assert package is not None  # narrowed for mypy
+    if tasks is None:
+        raise TypeError("run_pipeline() missing required argument: 'tasks'")
     base = Path(usecase_dir).resolve()
     variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
 
@@ -355,31 +384,33 @@ def job_health(
     usecase_dir: Union[str, Path],
     *,
     usecase: Optional[str] = None,
-    package: Optional[str] = None,
+    pipeline: Optional[str] = None,
     tasks: Optional[Iterable[str]] = None,
     max_age: Optional[Union[str, float]] = None,
     stuck_after: Union[str, float] = "6h",
     lineage_dir: str = ".ubunye/lineage",
     lineage_backend: Optional[str] = None,
+    package: Optional[str] = None,
 ) -> List[Any]:
     """Job health per task, from run records (ADR 013); what ``ubunye runs health`` prints.
 
-    Name the tasks (``tasks=["uc/pkg/task"]``) or a use case (``usecase=``, with
-    ``package=`` to narrow it). Returns one
+    Name the tasks (``tasks=["uc/pipeline/task"]``) or a use case (``usecase=``, with
+    ``pipeline=`` to narrow it; ``package=`` is its old name, deprecated). Returns one
     :class:`~ubunye.lineage.health.TaskHealth` per task; ``.healthy`` is False when
     the task is failing, has a run likely dead (``running`` past ``stuck_after``) or,
     with ``max_age``, has not succeeded recently enough.
     """
     from ubunye.lineage import health, stores
 
+    pipeline = _pipeline_name(pipeline, package, "job_health", required=False)
     store = stores.open_for(usecase_dir, lineage_dir, lineage_backend)
     names = list(tasks or [])
     if usecase:
         names += [
-            t for t in health.tasks_for(store, usecase_dir, usecase, package) if t not in names
+            t for t in health.tasks_for(store, usecase_dir, usecase, pipeline) if t not in names
         ]
     if not names:
-        raise ValueError("Say which tasks: tasks=['usecase/package/task'] or usecase='...'.")
+        raise ValueError("Say which tasks: tasks=['usecase/pipeline/task'] or usecase='...'.")
     return health.check(store, names, max_age=max_age, stuck_after=stuck_after)
 
 

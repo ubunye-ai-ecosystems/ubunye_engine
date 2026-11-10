@@ -45,7 +45,7 @@ Most commands share a set of path and variable flags:
 |---|---|---|
 | `--usecase-dir` | `-d` | Root pipelines directory |
 | `--usecase` | `-u` | Use-case name |
-| `--package` | `-p` | Package / pipeline name |
+| `--pipeline` | `-p` | Pipeline name (`--package` is its old name; it still works with a warning until 1.0) |
 | `--task-list` | `-t` | Task name(s), repeatable |
 | `--data-timestamp` | `-dt` | Data timestamp, injected as `{{ dt }}` in Jinja |
 | `--data-timestamp-format` | `-dtf` | Timestamp format, injected as `{{ dtf }}` |
@@ -87,7 +87,7 @@ command with a subcommand name.
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to scaffold (repeatable) |
 | `--template` | | no | `local` | `local` or `databricks` |
 | `--overwrite / --no-overwrite` | | no | `no-overwrite` | Overwrite existing files |
@@ -111,7 +111,7 @@ ubunye init github-actions -d pipelines -u fraud -p ingestion -t task_a -t task_
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to include in the deploy steps (repeatable) |
 | `--extras` | | no | `spark,dev` | pip install extras, comma-separated |
 | `--target` | | no | `nonprod` | Databricks deploy target |
@@ -151,7 +151,7 @@ ubunye validate -d pipelines -u fraud_detection -p ingestion -t claim_etl --prof
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | no | | Task(s) to validate (repeatable) |
 | `--all` | | no | false | Validate all tasks in the package |
 | `--profile` | | no | | Profile to validate against (e.g. dev, prod) |
@@ -211,7 +211,7 @@ It checks:
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to plan, in run order (repeatable) |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--data-timestamp-format` | `-dtf` | no | | Timestamp format |
@@ -246,7 +246,7 @@ ubunye run \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root pipelines directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | one of `-t` or `--all` | | Task(s) to execute (repeatable) |
 | `--all` | | | false | Run every task in the package |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
@@ -303,7 +303,7 @@ ubunye test run \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to test (repeatable) |
 | `--profile` | | no | `test` | Config profile to use |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
@@ -357,7 +357,7 @@ It checks:
 |---|---|---|---|
 | `--usecase-dir` | `-d` | | Also check tasks under this pipelines folder |
 | `--usecase` | `-u` | | Use-case name |
-| `--package` | `-p` | | Package name |
+| `--pipeline` | `-p` | | Pipeline name |
 | `--task-list` | `-t` | | Task(s) to check (repeatable) |
 | `--data-timestamp` | `-dt` | | Data timestamp |
 | `--mode` | `-m` | `DEV` | Run mode |
@@ -403,7 +403,7 @@ ubunye gate -d pipelines -u shop -p orders -t clean --baseline 1a2b3c4d
 | `--candidate` | | `latest` | A run record file, a run id, or `latest` |
 | `--usecase-dir` | `-d` | | Root pipelines directory |
 | `--usecase` | `-u` | | Use-case name |
-| `--package` | `-p` | | Package name |
+| `--pipeline` | `-p` | | Pipeline name |
 | `--task` | `-t` | | Task name |
 | `--lineage-dir` | | `.ubunye/lineage` | Lineage directory |
 | `--lineage-backend` | | `$UBUNYE_LINEAGE_BACKEND`, else `filesystem` | Where run records are stored (`filesystem`, `delta`, a plugin) |
@@ -496,7 +496,7 @@ ubunye config \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to check (repeatable) |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--data-timestamp-format` | `-dtf` | no | | Timestamp format |
@@ -796,7 +796,7 @@ record with `--record FILE`, or with `-d -u -p -t` and `--run-id` (default
 | `--env` | | yes | | The environment's name, e.g. `spark-local` |
 | `--out` | `-o` | no | `evidence` | The evidence folder |
 | `--record` | | no | | A run record JSON file |
-| `--usecase-dir`, `--usecase`, `--package`, `--task` | `-d`, `-u`, `-p`, `-t` | no | | Find the record in the lineage store |
+| `--usecase-dir`, `--usecase`, `--pipeline`, `--task` | `-d`, `-u`, `-p`, `-t` | no | | Find the record in the lineage store |
 | `--run-id` | | no | `latest` | A stored run's id, or `latest` |
 | `--kind` | | no | `local` | `local`, `cloud` or `managed` |
 | `--provider` | | no | | `aws`, `gcp`, `azure`, `databricks`, ... |
@@ -883,7 +883,7 @@ ubunye deploy databricks \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root pipelines directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task to deploy |
 | `--target` | | no | `dev` | Deploy target from `targets.yaml` |
 | `--mode` | `-m` | no | `PROD` | Config profile for the job |
@@ -909,7 +909,7 @@ ubunye deploy glue -d pipelines -u shop -p orders -t clean \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root pipelines directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order, in one launch |
 | `--bucket` | | yes | | S3 bucket for the task, script and wheel |
 | `--role` | | yes | | IAM role ARN the Glue job runs as |
@@ -931,7 +931,7 @@ Run a task on GCP Dataproc Serverless, in a container image, with `gcloud`. See
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root pipelines directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order |
 | `--project` | | yes | | GCP project |
 | `--region` | | yes | | GCP region |
@@ -952,7 +952,7 @@ is no `-d`. See [One command to the cloud](deployment/serverless.md).
 | Flag | Short | Required | Default | Description |
 |---|---|---|---|---|
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order |
 | `--image` | | yes | | Image from `deploy dockerfile container` |
 | `--namespace` | `-n` | no | `default` | Kubernetes namespace |
@@ -971,7 +971,7 @@ image holds the pipelines. See [One command to the cloud](deployment/serverless.
 | Flag | Short | Required | Default | Description |
 |---|---|---|---|---|
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order |
 | `--image` | | yes | | Image from `deploy dockerfile container` |
 | `--resource-group` | `-g` | yes | | Azure resource group |
@@ -994,7 +994,7 @@ the run to finish, so it has no `--wait` or `--record-out`. See
 | Flag | Short | Required | Default | Description |
 |---|---|---|---|---|
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order |
 | `--application-id` | | yes | | An application whose image is from `deploy dockerfile emr-serverless` |
 | `--role` | | yes | | Job execution role ARN |

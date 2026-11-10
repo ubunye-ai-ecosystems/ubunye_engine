@@ -110,7 +110,7 @@ When working on the engine, make sure `ubunye` is your checkout, not an older in
   ```bash
   ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl -m DEV
   ```
-  - Options: `-d/--usecase-dir`, `-u/--usecase`, `-p/--package`, `-t/--task-list`
+  - Options: `-d/--usecase-dir`, `-u/--usecase`, `-p/--pipeline`, `-t/--task-list`
     (repeatable), `--all`, `-m/--mode` (default `DEV`), `-dt/--data-timestamp`,
     `--var key=value`, `--backend spark|databricks|pandas`, `--lineage`,
     `--rerun`, `--resume`
