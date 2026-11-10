@@ -108,5 +108,8 @@ def test_an_unreachable_api_raises_no_secret(caplog):
 def test_the_masking_filter_is_removed_after_the_call():
     with served([{"id": 1}]) as api:
         RestApiReader().read({"url": f"{api.base}/all", "auth": AUTHS["bearer"]}, PandasBackend())
-    assert not logging.getLogger("urllib3.connectionpool").filters
-    assert not logging.getLogger("ubunye.plugins.rest_http").filters
+    # Other libraries add their own filters (MLflow does on import); ours must be gone.
+    for name in ("urllib3.connectionpool", "ubunye.plugins.rest_http"):
+        assert not [
+            f for f in logging.getLogger(name).filters if isinstance(f, rest_http._Redacting)
+        ]
