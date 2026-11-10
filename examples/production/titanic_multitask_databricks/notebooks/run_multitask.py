@@ -2,63 +2,55 @@
 # MAGIC %md
 # MAGIC # Titanic Multi-Task Pipeline: Databricks (serverless)
 # MAGIC
-# MAGIC Two-task pipeline: **clean_data** writes a cleaned Delta table, then
-# MAGIC **aggregate** reads it and produces a survival-summary table.
+# MAGIC Two tasks: **clean_data** writes a cleaned Delta table, then **aggregate**
+# MAGIC reads it and writes a survival-summary table.
 # MAGIC
-# MAGIC Invoked by the `titanic_multitask` job defined in `databricks.yml`.
-# MAGIC Uses the same `transformations.py` as the local example (build once,
-# MAGIC run everywhere). Each task gets its own notebook context, and each step
-# MAGIC (`ctx.read()`, `ctx.transform()`, `ctx.write()`) is its own cell.
+# MAGIC Run by the `titanic_multitask` job in `databricks.yml`. The job gives this
+# MAGIC notebook everything it needs as parameters: the pipelines folder, the run
+# MAGIC date, the catalog and schema, where to save run records, and the git commit.
+# MAGIC Each task is one `with` block, so each leaves its own run record.
+# MAGIC
+# MAGIC **No logic here.** It is in each task's `transformations.py`, byte-identical
+# MAGIC to the local example.
+# MAGIC
+# MAGIC The job installs the engine (`environments` in `databricks.yml`). To run this
+# MAGIC notebook by hand, give it an environment with `ubunye-engine==0.9.2`, or run
+# MAGIC `%pip install "ubunye-engine==0.9.2"` once in a cell above this one.
 
 # COMMAND ----------
 
-# MAGIC %pip install "ubunye-engine==0.8.0"
-
-# COMMAND ----------
-
-dbutils.library.restartPython()
-
-# COMMAND ----------
-
-# Widgets come after the restart, so they are read once. A job run fills them
-# from base_parameters; the defaults are for running the notebook by hand.
+# For a run by hand. A job run fills these from its parameters.
 dbutils.widgets.text("usecase_dir", "", "Workspace pipelines directory (absolute)")
 dbutils.widgets.text("dt", "2026-04-15", "Data timestamp")
-dbutils.widgets.dropdown("mode", "PROD", ["DEV", "PROD"], "Run mode")
 dbutils.widgets.text("titanic_catalog", "workspace", "Unity Catalog catalog")
 dbutils.widgets.text("titanic_schema", "titanic", "Unity Catalog schema")
 
-usecase_dir = dbutils.widgets.get("usecase_dir")
-dt = dbutils.widgets.get("dt")
-mode = dbutils.widgets.get("mode")
-titanic_catalog = dbutils.widgets.get("titanic_catalog")
-titanic_schema = dbutils.widgets.get("titanic_schema")
-
-assert usecase_dir, "usecase_dir must be supplied by the job (see databricks.yml)"
-
 # COMMAND ----------
 
-# The schema, and a volume for the input CSV. UC volumes are the only local
+# Setup, not part of the tasks: the schema, a volume for the input CSV, and the
+# CSV itself (fetched once, later runs reuse it). UC volumes are the only local
 # file path serverless allows (file:///tmp/... is blocked).
-spark.sql(f"CREATE SCHEMA IF NOT EXISTS {titanic_catalog}.{titanic_schema}")
-spark.sql(f"CREATE VOLUME IF NOT EXISTS {titanic_catalog}.{titanic_schema}.data")
-
-# COMMAND ----------
-
-# Put the Titanic CSV in the volume once. Later runs reuse it.
 import os
 import urllib.request
 
-csv_path = f"/Volumes/{titanic_catalog}/{titanic_schema}/data/titanic.csv"
+catalog = dbutils.widgets.get("titanic_catalog")
+schema = dbutils.widgets.get("titanic_schema")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS `{catalog}`.`{schema}`")
+spark.sql(f"CREATE VOLUME IF NOT EXISTS `{catalog}`.`{schema}`.data")
 
+csv_path = f"/Volumes/{catalog}/{schema}/data/titanic.csv"
 if not os.path.exists(csv_path):
     urllib.request.urlretrieve(
         "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv",
         csv_path,
     )
-    print(f"Fetched Titanic CSV -> {csv_path}")
-else:
-    print(f"Titanic CSV already present at {csv_path}")
+
+# COMMAND ----------
+
+import ubunye
+
+usecase_dir = dbutils.widgets.get("usecase_dir")
+dt = dbutils.widgets.get("dt")
 
 # COMMAND ----------
 
@@ -67,30 +59,26 @@ else:
 
 # COMMAND ----------
 
-import ubunye
-
-# config.yaml uses {{ env.TITANIC_CATALOG }} and {{ env.TITANIC_SCHEMA }}:
-# ubunye.notebook() fills them from the widgets of the same name in lower case.
-# TITANIC_INPUT_PATH has no widget, so it is passed in with env=.
-clean = ubunye.notebook(
+# config.yaml's {{ env.TITANIC_CATALOG }} and {{ env.TITANIC_SCHEMA }} come from
+# the parameters of the same name in lower case. The CSV path has no parameter,
+# so it is passed with env=.
+with ubunye.notebook(
     f"{usecase_dir}/titanic/pipeline/clean_data",
-    mode=mode,
     dt=dt,
     env={"TITANIC_INPUT_PATH": csv_path},
-    lineage=True,
-)
+) as run:
+    # READ: load every input under CONFIG.inputs in config.yaml (the Titanic CSV),
+    # one DataFrame per input. Nothing is changed yet.
+    sources = run.read()
 
-sources = clean.read()
-outputs = clean.transform(sources)
-for name, df in outputs.items():
-    print(f"--- {name}: {df.count()} rows ---")
-    df.show(5, truncate=False)
+    # TRANSFORM: run transformations.py. One DataFrame per output.
+    # All the business logic is in that file.
+    outputs = run.transform(sources)
 
-# COMMAND ----------
-
-# aggregate reads the table this write creates, so it must finish first.
-clean.write(outputs)
-clean.close()
+    # WRITE: check the data-quality rules first. If one fails, nothing is written
+    # and the run is recorded as failed. Otherwise each output is written to its
+    # table. aggregate reads this table, so this block runs first.
+    run.write(outputs)
 
 # COMMAND ----------
 
@@ -99,21 +87,16 @@ clean.close()
 
 # COMMAND ----------
 
-aggregate = ubunye.notebook(
-    f"{usecase_dir}/titanic/pipeline/aggregate",
-    mode=mode,
-    dt=dt,
-    lineage=True,
-)
+with ubunye.notebook(f"{usecase_dir}/titanic/pipeline/aggregate", dt=dt) as run:
+    # READ: load every input under CONFIG.inputs in config.yaml (the cleaned table
+    # clean_data wrote), one DataFrame per input. Nothing is changed yet.
+    sources = run.read()
 
-sources = aggregate.read()
-outputs = aggregate.transform(sources)
-for name, df in outputs.items():
-    print(f"--- {name}: {df.count()} rows ---")
-    df.show(truncate=False)
+    # TRANSFORM: run transformations.py. One DataFrame per output.
+    # All the business logic is in that file.
+    outputs = run.transform(sources)
 
-# COMMAND ----------
-
-aggregate.write(outputs)
-aggregate.close()
-print("Pipeline complete: clean_data, aggregate")
+    # WRITE: check the data-quality rules first. If one fails, nothing is written
+    # and the run is recorded as failed. Otherwise each output is written to its
+    # table.
+    run.write(outputs)

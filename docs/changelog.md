@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The Databricks examples follow the 0.9.2 job notebook.** The job notebooks
+  in `examples/production` (`titanic_databricks`, `jhb_weather_databricks`,
+  `titanic_multitask_databricks`, `titanic_ml_databricks`) run each task as one
+  `with ubunye.notebook(...) as run:` block of three commented steps (READ,
+  TRANSFORM, WRITE). Their bundles install `ubunye-engine==0.9.2` through the
+  job's environment instead of `%pip`, switch run records on with the job
+  parameter `ubunye_run_records` (a table next to the outputs), and pass
+  `git_commit`, `git_branch`, `deploy_target` and `ubunye_mode`. Their configs
+  quote the catalog and schema with `| ident`. The business logic and the
+  local examples are unchanged.
+
 ## [0.9.2] (2026-11-10)
 
 ### Added

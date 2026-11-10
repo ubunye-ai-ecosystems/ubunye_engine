@@ -35,7 +35,7 @@ jhb_weather_databricks/
 ├── README.md                               (this file)
 ├── databricks.yml                          Asset Bundle: serverless job + targets
 ├── notebooks/
-│   └── run_jhb_weather.py                  Notebook wrapping ubunye.run_task()
+│   └── run_jhb_weather.py                  Job notebook: one ubunye.notebook() with block
 ├── pipelines/jhb_weather/ingestion/hourly_forecast/
 │   ├── config.yaml                         rest_api reader -> unity writer
 │   └── transformations.py                  Spark transform (arrays_zip + explode)
@@ -77,11 +77,27 @@ The bundle deploys a scheduled job that fires daily at 06:00
 The job uses **serverless compute** — no `new_cluster` block in
 `databricks.yml`. This is required on Databricks Free Edition (which does
 not allow classic-cluster creation) and works identically on paid
-workspaces. Dependencies are installed in-notebook via
-`%pip install ubunye-engine==<ver>` (the notebook pins 0.8.0 today). The
-notebook then runs the task one step at a time with `ubunye.notebook()`:
-`ctx.read()`, `ctx.transform()`, `ctx.write()`. `WEATHER_CATALOG` and
-`WEATHER_SCHEMA` come from the widgets of the same name in lower case.
+workspaces. The job installs the engine through its environment
+(`environments` in `databricks.yml`, pinned to `ubunye-engine==0.9.2`), not
+with `%pip` in the notebook. The notebook runs the task as one `with` block:
+
+```python
+with ubunye.notebook(dbutils.widgets.get("task_dir"), dt=dbutils.widgets.get("dt")) as run:
+    sources = run.read()               # READ: the Open-Meteo call, nothing changed yet
+    outputs = run.transform(sources)   # TRANSFORM: transformations.py
+    run.write(outputs)                 # WRITE: data-quality rules, then the table
+```
+
+`WEATHER_CATALOG` and `WEATHER_SCHEMA` come from the parameters of the same
+name in lower case; `config.yaml` quotes them with `| ident`.
+
+### Run records
+
+The job parameter `ubunye_run_records` (`<catalog>.<schema>.ubunye_runs`)
+switches run records on. Every run, success or failure, leaves one row there:
+the status, the step that failed, rows in and out, the job run, and the git
+commit, branch and deploy target (the `git_commit`, `git_branch` and
+`deploy_target` job parameters). The first run creates the table.
 
 The default `weather_catalog` is `workspace` because that is the catalog
 Free Edition provisions automatically. On a paid workspace, override to

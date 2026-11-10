@@ -21,9 +21,16 @@ writes to `titanic_cleaned`, task 2 reads the same table via the unity reader.
 
 ## What this example exercises
 
-- **`ubunye.notebook()`**: one notebook context per task, run in order
-  (`clean_data`, then `aggregate`), each step (`read`, `transform`, `write`)
-  in its own cell on the notebook's Spark session.
+- **`ubunye.notebook()`**: one `with` block per task, run in order
+  (`clean_data`, then `aggregate`). Each block is three commented steps,
+  `run.read()`, `run.transform(sources)`, `run.write(outputs)`, and one run:
+  success or failure, each task leaves a row in the run record table named by
+  the job parameter `ubunye_run_records` (`<catalog>.<schema>.ubunye_runs`),
+  with the git commit, branch and deploy target the job passes.
+- **The engine installed by the job**: `environments` in `databricks.yml`
+  pins `ubunye-engine==0.9.2`; the notebook has no `%pip`.
+- **Quoted catalog names**: `config.yaml` passes the catalog and schema
+  through `| ident`, so a catalog with a hyphen works.
 - **Unity Catalog readers/writers**: intermediate and final outputs are managed
   Delta tables.
 - **Portability contract**: `transformations.py` is identical to the local

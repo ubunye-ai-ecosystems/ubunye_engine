@@ -19,33 +19,59 @@ needs to change (`workspace` → `main`).
 
 ```
 titanic_survival_by_class (Job)
+├── environment "ubunye": ubunye-engine==0.9.2   # installed by the job, no %pip
+├── parameters (read by the engine):
+│   ├── dt: 2026-04-15                          # var.data_timestamp
+│   ├── ubunye_mode: PROD
+│   ├── ubunye_run_records: workspace.titanic.ubunye_runs
+│   ├── git_commit: ${bundle.git.commit}
+│   ├── git_branch: ${bundle.git.branch}
+│   └── deploy_target: ${bundle.target}
 └── run_pipeline (Notebook task, serverless compute)
     ├── notebook: /Workspace/.../notebooks/run_titanic.py
     └── base_parameters:
         ├── task_dir: /Workspace/.../pipelines/titanic/analytics/survival_by_class
-        ├── dt: 2026-04-15
-        ├── mode: PROD
         ├── titanic_catalog: workspace        # var.titanic_catalog
         └── titanic_schema:  titanic          # var.titanic_schema
 ```
 
 The notebook:
 
-1. `%pip install`s `ubunye-engine==0.8.0` from PyPI and restarts Python.
-2. Reads widgets populated by the job's `base_parameters`.
-3. `CREATE SCHEMA IF NOT EXISTS workspace.titanic` and
-   `CREATE VOLUME IF NOT EXISTS workspace.titanic.data`. UC volumes are
-   the only local file path serverless allows
+1. Setup, not part of the task: `CREATE SCHEMA IF NOT EXISTS workspace.titanic`
+   and `CREATE VOLUME IF NOT EXISTS workspace.titanic.data`, then downloads
+   the Titanic CSV to `/Volumes/workspace/titanic/data/titanic.csv` once.
+   UC volumes are the only local file path serverless allows
    (`file:///tmp/...` is blocked by `SharedUCWorkspaceLocalFileSystem`).
-4. Downloads the Titanic CSV to `/Volumes/workspace/titanic/data/titanic.csv`
-   once. Later runs reuse it; no manual upload.
-5. Opens a notebook context with
-   `ctx = ubunye.notebook(task_dir, mode=mode, dt=dt, env={"TITANIC_INPUT_PATH": csv_path}, lineage=True)`.
-   `TITANIC_CATALOG` and `TITANIC_SCHEMA` come from the widgets of the same
-   name in lower case, so there is no `os.environ` to set.
-6. Runs `ctx.read()`, `ctx.transform()` and `ctx.write()` in separate cells,
-   showing the data between steps. The write creates
-   `workspace.titanic.survival_by_class` and records the run.
+2. Runs the task as one `with` block, three steps with a plain comment each:
+
+    ```python
+    with ubunye.notebook(
+        dbutils.widgets.get("task_dir"),
+        dt=dbutils.widgets.get("dt"),
+        env={"TITANIC_INPUT_PATH": csv_path},
+    ) as run:
+        sources = run.read()               # READ: every input, nothing changed yet
+        outputs = run.transform(sources)   # TRANSFORM: transformations.py
+        run.write(outputs)                 # WRITE: data-quality rules, then the table
+    ```
+
+   `TITANIC_CATALOG` and `TITANIC_SCHEMA` come from the parameters of the same
+   name in lower case; `config.yaml` quotes them with `| ident`, so a catalog
+   with a hyphen works. The mode comes from the `ubunye_mode` parameter.
+3. The block is one run. Success or failure, it leaves one row in
+   `workspace.titanic.ubunye_runs` (the first run creates the table): the
+   status, the step that failed, rows in and out, the job run, and the git
+   commit, branch and deploy target. The write creates
+   `workspace.titanic.survival_by_class`.
+
+Find the runs of a deployed commit:
+
+```sql
+SELECT run_id, status,
+       get_json_object(record, '$.environment.identity.git_commit') AS git_commit
+FROM workspace.titanic.ubunye_runs
+ORDER BY run_id DESC
+```
 
 ---
 
@@ -173,4 +199,4 @@ still run; steps 3-4 are skipped with a warning.
 | `[SCHEMA_NOT_FOUND]` on saveAsTable                  | The notebook didn't `CREATE SCHEMA IF NOT EXISTS` before writing. Re-run.            |
 | `LocalFilesystemAccessDeniedException: Cannot access non /Workspace local filesystem path` | Spark on serverless can't read from `file:///tmp/...`. Use a UC volume path (`/Volumes/<catalog>/<schema>/<volume>/...`) instead. |
 | `bundle deploy` succeeds but job not visible in UI  | DAB's `mode: development` prefixes the job name with `[dev <user>]`. Search by name. |
-| Notebook errors at `%pip install`                    | Network egress is blocked on some workspaces. Pin to a wheel hosted in DBFS instead. |
+| Job fails installing its environment                 | Network egress to PyPI is blocked on some workspaces. Point the environment's `dependencies` at a wheel on a UC volume instead. |

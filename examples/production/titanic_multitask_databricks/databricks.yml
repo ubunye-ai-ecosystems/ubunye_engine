@@ -10,7 +10,9 @@ include:
 
 variables:
   titanic_catalog:
-    description: Unity Catalog catalog. Defaults to "workspace" (Free Edition).
+    description: |
+      Unity Catalog catalog. Defaults to "workspace" (Free Edition).
+      A plain name: config.yaml quotes it with ``| ident``.
     default: "workspace"
   titanic_schema:
     description: Unity Catalog schema for intermediate and output tables.
@@ -29,14 +31,39 @@ resources:
     titanic_multitask:
       name: titanic_multitask_pipeline
       max_concurrent_runs: 1
+      # Read by the engine on every task (serverless has no environment
+      # variables, so job parameters are the channel).
+      parameters:
+        - name: dt
+          default: ${var.data_timestamp}
+        - name: ubunye_mode
+          default: PROD
+        # Every run of each task, success or failure, leaves one row here (plain
+        # names; the engine quotes). The first run creates the table.
+        - name: ubunye_run_records
+          default: ${var.titanic_catalog}.${var.titanic_schema}.ubunye_runs
+        # Which code ran: recorded in each run record.
+        - name: git_commit
+          default: ${bundle.git.commit}
+        - name: git_branch
+          default: ${bundle.git.branch}
+        - name: deploy_target
+          default: ${bundle.target}
+      # The Python packages the job needs. The engine is installed here, once,
+      # not with %pip in the notebook.
+      environments:
+        - environment_key: ubunye
+          spec:
+            environment_version: "3"
+            dependencies:
+              - "ubunye-engine==0.9.2"
       tasks:
         - task_key: run_pipeline
+          environment_key: ubunye
           notebook_task:
             notebook_path: ./notebooks/run_multitask.py
             base_parameters:
               usecase_dir: ${workspace.file_path}/pipelines
-              dt: ${var.data_timestamp}
-              mode: "PROD"
               titanic_catalog: ${var.titanic_catalog}
               titanic_schema: ${var.titanic_schema}
 

@@ -45,7 +45,7 @@ CONFIG:
   outputs:
     jhb_hourly_forecast:
       format: unity
-      table: "{{ env.WEATHER_CATALOG | default('main') }}.{{ env.WEATHER_SCHEMA | default('weather') }}.jhb_hourly_forecast"
+      table: "{{ env.WEATHER_CATALOG | default('main') | ident }}.{{ env.WEATHER_SCHEMA | default('weather') | ident }}.jhb_hourly_forecast"
       mode: overwrite
       partitionBy: ["forecast_date"]
       options:

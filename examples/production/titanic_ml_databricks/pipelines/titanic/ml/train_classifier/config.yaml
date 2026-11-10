@@ -38,7 +38,7 @@ CONFIG:
   outputs:
     training_metrics:
       format: unity
-      table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic_ml') }}.training_metrics"
+      table: "{{ env.TITANIC_CATALOG | default('workspace') | ident }}.{{ env.TITANIC_SCHEMA | default('titanic_ml') | ident }}.training_metrics"
       mode: append
       file_format: delta
       options:
