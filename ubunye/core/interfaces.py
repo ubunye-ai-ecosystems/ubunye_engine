@@ -316,10 +316,22 @@ class Transform(ABC):
 
 
 class Task(ABC):
-    """User-defined task contract (lives in transformations.py)."""
+    """User-defined task contract (lives in transformations.py).
+
+    ``self.config`` is the resolved config. ``self.variables`` holds the run's batch
+    variables (``dt``, ``dtf``, ``mode`` and any ``--var``), set by the engine before
+    ``setup()``; ``self.dt`` is the batch date, or None when the run has none.
+    """
+
+    variables: Dict[str, Any] = {}
 
     def __init__(self, config: dict):
         self.config = config
+
+    @property
+    def dt(self) -> Any:
+        """The batch date this run is for (``-dt`` / the job's ``dt``), or None."""
+        return (self.variables or {}).get("dt") or None
 
     def setup(self) -> None:
         """Optional hook executed before transform."""

@@ -76,6 +76,10 @@ then `run.read()`, `run.transform(sources)`, `run.write(outputs)`. The block is
 
 ### Fixed
 
+- **A Task sees the run's batch date.** `self.dt` and `self.variables` (`dt`, `dtf`,
+  `mode` and every `--var`) are set on the Task before `setup()`, from `run_task`, the
+  CLI and `ubunye.notebook`. Before, a Task had only `self.config`, so a backfill run
+  with `-dt` computed the current month instead of the one asked for.
 - The `deploy` workflow's config check named a sample pipeline that no longer
   exists and ended in `|| true`, so it could never fail. It now validates
   `fraud_detection/risk_scoring` and fails the job when the config is invalid.

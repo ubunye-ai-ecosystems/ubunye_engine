@@ -281,6 +281,7 @@ class NotebookContext:
         if transform_cfg.type is None or transform_cfg.type == "noop":
             task_cls = _load_task_class(self._task_path)
             task_obj = task_cls(config=self._cfg_dict)
+            task_obj.variables = dict(self._variables)  # dt and --var for the Task
             task_obj.setup()
 
             reg = Registry.from_entrypoints()
