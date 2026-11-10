@@ -1,5 +1,5 @@
 site_name: Ubunye Engine
-site_description: Config-first, Spark-native framework for ETL + ML pipelines powering intelligent systems
+site_description: Config-first framework for data and ML pipelines. Write a task once, run it on pandas, Spark or Databricks, and prove every run gives the same rows.
 site_url: https://ubunye-ai-ecosystems.github.io/ubunye_engine
 repo_url: https://github.com/ubunye-ai-ecosystems/ubunye_engine
 repo_name: ubunye-ai-ecosystems/ubunye_engine
@@ -11,24 +11,30 @@ theme:
   features:
     - navigation.instant
     - navigation.tracking
-    # Collapsible nav, desktop and mobile. Deliberately NOT set:
-    #   navigation.tabs     — puts top-level items in a header bar that overflows
-    #                         off-screen once there are a dozen of them
-    #   navigation.sections — renders sections as flat, always-open groups
-    #   navigation.expand   — force-expands everything, so nothing can collapse
-    # Without those three, Material's default applies: every section is a
-    # collapsible item in the sidebar (a drawer on mobile).
+    # Top-level sections as tabs in the header (desktop). The sidebar then lists
+    # the pages of the open tab. On mobile the tabs fold into the drawer.
+    - navigation.tabs
+    - navigation.tabs.sticky
+    # Deliberately NOT set:
+    #   navigation.sections - renders sections as flat, always-open groups
+    #   navigation.expand   - force-expands everything, so nothing can collapse
     - navigation.top
     - toc.follow
     - content.code.copy
     - content.tabs.link
     - content.action.edit
+  # Colours come from the diagrams (dark stage #1c1d22, orange, teal, purple,
+  # light blue). "custom" hands them to docs/stylesheets/extra.css.
   palette:
     - scheme: default
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - scheme: slate
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
@@ -42,8 +48,11 @@ nav:
   - Getting Started:
       - Installation: getting_started/install.md
       - Quickstart: getting_started/quickstart.md
+      - Concepts: getting_started/concepts.md
       - Project Structure: getting_started/structure.md
-  - Writing Pipelines:
+      - "Tutorial 1: pandas and Spark": tutorials/01-local-parity.md
+      - "Tutorial 2: nine tables, checked": tutorials/02-olist-multi-table.md
+  - Writing Tasks:
       - Config Overview: config/overview.md
       - Inputs and Outputs: config/io.md
       - Engine and Profiles: config/engine.md
@@ -57,7 +66,7 @@ nav:
       - Hive: connectors/hive.md
       - JDBC: connectors/jdbc.md
       - Unity Catalog: connectors/unity.md
-      - S3 and Delta: connectors/s3.md
+      - Files and Delta (s3, delta, binary): connectors/s3.md
       - REST API: connectors/rest_api.md
       - Writing Your Own: connectors/plugin_guide.md
   - Machine Learning:
@@ -80,9 +89,13 @@ nav:
       - Kubernetes: deployment/kubernetes.md
       - AWS: deployment/aws.md
       - GCP: deployment/gcp.md
+      - Azure: deployment/azure.md
       - One command to the cloud: deployment/serverless.md
       - Anywhere with spark-submit: deployment/anywhere.md
   - How-to Guides:
+      - Run Records: guides/run-records.md
+      - Safe Reruns: guides/safe-reruns.md
+      - Writing portable transforms: guides/portable-transforms.md
       - Notebook Prototyping: patterns/notebook.md
       - RAG Document Pipeline: patterns/rag.md
       - Feature Store: patterns/features.md
@@ -101,14 +114,12 @@ nav:
       - Execution Backends: backends.md
       - Interfaces: interfaces.md
       - Errors: errors.md
+      - Troubleshooting: troubleshooting.md
+      - Upgrading: upgrading.md
       - Changelog: changelog.md
   - Proving Ground:
       - Overview: proving-ground/index.md
       - Latest results: proving-ground/latest.md
-      - "Tutorial 1: pandas and Spark": tutorials/01-local-parity.md
-      - "Tutorial 2: nine tables, checked": tutorials/02-olist-multi-table.md
-      - Writing portable transforms: guides/portable-transforms.md
-      - Where it starts from: research/proving-ground/current-state.md
   - Project:
       - Developer Guide: dev_guide.md
       - Architecture Decisions:
@@ -133,6 +144,7 @@ markdown_extensions:
   - admonition
   - def_list
   - attr_list
+  - md_in_html
   - toc:
       permalink: true
   - pymdownx.details
@@ -155,6 +167,27 @@ markdown_extensions:
 
 plugins:
   - search
+  # Tap or click an image to see it full screen. Off for images marked
+  # { .off-glb }.
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      width: 100%
+      height: auto
+      zoomable: true
+      draggable: true
+      skip_classes:
+        - off-glb
+  # Link preview cards (the picture shown when a page is shared). Needs
+  # cairosvg, pillow and the system libcairo, so it is off here and the docs
+  # workflow switches it on (it rewrites the line marked "social-cards").
+  - social:
+      enabled: false # social-cards
+      cards_layout_options:
+        # Light blue from the diagrams, so the black logo stays visible.
+        background_color: "#cdeefb"
+        color: "#1c1d22"
   - macros:
       on_error_fail: false
       j2_block_start_string: "[%"
@@ -174,7 +207,9 @@ plugins:
             show_root_toc_entry: false
 
 extra_css:
+  - stylesheets/palette.css
   - stylesheets/extra.css
+  - stylesheets/home.css
 
 extra:
   social:

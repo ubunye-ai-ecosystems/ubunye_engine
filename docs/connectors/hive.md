@@ -1,7 +1,8 @@
 # Hive Connector
 
-Reads and writes Hive Metastore tables via Spark SQL.
-Requires PySpark with a configured Hive metastore (`spark.sql.catalogImplementation: hive`).
+Reads and writes tables in a Hive metastore (the catalog that maps a
+`database.table` name to files) through Spark SQL. Use it on a Spark cluster that
+has a Hive metastore configured (`spark.sql.catalogImplementation: hive`).
 
 ---
 
@@ -77,11 +78,9 @@ ENGINE:
     hive.metastore.uris: "thrift://metastore-host:9083"
 ```
 
-These keys are fixed when the Spark session starts, so they work only when
-Ubunye creates the session (`ubunye run` on the `spark` backend). Where the
-platform starts the session (Databricks, EMR, `spark-submit`), set them there
-instead; in `ENGINE.spark_conf` they are refused. See
-[Engine & Profiles](../config/engine.md).
+These keys are fixed when the Spark session starts. Where the platform starts it
+(Databricks, EMR, `spark-submit`), set them there instead. See
+[Spark keys fixed at session start](../config/engine.md#spark-keys-fixed-at-session-start).
 
 ---
 
@@ -100,7 +99,9 @@ instead; in `ENGINE.spark_conf` they are refused. See
 ```
 
 To re-run a single day without dropping the rest of the table, use
-`mode: overwrite_partitions` instead of `overwrite`:
+`mode: overwrite_partitions` instead of `overwrite`. How each
+[write mode](../config/io.md#write-modes) behaves, `merge` included (it needs
+`file_format: delta` on `hive`), is on the Inputs & Outputs page.
 
 ```yaml
   outputs:
@@ -111,4 +112,3 @@ To re-run a single day without dropping the rest of the table, use
       mode: overwrite_partitions
       partitionBy: [event_date]
 ```
-

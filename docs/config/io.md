@@ -1,7 +1,12 @@
 # Inputs & Outputs
 
-`CONFIG.inputs` and `CONFIG.outputs` are dictionaries where each key is a logical name
-and each value is an `IOConfig`: a connector declaration.
+This page is for anyone writing a task's `config.yaml`. It shows how to say what a
+task reads (`CONFIG.inputs`) and writes (`CONFIG.outputs`), and it is the home page
+for **write modes**: how an output treats data already in its target.
+
+Each entry has a name you choose and a block that names a connector with `format:`.
+A connector is the built-in code that reads or writes one kind of storage (see
+[Connectors](../connectors/overview.md)).
 
 ---
 
@@ -78,7 +83,7 @@ url: "jdbc:postgresql://host:5432/db"   # required
 table: public.claims                    # required unless sql is set (always for outputs)
 sql: "SELECT * FROM public.claims"      # alternative to table (inputs only)
 user: "{{ env.DB_USER }}"
-password: "{{ env.DB_PASS }}"
+password: "secret://env/DB_PASS"        # see Secrets
 options:
   fetchsize: "10000"
   partitionColumn: id
@@ -134,7 +139,7 @@ format: rest_api
 url: "https://api.example.com/v1/records"
 auth:
   type: bearer
-  token: "{{ env.API_TOKEN }}"
+  token: "secret://env/API_TOKEN"
 pagination:
   type: cursor
   cursor_response_key: next_cursor
@@ -167,12 +172,9 @@ A third-party connector that declares no keys accepts any key.
 
 ## Write modes
 
-The first four are Spark's native `SaveMode` values. `merge` and
-`overwrite_partitions` are Ubunye's lakehouse modes: Spark has no save mode for
-either. The engine splits the work along the hexagon: the backend-agnostic
-*resolution* (validating a mode against what a connector supports) lives in
-`ubunye.core.write_modes`, while the Spark *execution* (`MERGE INTO`, dynamic
-partition overwrite) lives in the Spark adapter, `ubunye.adapters.spark.write_exec`.
+The write mode (`mode:` on an output) says what happens to data already in the
+target. The first four are Spark's own save modes. `merge` and
+`overwrite_partitions` are added by Ubunye: Spark has no save mode for either.
 
 | Mode | Behaviour |
 |---|---|
@@ -185,6 +187,14 @@ partition overwrite) lives in the Spark adapter, `ubunye.adapters.spark.write_ex
 
 Not every connector can honour every mode. Asking for one it cannot do raises
 `SinkWriteError` **before any rows are written**. It is never silently downgraded.
+
+`ubunye plan` catches this before a run. `ubunye validate` does not check write
+modes against the connector, so a `jdbc` output with `mode: merge` passes
+`validate` and fails `plan`:
+
+```text
+  problem: outputs.predictions: Write mode 'merge' is not supported by the 'jdbc' connector.
+```
 
 | Connector | Supported modes | Default |
 |---|---|---|
@@ -245,9 +255,28 @@ to say which partitions to replace:
 
 Without `partitionBy` or `replace_where`, dynamic overwrite silently degrades to a
 full-table wipe, so the engine refuses it instead. `ubunye plan` reports this
-before a run.
+before a run (`validate` does not):
 
-Under the hood the engine picks the mechanism the target actually supports: Delta's
-own write option for Delta, `INSERT OVERWRITE` for an existing table, and Spark's
-`partitionOverwriteMode=DYNAMIC` for a path. Each route is covered by an
-integration test against a real Spark session.
+```text
+  problem: outputs.daily_sales: Write mode 'overwrite_partitions' requires 'partitionBy' or 'replace_where'.
+```
+
+The `partitionBy` form also runs on the pandas backend; `replace_where` needs Delta,
+so Spark.
+
+### `replace_where` on an append
+
+On a Delta or JDBC `append`, `replace_where` names the rows of the run's batch, so a
+rerun replaces the batch instead of adding it twice. Each connector page owns the
+details: [Delta appends](../connectors/s3.md#appends-that-land-once-and-reruns-that-correct)
+and [JDBC appends](../connectors/jdbc.md#a-batch-that-lands-once).
+
+??? note "Under the hood"
+    Checking a mode against what a connector supports is done once, the same way
+    on every backend. Running `merge` and `overwrite_partitions` is Spark work
+    (`MERGE INTO`, dynamic partition overwrite), done by the Spark backend.
+
+    For `overwrite_partitions` the engine picks the mechanism the target actually
+    supports: Delta's own write option for Delta, `INSERT OVERWRITE` for an existing
+    table, and Spark's `partitionOverwriteMode=DYNAMIC` for a path. Each route is
+    covered by an integration test against a real Spark session.

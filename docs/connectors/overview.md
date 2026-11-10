@@ -1,7 +1,9 @@
 # Connectors: Overview
 
-Connectors are the I/O layer of Ubunye. Each connector is a **Reader** or **Writer** plugin
-registered under the `ubunye.readers` or `ubunye.writers` entry point group.
+A connector reads or writes one kind of storage for you. You write `format: s3` (or
+`jdbc`, `delta`, ...) on an input or output in `config.yaml`; the connector does the
+reading before your transform runs, and the writing after. Your code only sees data
+frames. This page lists the connectors and links to each one's settings.
 
 ![inputs: are read by the connector named in format:, your transform changes the data, outputs: are written the same way](../assets/diagrams/connectors.svg)
 
@@ -25,37 +27,16 @@ before a run when a task uses a connector its backend cannot serve.
 
 ---
 
-## How connectors are loaded
-
-The `PluginRegistry` discovers connectors at startup via Python entry points.
-The built-in ones are declared in Ubunye's own `pyproject.toml`:
-
-```toml
-# pyproject.toml
-[project.entry-points."ubunye.readers"]
-hive     = "ubunye.plugins.readers.hive:HiveReader"
-jdbc     = "ubunye.plugins.readers.jdbc:JdbcReader"
-s3       = "ubunye.plugins.readers.s3:S3Reader"
-delta    = "ubunye.plugins.readers.delta:DeltaReader"
-binary   = "ubunye.plugins.readers.binary:BinaryReader"
-unity    = "ubunye.plugins.readers.unity:UnityTableReader"
-rest_api = "ubunye.plugins.readers.rest_api:RestApiReader"
-
-[project.entry-points."ubunye.writers"]
-s3       = "ubunye.plugins.writers.s3:S3Writer"
-delta    = "ubunye.plugins.writers.delta:DeltaWriter"
-hive     = "ubunye.plugins.writers.hive:HiveWriter"
-jdbc     = "ubunye.plugins.writers.jdbc:JdbcWriter"
-unity    = "ubunye.plugins.writers.unity:UnityTableWriter"
-rest_api = "ubunye.plugins.writers.rest_api:RestApiWriter"
-```
-
-Any installed package that declares these entry points is automatically picked up.
-List all discovered connectors:
+## Which connectors are installed
 
 ```bash
 ubunye plugins
 ```
+
+lists every connector this machine can use: the built-in ones above, plus any
+installed from another package. An unknown `format:` is refused by
+`ubunye validate`, with that list. How connectors are found and registered (entry
+points) is in [Writing a Plugin](plugin_guide.md#registering-via-entry-points).
 
 ---
 

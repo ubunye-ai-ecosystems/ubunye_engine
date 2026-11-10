@@ -1,8 +1,8 @@
 # Jinja Templating
 
-Ubunye resolves Jinja2 expressions in your `config.yaml` **before** Pydantic validation.
-This lets you inject environment variables, CLI arguments, dates, and computed values
-without changing the schema.
+Ubunye fills in Jinja2 expressions (`{{ ... }}`) in your `config.yaml` **before** the
+config is checked against its schema. This lets you inject environment variables, CLI
+arguments, dates, and computed values without changing the schema.
 
 ---
 
@@ -10,7 +10,8 @@ without changing the schema.
 
 1. `load_config(path, variables)` (in `ubunye.config`) parses the YAML.
 2. The resolver renders every string value through Jinja2.
-3. The result is validated by Pydantic.
+3. The result is checked against the config schema (see
+   [Validation](overview.md#validation)).
 
 Jinja expressions can appear in **any string value**: paths, table names, SQL,
 header values, tokens, etc. Jinja renders values, not structure: keys and
@@ -41,10 +42,12 @@ CONFIG:
       format: jdbc
       url: "{{ env.JDBC_URL }}"
       user: "{{ env.DB_USER }}"
-      password: "{{ env.DB_PASS }}"
+      password: "secret://env/DB_PASS"   # a secret: not templated, see Secrets
 ```
 
-`env` is a dict-like object populated from `os.environ` at load time.
+`env` is a dict-like object populated from `os.environ` at load time. Use it for
+settings, not for passwords: a templated value becomes part of the rendered config,
+while a [`secret://`](secrets.md) reference is read only when the connector runs.
 
 ---
 
@@ -103,6 +106,9 @@ A few rules, so a typo is caught instead of rendering the wrong thing:
   task's folder, and `mode` is set with
   `-m`.
 - `--var dt=...` works like `-dt`; giving both with different values is refused.
+- A value arrives as text: `--var min_age=30` gives the string `'30'`, and a
+  rendered value stays text even with `| int`. Convert it in your Python code
+  (`int(params["min_age"])`).
 - The variables a run used are kept in its run record (`--lineage`).
 
 ---
@@ -135,7 +141,7 @@ Common filters:
 | `lower` | Convert to lowercase |
 | `replace(a, b)` | Replace substring `a` with `b` |
 | `trim` | Strip leading/trailing whitespace |
-| `int`, `float` | Type coercion |
+| `int`, `float` | Number conversion inside an expression (`{{ (n \| int) + 1 }}`); the rendered value is still text |
 
 ---
 
@@ -162,8 +168,10 @@ sql: >-
 ## Best practices
 
 !!! warning "Never commit secrets"
-    Use `{{ env.SECRET }}` to reference secrets from the environment.
-    Never hardcode passwords, tokens, or keys in `config.yaml`.
+    Never hardcode passwords, tokens, or keys in `config.yaml`, and do not template
+    them in with `{{ env.SECRET }}` either. Use a `secret://` reference
+    (`secret://env/DB_PASS` reads the same environment variable). See
+    [Secrets](secrets.md).
 
 !!! tip "Validate after templating"
     `ubunye validate` renders the template and validates the result.

@@ -47,7 +47,7 @@ VERSION: "0.1.0"
 # the same files:
 #   ubunye run ... --backend pandas
 #   ubunye run ...
-# {{ task_dir }} is this folder, so the paths work from wherever you run it.
+# {{{{ task_dir }}}} is this folder, so the paths work from wherever you run it.
 CONFIG:
   inputs:
     people:

@@ -2,6 +2,36 @@
 
 **Status:** accepted (hardening programme, 2026-09-29)
 
+!!! abstract "Current rule (summary)"
+    The decision below and its four addenda, as they stand today (0.9.0):
+
+    - **One live run per batch.** A batch is a task plus all its variables (`dt`, `dtf`,
+      `--var`, the profile). A second run of a batch that is still running is refused in
+      one line, exit 1. Different batches never block each other.
+    - **A dead run is taken over.** If its process is gone, or its lease file has not
+      been touched for 15 minutes, the next run of the batch takes over and marks the
+      dead run's record `interrupted`.
+    - **Appends that were claimed are taken back** when a run fails or dies: on pandas,
+      and on Spark for file formats on a local or shared disk (written into a staging
+      folder, then claimed and moved in).
+    - **A finished batch is not appended twice.** A new run of a finished batch whose
+      task appends is refused. `--rerun` replaces what the finished run wrote;
+      `--resume` runs only the pipeline's tasks that have not finished the batch.
+    - **Delta appends land once.** A plain Delta append uses Delta's own idempotent
+      write, so a retry commits nothing. With `replace_where`, every run replaces the
+      batch's rows, so a rerun can correct them.
+    - **JDBC appends with `replace_where` land once:** staged, then moved in by one
+      database transaction (delete the batch's rows, insert the new ones).
+    - **What cannot be taken back is named, never deleted:** plain JDBC appends,
+      non-Delta catalog tables, and Spark appends to object storage or HDFS. Use
+      `overwrite`, `overwrite_partitions`, `merge` or `replace_where` for batches that
+      must land once.
+    - **Scope:** the lease protects runs that share the use case folder (one machine or
+      a shared disk), not cloud jobs that each start on their own disk.
+      `UBUNYE_RUN_LEASE=off` turns it off.
+
+    How to use it: [Safe reruns](../guides/safe-reruns.md).
+
 ![A batch is a task with its dt. Running a finished append again is refused; --rerun replaces it; after a crash the next run takes over; --resume finishes a pipeline](../assets/diagrams/rerun.svg)
 
 ## Context
@@ -337,8 +367,8 @@ files to claim, and no batch id in the table unless the user put one there.
 transaction.** For an append output that sets it, Spark writes the batch into
 `ubunye_stage_<12 hex>` beside the target (named by the task, output and batch
 under a lease, so a retry replaces a staging table a killed run left behind). Then
-one transaction runs `DELETE FROM <table> WHERE <replace_where>` and `INSERT INTO
-<table> (<columns>) SELECT <columns> FROM <stage>`, and commits; the staging table
+one transaction runs `DELETE FROM <table> WHERE <replace_where>` and
+`INSERT INTO <table> (<columns>) SELECT <columns> FROM <stage>`, and commits; the staging table
 is dropped afterwards. A kill before the commit changes nothing in the target; a
 kill after it leaves the batch, which the rerun replaces with the same rows. The SQL
 is plain and portable; identifiers are quoted by Spark's own dialect for the URL.

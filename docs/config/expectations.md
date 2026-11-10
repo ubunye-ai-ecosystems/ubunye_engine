@@ -1,9 +1,10 @@
 # Expectations
 
-`CONFIG.expectations` states what an output must look like. The engine checks
-every output after the transform and **before anything is written**, on Spark
-and on pandas alike. It can also state what an input must look like: see
-[Input contracts](#input-contracts).
+`CONFIG.expectations` states what an output must look like: rules such as "this
+column is never empty". This page is for anyone who wants bad data to stop a run
+instead of landing in a table. The engine checks every output after the transform
+and **before anything is written**, on Spark and on pandas alike. It can also state
+what an input must look like: see [Input contracts](#input-contracts).
 
 ![Rows pass the rules before anything is written: pass is written, quarantine goes to a quarantine output, warn stays and is logged, fail stops the run; reconcile and the quarantine rate can also stop it](../assets/diagrams/expectations.svg)
 
@@ -76,16 +77,23 @@ ExpectationError: Expectations failed, so nothing was written:
   or warn if this is expected.
 ```
 
-The hint names only what the broken rules can do: quarantine or warn for a rule on
-rows; a share (`max_lost: "1%"`) or warn for a reconcile; warn for `unique`,
-`row_count` and `columns`, which cannot quarantine.
+The hint names only what the broken rules can do:
 
-`ubunye run` prints the message and exits with code 1, with no traceback: the data
-broke a rule, the engine did not crash. (An `ExpectationError` about the setup, such
-as narwhals not installed, still shows its traceback.) The error carries every rule's result, passed
-or not (`err.results`). A rule that
-breaks zero rows today and thousands tomorrow is the earliest warning that
-something upstream moved.
+| Broken rule | The hint suggests |
+|---|---|
+| a rule on rows (`not_null`, `between`, `one_of`, `matches`) | `quarantine` or `warn` |
+| a `reconcile` | a share (`max_lost: "1%"`) or `warn` |
+| `unique`, `row_count`, `columns` (these cannot quarantine) | `warn` |
+
+What you see:
+
+- `ubunye run` prints the message and exits with code 1, with no traceback: the
+  data broke a rule, the engine did not crash.
+- An `ExpectationError` about the setup, such as narwhals not installed, still
+  shows its traceback.
+- From Python, the error carries every rule's result, passed or not
+  (`err.results`). A rule that breaks zero rows today and thousands tomorrow is
+  the earliest warning that something upstream moved.
 
 ## Reconcile: nothing lost on the way
 
@@ -143,7 +151,7 @@ ExpectationError: Expectations failed, so nothing was written:
 
 - **Cost:** one pass over each reconciled input, for its row count and sums, however
   many outputs reconcile with it. On pandas that is in memory. On Spark it reads the
-  input: inputs are not held (ADR 009). On the output side the rows are counted in
+  input again, because inputs are not held in memory. On the output side the rows are counted in
   the same pass as the other rules, and sums in a pass of their own over the held
   output. On Spark an integer sum is taken as `decimal(38,0)`; a decimal sum past 38
   digits fails (ANSI) or comes back null.
@@ -202,7 +210,7 @@ The `columns` rule:
 
 Any rule can go on an input: `not_null`, `between`, `unique`, and so on. They cost
 one pass over the input; on Spark that reads the source again, since inputs are
-not held (ADR 009). The results are in the run record with `side: input`.
+not held in memory. The results are in the run record with `side: input`.
 
 An input cannot quarantine rows (yet), and cannot have a `reconcile` (that goes on
 the output). A name that is both an input and an output cannot have expectations:
@@ -210,11 +218,17 @@ rename one. `columns` works on an output too, to pin what the task writes.
 
 ## Checked when the config loads
 
-`ubunye validate` refuses an expectation that names no input or output, or a name
-that is both, an input with a quarantine or a reconcile, a `columns` type that is
-not one of the names above,
-a quarantine output that does not exist or is the output itself, two outputs
-sharing one quarantine output, a rule with no kind or two kinds, a `quarantine`
-rule with no `quarantine:` output, a `matches` pattern that is not a valid
-regular expression, and a `reconcile` that names no real input, checks nothing, or
-has a bound that is not a number or a percentage.
+`ubunye validate` refuses:
+
+- an expectation that names no input or output, or a name that is both;
+- an input with a quarantine or a reconcile;
+- a `columns` type that is not one of the names above;
+- a quarantine output that does not exist, or is the output itself;
+- two outputs sharing one quarantine output;
+- a rule with no kind, or two kinds;
+- a `quarantine` rule with no `quarantine:` output;
+- a `matches` pattern that is not a valid regular expression;
+- a `reconcile` that names no real input, checks nothing, or has a bound that is
+  not a number or a percentage.
+
+Why inputs are read again on Spark instead of held: [ADR 009](../architecture/adr-009-compute-outputs-once.md).

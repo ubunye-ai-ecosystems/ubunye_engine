@@ -85,3 +85,16 @@ def test_a_repeated_task_is_refused(two_tasks):
     assert result.exit_code != 0
     assert "more than once" in result.output
     assert not evidence.exists()
+
+
+def test_observing_a_task_that_never_ran_is_a_clean_error(tmp_path):
+    """Before any run record, `prove observe` printed a raw traceback."""
+    task = tmp_path / "uc" / "pkg" / "a"
+    task.mkdir(parents=True)
+    (task / "config.yaml").write_text(CONFIG, encoding="utf-8")
+    result, evidence = _observe(tmp_path, "a")
+    assert result.exit_code == 2, result.output
+    assert isinstance(result.exception, SystemExit)
+    assert "no run record of uc/pkg/a" in result.output
+    assert "--lineage" in result.output
+    assert not evidence.exists()

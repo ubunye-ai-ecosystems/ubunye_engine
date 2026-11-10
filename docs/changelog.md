@@ -40,6 +40,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   earlier run of the batch could have: the run took over a dead run's lease, or a
   failed run that wrote the batch left a note beside it. Same warning, fewer steps.
 
+- **The docs were reworked for clarity.** Each topic now has one home page, and the
+  others link to it. New pages: Concepts, Run records, Safe reruns, Troubleshooting,
+  Upgrading from 0.8 and Azure. The README is a short front door. The home page has
+  an intro film. Every page uses the same words (use case, pipeline, task, profile,
+  run record), and internal ticket numbers are gone from user pages. Examples that
+  did not run as written (drift detection, RAG, the registry gates, the hooks
+  setup, the Databricks bundle) now run, and their output is real. The site has top
+  tabs, tap to zoom on diagrams, link preview cards, and colours that match the
+  diagrams.
+
 ### Fixed
 
 - `ubunye run` on a task whose `transformations.py` has no Task class prints one
@@ -159,6 +169,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `~/.ubunye/fallback/<run_id>/lineage.jsonl`, and the warning names the
   `ubunye sync lineage` command that replays it. The Delta store's own copy of
   that code is gone; its `save` raises like any store's.
+
+- **The CLI reference shows every command again.** A code span broken across two
+  lines put `<table>` at the start of a line, and Markdown read it as raw HTML:
+  everything after "Where run records are stored" (lineage show, runs, models,
+  prove, sync, deploy, export) showed as plain text. The same fix applies to
+  ADR 008. The example catalog names on the deployment page are now neutral.
+- **`ubunye validate` checks the profile the way `run` does.** It uses `DEV` when no
+  `-m` or `--profile` is given, refuses a name the config does not define, and
+  accepts any name when the config has no profiles. Before, a config with profiles
+  `dev` and `prod` passed `validate` and then stopped `run`. The error now lists the
+  profiles and, when only the case differs, says which one you meant. `run` prints
+  the same message instead of a traceback.
+- **`prove observe` before any run** is a clean error (exit 2) that says to run the
+  task with `--lineage` first, not a traceback. An unknown `--run-id` is too.
+- **The warning for `CONFIG.transform.type`** no longer says it became an error in
+  0.8.0. It says what happens (the task still runs `transformations.py`) and what to
+  do instead.
+- **The config that `ubunye init` writes** spells `{{ task_dir }}` in its comment the
+  way the config uses it.
 
 ### Deprecated
 

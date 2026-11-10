@@ -1,5 +1,9 @@
 # Language models
 
+These examples live in the companion repository
+[ubunye-ai-ecosystems/ubunye-examples](https://github.com/ubunye-ai-ecosystems/ubunye-examples).
+Run the commands from a clone of it ([setup per place](index.md#before-you-start-once-per-environment)).
+
 Working with LLMs inside ordinary pipelines. Two examples: retrieval augmented
 answers with sources cited, and teaching a small model you own from a large
 model's labels.
@@ -83,5 +87,22 @@ nothing per call and no one can rate limit it.
 
 === "Kubernetes"
 
-    Set `WITH_DISTILLATION: "true"` in `platforms/k8s/job-models.yaml` and
-    apply it. Give the pod time: the student trains on CPU.
+    `platforms/k8s/job-models.yaml` runs example 05 only. To add the
+    distillation step, add this entry to the container's `env:` list in that
+    file (next to `MODEL_BACKEND`):
+
+    ```yaml
+                - name: WITH_DISTILLATION
+                  value: "true"
+    ```
+
+    Then apply it and follow the logs:
+
+    ```bash
+    kubectl apply -f platforms/k8s/job-models.yaml
+    kubectl logs -f job/ubunye-rag
+    ```
+
+    Give the pod time: the student trains on CPU. A Job's pod settings cannot
+    be changed after it is created, so if `ubunye-rag` already exists, delete
+    it first with `kubectl delete job ubunye-rag`.

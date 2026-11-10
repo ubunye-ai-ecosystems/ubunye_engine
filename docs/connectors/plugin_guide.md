@@ -1,7 +1,9 @@
 # Writing a Plugin
 
-Ubunye's connector and transform system is fully extensible via Python entry points.
-Any installed package that declares the right entry points is discovered automatically.
+This page is for Python developers who want Ubunye to read or write a system it does
+not support yet, or to add a transform, monitor or secret provider. You write a
+small class, declare it in your package's `pyproject.toml` (an "entry point"), and
+`pip install` the package: Ubunye finds it with no change to Ubunye itself.
 
 ---
 
@@ -51,12 +53,21 @@ connector accepts any block.
 from ubunye.core.interfaces import Writer
 
 class MySinkWriter(Writer):
-    def write(self, df: "pyspark.sql.DataFrame", cfg: dict, backend) -> None:
+    CONFIG_KEYS = frozenset({"url"})
+
+    def write(self, df, cfg: dict, backend) -> None:
         url = cfg["url"]
         mode = cfg.get("mode") or "append"
-        # ... write df to your sink
-        _send_to_sink(df.toPandas(), url, mode)
+        # iter_records works on every backend: each row as a dict,
+        # from a Spark frame or a pandas one.
+        rows = list(backend.iter_records(df))
+        _send_to_sink(rows, url, mode)
 ```
+
+`df` is a Spark DataFrame on the `spark` and `databricks` backends and a pandas
+DataFrame on `pandas`. Going through `backend` (see [Backend reference](#backend-reference))
+keeps one writer working on all of them. Calling `df.toPandas()` instead would work
+on Spark only: a pandas frame has no `toPandas()`.
 
 ---
 
@@ -100,6 +111,32 @@ my_sink = "my_package.writers.my_sink:MySinkWriter"
 [project.entry-points."ubunye.transforms"]
 my_transform = "my_package.transforms.my_transform:MyTransform"
 ```
+
+??? note "Under the hood: the built-in connectors are registered the same way"
+    Ubunye finds connectors at startup through Python entry points. Its own are
+    declared in Ubunye's `pyproject.toml`:
+
+    ```toml
+    [project.entry-points."ubunye.readers"]
+    hive     = "ubunye.plugins.readers.hive:HiveReader"
+    jdbc     = "ubunye.plugins.readers.jdbc:JdbcReader"
+    s3       = "ubunye.plugins.readers.s3:S3Reader"
+    delta    = "ubunye.plugins.readers.delta:DeltaReader"
+    binary   = "ubunye.plugins.readers.binary:BinaryReader"
+    unity    = "ubunye.plugins.readers.unity:UnityTableReader"
+    rest_api = "ubunye.plugins.readers.rest_api:RestApiReader"
+
+    [project.entry-points."ubunye.writers"]
+    s3       = "ubunye.plugins.writers.s3:S3Writer"
+    delta    = "ubunye.plugins.writers.delta:DeltaWriter"
+    hive     = "ubunye.plugins.writers.hive:HiveWriter"
+    jdbc     = "ubunye.plugins.writers.jdbc:JdbcWriter"
+    unity    = "ubunye.plugins.writers.unity:UnityTableWriter"
+    rest_api = "ubunye.plugins.writers.rest_api:RestApiWriter"
+    ```
+
+    Any installed package that declares these entry points is picked up the same
+    way, with no change to Ubunye.
 
 After `pip install -e .` (or publishing to PyPI):
 
@@ -169,20 +206,30 @@ backend.read_frame(file_format, path, options=..., schema=...)
 ```
 
 A Spark backend also has `backend.spark` (the `SparkSession`). A connector that
-needs Spark should get it with `ubunye.adapters.spark.session.spark_of`, which
-raises a clear error on the pandas backend, and declare it so the check happens
-before a run:
+needs Spark should get the session with `spark_of`, which raises a clear
+error on the pandas backend. Declare that it needs Spark too, so `ubunye validate`
+and `ubunye plan` with `--backend pandas` say so before a run:
 
 ```python
+from ubunye.adapters.spark.session import spark_of
 from ubunye.core.capabilities import SPARK
+from ubunye.core.errors import SourceReadError
 
 class MySparkReader(Reader):
     REQUIRES = frozenset({SPARK})   # also: PATH_IO, RECORDS
+
+    def read(self, cfg: dict, backend):
+        spark = spark_of(backend, "my_spark", error=SourceReadError)
+        return spark.read.table(cfg["table"])
 ```
 
 ---
 
 ## Testing your plugin
+
+Ubunye's own tests prove that the plugin system works with a connector the engine
+has never seen: `tests/unit/config/test_third_party_connector.py` registers one from
+outside and uses it. It makes a good model for your own test.
 
 Write Spark-free unit tests using mock DataFrames:
 

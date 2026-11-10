@@ -117,11 +117,17 @@ def ignored_transform_message(transform: Any) -> Optional[str]:
     ttype = transform.get("type") if isinstance(transform, dict) else None
     if ttype in (None, "noop"):
         return None
+    if ttype == "model":
+        instead = (
+            "To train or score a model, call ModelTransform from transformations.py "
+            "(a model registered inside a run is linked to it)"
+        )
+    else:
+        instead = "Call that logic from transformations.py"
     return (
-        f"CONFIG.transform.type '{ttype}' is not run: a task runs its "
-        "transformations.py. Call it from there (a model registered inside a run "
-        "is linked to it) and remove the type from config.yaml. From 0.8.0 this "
-        "is an error."
+        f"CONFIG.transform.type '{ttype}' is not run: the task still runs its "
+        f"transformations.py and ignores this type. {instead}, then remove the "
+        "type from config.yaml. See docs/config/transform.md."
     )
 
 

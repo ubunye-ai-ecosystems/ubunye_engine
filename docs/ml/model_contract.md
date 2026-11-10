@@ -1,7 +1,10 @@
 # Model Contract: `UbunyeModel`
 
-`UbunyeModel` is the abstract base class every user-defined ML model must implement.
-It is the **only** interface the engine ever calls. No ML library is imported by the engine itself.
+For anyone writing a model class that Ubunye can train, save, register and load.
+
+`UbunyeModel` is the base class every model you write must fill in. It is the
+**only** thing the engine ever calls on your model. The engine itself imports no
+ML library.
 
 ---
 
@@ -49,7 +52,8 @@ It only calls `train()`, `predict()`, `save()`, and `load()`. The implementation
 This gives you:
 
 - **Library freedom**: wrap any ML framework without engine changes.
-- **Testability**: test your model class with unit tests and `MockDF`; no Spark needed.
+- **Testability**: test your model class with plain unit tests and a small fake
+  data frame (a `MockDF`, see [below](#testing-your-model-spark-free)); no Spark needed.
 - **Registry integration**: `ModelRegistry.register()` calls `save()` and stores
   `metadata()` and the metrics `train()` returned.
 
@@ -58,7 +62,7 @@ This gives you:
 ## Minimal implementation (sklearn)
 
 ```python
-# model.py  (in your task directory)
+# model.py  (in your task folder)
 import joblib
 from pathlib import Path
 from sklearn.ensemble import GradientBoostingClassifier
@@ -123,12 +127,16 @@ return {
 }
 ```
 
+A promotion gate can only check a metric that `train()` returns. The sklearn
+model above returns `auc` and `f1`, so `min_auc` works and `max_loss` would
+block every promotion. See [Promotion gates](registry.md#promotion-gates).
+
 ---
 
 ## `predict()`: return value
 
-`predict()` receives the same type of object `train()` received (a PySpark DataFrame
-or any duck-typed DataFrame-like) and should return a DataFrame-like with prediction
+`predict()` receives the same type of object `train()` received (a Spark DataFrame,
+a pandas DataFrame, or anything with the methods your model calls) and should return a DataFrame-like with prediction
 columns added. Return it from your task's `transform()` under an output name and
 the engine writes it like any other output.
 
@@ -147,7 +155,7 @@ The `metadata()` dict must contain at minimum:
 
 Additional keys are stored but not validated.
 
-`features` is also the model's input contract at predict (ADR 012). A
+`features` is also the model's input contract at predict. A
 `ModelTransform` predict compares the frame's columns with it before calling the
 model. Extra columns are fine. By default a missing column is a warning on the
 log and the run record; with `registry.check_features: true` the frame is
@@ -156,11 +164,15 @@ and the version. If your `predict()` builds some declared features itself, leave
 the check at its default or set `check_features: false`. A model that declares no
 features is not checked. Only names are checked: dtypes are not stored.
 
+Why it works this way: [ADR 012](../architecture/adr-012-model-runs-and-feature-contract.md).
+
 ---
 
 ## Testing your model (Spark-free)
 
-Use a duck-typed `MockDF` to test your model without PySpark:
+A `MockDF` is a tiny stand-in for a Spark DataFrame that you write in your test.
+It has only the methods your model calls (here `toPandas()` and `count()`), so
+the model can't tell the difference and you need no Spark to test it:
 
 ```python
 import pytest
@@ -199,7 +211,10 @@ records that run's id. The full example is in
 
 A task's `config.yaml` cannot run the model by naming `type: model`: a task always runs
 its `transformations.py`. The `type` is not run: `ubunye run` warns
-(`FutureWarning`), and `ubunye plan` and `ubunye validate` report it.
+(`FutureWarning`), and `ubunye plan` and `ubunye validate` report it. To use the
+`registry:` settings from `config.yaml`, call `ModelTransform` from
+`transformations.py`; see
+[Registry settings for a model transform](registry.md#registry-settings-for-a-model-transform).
 
 See [Model Registry](registry.md) for the full registry reference.
 

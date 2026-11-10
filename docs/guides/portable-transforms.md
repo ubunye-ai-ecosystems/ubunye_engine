@@ -1,16 +1,18 @@
 # Writing a transform that gives the same answer on pandas and Spark
 
 A transform written with [Narwhals](https://narwhals-dev.github.io/narwhals/) runs on
-pandas and on Spark unchanged (ADR 005). Running is not the same as agreeing. These are
-the places where the same line of code gave different numbers, each found by running a
-real workload on both engines and comparing the run records with `ubunye prove`. Each
-has a fix that holds on both.
+pandas and on Spark unchanged. Running is not the same as agreeing. This page is for
+anyone writing a transform that must give the same answer on both. It lists the places
+where the same line of code gave different numbers, each found by running a real
+workload on both engines and comparing the run records with `ubunye prove`. Each has a
+fix that holds on both. To check your own task, jump to [How to know](#how-to-know).
+Why it works this way: [ADR 005](../architecture/adr-005-portable-transforms.md).
 
 ## Rounding: round halves yourself
 
 `.round(4)` rounds a half **up** on Spark and to the **even** neighbour on pandas. A
 monthly mean of 921.03125 became 921.0313 on Spark and 921.0312 on pandas; 43 of 6,366
-monthly food prices differed this way (finding F-029).
+monthly food prices differed this way in the food prices example.
 
 ```python
 def round4(expr):
@@ -41,7 +43,7 @@ question altogether.
 
 On pandas, Narwhals 2.26 dropped a `.cast(nw.Int64)` written inside a group-by that
 also computed a mean: the counts came out as `float64`, and the schema no longer
-matched Spark's `bigint` (finding F-027, reported as
+matched Spark's `bigint` (reported to Narwhals as
 [narwhals#4005](https://github.com/narwhals-dev/narwhals/issues/4005)). Cast after the aggregation:
 
 ```python
@@ -51,7 +53,7 @@ agg = agg.with_columns(nw.col("n").cast(nw.Int64))
 
 ## Replacing text: `replace_all`, literal
 
-`str.replace` is not implemented for Spark in Narwhals (finding F-028); it raises
+`str.replace` is not implemented for Spark in Narwhals; it raises
 `NotImplementedError`. `str.replace_all(" KG", "", literal=True)` works on both.
 
 ## Casting text to numbers: filter first, then cast
@@ -70,14 +72,15 @@ weights = weights.with_columns(
 ## Time: say which zone
 
 Cutting a timestamp into a day or an hour depends on a time zone. Every Ubunye backend
-uses UTC unless the task sets `spark.sql.session.timeZone` (ADR 007; before that, local
-Spark used the machine's zone, finding F-021). A task that means local days sets the key.
+uses UTC unless the task sets `spark.sql.session.timeZone`. In older versions, local Spark
+used the machine's own zone without saying so. A task that means local days sets the
+key. Why it works this way: [ADR 007](../architecture/adr-007-one-time-zone.md).
 
 ## Days between two dates: count with whole numbers
 
 Narwhals cannot subtract two timestamps on Spark (`dt.total_seconds` and
 `dt.timestamp` are not implemented there), and on pandas `dt.ordinal_day()` fails on a
-column with a null in it (finding F-053), which a delivery date often has. The Olist
+column with a null in it, which a delivery date often has. The Olist
 example turns each date into a day number with whole number arithmetic on the year,
 month and day, which every engine does alike, and subtracts:
 
