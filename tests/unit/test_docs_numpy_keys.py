@@ -1,7 +1,7 @@
 """The ``numpy_keys`` snippet in the pandas backend docs does what the docs say (F-042).
 
 The block between ``<!-- numpy-keys:begin -->`` and ``<!-- numpy-keys:end -->`` in
-docs/deployment/anywhere.md is read from the page and run, so the page and this test
+docs/backends.md is read from the page and run, so the page and this test
 cannot drift. The docs promise: values do not change, a whole number key with no
 nulls becomes NumPy ``int64``, a key with a null is left alone (Arrow or pandas'
 nullable ``Int64``), and a merge gives the same rows either way.
@@ -17,7 +17,7 @@ import pytest
 pd = pytest.importorskip("pandas")
 pa = pytest.importorskip("pyarrow")
 
-PAGE = Path(__file__).resolve().parents[2] / "docs" / "deployment" / "anywhere.md"
+PAGE = Path(__file__).resolve().parents[2] / "docs" / "backends.md"
 BLOCK = re.compile(
     r"<!-- numpy-keys:begin -->\s*```python\n(.*?)```\s*<!-- numpy-keys:end -->", re.S
 )
