@@ -77,15 +77,54 @@ Queries over run records ([ADR 013](architecture/adr-013-receipt-queries.md)).
 
 ---
 
-## Notebook API (Interactive)
+## Notebook API
 
-Step-by-step execution for prototyping in Databricks notebooks.
-Environment variables referenced via `{{ env.VAR }}` in config.yaml are
-auto-resolved from widgets and secrets, with no manual `os.environ` setup.
+A Databricks job notebook is three steps inside one `with` block:
 
 ```python
 import ubunye
 
+with ubunye.notebook(task_dir, dt=dt) as run:
+    sources = run.read()
+    outputs = run.transform(sources)
+    run.write(outputs)
+```
+
+The block is one run ([ADR 016](architecture/adr-016-notebook-as-a-run.md)):
+
+- **Run records** are on when a location is configured: `run_records=`, else the
+  job parameter `ubunye_run_records`, else `$UBUNYE_RUN_RECORDS`. A table name
+  (`main.ops.ubunye_runs`) goes to Delta, a path to files. The first save creates
+  the table; if the job's user may not, the warning says to create it once or
+  grant CREATE TABLE. `lineage=False` turns records off.
+- **Every failure is recorded** with the stage it failed in, as `failed_stage`:
+  `setup`, `read`, `expectations`, `transform`, `write`, `notebook` (your code
+  between the steps), or a name you give with `with run.step("score"):`.
+- **One line per step** is printed (`quiet=True` stops it):
+
+```text
+ubunye: read 1 input (claims) in 2.10s
+ubunye: transform 1 output (bronze_claims) in 0.40s
+ubunye: write 1 output (bronze_claims) in 5.02s
+ubunye: run 3a1b7ed8 success in 7.60s; run record: delta main.ops.ubunye_runs
+```
+
+- `dt=""` (an empty job parameter) counts as not given; then the job parameter
+  `dt`, else `$UBUNYE_DT`. `mode` not given is the job parameter `ubunye_mode`,
+  else `$UBUNYE_MODE`, else `DEV`.
+- A backup copy of a record the store could not save goes to the folder in
+  `ubunye_run_records_fallback` (a Unity Catalog Volume), only when one is set;
+  otherwise there is a warning and the job goes on.
+- `{{ env.VAR }}` values in config.yaml come from widgets and secrets, with no
+  manual `os.environ` setup.
+
+`run_task` and `run_pipeline` read the same settings (`run_records=`, the job
+parameter, the environment) and record the same stage names.
+
+Without `with`, the notebook works as before, for stepping through a task in
+cells; each `write()` leaves a run record when records are on:
+
+```python
 ctx = ubunye.notebook(
     "/Workspace/pipelines/claims/claim_etl",
     mode="PROD",
@@ -117,6 +156,9 @@ ctx.write(outputs)
         - transform
         - write
         - run
+        - step
+        - run_id
+        - run_records
         - config
         - config_dict
         - env_vars

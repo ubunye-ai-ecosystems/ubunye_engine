@@ -27,6 +27,7 @@ Usage
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import uuid
 import warnings
@@ -42,6 +43,7 @@ from ubunye.core.interfaces import Backend
 from ubunye.core.runs import BatchFinished
 from ubunye.core.runtime import EngineContext
 from ubunye.core.task_runner import execute_user_task, finished_run
+from ubunye.lineage import auto
 from ubunye.telemetry.hooks import MonitorHook
 
 logger = logging.getLogger(__name__)
@@ -141,21 +143,49 @@ def _build_extra_hooks(
     return extra + [MonitorHook(lineage_recorder)] if lineage_recorder else extra
 
 
+def _job_settings(
+    run_records: Optional[str],
+    dt: Optional[str],
+    dtf: Optional[str],
+    mode: Optional[str],
+    variables: Optional[Mapping[str, Any]],
+) -> Tuple[auto.Settings, str, Dict[str, Any]]:
+    """The job's settings (ADR 016), its mode, and the run's variables.
+
+    ``dt`` and ``mode`` not given (None or ``""``) come from the job parameters
+    ``dt`` / ``ubunye_mode``, else ``$UBUNYE_DT`` / ``$UBUNYE_MODE``; mode defaults
+    to ``DEV``. A ``dt`` among ``variables`` is used as given.
+    """
+    given = dict(variables or {})
+    found = auto.settings(
+        {"run_records": run_records, "dt": None if "dt" in given else dt, "mode": mode}
+    )
+    chosen_mode = found.mode or "DEV"
+    built = build_variables(
+        dt=auto.blank_as_none(dt) if "dt" in given else found.dt,
+        dtf=auto.blank_as_none(dtf),
+        mode=chosen_mode,
+        extra=given,
+    )
+    return found, chosen_mode, built
+
+
 def run_task(
     task_dir: str,
     *,
-    mode: str = "DEV",
+    mode: Optional[str] = None,
     dt: Optional[str] = None,
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
     backend: BackendChoice = None,
     variables: Optional[Mapping[str, Any]] = None,
-    lineage: bool = False,
-    lineage_dir: str = ".ubunye/lineage",
+    lineage: Optional[bool] = None,
+    lineage_dir: Optional[str] = None,
     profile: Optional[str] = None,
     hooks: Optional[Iterable[Hook]] = None,
     rerun: bool = False,
     lineage_backend: Optional[str] = None,
+    run_records: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run a single Ubunye task and return the outputs map.
 
@@ -164,10 +194,12 @@ def run_task(
     task_dir : str
         Path to the task directory containing ``config.yaml`` and
         ``transformations.py``.
-    mode : str
-        Run mode, used for Spark profile merging. Default ``"DEV"``.
+    mode : str, optional
+        Run mode, used for Spark profile merging. If not given: the job parameter
+        ``ubunye_mode``, else ``$UBUNYE_MODE``, else ``"DEV"``.
     dt : str, optional
-        Data timestamp, injected as ``{{ dt }}`` in Jinja templates.
+        Data timestamp, injected as ``{{ dt }}`` in Jinja templates. ``""`` counts
+        as not given; then the job parameter ``dt``, else ``$UBUNYE_DT``.
     dtf : str, optional
         Data timestamp format, injected as ``{{ dtf }}``.
     spark : SparkSession, optional
@@ -182,12 +214,14 @@ def run_task(
         Extra template variables for the config (``{"region": "gauteng"}``
         makes ``{{ region }}`` available), as ``--var`` does on the command
         line. May set ``dt`` or ``dtf``; the same name with two values is refused.
-    lineage : bool
-        Record lineage for this run.
-    lineage_dir : str
-        Where lineage records go. For the filesystem store, a directory under the
-        use case directory; for any other store, its location as given (a Delta
-        table name or path).
+    lineage : bool, optional
+        Record lineage for this run. If None (the default), records are on when a
+        run-record location is configured (``run_records``, the job parameter
+        ``ubunye_run_records``, ``$UBUNYE_RUN_RECORDS``); False turns them off.
+    lineage_dir : str, optional
+        Where lineage records go with ``lineage=True``. For the filesystem store, a
+        directory under the use case directory (default ``.ubunye/lineage``); for
+        any other store, its location as given (a Delta table name or path).
     profile : str, optional
         Config profile for validation (passed to ``load_config``).
     hooks : iterable of Hook, optional
@@ -201,6 +235,10 @@ def run_task(
         The run record store, by name (ADR 011): ``"filesystem"``, ``"delta"`` or
         an installed plugin. If *None*: ``$UBUNYE_LINEAGE_BACKEND``, else
         ``"filesystem"``.
+    run_records : str, optional
+        Where run records go, which also turns them on (ADR 016): a table name
+        (``main.ops.ubunye_runs``) goes to the Delta store, a path to files. If
+        None: the job parameter ``ubunye_run_records``, else ``$UBUNYE_RUN_RECORDS``.
 
     Returns
     -------
@@ -209,9 +247,76 @@ def run_task(
     """
     task_path = Path(task_dir).resolve()
     usecase_dir, task_identity = _task_identity(task_path)
-    variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
+    found, mode, variables = _job_settings(run_records, dt, dtf, mode, variables)
+    choice = auto.choose(
+        usecase_dir,
+        lineage=lineage,
+        lineage_dir=lineage_dir,
+        lineage_backend=lineage_backend,
+        run_records=run_records,
+        found=found,
+    )
+    lineage_recorder = auto.recorder_for(choice) if choice else None
+    run_id = str(uuid.uuid4())
+    context = EngineContext(
+        **auto.with_identity(
+            {
+                "run_id": run_id,
+                "profile": mode,
+                "task_name": task_identity,
+                "variables": variables,
+                "lineage_dir": choice.lineage_dir(usecase_dir) if choice else None,
+                "run_records": lineage_recorder.shared_store() if lineage_recorder else None,
+                "rerun": rerun,
+            },
+            auto.identity(found, task_path),
+        )
+    )
+    loaded: List[Any] = []  # the config, once loaded, for a setup failure's record
+    try:
+        return _run_one(
+            task_path,
+            loaded,
+            mode,
+            variables,
+            profile,
+            spark,
+            backend,
+            context,
+            lineage_recorder,
+            hooks,
+        )
+    except BatchFinished:
+        raise  # the batch finished: its success record stands
+    except Exception as exc:
+        # A failure before the engine had the run (config, backend, CONFIG.requires,
+        # the Task's setup) still leaves a record, at stage "setup" (ADR 016).
+        if lineage_recorder is not None and not lineage_recorder.recorded(run_id):
+            auto.record_failure(
+                lineage_recorder,
+                dataclasses.replace(context, task_dir=str(task_path)),
+                loaded[0].model_dump(mode="json") if loaded else None,
+                exc,
+                auto.SETUP_STAGE,
+            )
+        raise
 
+
+def _run_one(
+    task_path: Path,
+    loaded: List[Any],
+    mode: str,
+    variables: Dict[str, Any],
+    profile: Optional[str],
+    spark: Optional[Any],
+    backend: BackendChoice,
+    context: EngineContext,
+    lineage_recorder: Optional[Any],
+    hooks: Optional[Iterable[Hook]],
+) -> Dict[str, Any]:
+    """run_task after its settings: config, backend, then the task."""
     cfg = load_config(str(task_path), variables=variables, profile=profile)
+    loaded.append(cfg)
     spark_conf = cfg.merged_spark_conf(mode)
 
     # Derive usecase/package/task from path for app naming
@@ -222,47 +327,24 @@ def run_task(
     usecase_name = parts[-3] if len(parts) >= 3 else None
     app_name = _make_app_name(usecase_name, package_name, task_name)
 
-    backend = _detect_backend(
-        spark=spark, spark_conf=spark_conf, app_name=app_name, backend=backend
-    )
+    chosen = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name, backend=backend)
 
-    lineage_recorder = None
-    if lineage:
-        from ubunye.lineage import stores
-        from ubunye.lineage.recorder import LineageRecorder
-
-        lineage_recorder = LineageRecorder(
-            backend=stores.backend_name(lineage_backend),
-            base_dir=stores.location(usecase_dir, lineage_dir, lineage_backend),
-        )
-
-    run_id = str(uuid.uuid4())
-    context = EngineContext(
-        run_id=run_id,
-        profile=mode,
-        task_name=task_identity,
-        variables=variables,
-        lineage_dir=str(usecase_dir / lineage_dir) if lineage else None,
-        run_records=lineage_recorder.shared_store() if lineage_recorder else None,
-        rerun=rerun,
-    )
-
-    backend.start()
+    chosen.start()
     set_catalog_and_schema(
-        backend,
+        chosen,
         catalog=cfg.resolved_catalog(mode),
         schema=cfg.resolved_schema(mode),
     )
     try:
         return execute_user_task(
-            backend,
+            chosen,
             task_path,
             cfg,
             context,
             extra_hooks=_build_extra_hooks(lineage_recorder, hooks),
         )
     finally:
-        backend.stop()
+        chosen.stop()
 
 
 def run_pipeline(
@@ -271,20 +353,21 @@ def run_pipeline(
     pipeline: Optional[str] = None,
     tasks: Optional[List[str]] = None,
     *,
-    mode: str = "DEV",
+    mode: Optional[str] = None,
     dt: Optional[str] = None,
     dtf: Optional[str] = None,
     spark: Optional[Any] = None,
     backend: BackendChoice = None,
     variables: Optional[Mapping[str, Any]] = None,
-    lineage: bool = False,
-    lineage_dir: str = ".ubunye/lineage",
+    lineage: Optional[bool] = None,
+    lineage_dir: Optional[str] = None,
     profile: Optional[str] = None,
     hooks: Optional[Iterable[Hook]] = None,
     rerun: bool = False,
     lineage_backend: Optional[str] = None,
     resume: bool = False,
     package: Optional[str] = None,
+    run_records: Optional[str] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Run multiple tasks sequentially and return all outputs.
 
@@ -299,7 +382,7 @@ def run_pipeline(
     tasks : List[str]
         Task names to run in order.
     mode, dt, dtf, spark, backend, variables, lineage, lineage_dir, profile, hooks, rerun,
-    lineage_backend
+    lineage_backend, run_records
         Same as :func:`run_task`. One backend runs every task.
     resume : bool
         Finish a pipeline that stopped half way: a task that already finished this
@@ -321,7 +404,7 @@ def run_pipeline(
     if tasks is None:
         raise TypeError("run_pipeline() missing required argument: 'tasks'")
     base = Path(usecase_dir).resolve()
-    variables = build_variables(dt=dt, dtf=dtf, mode=mode, extra=variables)
+    found, mode, variables = _job_settings(run_records, dt, dtf, mode, variables)
 
     # Validate all configs before starting backend
     configs = {}
@@ -336,15 +419,16 @@ def run_pipeline(
 
     chosen = _detect_backend(spark=spark, spark_conf=spark_conf, app_name=app_name, backend=backend)
 
-    lineage_recorder = None
-    if lineage:
-        from ubunye.lineage import stores
-        from ubunye.lineage.recorder import LineageRecorder
-
-        lineage_recorder = LineageRecorder(
-            backend=stores.backend_name(lineage_backend),
-            base_dir=stores.location(base, lineage_dir, lineage_backend),
-        )
+    choice = auto.choose(
+        base,
+        lineage=lineage,
+        lineage_dir=lineage_dir,
+        lineage_backend=lineage_backend,
+        run_records=run_records,
+        found=found,
+    )
+    lineage_recorder = auto.recorder_for(choice) if choice else None
+    who = auto.identity(found, base)
 
     chosen.start()
     set_catalog_and_schema(
@@ -360,13 +444,20 @@ def run_pipeline(
             cfg = configs[task]
             # Each task is its own run: one run id, one run record.
             context = EngineContext(
-                run_id=str(uuid.uuid4()),
-                profile=mode,
-                task_name=f"{usecase}/{package}/{task}",
-                variables=variables,
-                lineage_dir=str(base / lineage_dir) if lineage else None,
-                run_records=lineage_recorder.shared_store() if lineage_recorder else None,
-                rerun=rerun,
+                **auto.with_identity(
+                    {
+                        "run_id": str(uuid.uuid4()),
+                        "profile": mode,
+                        "task_name": f"{usecase}/{package}/{task}",
+                        "variables": variables,
+                        "lineage_dir": choice.lineage_dir(base) if choice else None,
+                        "run_records": (
+                            lineage_recorder.shared_store() if lineage_recorder else None
+                        ),
+                        "rerun": rerun,
+                    },
+                    who,
+                )
             )
             done = finished_run(context) if resume else None
             if done is not None:

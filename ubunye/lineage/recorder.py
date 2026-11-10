@@ -189,6 +189,11 @@ class LineageRecorder:
         The run record store, by name (ADR 011): ``"filesystem"``, ``"delta"`` or
         any installed ``ubunye.lineage_backends`` plugin. If None,
         ``$UBUNYE_LINEAGE_BACKEND``, else ``"filesystem"``.
+    fallback:
+        Where a record the store could not save is kept (ADR 016): ``"~"`` (the
+        default) is ``~/.ubunye/fallback``, as before; a folder (a Unity Catalog
+        Volume) keeps it there; ``None`` keeps it nowhere and only warns, for a job
+        whose home folder dies with it (Databricks serverless).
     """
 
     #: The recorder hashes the output frames at task end, so the engine computes
@@ -207,8 +212,10 @@ class LineageRecorder:
         sample_fraction: float = 0.01,
         hash_inputs: bool = True,
         backend: Optional[str] = None,
+        fallback: Optional[str] = "~",
     ) -> None:
         self._store: Any = _make_store(store, base_dir, backend)
+        self._fallback = fallback
         self._where = (stores.backend_name(backend or store), base_dir)
         # Inputs are hashed like outputs (every row). It costs a pass over each
         # input; turn it off for inputs too large to read twice.
@@ -220,9 +227,16 @@ class LineageRecorder:
         self._sample_fraction = sample_fraction
         # In-flight run contexts keyed by run_id (supports concurrent tasks)
         self._runs: Dict[str, RunContext] = {}
+        # Every run this recorder started a record for, so a caller can tell a
+        # failure the engine recorded from one before the engine had the run.
+        self._started: set = set()
         # Real values of the run's secret-looking variables, to mask wherever they
         # were templated in (a JDBC URL, a REST query).
         self._secret_values: Dict[str, List[str]] = {}
+
+    def recorded(self, run_id: str) -> bool:
+        """Whether this recorder has a record of the run (it saw the run start)."""
+        return run_id in self._started
 
     def shared_store(self) -> Any:
         """The run record store, unless it is the filesystem one.
@@ -244,10 +258,31 @@ class LineageRecorder:
             self._keep(ctx, exc)
 
     def _keep(self, ctx: RunContext, exc: Exception) -> None:
+        from pathlib import Path
+
         from ubunye._internal import metadata_worker
 
         backend, where = self._where
-        manifest = metadata_worker._FALLBACK_ROOT / ctx.run_id / "lineage.jsonl"
+        if self._fallback is None:
+            logger.warning(
+                "The run record of %s (run %s, %s) was not saved to the %s lineage store "
+                "%s: %s. The job goes on. To keep such records, set the job parameter "
+                "ubunye_run_records_fallback (or $UBUNYE_RUN_RECORDS_FALLBACK) to a "
+                "Volume folder.",
+                ctx.task_path,
+                ctx.run_id,
+                ctx.status,
+                backend,
+                where,
+                exc,
+            )
+            return
+        root = (
+            metadata_worker._FALLBACK_ROOT
+            if self._fallback == "~"
+            else Path(self._fallback).expanduser()
+        )
+        manifest = root / ctx.run_id / "lineage.jsonl"
         doc = {
             **ctx.to_dict(),
             "_fallback_at": _utcnow(),
@@ -262,6 +297,8 @@ class LineageRecorder:
                 f"It was kept in {manifest}; replay it with 'ubunye sync lineage "
                 f"--lineage-backend {backend} --lineage-dir {where}'"
             )
+            if self._fallback != "~":
+                kept += f" after copying {manifest.parent} into ~/.ubunye/fallback"
         except OSError as io_exc:
             kept = f"It could not be kept either ({io_exc})"
         logger.warning(
@@ -328,6 +365,7 @@ class LineageRecorder:
             variables=redact_variables(dict(getattr(context, "variables", {}) or {})),
         )
         self._runs[run_id] = ctx
+        self._started.add(run_id)
         self._secret_values[run_id] = secret_values(dict(getattr(context, "variables", {}) or {}))
         self._save(ctx)
         if self._openlineage is not None:
@@ -350,6 +388,7 @@ class LineageRecorder:
         hash_basis: Optional[Dict[str, str]] = None,
         source_versions: Optional[Dict[str, Any]] = None,
         error: Optional[str] = None,
+        failed_stage: Optional[str] = None,
     ) -> None:
         """Update the run record with final status, duration, and step hashes.
 
@@ -369,6 +408,10 @@ class LineageRecorder:
         ``error`` is why a failed run failed (the exception's type and message). It
         is kept in the record, with the values of secret-looking variables masked,
         so ``lineage show``, OpenLineage and ``ubunye prove`` can say why (F-054).
+
+        ``failed_stage`` is the stage a failed run was in (ADR 016): ``setup``,
+        ``read``, ``transform``, ``expectations``, ``write``, ``notebook`` or the
+        name of a step the notebook named (``run.step("score")``).
         """
         run_id = context.run_id
         ctx = self._runs.get(run_id)
@@ -418,6 +461,8 @@ class LineageRecorder:
             step.location = scrub(step.location, values)
         if error:
             ctx.error = mask_text(error, values + known_secrets(None, config))
+        if status != "success":
+            ctx.failed_stage = failed_stage
 
         if status == "success":
             # A run whose lease was taken over may have had its appends taken back by

@@ -217,6 +217,15 @@ class LineageRecordNotFoundError(UbunyeError, FileNotFoundError):
     """Raised when a lineage record file does not exist."""
 
 
+class RunRecordTableError(UbunyeError, RuntimeError):
+    """The run record table cannot be created or written (ADR 016).
+
+    The message says what to do: create the table once, or grant the job's user
+    CREATE TABLE (or MODIFY) where the table lives. The recorder logs it as a
+    warning; the job goes on.
+    """
+
+
 # ---------------------------------------------------------------------------
 # Deploy errors
 # ---------------------------------------------------------------------------

@@ -139,6 +139,7 @@ nav:
           - ADR 013 Receipt Queries: architecture/adr-013-receipt-queries.md
           - ADR 014 MLflow Registry Aliases: architecture/adr-014-mlflow-registry-aliases.md
           - ADR 015 Run Identity and Job Settings: architecture/adr-015-run-identity-and-job-settings.md
+          - ADR 016 Notebook As A Run: architecture/adr-016-notebook-as-a-run.md
       - Contributing: contributing.md
 
 markdown_extensions:

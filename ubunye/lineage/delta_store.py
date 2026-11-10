@@ -41,7 +41,7 @@ import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from ubunye.core.errors import LineageRecordNotFoundError
+from ubunye.core.errors import LineageRecordNotFoundError, RunRecordTableError
 from ubunye.interfaces.lineage import LineageRecord
 from ubunye.lineage.context import RunContext
 
@@ -266,6 +266,37 @@ class DeltaLineageBackend:
         return df.withColumn("_n", F.row_number().over(w)).filter(F.col("_n") == 1).drop("_n")
 
     def _create(self, spark: Any) -> None:
+        """Create the table; one that cannot be created raises what to do (ADR 016)."""
+        try:
+            self._create_table(spark)
+        except Exception as exc:
+            if not self._exists(spark):  # not another job creating it at the same time
+                raise self._cannot(exc, "created") from exc
+
+    def _cannot(self, exc: Exception, what: str) -> RunRecordTableError:
+        """Why the run record table cannot be used, and the one thing to do about it."""
+        loc = self._table_or_path
+        reason = (str(exc).strip().splitlines() or [type(exc).__name__])[0]
+        if is_path(loc):
+            hint = (
+                f"Create it once (run a job with run records as a user who can write to "
+                f"{loc}), or give the job's user write access to {loc}."
+            )
+        else:
+            schema = loc.rsplit(".", 1)[0] if "." in loc else "the current schema"
+            grant = "CREATE TABLE" if what == "created" else "MODIFY"
+            hint = (
+                f"Create it once (run a job with run records as a user who may create "
+                f"tables in {schema}), or grant {grant} on {schema} to the job's user. "
+                "Until then run records are not saved; the job itself goes on."
+            )
+        return RunRecordTableError(
+            f"The run record table {loc} could not be {what}: {reason}",
+            context={"Run records": loc},
+            hint=hint,
+        )
+
+    def _create_table(self, spark: Any) -> None:
         """Create the table, clustered by task_path, with auto compaction (F-099)."""
         try:
             from delta.tables import DeltaTable
@@ -278,11 +309,7 @@ class DeltaLineageBackend:
             builder = builder.clusterBy("task_path")
         for key, value in _PROPERTIES.items():
             builder = builder.property(key, value)
-        try:
-            builder.execute()
-        except Exception:
-            if not self._exists(spark):  # not another job creating it at the same time
-                raise
+        builder.execute()
 
     # ------------------------------------------------------------------
     # RunRecordStore: the run record contract (ADR 011)
@@ -297,10 +324,13 @@ class DeltaLineageBackend:
             self._ready = True
         df = spark.createDataFrame([_row(ctx)], schema=_schema())
         writer = df.write.format("delta").mode("append")
-        if is_path(self._table_or_path):
-            writer.save(self._table_or_path)
-        else:
-            writer.saveAsTable(self._table_or_path)
+        try:
+            if is_path(self._table_or_path):
+                writer.save(self._table_or_path)
+            else:
+                writer.saveAsTable(self._table_or_path)
+        except Exception as exc:
+            raise self._cannot(exc, "written") from exc
 
     def load(self, task_path: str, run_id: str) -> RunContext:
         """One run of a task, by its run id or the first characters of it."""
