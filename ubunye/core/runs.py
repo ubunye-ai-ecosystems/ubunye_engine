@@ -296,8 +296,13 @@ class RunLease:
         variables: Optional[Dict[str, Any]],
         run_id: str,
         lineage_dir: Optional[Path] = None,
+        *,
+        records: Optional[Any] = None,
     ):
         self.task_path = task_path
+        # A run record store other than the record files under lineage_dir (ADR 011):
+        # anything with load(task_path, run_id) and save(record).
+        self.records: Any = records
         self.run_id = run_id
         self.key = batch_key(task_path, variables)
         self.named = names_a_batch(variables)
@@ -1074,6 +1079,8 @@ class RunLease:
     def _record_status(self, run_id: str) -> Optional[str]:
         if not run_id:
             return None
+        if self.records is not None:
+            return self._stored_status(run_id)
         record = self.lineage_dir / self.task_path / f"{run_id}.json"
         try:
             text = _read_text(record)
@@ -1085,8 +1092,23 @@ class RunLease:
         # one replace): the run did not get as far as recording success.
         return _parse(text).get("status") if text else None
 
+    def _stored_status(self, run_id: str) -> Optional[str]:
+        """The dead run's status as the chosen run record store has it."""
+        try:
+            record = self.records.load(self.task_path, run_id)
+        except (FileNotFoundError, KeyError, LookupError):
+            return None  # never recorded: it did not get as far as success
+        except Exception as exc:  # noqa: BLE001 (an unreachable store is not "missing")
+            # It may say "success": taking the run for unfinished would take back
+            # what may be the batch. Refuse, as for an unreadable record file.
+            raise _Unreadable(Path(f"{type(self.records).__name__}:{run_id}"), str(exc)) from None
+        return getattr(record, "status", None) if record is not None else None
+
     def _mark_interrupted(self, run_id: str, unrepaired: List[str]) -> None:
         if not run_id:
+            return
+        if self.records is not None:
+            self._mark_stored_interrupted(run_id, unrepaired)
             return
         record = self.lineage_dir / self.task_path / f"{run_id}.json"
         try:
@@ -1106,6 +1128,26 @@ class RunLease:
                 )
             doc["error"] = note
             _write_atomic(record, json.dumps(doc, indent=2, ensure_ascii=False))
+
+    def _mark_stored_interrupted(self, run_id: str, unrepaired: List[str]) -> None:
+        try:
+            record = self.records.load(self.task_path, run_id)
+        except Exception:  # noqa: BLE001 (no record to mark)
+            return
+        if record is None or getattr(record, "status", None) != "running":
+            return
+        note = (
+            f"The run did not finish; run {self.run_id[:8]} took over its lease at "
+            f"{_now()} and removed the files it had appended."
+        )
+        if unrepaired:
+            note += (
+                f" Output(s) {', '.join(unrepaired)} may hold part or all of its batch "
+                "and were not taken back."
+            )
+        record.status = "interrupted"
+        record.error = note
+        self.records.save(record)
 
 
 def _unrepaired(outputs: Dict[str, Any]) -> List[str]:
@@ -1282,9 +1324,12 @@ class held:
         *,
         appends: Optional[List[str]] = None,
         rerun: bool = False,
+        records: Optional[Any] = None,
     ):
         self.lease = (
-            RunLease(root, task_path, variables, run_id, lineage_dir) if enabled() else None
+            RunLease(root, task_path, variables, run_id, lineage_dir, records=records)
+            if enabled()
+            else None
         )
         self.appends = list(appends or [])
         self.rerun = rerun

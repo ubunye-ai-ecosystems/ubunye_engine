@@ -217,6 +217,7 @@ def run_task(
         task_name=task_identity,
         variables=variables,
         lineage_dir=str(usecase_dir / lineage_dir) if lineage else None,
+        run_records=lineage_recorder.shared_store() if lineage_recorder else None,
         rerun=rerun,
     )
 
@@ -329,6 +330,7 @@ def run_pipeline(
                 task_name=f"{usecase}/{package}/{task}",
                 variables=variables,
                 lineage_dir=str(base / lineage_dir) if lineage else None,
+                run_records=lineage_recorder.shared_store() if lineage_recorder else None,
                 rerun=rerun,
             )
             try:

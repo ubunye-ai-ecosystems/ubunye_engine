@@ -216,6 +216,16 @@ class LineageRecorder:
         # were templated in (a JDBC URL, a REST query).
         self._secret_values: Dict[str, List[str]] = {}
 
+    def shared_store(self) -> Any:
+        """The run record store, unless it is the filesystem one.
+
+        Rerun safety (ADR 008) reads a dead run's status through it; with the
+        filesystem store it reads the record files directly, as before.
+        """
+        from ubunye.lineage.storage import FileSystemLineageStore
+
+        return None if isinstance(self._store, FileSystemLineageStore) else self._store
+
     def _save(self, ctx: RunContext) -> None:
         """Save the record; a store that fails never breaks the task, but it is said."""
         try:

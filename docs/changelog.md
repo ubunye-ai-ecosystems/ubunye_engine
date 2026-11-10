@@ -40,6 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Rerun safety reads the run record store you chose** (ADR 008, ADR 011). With
+  `--lineage-backend delta` (or any store other than the filesystem), a run that
+  took over a dead run's lease looked for its record in local files, found none,
+  and could take back the appends of a run that had in fact recorded success. It
+  now reads and marks the record through the chosen store, and refuses if the
+  store cannot be read.
+
 - **A Delta append of a batch lands once, and a rerun can correct it** (F-071). A
   run killed or failed after its Delta commit was appended again by the rerun, and
   `--rerun` appended a finished batch twice. A Delta append (path or table, through

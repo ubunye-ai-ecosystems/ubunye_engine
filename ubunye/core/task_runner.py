@@ -218,6 +218,7 @@ def execute_user_task(
             lineage_dir,
             appends=runs.append_outputs(cfg_dict["CONFIG"].get("outputs")),
             rerun=context.rerun,
+            records=getattr(context, "run_records", None),
         ):
             result = engine.run(cfg_dict)
 

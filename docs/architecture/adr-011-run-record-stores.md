@@ -69,7 +69,8 @@ spoke `LineageBackend`.
 - `DeltaLineageBackend.search()` now returns run records; the old
   `LineageRecord` search is `search_records()` (keyword arguments `task`,
   `usecase` or `pipeline` still reach it, with a DeprecationWarning).
-- Rerun safety ([ADR 008](adr-008-rerun-safety.md)) still reads a dead run's
-  status from the filesystem layout. With another store it finds no record and
-  treats the dead run as unfinished. Moving that check onto the store is left
-  for later.
+- Rerun safety ([ADR 008](adr-008-rerun-safety.md)) reads a dead run's status
+  through the chosen store (`load`) and marks it interrupted there (`save`). A
+  store that cannot be read refuses the takeover rather than guess, as an
+  unreadable record file does. The filesystem store still reads its files
+  directly.

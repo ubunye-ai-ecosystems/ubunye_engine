@@ -571,6 +571,7 @@ def run(
                 task_name=f"{usecase}/{package}/{task}",
                 variables=variables,
                 lineage_dir=str(usecase_dir / lineage_dir) if lineage else None,
+                run_records=lineage_recorder.shared_store() if lineage_recorder else None,
                 rerun=rerun,
             )
             try:
