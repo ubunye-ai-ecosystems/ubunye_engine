@@ -142,7 +142,11 @@ def _replace_rows_of_table(
     where = opts.get("replaceWhere")
     if not (table and where and mode == "overwrite" and str(file_format).lower() == "delta"):
         return False
-    if not spark.catalog.tableExists(table):
+    try:
+        exists = spark.catalog.tableExists(table) is True
+    except Exception:  # noqa: BLE001 (a catalog that cannot answer: the old write)
+        exists = False
+    if not exists:
         return False
     from pyspark.sql import functions as F
 
