@@ -22,7 +22,7 @@ CONFIG:
   outputs:
     <logical_name>:
       format: <format_type>
-      mode: append | overwrite | errorifexists | ignore | merge | overwrite_partitions
+      mode: append | overwrite | errorifexists | ignore | merge | insert_new | overwrite_partitions
       # format-specific fields...
 ```
 
@@ -57,7 +57,7 @@ These fields apply to most formats:
 | `format` | string | Required. One of the format types above. |
 | `options` | dict | Spark reader/writer options (e.g. `header`, `delimiter`). |
 | `mode` | see [Write modes](#write-modes) | Write mode (outputs only). |
-| `merge_keys` | list or string | Key columns for `mode: merge` (outputs only). |
+| `merge_keys` | list or string | Key columns for `mode: merge` and `mode: insert_new` (outputs only). |
 | `replace_where` | string | Delta predicate for `mode: overwrite_partitions` (outputs only). On a Delta or JDBC `append`, the rows of the run's batch: each run replaces them, so a rerun corrects the batch instead of adding it twice. |
 
 ---
@@ -101,6 +101,11 @@ table: main.fraud.claims       # three-part Unity Catalog name
 sql: "SELECT ..."              # inputs only
 # outputs also take catalog + schema + tbl_name instead of table
 ```
+
+A name that comes from a variable goes through `| ident`, which quotes it once
+(a catalog like `aws-x-catalog` needs backticks in SQL):
+`sql: "SELECT * FROM {{ env.TELM_READ_CATALOG | ident }}.raw.trips"`. See
+[SQL names](jinja.md#sql-names-ident).
 
 ### `s3` / `delta`
 
@@ -173,8 +178,8 @@ A third-party connector that declares no keys accepts any key.
 ## Write modes
 
 The write mode (`mode:` on an output) says what happens to data already in the
-target. The first four are Spark's own save modes. `merge` and
-`overwrite_partitions` are added by Ubunye: Spark has no save mode for either.
+target. The first four are Spark's own save modes. `merge`, `insert_new` and
+`overwrite_partitions` are added by Ubunye: Spark has no save mode for them.
 
 | Mode | Behaviour |
 |---|---|
@@ -183,14 +188,14 @@ target. The first four are Spark's own save modes. `merge` and
 | `errorifexists` | Fail if the target already exists (alias: `error`) |
 | `ignore` | Do nothing if the target already exists |
 | `merge` | Delta MERGE (upsert) on `merge_keys`. Creates the target on first run |
+| `insert_new` | Insert only rows whose `merge_keys` are not in the target yet; existing rows never change (first write wins). Delta. Creates the target on first run |
 | `overwrite_partitions` | Replace only the partitions present in the DataFrame; leave the rest of the table intact |
 
 Not every connector can honour every mode. Asking for one it cannot do raises
 `SinkWriteError` **before any rows are written**. It is never silently downgraded.
 
-`ubunye plan` catches this before a run. `ubunye validate` does not check write
-modes against the connector, so a `jdbc` output with `mode: merge` passes
-`validate` and fails `plan`:
+`ubunye validate` and `ubunye plan` both catch this before a run, with the same
+message:
 
 ```text
   problem: outputs.predictions: Write mode 'merge' is not supported by the 'jdbc' connector.
@@ -198,11 +203,11 @@ modes against the connector, so a `jdbc` output with `mode: merge` passes
 
 | Connector | Supported modes | Default |
 |---|---|---|
-| `delta` | all six | `append` |
-| `unity` | all six | `append` |
-| `s3` | all six (`merge` and `replace_where` need `file_format: delta`) | `append` |
-| `hive` | all six (`merge` needs `file_format: delta`) | `append` |
-| `jdbc` | native four only: no `merge` / `overwrite_partitions` | `append` |
+| `delta` | all seven | `append` |
+| `unity` | all seven | `append` |
+| `s3` | all seven (`merge`, `insert_new` and `replace_where` need `file_format: delta`) | `append` |
+| `hive` | all seven (`merge` and `insert_new` need `file_format: delta`) | `append` |
+| `jdbc` | native four only: no `merge` / `insert_new` / `overwrite_partitions` | `append` |
 | `rest_api` | `append` (a REST sink has no table to merge into) | `append` |
 | `binary` | none: read-only, rejected in `CONFIG.outputs` | none |
 
@@ -223,6 +228,37 @@ engine creates it with a plain overwrite instead of a MERGE.
       mode: merge
       merge_keys: [id, dt]        # or options.merge_keys: "id,dt"
 ```
+
+### `insert_new`
+
+Insert only the rows whose `merge_keys` are not in the target yet. A row whose keys
+are already there is left exactly as it is, even if the new row differs: the first
+write of a key wins, and running the same batch again adds nothing. Use it for
+facts that never change once recorded (events, first-seen dates, an audit trail),
+where `append` would duplicate on a rerun and `merge` would overwrite history.
+
+```yaml
+    trips:
+      format: unity
+      table: "{{ env.TELM_WRITE_CATALOG | ident }}.gold.trips"
+      mode: insert_new
+      merge_keys: [trip_id]       # or options.merge_keys: "trip_id"
+```
+
+- `merge_keys` are required, and the target must be Delta (`format: delta` or
+  `unity`, or `file_format: delta` on `s3` / `hive`). `ubunye validate` and
+  `ubunye plan` refuse anything else before a run.
+- On Spark it is one Delta `MERGE` with only `WHEN NOT MATCHED THEN INSERT *`, on a
+  table or a path. No existing file is rewritten.
+- Keys are compared null-safe (`<=>`): a row whose key is null is inserted once,
+  not on every run.
+- Rows that share a key inside one batch are all inserted, as Delta does. Drop
+  duplicates in your transform if a batch may carry them.
+- On the first run the target is created. A path that holds files but is not a
+  Delta table is refused, never replaced or written over.
+- The pandas backend, `jdbc` and `rest_api` refuse it with a clear message. pandas
+  cannot write Delta; a read-then-append on plain files could not promise "changes
+  nothing" if two runs overlap.
 
 ### `overwrite_partitions`
 
@@ -273,8 +309,8 @@ and [JDBC appends](../connectors/jdbc.md#a-batch-that-lands-once).
 
 ??? note "Under the hood"
     Checking a mode against what a connector supports is done once, the same way
-    on every backend. Running `merge` and `overwrite_partitions` is Spark work
-    (`MERGE INTO`, dynamic partition overwrite), done by the Spark backend.
+    on every backend. Running `merge`, `insert_new` and `overwrite_partitions` is
+    Spark work (`MERGE INTO`, dynamic partition overwrite), done by the Spark backend.
 
     For `overwrite_partitions` the engine picks the mechanism the target actually
     supports: Delta's own write option for Delta, `INSERT OVERWRITE` for an existing

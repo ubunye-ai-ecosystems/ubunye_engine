@@ -61,6 +61,27 @@ def apply(
         )
         return
 
+    if resolved.is_insert_new:
+        if target_exists(spark, table=table, path=path):
+            insert_new_into(
+                df,
+                spark,
+                connector=connector,
+                merge_keys=resolved.merge_keys,
+                table=table,
+                path=path,
+            )
+            return
+        if path and not table and _holds_files(spark, path):
+            # Delta's errorifexists only looks for a Delta log, so it would start a new
+            # table on top of these files. insert_new promises to change nothing there.
+            raise SinkWriteError(
+                f"Write mode 'insert_new' found files at {path} that are not a Delta table.",
+                context={"Format": connector, "path": path},
+                hint="Point the output at a Delta table or an empty location, or convert "
+                "the folder first (CONVERT TO DELTA).",
+            )
+
     opts: Dict[str, Any] = dict(options or {})
     opts.pop("merge_keys", None)  # consumed by the resolver; not a Spark option
     opts.update(resolved.options)
@@ -256,6 +277,26 @@ def target_exists(spark: Any, *, table: Optional[str] = None, path: Optional[str
     return False
 
 
+def _holds_files(spark: Any, path: str) -> bool:
+    """Whether ``path`` holds any data file (hidden ``_``/``.`` files do not count).
+
+    Asked through a DataFrame read, so it works on Spark Connect (Databricks
+    serverless) too. A path that does not exist holds nothing.
+    """
+    try:
+        found = (
+            spark.read.format("binaryFile")
+            .option("recursiveFileLookup", "true")
+            .load(path)
+            .select("path")
+            .limit(1)
+            .collect()
+        )
+    except Exception:  # noqa: BLE001 (no such path: nothing there to protect)
+        return False
+    return bool(found)
+
+
 def merge_into(
     df: Any,
     spark: Any,
@@ -271,9 +312,66 @@ def merge_into(
     The target must already exist — callers use :func:`target_exists` to decide
     between this and a create-on-first-run write.
     """
+    _merge(
+        df,
+        spark,
+        mode="merge",
+        connector=connector,
+        merge_keys=merge_keys,
+        table=table,
+        path=path,
+        on=" AND ".join(f"t.{k} = s.{k}" for k in merge_keys),
+        actions="WHEN MATCHED THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *",
+    )
+
+
+def insert_new_into(
+    df: Any,
+    spark: Any,
+    *,
+    connector: str,
+    merge_keys: Sequence[str],
+    table: Optional[str] = None,
+    path: Optional[str] = None,
+) -> None:
+    """Insert the rows of ``df`` whose keys an existing Delta target lacks (ADR 018).
+
+    A Delta ``MERGE`` with only ``WHEN NOT MATCHED THEN INSERT *``: rows whose keys
+    are already there are left exactly as they are, so the first write of a key
+    wins and running the same batch again adds nothing. Keys are compared with
+    ``<=>`` (null-safe), so a row with a null key is not inserted a second time.
+    Duplicate keys inside ``df`` itself are all inserted, as Delta does; drop them
+    in the transform if the batch may carry them.
+    """
+    _merge(
+        df,
+        spark,
+        mode="insert_new",
+        connector=connector,
+        merge_keys=merge_keys,
+        table=table,
+        path=path,
+        on=" AND ".join(f"t.{k} <=> s.{k}" for k in merge_keys),
+        actions="WHEN NOT MATCHED THEN INSERT *",
+    )
+
+
+def _merge(
+    df: Any,
+    spark: Any,
+    *,
+    mode: str,
+    connector: str,
+    merge_keys: Sequence[str],
+    table: Optional[str],
+    path: Optional[str],
+    on: str,
+    actions: str,
+) -> None:
+    """Run one ``MERGE INTO`` of ``df`` into an existing Delta table or path."""
     if not (table or path):
         raise SinkWriteError(
-            "Write mode 'merge' needs a target table or path.",
+            f"Write mode '{mode}' needs a target table or path.",
             context={"Format": connector},
             hint="Set table: 'catalog.schema.table' or path: 's3a://bucket/prefix/'.",
         )
@@ -295,15 +393,8 @@ def merge_into(
     view = f"ubunye_merge_src_{uuid.uuid4().hex}"
     df.createOrReplaceTempView(view)
 
-    condition = " AND ".join(f"t.{k} = s.{k}" for k in merge_keys)
     try:
-        spark.sql(
-            f"MERGE INTO {target_ref} AS t "
-            f"USING {view} AS s "
-            f"ON {condition} "
-            f"WHEN MATCHED THEN UPDATE SET * "
-            f"WHEN NOT MATCHED THEN INSERT *"
-        )
+        spark.sql(f"MERGE INTO {target_ref} AS t USING {view} AS s ON {on} {actions}")
     finally:
         try:
             spark.catalog.dropTempView(view)

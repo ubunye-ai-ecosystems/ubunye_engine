@@ -22,6 +22,11 @@ The write modes:
 ``merge``
     Delta MERGE (upsert) keyed on ``merge_keys``.
 
+``insert_new``
+    Insert only the rows whose ``merge_keys`` are not in the target yet; rows
+    already there are never changed, so the first write of a key wins and a rerun
+    adds nothing (ADR 018). Delta (or any format a writer lists as mergeable).
+
 ``overwrite_partitions``
     Dynamic partition overwrite — replace only the partitions present in the
     incoming DataFrame, leave the rest of the table alone.
@@ -42,8 +47,11 @@ from ubunye.core.errors import SinkWriteError
 # The four modes Spark's DataFrameWriter accepts directly.
 NATIVE_SAVE_MODES = frozenset({"append", "overwrite", "errorifexists", "ignore"})
 
-# The two Ubunye adds on top; each needs real code, not a save-mode string.
-LAKEHOUSE_MODES = frozenset({"merge", "overwrite_partitions"})
+# The ones Ubunye adds on top; each needs real code, not a save-mode string.
+LAKEHOUSE_MODES = frozenset({"merge", "insert_new", "overwrite_partitions"})
+
+# The modes that match rows on merge_keys, and so need a mergeable (Delta) target.
+KEYED_MODES = frozenset({"merge", "insert_new"})
 
 ALL_MODES = NATIVE_SAVE_MODES | LAKEHOUSE_MODES
 
@@ -84,6 +92,11 @@ class ResolvedWriteMode:
     @property
     def is_merge(self) -> bool:
         return self.mode == "merge"
+
+    @property
+    def is_insert_new(self) -> bool:
+        """Insert rows whose keys the target lacks; leave every existing row alone."""
+        return self.mode == "insert_new"
 
     @property
     def is_overwrite_partitions(self) -> bool:
@@ -169,9 +182,9 @@ def resolve(
 
     mergeable = frozenset(merge_formats) if merge_formats is not None else _DEFAULT_MERGE_FORMATS
 
-    if mode == "merge":
+    if mode in KEYED_MODES:
         return _resolve_merge(
-            cfg, connector=connector, file_format=file_format, mergeable=mergeable
+            cfg, connector=connector, file_format=file_format, mergeable=mergeable, mode=mode
         )
 
     if mode == "overwrite_partitions":
@@ -234,11 +247,12 @@ def _resolve_merge(
     connector: str,
     file_format: Optional[str],
     mergeable: frozenset = _DEFAULT_MERGE_FORMATS,
+    mode: str = "merge",
 ) -> ResolvedWriteMode:
     fmt = (file_format or "").lower()
     if fmt and fmt not in mergeable:
         raise SinkWriteError(
-            f"Write mode 'merge' requires a Delta target, got file_format '{fmt}'.",
+            f"Write mode '{mode}' requires a Delta target, got file_format '{fmt}'.",
             context={"Format": connector, "file_format": fmt},
             hint="Set file_format: delta on this output, or use mode: append/overwrite.",
         )
@@ -246,9 +260,17 @@ def _resolve_merge(
     keys = parse_merge_keys(cfg)
     if not keys:
         raise SinkWriteError(
-            "Write mode 'merge' requires 'merge_keys'.",
+            f"Write mode '{mode}' requires 'merge_keys'.",
             context={"Format": connector},
             hint="Add merge_keys: [id, dt] (or options.merge_keys: 'id,dt') to the output config.",
+        )
+
+    if mode == "insert_new":
+        # First run has nothing to match against: the target is created. errorifexists,
+        # not overwrite: a target that exists but is not Delta is refused, never
+        # replaced, because this mode promises to change nothing that is there.
+        return ResolvedWriteMode(
+            mode="insert_new", save_mode="errorifexists", merge_keys=tuple(keys)
         )
 
     # First run has nothing to merge into — the target is created by an overwrite.

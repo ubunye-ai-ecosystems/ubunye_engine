@@ -30,6 +30,14 @@ Alternatively, use a SQL query:
     A read needs `table`, `sql`, or `catalog` + `schema` + `tbl_name`.
     `db_name` is a Hive key: `ubunye validate` refuses it on a unity read.
 
+!!! note "Names with a hyphen: quote them with `| ident`"
+    Databricks catalogs are often named like `aws-x-catalog`. In SQL that name must
+    be in backticks, or it reads as a subtraction. When the name comes from a job
+    parameter or an environment variable, write
+    `{{ env.TELM_READ_CATALOG | ident }}`: it adds the backticks once, whether the
+    value arrives with them or not, and quotes each part of a
+    `catalog.schema.table`. See [SQL names](../config/jinja.md#sql-names-ident).
+
 ---
 
 ## Write
@@ -68,7 +76,7 @@ data is still written and a warning says the maintenance was skipped.
 
 ### Write modes
 
-All six [write modes](../config/io.md#write-modes) work on `unity`; the Inputs &
+All seven [write modes](../config/io.md#write-modes) work on `unity`; the Inputs &
 Outputs page owns how each behaves. One example, a partition overwrite for a
 backfill, which replaces only the partitions in the incoming data:
 
@@ -96,7 +104,7 @@ creates the table. See [`merge`](../config/io.md#merge).
 | `catalog`, `schema`, `tbl_name` | string | Conditional | Writes only: the name in three parts, instead of `table` |
 | `sql` | string | Conditional | Reads only: Spark SQL query |
 | `file_format` | string | No | Writes only: `delta` (default) or `parquet` |
-| `mode` | see [Write modes](../config/io.md#write-modes) | No | Default `append`. All six modes supported |
+| `mode` | see [Write modes](../config/io.md#write-modes) | No | Default `append`. All seven modes supported |
 | `partitionBy` | list | No | Partition columns; required for `mode: overwrite_partitions` unless `replace_where` is set |
 | `merge_keys` | list \| string | Conditional | Required for `mode: merge` |
 | `replace_where` | string | No | Delta predicate for `mode: overwrite_partitions`; on a Delta `append`, the batch's rows, replaced by each run ([Delta appends](s3.md#appends-that-land-once-and-reruns-that-correct)) |

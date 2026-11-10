@@ -374,6 +374,15 @@ Two rules the Databricks CLI enforces:
 **Unity Catalog** is Databricks' catalog of tables, volumes and who may use
 them. A catalog holds schemas; a schema holds tables.
 
+!!! note "Quoting catalog names"
+    A catalog passed as a job parameter (`catalog: ${var.catalog}`) is often
+    named with hyphens, like `aws-x-catalog`, and SQL needs those names in
+    backticks. In `config.yaml`, pass every such name through `| ident`
+    (`SELECT * FROM {{ catalog | ident }}.raw.trips`, with the parameter handed
+    over as `variables={"catalog": ...}`). It quotes the name once,
+    whether the parameter carries backticks or not. See
+    [SQL names](../config/jinja.md#sql-names-ident).
+
 ### Job files (`bundles/*.yaml`)
 
 Each file in `bundles/` defines jobs. The job runs a small notebook that calls
