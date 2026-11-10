@@ -1,0 +1,45 @@
+{
+  "model_name": "NoGates",
+  "use_case": "fraud",
+  "versions": {
+    "1.0.0": {
+      "version": "1.0.0",
+      "stage": "development",
+      "registered_at": "2026-11-10T10:04:52.141475+00:00",
+      "promoted_to_staging": null,
+      "promoted_to_prod": null,
+      "archived_at": null,
+      "metrics": {
+        "rmse": 2.0
+      },
+      "metadata": {
+        "library": "fixture",
+        "library_version": "1",
+        "drift_check_passed": true
+      },
+      "lineage_run_id": null,
+      "config_hash": null,
+      "promoted_by": null
+    },
+    "1.0.1": {
+      "version": "1.0.1",
+      "stage": "staging",
+      "registered_at": "2026-11-10T10:04:52.141971+00:00",
+      "promoted_to_staging": "2026-11-10T10:04:52.142199+00:00",
+      "promoted_to_prod": null,
+      "archived_at": null,
+      "metrics": {
+        "rmse": 1.5
+      },
+      "metadata": {
+        "library": "fixture",
+        "library_version": "1",
+        "drift_check_passed": true
+      },
+      "lineage_run_id": null,
+      "config_hash": null,
+      "promoted_by": null
+    }
+  },
+  "promotion_gates": {}
+}
