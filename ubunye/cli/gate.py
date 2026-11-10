@@ -17,12 +17,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import typer
 
+from ubunye.cli.lineage import lineage_backend_option
 from ubunye.cli.output import emit, fail, json_option
 from ubunye.core import gate as gate_rules
+from ubunye.lineage import stores
 from ubunye.lineage.context import RunContext
 
 _MARK = {
@@ -32,10 +34,13 @@ _MARK = {
 }
 
 
-def _from_store(task_path: str, lineage_dir: Path, which: str) -> RunContext:
-    from ubunye.lineage.storage import FileSystemLineageStore
+def _from_store(
+    task_path: str, lineage_dir: Union[Path, str], which: str, backend: Optional[str] = None
+) -> RunContext:
+    """A stored run. ``lineage_dir`` is the store's location (ADR 011)."""
+    from ubunye.lineage import stores
 
-    store = FileSystemLineageStore(base_dir=str(lineage_dir))
+    store = stores.open_store(str(lineage_dir), backend)
     if which in ("latest", "previous"):
         runs: List[RunContext] = sorted(
             store.list_runs(task_path, n=1_000_000), key=lambda r: r.started_at, reverse=True
@@ -56,7 +61,12 @@ def _from_store(task_path: str, lineage_dir: Path, which: str) -> RunContext:
         raise FileNotFoundError(str(exc).splitlines()[0]) from exc
 
 
-def _load(which: str, task_path: Optional[str], lineage_dir: Optional[Path]) -> RunContext:
+def _load(
+    which: str,
+    task_path: Optional[str],
+    lineage_dir: Optional[str],
+    backend: Optional[str] = None,
+) -> RunContext:
     path = Path(which)
     if path.suffix == ".json" or path.is_file():
         doc = json.loads(path.read_text(encoding="utf-8"))
@@ -67,7 +77,7 @@ def _load(which: str, task_path: Optional[str], lineage_dir: Optional[Path]) -> 
         raise FileNotFoundError(
             f"'{which}' is not a run record file; to name a stored run, also give -d -u -p -t"
         )
-    return _from_store(task_path, lineage_dir, which)
+    return _from_store(task_path, lineage_dir, which, backend)
 
 
 def gate_command(
@@ -82,6 +92,7 @@ def gate_command(
     package: Optional[str] = typer.Option(None, "-p", "--package"),
     task: Optional[str] = typer.Option(None, "-t", "--task"),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     allow_data_change: bool = typer.Option(
         False, "--allow-data-change", help="A changed output warns instead of failing."
     ),
@@ -116,10 +127,14 @@ def gate_command(
 ) -> None:
     """Compare a run's receipt with a baseline; exit 1 if it regresses."""
     task_path = f"{usecase}/{package}/{task}" if usecase and package and task else None
-    store_dir = usecase_dir / lineage_dir if usecase_dir is not None else None
+    store_dir = (
+        stores.location(usecase_dir, lineage_dir, lineage_backend)
+        if usecase_dir is not None
+        else None
+    )
     try:
-        base = _load(baseline, task_path, store_dir)
-        cand = _load(candidate, task_path, store_dir)
+        base = _load(baseline, task_path, store_dir, lineage_backend)
+        cand = _load(candidate, task_path, store_dir, lineage_backend)
     except (FileNotFoundError, ValueError, KeyError) as exc:
         fail(str(exc), as_json=as_json)
 

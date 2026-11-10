@@ -21,6 +21,7 @@ from typing import List, Optional
 import typer
 
 from ubunye.cli.backend_choice import resolve_or_exit
+from ubunye.cli.lineage import lineage_backend_option, recorder_or_exit
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.core.runtime import EngineContext
@@ -50,6 +51,7 @@ def run_test(
         True, "--lineage/--no-lineage", help="Record lineage for each test run."
     ),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     backend_kind: Optional[str] = typer.Option(
         None,
         "--backend",
@@ -110,12 +112,7 @@ def run_test(
 
     lineage_recorder = None
     if lineage:
-        from ubunye.lineage.recorder import LineageRecorder
-
-        lineage_recorder = LineageRecorder(
-            store="filesystem",
-            base_dir=str(usecase_dir / lineage_dir),
-        )
+        lineage_recorder = recorder_or_exit(usecase_dir, lineage_dir, lineage_backend)
 
     run_id = str(uuid.uuid4())
     backend.start()

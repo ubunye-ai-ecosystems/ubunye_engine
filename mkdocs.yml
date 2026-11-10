@@ -122,6 +122,7 @@ nav:
           - ADR 008 Rerun Safety: architecture/adr-008-rerun-safety.md
           - ADR 009 Compute Outputs Once: architecture/adr-009-compute-outputs-once.md
           - ADR 010 Registry Backends: architecture/adr-010-registry-backends.md
+          - ADR 011 Run Record Stores: architecture/adr-011-run-record-stores.md
       - Contributing: contributing.md
 
 markdown_extensions:

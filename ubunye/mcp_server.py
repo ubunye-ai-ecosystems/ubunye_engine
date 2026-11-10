@@ -55,9 +55,16 @@ class _Tools:
         *,
         lineage_dir: str = ".ubunye/lineage",
         allow_live_llm: bool = False,
+        lineage_backend: Optional[str] = None,
     ) -> None:
+        from ubunye.lineage import stores
+
         self.root = Path(root).resolve()
-        self.lineage = self.root / lineage_dir
+        # The run record store (ADR 011): its name, and its location, which for the
+        # filesystem store is a directory under the pipelines folder.
+        self.lineage_backend = stores.backend_name(lineage_backend)
+        self.lineage = stores.location(self.root, lineage_dir, self.lineage_backend)
+        stores.load_class(self.lineage_backend)  # an unknown store fails at start
         self.allow_live_llm = allow_live_llm
         self._run_lock = threading.Lock()
 
@@ -148,6 +155,7 @@ class _Tools:
                         backend=backend,
                         lineage=True,
                         lineage_dir=str(self.lineage),
+                        lineage_backend=self.lineage_backend,
                     )
                 except Exception as exc:  # the run's own failure: reported, not raised
                     error = f"{type(exc).__name__}: {exc}"
@@ -203,15 +211,15 @@ class _Tools:
     # --- helpers ----------------------------------------------------------------
 
     def _store(self) -> Any:
-        from ubunye.lineage.storage import FileSystemLineageStore
+        from ubunye.lineage import stores
 
-        return FileSystemLineageStore(str(self.lineage))
+        return stores.open_store(self.lineage, self.lineage_backend)
 
     def _load(self, task: str, which: str) -> Any:
         from ubunye.cli.gate import _from_store
 
         self.task_dir(task)
-        return _from_store(task, self.lineage, which)
+        return _from_store(task, self.lineage, which, self.lineage_backend)
 
 
 def _summary(record: Any) -> Dict[str, Any]:
@@ -262,6 +270,7 @@ def build_server(
     allow_run: bool = False,
     allow_live_llm: bool = False,
     lineage_dir: str = ".ubunye/lineage",
+    lineage_backend: Optional[str] = None,
 ) -> Any:
     """The MCP server over the pipelines folder ``root``."""
     try:
@@ -277,7 +286,12 @@ def build_server(
         ) from exc
     from ubunye import __version__
 
-    tools = _Tools(root, lineage_dir=lineage_dir, allow_live_llm=allow_live_llm)
+    tools = _Tools(
+        root,
+        lineage_dir=lineage_dir,
+        allow_live_llm=allow_live_llm,
+        lineage_backend=lineage_backend,
+    )
     server = MCPServer("ubunye", version=__version__, instructions=INSTRUCTIONS)
     read_only = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 

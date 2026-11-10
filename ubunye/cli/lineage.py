@@ -21,8 +21,9 @@ from typing import Any, Dict, List, Optional
 import typer
 
 from ubunye.cli.output import emit, fail, json_option
+from ubunye.core.errors import PluginNotFoundError
+from ubunye.lineage import stores
 from ubunye.lineage.context import RunContext, StepRecord
-from ubunye.lineage.storage import FileSystemLineageStore
 
 lineage_app = typer.Typer(name="lineage", help="Inspect run lineage records.", add_completion=False)
 
@@ -33,8 +34,37 @@ lineage_app = typer.Typer(name="lineage", help="Inspect run lineage records.", a
 _LINE = "-" * 60
 
 
-def _store(lineage_dir: str) -> FileSystemLineageStore:
-    return FileSystemLineageStore(lineage_dir)
+def lineage_backend_option() -> Any:
+    """``--lineage-backend``: the run record store, by name (ADR 011)."""
+    return typer.Option(
+        None,
+        "--lineage-backend",
+        help="Where run records are stored: filesystem (default), delta, or an installed "
+        "plugin. Default: $UBUNYE_LINEAGE_BACKEND, else filesystem.",
+    )
+
+
+def open_store(
+    usecase_dir: Path, lineage_dir: str, backend: Optional[str], *, as_json: bool = False
+) -> Any:
+    """The run record store a command reads (``--lineage-backend``, ``--lineage-dir``)."""
+    try:
+        return stores.open_for(usecase_dir, lineage_dir, backend)
+    except PluginNotFoundError as exc:
+        fail(str(exc), as_json=as_json)
+
+
+def recorder_or_exit(usecase_dir: Path, lineage_dir: str, backend: Optional[str]) -> Any:
+    """A LineageRecorder on the chosen store, or a clear error before anything runs."""
+    from ubunye.lineage.recorder import LineageRecorder
+
+    try:
+        return LineageRecorder(
+            backend=stores.backend_name(backend),
+            base_dir=stores.location(usecase_dir, lineage_dir, backend),
+        )
+    except PluginNotFoundError as exc:
+        fail(str(exc), as_json=False)
 
 
 def _task_path(usecase: str, package: str, task: str) -> str:
@@ -56,9 +86,7 @@ def _fmt_row(ctx: RunContext) -> str:
     )
 
 
-def _load_one(
-    store: FileSystemLineageStore, tp: str, run_id: Optional[str], *, as_json: bool
-) -> RunContext:
+def _load_one(store: Any, tp: str, run_id: Optional[str], *, as_json: bool) -> RunContext:
     """One run record: the given one, or the latest; a clear error otherwise."""
     try:
         if run_id:
@@ -97,10 +125,11 @@ def show(
         None, "--run-id", help="Specific run ID (default: latest)."
     ),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     as_json: bool = json_option(),
 ):
     """Show a run record as formatted JSON (latest or specific run)."""
-    store = _store(str(usecase_dir / lineage_dir))
+    store = open_store(usecase_dir, lineage_dir, lineage_backend, as_json=as_json)
     ctx = _load_one(store, _task_path(usecase, package, task), run_id, as_json=as_json)
     emit(ctx.to_dict())  # the record is JSON either way
 
@@ -118,10 +147,11 @@ def list_runs(
     task: str = typer.Option(..., "-t", "--task"),
     n: int = typer.Option(10, "-n", "--n", help="Number of recent runs to show."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     as_json: bool = json_option(),
 ):
     """List recent runs for a task (newest first)."""
-    store = _store(str(usecase_dir / lineage_dir))
+    store = open_store(usecase_dir, lineage_dir, lineage_backend, as_json=as_json)
     tp = _task_path(usecase, package, task)
     runs = store.list_runs(tp, n=n)
 
@@ -228,6 +258,7 @@ def openlineage_events(
     task: str = typer.Option(..., "-t", "--task"),
     run_id: Optional[str] = typer.Option(None, "--run-id", help="One run; default: every run."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     namespace: Optional[str] = typer.Option(None, "--namespace", help="Job namespace."),
     send: bool = typer.Option(
         False, "--send", help="Also send them where OPENLINEAGE_URL points (a backfill)."
@@ -236,7 +267,7 @@ def openlineage_events(
     """Stored runs as OpenLineage events, one JSON per line (START, then COMPLETE or FAIL)."""
     from ubunye.lineage.openlineage import Emitter, events
 
-    store = _store(str(usecase_dir / lineage_dir))
+    store = open_store(usecase_dir, lineage_dir, lineage_backend)
     tp = _task_path(usecase, package, task)
     try:
         records = [store.load(tp, run_id)] if run_id else store.list_runs(tp, n=1_000_000)
@@ -261,10 +292,11 @@ def compare(
     run_id1: str = typer.Option(..., "--run-id1", help="First run ID."),
     run_id2: str = typer.Option(..., "--run-id2", help="Second run ID."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     as_json: bool = json_option(),
 ):
     """Diff two run records, highlighting changes in hashes, row counts and status."""
-    store = _store(str(usecase_dir / lineage_dir))
+    store = open_store(usecase_dir, lineage_dir, lineage_backend, as_json=as_json)
     tp = _task_path(usecase, package, task)
 
     try:
@@ -350,10 +382,11 @@ def search(
         None, "--since", help="Only runs started on or after this ISO date."
     ),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     as_json: bool = json_option(),
 ):
     """Search all recorded runs across tasks with optional filters."""
-    store = _store(str(usecase_dir / lineage_dir))
+    store = open_store(usecase_dir, lineage_dir, lineage_backend, as_json=as_json)
 
     tp = None
     if usecase and package and task:
@@ -420,10 +453,11 @@ def trace(
     task: str = typer.Option(..., "-t", "--task"),
     run_id: Optional[str] = typer.Option(None, "--run-id", help="Specific run (default: latest)."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     as_json: bool = json_option(),
 ):
     """Print the input, transform and output data flow graph for a run."""
-    store = _store(str(usecase_dir / lineage_dir))
+    store = open_store(usecase_dir, lineage_dir, lineage_backend, as_json=as_json)
     ctx = _load_one(store, _task_path(usecase, package, task), run_id, as_json=as_json)
 
     if as_json:
@@ -539,6 +573,7 @@ def focus_rows(
     task: str = typer.Option(..., "-t", "--task"),
     run_id: Optional[str] = typer.Option(None, "--run-id", help="Specific run (default: latest)."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     fmt: str = typer.Option("csv", "--format", help="csv or jsonl."),
     output: Optional[Path] = typer.Option(None, "-o", "--output", help="File (default: stdout)."),
 ):
@@ -550,7 +585,7 @@ def focus_rows(
 
     if fmt not in ("csv", "jsonl"):
         fail(f"--format must be csv or jsonl, not {fmt!r}", as_json=False)
-    store = _store(str(usecase_dir / lineage_dir))
+    store = open_store(usecase_dir, lineage_dir, lineage_backend)
     ctx = _load_one(store, _task_path(usecase, package, task), run_id, as_json=False)
     records = focus.rows(ctx)
     buffer = io.StringIO()
