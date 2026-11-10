@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -1979,6 +1979,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../patterns/job-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Job Health and Upstream Checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../patterns/llm/" class="md-nav__link">
         
   
@@ -2881,6 +2909,146 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-010-registry-backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 010 Registry Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-011-run-record-stores/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 011 Run Record Stores
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-012-model-runs-and-feature-contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 012 Model Runs and Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-013-receipt-queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 013 Receipt Queries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-014-mlflow-registry-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 014 MLflow Registry Aliases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3045,6 +3213,7 @@
 <p>The <code>ORCHESTRATION</code> section provides metadata for exporting your task to an
 orchestration platform. It does <strong>not</strong> affect how <code>ubunye run</code> executes the task:
 it is used only by <code>ubunye export airflow</code> and <code>ubunye export databricks</code>.</p>
+<p><img alt="ubunye export turns the ORCHESTRATION block into an Airflow DAG, a Databricks job.json or a Spark Declarative Pipeline" src="../../assets/diagrams/export.svg" /></p>
 <hr />
 <h2 id="structure">Structure<a class="headerlink" href="#structure" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">ORCHESTRATION</span><span class="p">:</span>
@@ -3056,7 +3225,7 @@ it is used only by <code>ubunye export airflow</code> and <code>ubunye export da
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fraud</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">etl</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nt">databricks</span><span class="p">:</span><span class="w">             </span><span class="c1"># Databricks job cluster settings</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="nt">spark_version</span><span class="p">:</span><span class="w"> </span><span class="s">"13.3.x-scala2.12"</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="nt">spark_version</span><span class="p">:</span><span class="w"> </span><span class="s">"17.3.x-scala2.13"</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="nt">node_type_id</span><span class="p">:</span><span class="w"> </span><span class="s">"Standard_DS3_v2"</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="nt">num_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
 </code></pre></div>
@@ -3115,9 +3284,10 @@ it is used only by <code>ubunye export airflow</code> and <code>ubunye export da
 <code>@daily</code>, owner <code>ubunye</code>, tags <code>[ubunye]</code>. With no <code>ORCHESTRATION</code> block at all,
 <code>export airflow</code> still works and uses 1 retry.</p>
 <p>The keys <code>export databricks</code> reads from <code>databricks:</code> are <code>spark_version</code>
-(default <code>13.3.x-scala2.12</code>), <code>node_type_id</code> (default <code>i3.xlarge</code>), <code>num_workers</code>
-(default 2), <code>spark_conf</code>, <code>aws_attributes</code>, <code>job_name</code>, <code>wheel_dbfs_path</code> and
-<code>timezone_id</code> (default <code>UTC</code>). Other keys there are ignored.</p>
+(default <code>17.3.x-scala2.13</code>, Databricks Runtime 17.3 LTS), <code>node_type_id</code> (default
+<code>i3.xlarge</code>), <code>num_workers</code> (default 2), <code>spark_conf</code>, <code>aws_attributes</code>, <code>job_name</code>,
+<code>wheel_dbfs_path</code> (default <code>dbfs:/libs/ubunye_engine-&lt;installed version&gt;-py3-none-any.whl</code>)
+and <code>timezone_id</code> (default <code>UTC</code>). Other keys there are ignored.</p>
 <hr />
 <h2 id="airflow-export">Airflow export<a class="headerlink" href="#airflow-export" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ubunye<span class="w"> </span><span class="nb">export</span><span class="w"> </span>airflow<span class="w"> </span><span class="se">\</span>
@@ -3129,7 +3299,7 @@ it is used only by <code>ubunye export airflow</code> and <code>ubunye export da
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ubunye<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>&lt;pipelines<span class="w"> </span>folder&gt;<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>etl<span class="w"> </span>-t<span class="w"> </span>claims<span class="w"> </span>-m<span class="w"> </span>prod<span class="w"> </span>-dt<span class="w"> </span><span class="o">{{</span><span class="w"> </span>ds<span class="w"> </span><span class="o">}}</span>
 </code></pre></div>
 <p><code>--profile</code> on <code>export</code> becomes <code>-m</code> in the command (<code>ubunye run</code> has no
-<code>--profile</code>). <code>{{ ds }}</code> is Airflow's logical date, so each scheduled run gets its
+<code>--profile</code>). It defaults to <code>prod</code>, while <code>ubunye run</code> defaults to <code>DEV</code>. <code>{{ ds }}</code> is Airflow's logical date, so each scheduled run gets its
 own <code>dt</code>. The pipelines folder is the absolute path of the one the config sits
 in; pass <code>--usecase-dir</code> when Airflow sees it at another path. <code>--backend</code> and
 <code>--lineage</code> on <code>export airflow</code> are added to the command too.</p>
@@ -3220,7 +3390,7 @@ Azure Container Apps.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 09:25:49 UTC">November 10, 2026</span>
   </span>
 
     
@@ -3310,7 +3480,7 @@ Azure Container Apps.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

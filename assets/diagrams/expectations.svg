@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 660" width="1100" height="660" role="img" aria-label="Rows from the transform pass expectation rules before anything is written. Good rows are written; quarantine rows go to a quarantine output with the rules they broke; warn rows stay and the breach is logged; a fail rule stops the run and nothing is written. Reconcile fails a run that loses rows between input and output, and too high a quarantine rate stops the run.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners; OpenTelemetry logo CC BY 4.0, the OpenTelemetry Authors.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="660" rx="22" fill="#1c1d22"/>
+<text x="30" y="52" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#f3f4f6" text-anchor="start" letter-spacing="1">ROWS OUT OF</text>
+<text x="30" y="78" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#a1a7b3" text-anchor="start">the transform</text>
+<rect x="40" y="110" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="72" y="110" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="104" y="110" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="136" y="110" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="168" y="110" width="24" height="24" rx="4" fill="#f59e0b"/>
+<rect x="200" y="110" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="40" y="144" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="72" y="144" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="104" y="144" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="136" y="144" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="168" y="144" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="200" y="144" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="40" y="178" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="72" y="178" width="24" height="24" rx="4" fill="#f59e0b"/>
+<rect x="104" y="178" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="136" y="178" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="168" y="178" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="200" y="178" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="40" y="212" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="72" y="212" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="104" y="212" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="136" y="212" width="24" height="24" rx="4" fill="#eab308"/>
+<rect x="168" y="212" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="200" y="212" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="40" y="246" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="72" y="246" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="104" y="246" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="136" y="246" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="168" y="246" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="200" y="246" width="24" height="24" rx="4" fill="#f59e0b"/>
+<rect x="40" y="280" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="72" y="280" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="104" y="280" width="24" height="24" rx="4" fill="#f59e0b"/>
+<rect x="136" y="280" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="168" y="280" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="200" y="280" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="40" y="314" width="24" height="24" rx="4" fill="#eab308"/>
+<rect x="72" y="314" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="104" y="314" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="136" y="314" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="168" y="314" width="24" height="24" rx="4" fill="#cdeefb"/>
+<rect x="200" y="314" width="24" height="24" rx="4" fill="#cdeefb"/>
+<path d="M246 216.0H278V207.0L300 222L278 237.0V228.0H246z" fill="#e6e6e6"/>
+<text x="310" y="52" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#f3f4f6" text-anchor="start" letter-spacing="1">EXPECTATIONS</text>
+<text x="310" y="78" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#a1a7b3" text-anchor="start">before anything is written</text>
+<rect x="310" y="96" width="200" height="262" rx="22" fill="#2a2c33" stroke="#4a4d57" stroke-width="2"/>
+<svg x="392.0" y="110" width="36" height="36" viewBox="0 0 24 24"><path d="M12 2 21 5.5v6c0 5.4-3.8 9.3-9 10.5C6.8 20.8 3 16.9 3 11.5v-6z" fill="#6366f1"/><path d="M8 12l3 3 5-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<rect x="332" y="158" width="156" height="26" rx="8" fill="#3b3e47"/>
+<text x="410.0" y="176" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#f3f4f6" text-anchor="middle">not_null</text>
+<rect x="332" y="190" width="156" height="26" rx="8" fill="#3b3e47"/>
+<text x="410.0" y="208" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#f3f4f6" text-anchor="middle">unique</text>
+<rect x="332" y="222" width="156" height="26" rx="8" fill="#3b3e47"/>
+<text x="410.0" y="240" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#f3f4f6" text-anchor="middle">between</text>
+<rect x="332" y="254" width="156" height="26" rx="8" fill="#3b3e47"/>
+<text x="410.0" y="272" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#f3f4f6" text-anchor="middle">one_of</text>
+<rect x="332" y="286" width="156" height="26" rx="8" fill="#3b3e47"/>
+<text x="410.0" y="304" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#f3f4f6" text-anchor="middle">matches</text>
+<rect x="332" y="318" width="156" height="26" rx="8" fill="#3b3e47"/>
+<text x="410.0" y="336" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#f3f4f6" text-anchor="middle">row_count</text>
+<path d="M510 156 C560 156 550 97.0 608 97.0" fill="none" stroke="#22c55e" stroke-width="3" marker-end="url(#head)"/>
+<rect x="620" y="62" width="450" height="70" rx="12" fill="#ffffff"/>
+<rect x="620" y="62" width="7" height="70" rx="3" fill="#22c55e"/>
+<svg x="640" y="81" width="32" height="32" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2.5" fill="#0f766e"/><path d="M2 9h20M2 15h20M9 9v12M15.5 9v12" stroke="#fff" stroke-width="1.6"/></svg>
+<text x="686" y="92" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#111827" text-anchor="start">clean_transactions</text>
+<text x="686" y="115" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">good rows are written</text>
+<rect x="1000" y="72" width="56" height="24" rx="12" fill="#22c55e"/>
+<text x="1028.0" y="89" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="700" fill="#1c1d22" text-anchor="middle">pass</text>
+<rect x="996" y="104" width="16" height="16" rx="3" fill="#cdeefb"/><rect x="1018" y="104" width="16" height="16" rx="3" fill="#cdeefb"/><rect x="1040" y="104" width="16" height="16" rx="3" fill="#cdeefb"/>
+<path d="M510 206 C560 206 550 179.0 608 179.0" fill="none" stroke="#f59e0b" stroke-width="3" marker-end="url(#head)"/>
+<rect x="620" y="144" width="450" height="70" rx="12" fill="#ffffff"/>
+<rect x="620" y="144" width="7" height="70" rx="3" fill="#f59e0b"/>
+<svg x="640" y="163" width="32" height="32" viewBox="0 0 24 24"><path d="M4 7h16l-1.6 14H5.6z" fill="#d97706"/><rect x="2.5" y="3.5" width="19" height="3.5" rx="1.2" fill="#f59e0b"/></svg>
+<text x="686" y="174" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#111827" text-anchor="start">quarantined_transactions</text>
+<text x="686" y="197" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">bad rows + the rules they broke</text>
+<rect x="946" y="154" width="110" height="24" rx="12" fill="#f59e0b"/>
+<text x="1001.0" y="171" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="700" fill="#1c1d22" text-anchor="middle">quarantine</text>
+<rect x="1018" y="186" width="16" height="16" rx="3" fill="#f59e0b"/><rect x="1040" y="186" width="16" height="16" rx="3" fill="#f59e0b"/>
+<path d="M510 256 C560 256 550 261.0 608 261.0" fill="none" stroke="#eab308" stroke-width="3" marker-end="url(#head)"/>
+<rect x="620" y="226" width="450" height="70" rx="12" fill="#ffffff"/>
+<rect x="620" y="226" width="7" height="70" rx="3" fill="#eab308"/>
+<svg x="640" y="245" width="32" height="32" viewBox="0 0 24 24"><path d="M5 2h10l4 4v16H5z" fill="#64748b"/><path d="M8 10h8M8 14h8M8 18h5" stroke="#fff" stroke-width="1.6"/></svg>
+<text x="686" y="256" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#111827" text-anchor="start">kept</text>
+<text x="686" y="279" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">the row stays, the breach is logged</text>
+<rect x="1000" y="236" width="56" height="24" rx="12" fill="#eab308"/>
+<text x="1028.0" y="253" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="700" fill="#1c1d22" text-anchor="middle">warn</text>
+<rect x="1040" y="268" width="16" height="16" rx="3" fill="#eab308"/>
+<path d="M510 306 C560 306 550 343.0 608 343.0" fill="none" stroke="#ef4444" stroke-width="3" marker-end="url(#head)"/>
+<rect x="620" y="308" width="450" height="70" rx="12" fill="#ffffff"/>
+<rect x="620" y="308" width="7" height="70" rx="3" fill="#ef4444"/>
+<svg x="640" y="327" width="32" height="32" viewBox="0 0 24 24"><path d="M7.6 2h8.8L22 7.6v8.8L16.4 22H7.6L2 16.4V7.6z" fill="#dc2626"/><path d="M7.5 12h9" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
+<text x="686" y="338" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#111827" text-anchor="start">run stops</text>
+<text x="686" y="361" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">nothing is written, for any output</text>
+<rect x="1000" y="318" width="56" height="24" rx="12" fill="#ef4444"/>
+<text x="1028.0" y="335" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="700" fill="#1c1d22" text-anchor="middle">fail</text>
+<rect x="30" y="420" width="520" height="210" rx="18" fill="none" stroke="#4a4d57" stroke-width="2"/>
+<text x="52" y="458" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#f3f4f6" text-anchor="start" letter-spacing="1">RECONCILE: NOTHING LOST</text>
+<rect x="55" y="487" width="32" height="32" rx="8" fill="#ffffff"/><svg x="60" y="492" width="22" height="22" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2.5" fill="#0f766e"/><path d="M2 9h20M2 15h20M9 9v12M15.5 9v12" stroke="#fff" stroke-width="1.6"/></svg>
+<text x="98" y="510" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#a1a7b3" text-anchor="start">in</text>
+<rect x="160" y="490" width="360" height="28" rx="6" fill="#cdeefb"/>
+<text x="174" y="510" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#0f172a" text-anchor="start">1000 rows</text>
+<rect x="55" y="537" width="32" height="32" rx="8" fill="#ffffff"/><svg x="60" y="542" width="22" height="22" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2.5" fill="#0f766e"/><path d="M2 9h20M2 15h20M9 9v12M15.5 9v12" stroke="#fff" stroke-width="1.6"/></svg>
+<text x="98" y="560" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#a1a7b3" text-anchor="start">out</text>
+<rect x="160" y="540" width="324.0" height="28" rx="6" fill="#cdeefb"/>
+<text x="174" y="560" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#0f172a" text-anchor="start">900 rows</text>
+<rect x="488.0" y="540" width="32.0" height="28" rx="6" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="520" y="602" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ef4444" text-anchor="end">✗ 100 lost: the run fails</text>
+<rect x="570" y="420" width="500" height="210" rx="18" fill="none" stroke="#4a4d57" stroke-width="2"/>
+<text x="592" y="458" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#f3f4f6" text-anchor="start" letter-spacing="1">TOO MANY BAD ROWS</text>
+<rect x="600" y="510" width="440" height="30" rx="15" fill="#3b3e47"/>
+<rect x="600" y="510" width="264.0" height="30" rx="15" fill="#f59e0b"/>
+<path d="M820.0 496V554" stroke="#ef4444" stroke-width="3"/>
+<text x="820.0" y="488" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="700" fill="#ef4444" text-anchor="middle">max_quarantine_rate</text>
+<text x="600" y="582" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#a1a7b3" text-anchor="start">past the line: the run stops, nothing is written</text>
+</svg>

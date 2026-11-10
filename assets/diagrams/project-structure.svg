@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 590" width="1100" height="590" role="img" aria-label="Use cases hold pipelines; a pipeline holds tasks that run in order; a task is a config.yaml and a transformations.py. ubunye run -d pipelines -u fraud_detection -p ingestion -t claim_etl runs the first task.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners; OpenTelemetry logo CC BY 4.0, the OpenTelemetry Authors.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="590" rx="22" fill="#1c1d22"/>
+<rect x="30" y="119" width="40" height="26" rx="13" fill="#b49cff"/><text x="50.0" y="138" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#1c1d22" text-anchor="middle">-u</text>
+<text x="80" y="138" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#b49cff" text-anchor="start" letter-spacing="1">USE CASES</text>
+<text x="30" y="164" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="400" fill="#a1a7b3" text-anchor="start">pipelines/</text>
+<rect x="30" y="190" width="300" height="230" rx="22" fill="none" stroke="#e6e6e6" stroke-width="2"/>
+<rect x="106" y="234" width="184" height="110" rx="14" fill="#6c838d" stroke="#e6e6e6" stroke-width="1.5" stroke-dasharray="7 6"/>
+<text x="120" y="256" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#f3f4f6" text-anchor="start">…</text>
+<rect x="80" y="260" width="184" height="110" rx="14" fill="#a6c3cf" stroke="#e6e6e6" stroke-width="1.5"/>
+<text x="94" y="282" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#0f172a" text-anchor="start">churn</text>
+<rect x="54" y="286" width="184" height="110" rx="14" fill="#cdeefb" stroke="#e6e6e6" stroke-width="1.5"/>
+<text x="68" y="308" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#0f172a" text-anchor="start">fraud_detection</text>
+<rect x="54" y="286" width="184" height="110" rx="14" fill="none" stroke="#b49cff" stroke-width="3"/>
+<path d="M124.0 339.0a4 4 0 0 1 4-4h13.2l5 6h17.799999999999997a4 4 0 0 1 4 4v19.68a4 4 0 0 1-4 4H128.0a4 4 0 0 1-4-4z" fill="#b49cff" fill-opacity="0.85"/>
+<rect x="400" y="119" width="40" height="26" rx="13" fill="#3dd6c3"/><text x="420.0" y="138" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#1c1d22" text-anchor="middle">-p</text>
+<text x="450" y="138" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#3dd6c3" text-anchor="start" letter-spacing="1">PIPELINES</text>
+<text x="400" y="164" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="400" fill="#a1a7b3" text-anchor="start">fraud_detection/</text>
+<rect x="400" y="190" width="300" height="230" rx="22" fill="none" stroke="#e6e6e6" stroke-width="2"/>
+<rect x="476" y="234" width="184" height="110" rx="14" fill="#6c838d" stroke="#e6e6e6" stroke-width="1.5" stroke-dasharray="7 6"/>
+<text x="490" y="256" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#f3f4f6" text-anchor="start">…</text>
+<rect x="450" y="260" width="184" height="110" rx="14" fill="#a6c3cf" stroke="#e6e6e6" stroke-width="1.5"/>
+<text x="464" y="282" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#0f172a" text-anchor="start">scoring</text>
+<rect x="424" y="286" width="184" height="110" rx="14" fill="#cdeefb" stroke="#e6e6e6" stroke-width="1.5"/>
+<text x="438" y="308" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#0f172a" text-anchor="start">ingestion</text>
+<rect x="424" y="286" width="184" height="110" rx="14" fill="none" stroke="#3dd6c3" stroke-width="3"/>
+<path d="M494.0 339.0a4 4 0 0 1 4-4h13.2l5 6h17.799999999999997a4 4 0 0 1 4 4v19.68a4 4 0 0 1-4 4H498.0a4 4 0 0 1-4-4z" fill="#3dd6c3" fill-opacity="0.85"/>
+<path d="M146.0 396 C146.0 486 356 486 396 260" fill="none" stroke="#e6e6e6" stroke-width="2.5" stroke-dasharray="9 7" marker-end="url(#head)"/>
+<rect x="770" y="39" width="40" height="26" rx="13" fill="#ff9d5c"/><text x="790.0" y="58" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#1c1d22" text-anchor="middle">-t</text>
+<text x="820" y="58" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#ff9d5c" text-anchor="start" letter-spacing="1">TASKS</text>
+<text x="770" y="84" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="400" fill="#a1a7b3" text-anchor="start">ingestion/</text>
+<rect x="770" y="110" width="300" height="400" rx="22" fill="none" stroke="#e6e6e6" stroke-width="2"/>
+<rect x="838" y="180" width="228" height="262" rx="14" fill="#6c838d" stroke="#e6e6e6" stroke-width="1.5"/>
+<circle cx="854" cy="194" r="9" fill="#ff9d5c"/>
+<text x="854" y="199" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1c1d22" text-anchor="middle">3</text>
+<text x="870" y="199" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#f3f4f6" text-anchor="start">claims_joined</text>
+<rect x="814" y="204" width="228" height="262" rx="14" fill="#a6c3cf" stroke="#e6e6e6" stroke-width="1.5"/>
+<circle cx="830" cy="218" r="9" fill="#ff9d5c"/>
+<text x="830" y="223" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1c1d22" text-anchor="middle">2</text>
+<text x="846" y="223" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">policy_etl</text>
+<rect x="790" y="228" width="228" height="262" rx="14" fill="#cdeefb" stroke="#e6e6e6" stroke-width="1.5"/>
+<circle cx="806" cy="242" r="9" fill="#ff9d5c"/>
+<text x="806" y="247" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1c1d22" text-anchor="middle">1</text>
+<text x="822" y="247" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">claim_etl</text>
+<rect x="804" y="268" width="93.0" height="166" rx="12" fill="#e85d5d"/>
+<path d="M804 394h93.0v28a12 12 0 0 1-12 12h-69.0a12 12 0 0 1-12-12z" fill="#d93434"/>
+<text x="850.5" y="340.0" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#fff" text-anchor="middle">&lt;/&gt;</text>
+<text x="850.5" y="421" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#fff" text-anchor="middle">.yaml</text>
+<text x="850.5" y="456" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">read &amp; write</text><rect x="911.0" y="268" width="93.0" height="166" rx="12" fill="#5b8f6c"/>
+<path d="M911.0 394h93.0v28a12 12 0 0 1-12 12h-69.0a12 12 0 0 1-12-12z" fill="#4caf50"/>
+<text x="957.5" y="340.0" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#fff" text-anchor="middle">&lt;/&gt;</text>
+<text x="957.5" y="421" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#fff" text-anchor="middle">.py</text>
+<text x="957.5" y="456" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">your logic</text>
+<path d="M516.0 396 C516.0 486 726 486 766 260" fill="none" stroke="#e6e6e6" stroke-width="2.5" stroke-dasharray="9 7" marker-end="url(#head)"/>
+<text x="1058" y="136" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#a1a7b3" text-anchor="end">run in order 1 → 2 → 3</text>
+<text x="550.0" y="558" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" text-anchor="middle" xml:space="preserve"><tspan fill="#f3f4f6" font-weight="400">ubunye run </tspan><tspan fill="#a1a7b3" font-weight="400">-d pipelines </tspan><tspan fill="#b49cff" font-weight="700">-u fraud_detection </tspan><tspan fill="#3dd6c3" font-weight="700">-p ingestion </tspan><tspan fill="#ff9d5c" font-weight="700">-t claim_etl</tspan></text>
+</svg>

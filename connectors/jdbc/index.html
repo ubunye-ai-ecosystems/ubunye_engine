@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -888,6 +888,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Write">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-batch-that-lands-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A batch that lands once
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1968,6 +1985,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../patterns/job-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Job Health and Upstream Checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../patterns/llm/" class="md-nav__link">
         
   
@@ -2870,6 +2915,146 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-010-registry-backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 010 Registry Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-011-run-record-stores/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 011 Run Record Stores
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-012-model-runs-and-feature-contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 012 Model Runs and Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-013-receipt-queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 013 Receipt Queries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/adr-014-mlflow-registry-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 014 MLflow Registry Aliases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2958,6 +3143,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Write">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-batch-that-lands-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A batch that lands once
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3078,6 +3280,26 @@ needs <code>table</code>.</p>
 <a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">        </span><span class="nt">batchsize</span><span class="p">:</span><span class="w"> </span><span class="s">"5000"</span>
 <a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">        </span><span class="nt">truncate</span><span class="p">:</span><span class="w"> </span><span class="s">"true"</span>
 </code></pre></div>
+<h3 id="a-batch-that-lands-once">A batch that lands once<a class="headerlink" href="#a-batch-that-lands-once" title="Permanent link">&para;</a></h3>
+<p>Spark's JDBC writer commits each partition on its own, so a plain append that fails
+part way leaves part of the batch, and a rerun inserts it again. Name the batch's
+rows with <code>replace_where</code> and the append lands once:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w">    </span><span class="nt">payments</span><span class="p">:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jdbc</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">"jdbc:postgresql://db-host:5432/billing"</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">      </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">billing.payments</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">append</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="nt">replace_where</span><span class="p">:</span><span class="w"> </span><span class="s">"month</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">'{{</span><span class="nv"> </span><span class="s">dt</span><span class="nv"> </span><span class="s">}}'"</span>
+</code></pre></div>
+<p>Spark writes the batch into a staging table beside the target
+(<code>ubunye_stage_&lt;id&gt;</code>, same schema), then one database transaction deletes the rows
+the predicate selects and inserts the staged rows. It commits or changes nothing,
+and the staging table is dropped. A retry after a crash, and <code>--rerun</code> of a finished
+batch, replace the batch from the current data. The predicate is SQL in your
+database's dialect. The database user needs to create and drop a table in the
+target's schema. A staging table a killed run left behind holds no target data; the
+next run of the batch replaces it. Without <code>replace_where</code> an append is Spark's own,
+as before.</p>
 <hr />
 <h2 id="fields">Fields<a class="headerlink" href="#fields" title="Permanent link">&para;</a></h2>
 <table>
@@ -3151,6 +3373,12 @@ needs <code>table</code>.</p>
 <td>Default <code>append</code>. Spark's native save modes only; <code>merge</code> and <code>overwrite_partitions</code> are Delta-only and are rejected by this connector</td>
 </tr>
 <tr>
+<td><code>replace_where</code></td>
+<td>string</td>
+<td>No</td>
+<td>On an <code>append</code>: SQL selecting the batch's rows; the batch is staged, then those rows are replaced in one transaction (<a href="#a-batch-that-lands-once">above</a>)</td>
+</tr>
+<tr>
 <td><code>options</code></td>
 <td>dict</td>
 <td>No</td>
@@ -3193,11 +3421,11 @@ needs <code>table</code>.</p>
 <hr />
 <h2 id="jdbc-driver-setup">JDBC driver setup<a class="headerlink" href="#jdbc-driver-setup" title="Permanent link">&para;</a></h2>
 <p>The JDBC driver JAR must be on the Spark classpath:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">ENGINE</span><span class="p">:</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">spark_conf</span><span class="p">:</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">spark.jars</span><span class="p">:</span><span class="w"> </span><span class="s">"/opt/spark/jars/postgresql-42.7.0.jar"</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="c1"># or for multiple JARs:</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="c1"># spark.jars: "/opt/spark/jars/pg.jar,/opt/spark/jars/mysql.jar"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">ENGINE</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">spark_conf</span><span class="p">:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">spark.jars</span><span class="p">:</span><span class="w"> </span><span class="s">"/opt/spark/jars/postgresql-42.7.0.jar"</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="c1"># or for multiple JARs:</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="c1"># spark.jars: "/opt/spark/jars/pg.jar,/opt/spark/jars/mysql.jar"</span>
 </code></pre></div>
 <p><code>spark.jars</code> is fixed when the Spark session starts, so this works only when
 Ubunye creates the session (<code>ubunye run</code> on the <code>spark</code> backend). On Databricks,
@@ -3225,7 +3453,7 @@ install the driver via the cluster Libraries UI; elsewhere pass it to
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 26, 2026 13:14:16 UTC">October 26, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 09:25:49 UTC">November 10, 2026</span>
   </span>
 
     
@@ -3315,7 +3543,7 @@ install the driver via the cluster Libraries UI; elsewhere pass it to
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -1864,6 +1864,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../patterns/job-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Job Health and Upstream Checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../patterns/llm/" class="md-nav__link">
         
   
@@ -2846,6 +2874,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#addendum-a-delta-append-lands-once-and-a-rerun-can-correct-it-f-071-2026-11-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addendum: a Delta append lands once, and a rerun can correct it (F-071, 2026-11-10)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#addendum-a-jdbc-append-with-replace_where-lands-once-f-072-2026-11-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addendum: a JDBC append with replace_where lands once (F-072, 2026-11-10)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2870,6 +2920,146 @@
     
   
     ADR 009 Compute Outputs Once
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-010-registry-backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 010 Registry Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-011-run-record-stores/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 011 Run Record Stores
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-012-model-runs-and-feature-contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 012 Model Runs and Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-013-receipt-queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 013 Receipt Queries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr-014-mlflow-registry-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 014 MLflow Registry Aliases
   
 
     
@@ -3018,6 +3208,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#addendum-a-delta-append-lands-once-and-a-rerun-can-correct-it-f-071-2026-11-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addendum: a Delta append lands once, and a rerun can correct it (F-071, 2026-11-10)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#addendum-a-jdbc-append-with-replace_where-lands-once-f-072-2026-11-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addendum: a JDBC append with replace_where lands once (F-072, 2026-11-10)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3045,6 +3257,7 @@
 
 <h1 id="adr-008-a-rerun-is-safe-one-live-run-per-batch-appends-land-once">ADR 008: A rerun is safe: one live run per batch, appends land once<a class="headerlink" href="#adr-008-a-rerun-is-safe-one-live-run-per-batch-appends-land-once" title="Permanent link">&para;</a></h1>
 <p><strong>Status:</strong> accepted (hardening programme, 2026-09-29)</p>
+<p><img alt="A batch is a task with its dt. Running a finished append again is refused; --rerun replaces it; after a crash the next run takes over; --resume finishes a pipeline" src="../../assets/diagrams/rerun.svg" /></p>
 <h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
 <p>A pipeline run can stop at any moment: a power cut, a killed job, a failed write. What
 matters is what the next run does. The hardening experiments measured it:</p>
@@ -3115,10 +3328,11 @@ table and information date, and with repairs made from what was actually written
   object storage (a conditional write) is the next step.</li>
 <li>Appends are taken back on the pandas backend, and on Spark for plain file formats
   on a path Spark resolves to the local file system (F-070). A Spark append to object
-  storage (<code>s3a://</code>, <code>abfss://</code>, <code>gs://</code>, <code>dbfs:/</code>), HDFS, a Delta or catalog table,
+  storage (<code>s3a://</code>, <code>abfss://</code>, <code>gs://</code>, <code>dbfs:/</code>), HDFS, a non-Delta catalog table,
   or JDBC is named after a crash, not repaired: use <code>overwrite</code>,
   <code>overwrite_partitions</code>, <code>merge</code> or Delta's <code>replace_where</code> for batches that must land
-  once (F-071, F-072, F-073).</li>
+  once (F-072, F-073). A Delta append lands once by Delta's own idempotent write (F-071,
+  addendum below).</li>
 <li>A run of a batch that already <strong>finished</strong> is covered by the addendum below (F-031),
   not by the lease, which is gone once a run ends.</li>
 <li>It does not make a whole run exactly-once for outputs other than appends: an
@@ -3290,6 +3504,83 @@ Its crash matrix (7 kill points, flat and partitioned, each followed by another
 batch, a takeover, <code>--resume</code> and <code>--rerun</code>, with a foreign file and decoy staging
 folders) found no file deleted or doubled that the run did not own, before or after
 the move inside.</p>
+<h2 id="addendum-a-delta-append-lands-once-and-a-rerun-can-correct-it-f-071-2026-11-10">Addendum: a Delta append lands once, and a rerun can correct it (F-071, 2026-11-10)<a class="headerlink" href="#addendum-a-delta-append-lands-once-and-a-rerun-can-correct-it-f-071-2026-11-10" title="Permanent link">&para;</a></h2>
+<p>A Delta append is one commit, so its files cannot be claimed (moving files behind
+Delta's log corrupts the table). On live Spark 4.2 with delta-spark 4.4, a run
+killed after its commit was appended again by the rerun, a run that failed after it
+left its rows for the rerun to add again, and <code>--rerun</code> appended a finished batch a
+second time (8 of 9 new integration cases fail on the old code). A production job
+that pays customers bypassed the writer with a hand-written insert-only MERGE for
+this: safe to rerun, but a bad month could never be corrected.</p>
+<p><strong>Decision: Delta's own idempotent write for a plain append; <code>replace_where</code> names
+the batch's rows for a correctable one.</strong> Under a run lease with a named batch:</p>
+<ul>
+<li>An append with no <code>replace_where</code> carries <code>txnAppId</code> (<code>ubunye/&lt;task&gt;/&lt;output&gt;/&lt;batch
+  key&gt;</code>) and <code>txnVersion</code> 0. Delta skips a write whose app id already committed that
+  version, so a retry of the batch commits nothing (probed: path, new path, catalog
+  table, new catalog table). The run compares the table version before and after;
+  if it did not move, it warns that the batch was already there and how to replace
+  it. That answers F-071's objection that the skip is silent.</li>
+<li>An append with <code>replace_where</code> is written as <code>overwrite</code> with <code>replaceWhere</code>: one
+  commit replaces the batch's rows, on every run, from the current data. It carries
+  no <code>txnAppId</code>: a replace is idempotent by itself, and a key would skip a
+  deliberate correction. Delta refuses rows outside the predicate
+  (<code>DELTA_REPLACE_WHERE_MISMATCH</code>), so a wrong predicate fails, never deletes
+  another batch. <code>replace_where</code> on an append was ignored before; it is the opt in.</li>
+<li><code>--rerun</code> of a finished batch: with <code>replace_where</code> it replaces (the refusal hint
+  says so); without it the batch is appended again, as before, and the run warns at
+  its start, now naming <code>replace_where</code>. A second plain run of a finished batch is
+  still refused, for the hourly-job reason in the F-031 addendum.</li>
+<li>The lease notes such an output as <code>idempotent</code> (<code>once</code> or <code>replaces</code>). It is not
+  named as unrepaired after a crash or failure, since its rerun does not add it
+  twice; a failed run says which outputs keep its batch and what the rerun does.</li>
+</ul>
+<p><strong>Why the key is the batch, not a version per rerun.</strong> A version Ubunye bumps would
+have to be kept somewhere a cloud job on its own disk can read, and would skip a
+second correction when it is lost. Version 0 per batch needs no state: everything
+that must change a batch goes through <code>replace_where</code>.</p>
+<p><strong>Not covered.</strong> A run with no named batch, or with no lease (<code>UBUNYE_RUN_LEASE=off</code>),
+appends plainly, as before (<code>replace_where</code> still replaces). A config that sets its
+own <code>txnAppId</code> or <code>txnVersion</code> is left alone. Delta drops a <code>SetTransaction</code> after
+<code>delta.setTransactionRetentionDuration</code> when a table sets it; a retry after that
+appends again. Non-Delta catalog tables and Spark on object storage stay as they
+were (F-073).</p>
+<p><strong>Proof:</strong> <code>tests/integration/test_delta_append_reruns.py</code> (a real kill of a child
+after the commit; a failed run on a path and through the <code>delta</code>, <code>hive</code> and
+<code>unity</code> writers into a catalog table; <code>--rerun</code> with <code>replace_where</code> on a path and a
+table; a failed run corrected by the next; rows removed by hand reported; a run
+with no batch appends each time). 8 of 9 fail on the old code (the ninth pins
+unchanged behaviour); 9 of 9 pass. Bookkeeping: <code>tests/unit/core/test_batch_write.py</code>.</p>
+<h2 id="addendum-a-jdbc-append-with-replace_where-lands-once-f-072-2026-11-10">Addendum: a JDBC append with <code>replace_where</code> lands once (F-072, 2026-11-10)<a class="headerlink" href="#addendum-a-jdbc-append-with-replace_where-lands-once-f-072-2026-11-10" title="Permanent link">&para;</a></h2>
+<p>Spark's JDBC writer commits each partition in a transaction of its own: a run that
+dies part way leaves part of the batch, and nothing says which part. There are no
+files to claim, and no batch id in the table unless the user put one there.</p>
+<p><strong>Decision: opt in with <code>replace_where</code>; staged, then moved in by one database
+transaction.</strong> For an append output that sets it, Spark writes the batch into
+<code>ubunye_stage_&lt;12 hex&gt;</code> beside the target (named by the task, output and batch
+under a lease, so a retry replaces a staging table a killed run left behind). Then
+one transaction runs <code>DELETE FROM &lt;table&gt; WHERE &lt;replace_where&gt;</code> and `INSERT INTO</p>
+<table> (<columns>) SELECT <columns> FROM <stage>`, and commits; the staging table
+is dropped afterwards. A kill before the commit changes nothing in the target; a
+kill after it leaves the batch, which the rerun replaces with the same rows. The SQL
+is plain and portable; identifiers are quoted by Spark's own dialect for the URL.
+The lease notes the output as `idempotent: replaces`.
+
+**Why not generic.** A plain JDBC append has no way to name a killed run's rows.
+Options considered: a pre-delete then Spark's append (two transactions, a kill
+between them loses the batch until the rerun), or a ledger table of batches in the
+user's database (exactly once without a predicate, but it writes a table the user
+did not ask for). Neither is worth it while `replace_where` gives exactly once with
+one key the user already knows. A plain JDBC append is unchanged and still named
+after a crash.
+
+**Limits.** Needs a classic Spark session (a JVM; Spark Connect is refused with a
+clear error) and a database user that may create and drop a table in the target's
+schema. The predicate is in the database's SQL dialect. DDL inside a transaction is
+not needed: only the `DELETE` and `INSERT` are in it.
+
+**Proof:** `tests/integration/test_jdbc_append_reruns.py` on Apache Derby embedded
+in memory (its jar ships with Spark). 3 of 4 fail on the old code; 4 of 4 pass.
 
 
 
@@ -3312,7 +3603,7 @@ the move inside.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 30, 2026 09:50:14 UTC">September 30, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 09:25:49 UTC">November 10, 2026</span>
   </span>
 
     
@@ -3402,7 +3693,7 @@ the move inside.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>
