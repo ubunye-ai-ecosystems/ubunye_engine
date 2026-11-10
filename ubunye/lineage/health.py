@@ -98,6 +98,14 @@ def _same_task(records: Iterable[Any], task: str) -> List[Any]:
     return [r for r in records if r.task_path == task]
 
 
+def _newest_first(records: List[Any]) -> List[Any]:
+    def key(r: Any) -> float:
+        t = parse_time(getattr(r, "started_at", None))
+        return t.timestamp() if t else float("-inf")
+
+    return sorted(records, key=key, reverse=True)
+
+
 def task_health(
     store: Any,
     task: str,
@@ -115,7 +123,9 @@ def task_health(
     now = now or datetime.now(timezone.utc)
     stuck_limit = parse_duration(stuck_after)
     age_limit = parse_duration(max_age) if max_age is not None else None
-    records = _same_task(store.list_runs(task, n=scan), task)
+    # Newest first by when each run started: a store's own order (the filesystem
+    # store uses file times, which tie on coarse clocks such as Windows) is not trusted.
+    records = _newest_first(_same_task(store.list_runs(task, n=scan), task))
 
     def age(r: Any) -> Optional[float]:
         t = parse_time(r.started_at)

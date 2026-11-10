@@ -329,6 +329,12 @@ class ModelTransform(Transform):
                 if add_note is not None:
                     add_note(note)
                 else:
+                    # Python 3.10: keep the same __notes__ list callers can read,
+                    # and log it, since 3.10 tracebacks do not print notes.
+                    try:
+                        exc.__notes__ = [*getattr(exc, "__notes__", []), note]  # type: ignore[attr-defined]
+                    except Exception:  # noqa: BLE001 (an exception that refuses attributes)
+                        pass
                     logger.error(note)
             raise
 

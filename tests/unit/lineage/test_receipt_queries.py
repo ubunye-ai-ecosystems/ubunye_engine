@@ -520,3 +520,18 @@ def test_python_api_health_and_wait(tmp_path, monkeypatch):
     assert found.task_path == CALC
     with pytest.raises(upstream.UpstreamNotReady):
         wait_for_upstream(tmp_path, CALC, variables={"month": "2026-09"})
+
+
+def test_health_orders_runs_by_start_time_not_the_stores_order(store):
+    # Coarse file clocks (Windows) can tie, so a store may list runs out of order.
+    _save(store, rec(CALC, "error", 30), rec(CALC, "success", 5))
+
+    class Shuffled:
+        def __getattr__(self, name):
+            return getattr(store, name)
+
+        def list_runs(self, task_path, n=20):
+            return list(reversed(store.list_runs(task_path, n=n)))
+
+    h = health.task_health(Shuffled(), CALC, now=NOW)
+    assert h.last_status == "success" and h.healthy
