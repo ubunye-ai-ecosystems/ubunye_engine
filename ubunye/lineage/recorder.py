@@ -154,6 +154,23 @@ def _check_source(step: StepRecord, frame: Any, io_cfg: Dict[str, Any]) -> None:
     )
 
 
+def _run_identity(context: Any) -> Dict[str, str]:
+    """Who and where ran this (ADR 015): the entry point's, else collected here.
+
+    Never raises: a run record without an identity beats no run record.
+    """
+    given = getattr(context, "identity", None)
+    if given:
+        return {str(k): str(v) for k, v in dict(given).items() if v is not None}
+    try:
+        from ubunye.core import identity
+
+        return identity.collect_identity(task_dir=getattr(context, "task_dir", None)).as_dict()
+    except Exception as exc:
+        logger.debug("run identity could not be read: %s", exc)
+        return {}
+
+
 class LineageRecorder:
     """Monitor plugin that persists run lineage as structured JSON.
 
@@ -284,6 +301,9 @@ class LineageRecorder:
         version = top_cfg.get("VERSION", "")
 
         env = evidence.environment()
+        identity = _run_identity(context)
+        if identity:
+            env["identity"] = identity  # left out of environment_hash (ADR 015)
         ctx = RunContext(
             run_id=run_id,
             task_path=task_path,

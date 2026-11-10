@@ -176,6 +176,13 @@ mlflow = "ubunye.models.mlflow_registry:MLflowModelRegistryBackend"
 filesystem = "ubunye.lineage.storage:FileSystemLineageStore"
 delta = "ubunye.lineage.delta_store:DeltaLineageBackend"
 
+[project.entry-points."ubunye.run_identity"]
+# Who and where ran a task (ADR 015). Asked in priority order; the first that
+# finds its platform owns the run fields.
+databricks = "ubunye.plugins.run_identity:DatabricksIdentity"
+ci = "ubunye.plugins.run_identity:CiIdentity"
+local = "ubunye.plugins.run_identity:LocalIdentity"
+
 [project.entry-points."ubunye.auth_backends"]
 token = "ubunye.deploy.databricks.auth:TokenAuthBackend"
 service_principal = "ubunye.deploy.databricks.auth:ServicePrincipalAuthBackend"

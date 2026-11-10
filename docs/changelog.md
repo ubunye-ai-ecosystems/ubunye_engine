@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Job settings read in one place**: `ubunye.core.settings.job_settings()`
+  returns where run records go (`run_records`, `run_records_fallback`), the
+  batch date (`dt`) and the `mode`, and where each came from. What the code
+  passes wins, then the job's parameters (on Databricks, the notebook widgets:
+  the only channel on serverless compute, where a job cannot set environment
+  variables), then `UBUNYE_*` environment variables. It works off Databricks
+  and never fails a run for a platform reason
+  ([ADR 015](architecture/adr-015-run-identity-and-job-settings.md)).
+- **Who and where ran a task**: `ubunye.core.identity.collect_identity()`
+  returns the platform, workspace, job, job run, task, user, git commit and
+  branch, and deploy target. Platforms are plugins in the new
+  `ubunye.run_identity` entry point group: `databricks` (job parameters and
+  the notebook context, `dbutils` never imported at import time), `ci`
+  (GitHub Actions, GitLab, Azure Pipelines) and `local` (`git rev-parse` in
+  the task folder).
+
+- **Every run record says who and where ran it**, under
+  `environment["identity"]`: platform, workspace, job, job run, task, user,
+  git commit and branch, deploy target. The entry point passes it on the new
+  `EngineContext.identity`; when that is empty the recorder collects it, so the
+  CLI, `run_task`, `run_pipeline` and `notebook` all record it. The record
+  version stays 2 and older records read as before. `environment_hash` leaves
+  the identity out, so runs on the same environment still hash the same. The
+  Databricks deployment docs show the job parameters a `databricks.yml` passes
+  (`ubunye_run_records`, `git_commit: ${bundle.git.commit}`,
+  `git_branch: ${bundle.git.branch}`, `deploy_target: ${bundle.target}`) in a
+  full example.
+
 ### Fixed
 
 - The `deploy` workflow's config check named a sample pipeline that no longer

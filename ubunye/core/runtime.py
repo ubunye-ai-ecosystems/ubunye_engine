@@ -75,6 +75,9 @@ class EngineContext:
     run_records: Optional[Any] = None
     #: Replace a batch a finished run already appended, rather than refuse (F-031).
     rerun: bool = False
+    #: Who and where ran this (ubunye.core.identity.RunIdentity.as_dict(), ADR 015).
+    #: Empty means the run record collects it itself.
+    identity: Dict[str, str] = field(default_factory=dict)
 
 
 class Registry:

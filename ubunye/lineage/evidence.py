@@ -73,7 +73,18 @@ def environment() -> Dict[str, Any]:
     }
 
 
+#: Keys of ``RunContext.environment`` that describe the run, not the software it
+#: ran on, and so are left out of the hash: the run identity (ADR 015) differs on
+#: every run.
+NOT_HASHED = ("identity",)
+
+
 def environment_hash(env: Dict[str, Any]) -> str:
-    """``sha256:<hex>`` of the environment, for a one-line comparison."""
+    """``sha256:<hex>`` of the environment, for a one-line comparison.
+
+    The run identity (``env["identity"]``) is left out, so two runs on the same
+    environment hash the same.
+    """
+    env = {k: v for k, v in env.items() if k not in NOT_HASHED}
     canonical = json.dumps(env, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
