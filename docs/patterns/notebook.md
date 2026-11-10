@@ -52,6 +52,44 @@ outputs["adults"]
 
 `ctx.write(outputs)` writes them, and `ctx.close()` cleans up.
 
+## A Databricks job notebook
+
+A job's notebook is three steps in one `with` block:
+
+```python
+import ubunye
+
+task_dir = dbutils.widgets.get("task_dir")
+dt = dbutils.widgets.get("dt")
+
+with ubunye.notebook(task_dir, dt=dt) as run:
+    sources = run.read()
+    outputs = run.transform(sources)
+    run.write(outputs)
+```
+
+Give the job a parameter `ubunye_run_records` set to a table name, for example
+`main.ops.ubunye_runs`, and every run of every task leaves a run record there,
+including the runs that fail. A failed run's record says where it failed
+(`failed_stage`: `setup`, `read`, `expectations`, `transform`, `write`, `notebook`
+or a step you named). The first run creates the table; if the job's user may not
+create tables in that schema, a warning says so: create the table once or grant
+CREATE TABLE. The job itself never fails because a record could not be saved.
+
+Name a stage of your own with `run.step`:
+
+```python
+with ubunye.notebook(task_dir, dt=dt) as run:
+    sources = run.read()
+    with run.step("score"):
+        scores = my_model.score(sources["claims"])
+    run.write(run.transform(sources))
+```
+
+Each step prints one line, and the last line says where the record went.
+`quiet=True` turns that off. See [the API reference](../api.md#notebook-api) for
+the settings it reads.
+
 ## Quick start: on Databricks
 
 ```python
@@ -138,7 +176,7 @@ ctx = ubunye.notebook(
 
 ## Cleanup
 
-Call `ctx.close()` to put the environment variables back the way they were
+The `with` form cleans up for you when the block ends. Without it, call `ctx.close()` to put the environment variables back the way they were
 and remove the task folder from `sys.path` (the list of folders Python imports
 from).
 

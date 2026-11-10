@@ -9,6 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A job notebook is three steps.** `with ubunye.notebook(task_dir, dt=dt) as run:`
+  then `run.read()`, `run.transform(sources)`, `run.write(outputs)`. The block is
+  one run ([ADR 016](architecture/adr-016-notebook-as-a-run.md)): a success and
+  every failure leave a run record, and a failed one says where it failed in the
+  new `failed_stage` field (`setup`, `read`, `expectations`, `transform`, `write`,
+  `notebook`, or a step named with `run.step("score")`). Before, a notebook run
+  that failed before `write()` left no record. `run_task` records the same stages.
+- **Run records turn on from the job.** A run-record location switches them on:
+  `run_records=`, else the job parameter `ubunye_run_records`, else
+  `$UBUNYE_RUN_RECORDS`. A table name goes to the Delta store, a path to files.
+  `ubunye.notebook`, `run_task` and `run_pipeline` all read it; `lineage=False`
+  turns records off; `lineage=True, lineage_dir=` work as before. `dt` and `mode`
+  left empty (`dt=""` from an empty job parameter) come from the job parameters
+  `dt` / `ubunye_mode`, else `$UBUNYE_DT` / `$UBUNYE_MODE`.
+- Each notebook step prints one line (what it did, how long, or why it failed),
+  and the run's last line says where its record went. `quiet=True` turns it off.
+- The notebook checks `CONFIG.requires` against its run record store when records
+  are on (it never checked it before); without a store it warns.
+
+### Changed
+
+- The Delta run record store says what to do when it cannot create or write its
+  table: create it once, or grant CREATE TABLE (MODIFY) on the schema. The job
+  still goes on.
+- A run record that could not be saved is kept in a fallback folder only when one
+  is configured (`ubunye_run_records_fallback` / `$UBUNYE_RUN_RECORDS_FALLBACK`,
+  usually a Unity Catalog Volume) for runs whose records were switched on by a
+  location; with none, a warning says why. `lineage=True` keeps
+  `~/.ubunye/fallback`.
+- Notebook run records now carry the task's code hash (the notebook passes its
+  task folder to the run).
+
 ### Fixed
 
 - The `deploy` workflow's config check named a sample pipeline that no longer

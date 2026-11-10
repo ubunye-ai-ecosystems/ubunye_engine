@@ -171,6 +171,26 @@ def _unwrap(frame: Any) -> Any:
     return frame.to_native() if callable(to_native) else frame
 
 
+@contextmanager
+def _stage(state: Dict[str, Any], name: str) -> Iterator[None]:
+    """The run is in stage ``name`` (ADR 016): a failure inside leaves it named in
+    ``state["stage"]`` for the run record; a success hands back the stage before."""
+    before = state.get("stage")
+    state["stage"] = name
+    yield
+    state["stage"] = before
+
+
+@dataclass
+class _OpenRun:
+    """One run held open over separate read, transform and write calls (a notebook)."""
+
+    ctx: "EngineContext"
+    chain: HookChain
+    state: Dict[str, Any]
+    held: List[Any]
+
+
 def _materialise_enabled() -> bool:
     """``UBUNYE_MATERIALISE_OUTPUTS``, read when a run starts; on unless 0 (ADR 009)."""
     value = os.getenv("UBUNYE_MATERIALISE_OUTPUTS", "1").strip().lower()
@@ -233,6 +253,8 @@ class Engine:
             None
         )
         self._manage_backend = manage_backend
+        # A run held open by open_run(): read, transform and write join it.
+        self._open: Optional[_OpenRun] = None
 
     @property
     def backend(self) -> Any:
@@ -298,27 +320,33 @@ class Engine:
                     versions: Optional[Dict[str, Any]] = None
                     if any(getattr(h, "reads_inputs", False) for h in chain.hooks):
                         versions = state["source_versions"] = {}
-                    sources = self._read_inputs(ctx, chain, inputs_cfg, versions)
+                    with _stage(state, "read"):
+                        sources = self._read_inputs(ctx, chain, inputs_cfg, versions)
                     state["inputs"] = self._to_ports(sources)
                     # Contracts and reconcile counts before the transform: it may
                     # change its inputs in place.
-                    measured = self._inspect_inputs(cfg, sources, state)
+                    with _stage(state, "expectations"):
+                        measured = self._inspect_inputs(cfg, sources, state)
                     from ubunye import llm
                     from ubunye.models import receipt
 
                     budget = llm.budget.Budget.from_env()
                     try:
                         with (
+                            _stage(state, "transform"),
                             llm.recording(state["llm_calls"], task_dir=ctx.task_dir, budget=budget),
                             receipt.recording(state["model_runs"]),
                         ):
                             outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
                     finally:
                         state["llm_budget"] = budget.summary() if budget.limited else {}
-                    once = self._hold_outputs(cfg, ctx, chain, outputs_map, state, held)
-                    checked = self._check_expectations(cfg, once, state, measured=measured)
+                    with _stage(state, "transform"):
+                        once = self._hold_outputs(cfg, ctx, chain, outputs_map, state, held)
+                    with _stage(state, "expectations"):
+                        checked = self._check_expectations(cfg, once, state, measured=measured)
                     ports = self._to_ports(checked)
-                    self._write_outputs(ctx, chain, outputs_cfg, ports)
+                    with _stage(state, "write"):
+                        self._write_outputs(ctx, chain, outputs_cfg, ports)
                     # Hooks (lineage, monitors) get the port; the caller gets native frames.
                     state["outputs"] = ports
                     return self._hand_back(cfg, outputs_map, once, checked, state)
@@ -328,6 +356,55 @@ class Engine:
         finally:
             # After the hooks: the run record hashes the held frames at task end.
             self._release(held)
+
+    @contextmanager
+    def open_run(self, cfg: dict) -> Iterator[Dict[str, Any]]:
+        """Hold one run open: what :meth:`read_inputs`, :meth:`apply_transforms`,
+        :meth:`write_outputs` and :meth:`step` do inside it is one run (ADR 016).
+
+        The hooks see one task, from entry to exit. A failure anywhere inside ends
+        it as failed, with the stage it was in (``state["stage"]``: ``read``,
+        ``expectations``, ``transform``, ``write`` or a named step; the caller
+        names any other); a clean exit ends it as a success. Yields the run's
+        state, the one the hooks are given. This is how a notebook's ``with``
+        block becomes a recorded run.
+        """
+        if self._open is not None:
+            raise RuntimeError("A run is already open on this engine; finish it first.")
+        ctx = self._resolve_context(cfg)
+        chain = self._build_hook_chain(cfg)
+        self._timings = []
+        state: Dict[str, Any] = {
+            "outputs": None,
+            "stage": None,
+            "timings": self._timings,
+            "llm_calls": [],
+            "model_runs": [],
+        }
+        if any(getattr(h, "reads_inputs", False) for h in chain.hooks):
+            state["source_versions"] = {}
+        held: List[Any] = []
+        try:
+            with chain.task(ctx, cfg, state):
+                self._open = _OpenRun(ctx, chain, state, held)
+                try:
+                    yield state
+                finally:
+                    self._open = None
+        finally:
+            # After the hooks: the run record hashes the held frames at task end.
+            self._release(held)
+
+    @contextmanager
+    def step(self, name: str, cfg: Optional[dict] = None) -> Iterator[None]:
+        """A step the caller names (``run.step("score")``): timed, seen by the hooks,
+        and, inside :meth:`open_run`, the stage a failure in it is recorded under."""
+        run = self._open
+        ctx = run.ctx if run else self._resolve_context(cfg or {})
+        chain = run.chain if run else self._build_hook_chain(cfg or {})
+        state = run.state if run else {}
+        with _stage(state, name), self._step(chain, ctx, f"Step:{name}", None):
+            yield
 
     def read_inputs(self, cfg: dict) -> Dict[str, Any]:
         """Read all inputs defined in ``CONFIG.inputs``.
@@ -341,14 +418,29 @@ class Engine:
         """
         inputs_cfg = cfg.get("CONFIG", {}).get("inputs", {}) or {}
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
-        self._validate_io_configs(inputs_cfg, outputs_cfg)
-        ctx = self._resolve_context(cfg)
-        chain = self._build_hook_chain(cfg)
-        natives = self._to_natives(self._read_inputs(ctx, chain, inputs_cfg))
-        self._inspect_for_write(cfg, natives)
+        run = self._open
+        if run is None:
+            self._validate_io_configs(inputs_cfg, outputs_cfg)
+            ctx = self._resolve_context(cfg)
+            chain = self._build_hook_chain(cfg)
+            natives = self._to_natives(self._read_inputs(ctx, chain, inputs_cfg))
+            self._inspect_for_write(cfg, natives)
+            return natives
+        state = run.state
+        with _stage(state, "read"):
+            self._validate_io_configs(inputs_cfg, outputs_cfg)
+            sources = self._read_inputs(
+                run.ctx, run.chain, inputs_cfg, state.get("source_versions")
+            )
+        state["inputs"] = self._to_ports(sources)
+        natives = self._to_natives(sources)
+        with _stage(state, "expectations"):
+            self._inspect_for_write(cfg, natives, state)
         return natives
 
-    def _inspect_for_write(self, cfg: dict, natives: Dict[str, Any]) -> None:
+    def _inspect_for_write(
+        self, cfg: dict, natives: Dict[str, Any], state: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Check and count the frames a transform is about to get, for write_outputs.
 
         The notebook path reads, transforms and writes in separate calls, so what
@@ -356,7 +448,7 @@ class Engine:
         the contract results and the reconcile counts.
         """
         self._inspected = None
-        state: Dict[str, Any] = {}
+        state = {} if state is None else state
         measured = self._inspect_inputs(cfg, natives, state)
         self._inspected = (dict(natives), list(state.get("expectations") or []), measured)
 
@@ -370,13 +462,36 @@ class Engine:
         the frames the transform actually got.
         """
         transform_cfg = cfg.get("CONFIG", {}).get("transform") or {}
-        transforms = self._normalize_transforms(transform_cfg)
-        self._validate_transforms_exist(transforms)
-        ctx = self._resolve_context(cfg)
-        chain = self._build_hook_chain(cfg)
+        run = self._open
+        if run is None:
+            transforms = self._normalize_transforms(transform_cfg)
+            self._validate_transforms_exist(transforms)
+            ctx = self._resolve_context(cfg)
+            chain = self._build_hook_chain(cfg)
+            if not self._is_inspected(sources):
+                self._inspect_for_write(cfg, self._to_natives(sources))
+            return self._apply_transforms(ctx, chain, sources, transforms)
+        state = run.state
+        with _stage(state, "transform"):
+            transforms = self._normalize_transforms(transform_cfg)
+            self._validate_transforms_exist(transforms)
         if not self._is_inspected(sources):
-            self._inspect_for_write(cfg, self._to_natives(sources))
-        return self._apply_transforms(ctx, chain, sources, transforms)
+            with _stage(state, "expectations"):
+                self._inspect_for_write(cfg, self._to_natives(sources), state)
+        from ubunye import llm
+        from ubunye.models import receipt
+
+        budget = llm.budget.Budget.from_env()
+        try:
+            with (
+                _stage(state, "transform"),
+                llm.recording(state["llm_calls"], task_dir=run.ctx.task_dir, budget=budget),
+                receipt.recording(state["model_runs"]),
+            ):
+                return self._apply_transforms(run.ctx, run.chain, sources, transforms)
+        finally:
+            if budget.limited:
+                state["llm_budget"] = budget.summary()
 
     def _is_inspected(self, sources: Dict[str, Any]) -> bool:
         if self._inspected is None:
@@ -404,6 +519,9 @@ class Engine:
         the transform: a transform that changed them in place hides its loss.
         """
         outputs_cfg = cfg.get("CONFIG", {}).get("outputs", {}) or {}
+        if self._open is not None:
+            self._write_in_open_run(outputs, cfg, outputs_cfg, inputs)
+            return
         # The notebook path writes here without run(): the same pre-checks apply,
         # or an overwrite of its own input deletes the source (F-047).
         self._check_backend_can_run(cfg)
@@ -430,6 +548,33 @@ class Engine:
                 state["outputs"] = ports
         finally:
             self._release(held)
+
+    def _write_in_open_run(
+        self,
+        outputs: Dict[str, Any],
+        cfg: dict,
+        outputs_cfg: Dict[str, Any],
+        inputs: Optional[Dict[str, Any]],
+    ) -> None:
+        """:meth:`write_outputs` inside :meth:`open_run`: the run's hooks, state, stages."""
+        run = self._open
+        assert run is not None
+        ctx, chain, state = run.ctx, run.chain, run.state
+        with _stage(state, "write"):
+            self._check_backend_can_run(cfg)
+        measured: Optional[Dict[str, Any]] = None
+        if self._inspected is not None and (inputs is None or self._is_inspected(inputs)):
+            _, checks, measured = self._inspected
+            if checks:
+                state["expectations"] = list(checks)
+        with _stage(state, "transform"):
+            once = self._hold_outputs(cfg, ctx, chain, outputs, state, run.held)
+        with _stage(state, "expectations"):
+            checked = self._check_expectations(cfg, once, state, inputs, measured)
+        ports = self._to_ports(checked)
+        with _stage(state, "write"):
+            self._write_outputs(ctx, chain, outputs_cfg, ports)
+        state["outputs"] = ports
 
     @staticmethod
     def _expectation_specs(cfg: dict, side: str) -> Dict[str, Any]:

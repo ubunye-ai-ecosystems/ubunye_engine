@@ -118,6 +118,7 @@ def full_record(
             },
             {"action": "predict", "model": "ChurnModel", "version": "1.0.2", "stage": "staging"},
         ],
+        failed_stage="write",
     )
 
 
