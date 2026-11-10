@@ -258,7 +258,7 @@ ubunye run \
 | `--all` | | | false | Run every task in the pipeline |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--data-timestamp-format` | `-dtf` | no | | Timestamp format |
-| `--mode` | `-m` | no | `DEV` | Run mode (DEV/PROD) |
+| `--mode` | `-m` | no | `DEV` | Run mode (DEV/PROD). `ubunye export` defaults to production instead |
 | `--deploy-mode` | | no | `client` | Spark deploy mode (cluster/client) |
 | `--lineage` | | no | false | Record lineage for this run |
 | `--lineage-dir` | | no | `.ubunye/lineage` | Where lineage records go: a directory under `-d` for the filesystem store, as given for any other |
@@ -1084,6 +1084,11 @@ ubunye deploy dockerfile container --pipelines pipelines --out build/Dockerfile
 Generate orchestration artifacts from a task's `config.yaml`. Defaults come from
 the config's `ORCHESTRATION` block (see [Orchestration](config/orchestration.md)).
 
+`ubunye export` defaults to production (`--profile prod` for `airflow` and
+`databricks`, `-m PROD` for `spark-pipeline`), while `ubunye run` defaults to `DEV`:
+an export is what a scheduler runs, a run is usually a try on your own machine.
+Pass the profile you mean when it matters.
+
 ### `export airflow`
 
 Generate an Airflow DAG (Airflow 2.4+ and 3) that runs the task with the CLI.
@@ -1138,6 +1143,6 @@ ubunye export spark-pipeline \
 | `--name` | | no | | Pipeline name |
 | `--catalog` | | no | | Catalog |
 | `--database` | | no | | Database |
-| `--mode` | `-m` | no | `PROD` | Config profile |
+| `--mode` | `-m` | no | `PROD` | Config profile. The default is `PROD`, while `ubunye run` defaults to `DEV` |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--var` | | no | | Extra template variable, `key=value` (repeatable) |

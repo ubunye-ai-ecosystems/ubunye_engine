@@ -456,7 +456,13 @@ def run(
     data_timestamp_format: Optional[str] = typer.Option(
         None, "-dtf", "--data-timestamp-format", help="Specifies the format for the data timestamp."
     ),
-    mode: str = typer.Option("DEV", "-m", "--mode", help="Selects the run mode (DEV/PROD)."),
+    mode: str = typer.Option(
+        "DEV",
+        "-m",
+        "--mode",
+        help="Selects the run mode (DEV/PROD). Default DEV; `ubunye export` defaults to "
+        "production.",
+    ),
     deploy_mode: str = typer.Option(
         "client",
         "--deploy-mode",

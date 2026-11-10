@@ -42,6 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Each command's help says its default profile plainly** (F-115). `ubunye export`
+  defaults to production (`--profile prod` for `airflow` and `databricks`, `-m PROD`
+  for `spark-pipeline`) and `ubunye run` to `DEV`. The defaults are unchanged; the
+  help of `export spark-pipeline` and `run` now says so, as `export airflow` and
+  `export databricks` already did, and `docs/cli.md` says it once for all.
+
 - **`python -m ubunye` documents only what works** (F-114). Its docstring showed
   `spark-submit ... -m ubunye` (spark-submit takes a file, not `-m`) and a
   `--task-dir s3a://...` (only a local folder works); `docs/deployment/anywhere.md`
