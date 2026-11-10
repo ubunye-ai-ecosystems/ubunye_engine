@@ -1065,7 +1065,7 @@ ubunye export airflow \
 |---|---|---|---|---|
 | `--config` | `-c` | yes | | Path to the task's `config.yaml` |
 | `--output` | `-o` | yes | | Where to write the DAG |
-| `--profile` | | no | `prod` | Profile embedded in the bash command |
+| `--profile` | | no | `prod` | Profile embedded in the bash command as `-m`. The default is `prod`, while `ubunye run` defaults to `DEV` |
 | `--usecase-dir` | | no | this folder | The pipelines folder where Airflow runs |
 | `--backend` | | no | | Backend for the run |
 | `--lineage` | | no | false | Record each run (run record) |
@@ -1084,7 +1084,7 @@ ubunye export databricks \
 |---|---|---|---|---|
 | `--config` | `-c` | yes | | Path to the task's `config.yaml` |
 | `--output` | `-o` | yes | | Where to write `job.json` |
-| `--profile` | | no | `prod` | Profile embedded in the job command |
+| `--profile` | | no | `prod` | Profile embedded in the job command as `-m`. The default is `prod`, while `ubunye run` defaults to `DEV` |
 
 ### `export spark-pipeline`
 

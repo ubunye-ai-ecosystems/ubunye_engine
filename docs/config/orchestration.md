@@ -20,7 +20,7 @@ ORCHESTRATION:
     - fraud
     - etl
   databricks:             # Databricks job cluster settings
-    spark_version: "13.3.x-scala2.12"
+    spark_version: "17.3.x-scala2.13"
     node_type_id: "Standard_DS3_v2"
     num_workers: 4
 ```
@@ -45,9 +45,10 @@ When a field is left out, the Airflow DAG uses its own default: schedule
 `export airflow` still works and uses 1 retry.
 
 The keys `export databricks` reads from `databricks:` are `spark_version`
-(default `13.3.x-scala2.12`), `node_type_id` (default `i3.xlarge`), `num_workers`
-(default 2), `spark_conf`, `aws_attributes`, `job_name`, `wheel_dbfs_path` and
-`timezone_id` (default `UTC`). Other keys there are ignored.
+(default `17.3.x-scala2.13`, Databricks Runtime 17.3 LTS), `node_type_id` (default
+`i3.xlarge`), `num_workers` (default 2), `spark_conf`, `aws_attributes`, `job_name`,
+`wheel_dbfs_path` (default `dbfs:/libs/ubunye_engine-<installed version>-py3-none-any.whl`)
+and `timezone_id` (default `UTC`). Other keys there are ignored.
 
 ---
 
@@ -67,7 +68,7 @@ ubunye run -d <pipelines folder> -u fraud -p etl -t claims -m prod -dt {{ ds }}
 ```
 
 `--profile` on `export` becomes `-m` in the command (`ubunye run` has no
-`--profile`). `{{ ds }}` is Airflow's logical date, so each scheduled run gets its
+`--profile`). It defaults to `prod`, while `ubunye run` defaults to `DEV`. `{{ ds }}` is Airflow's logical date, so each scheduled run gets its
 own `dt`. The pipelines folder is the absolute path of the one the config sits
 in; pass `--usecase-dir` when Airflow sees it at another path. `--backend` and
 `--lineage` on `export airflow` are added to the command too.

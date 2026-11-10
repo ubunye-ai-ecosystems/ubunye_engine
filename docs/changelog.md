@@ -81,6 +81,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`export databricks` defaults are current** (F-095). With no `wheel_dbfs_path`
+  the job named the wheel `ubunye_engine-0.1.0`; it now names the installed
+  version's wheel. The default job cluster runtime moves from `13.3.x-scala2.12`
+  (Spark 3.4, past end of support, older than the `pyspark>=3.5` the engine
+  needs) to `17.3.x-scala2.13` (Databricks Runtime 17.3 LTS). Set
+  `spark_version` or `wheel_dbfs_path` under `ORCHESTRATION.databricks` to choose
+  your own. `export airflow` and `export databricks` help now says `--profile`
+  defaults to `prod`, unlike `run`, which defaults to `DEV`.
+
 - **`deploy dockerfile --out` makes its folder, and takes a folder** (F-093). The
   documented `--out build/Dockerfile` failed with `FileNotFoundError` when `build/`
   did not exist, and `--out build` failed with `IsADirectoryError`. Missing folders

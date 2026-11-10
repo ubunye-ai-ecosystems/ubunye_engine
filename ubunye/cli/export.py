@@ -54,7 +54,12 @@ def export_airflow(
         ..., "-c", "--config", exists=True, dir_okay=False, help="Path to task config.yaml."
     ),
     output: Path = typer.Option(..., "-o", "--output", help="Where to write the generated DAG."),
-    profile: str = typer.Option("prod", "--profile", help="Profile embedded in the bash command."),
+    profile: str = typer.Option(
+        "prod",
+        "--profile",
+        help="Profile (mode) embedded in the bash command. Default prod, not the DEV "
+        "that `ubunye run` uses.",
+    ),
     usecase_dir: Optional[str] = typer.Option(
         None, "--usecase-dir", help="The pipelines folder where Airflow runs (default: this one)."
     ),
@@ -79,7 +84,12 @@ def export_databricks(
     output: Path = typer.Option(
         ..., "-o", "--output", help="Where to write the generated job.json."
     ),
-    profile: str = typer.Option("prod", "--profile", help="Profile embedded in the job command."),
+    profile: str = typer.Option(
+        "prod",
+        "--profile",
+        help="Profile (mode) embedded in the job command. Default prod, not the DEV "
+        "that `ubunye run` uses.",
+    ),
 ):
     """Generate a Databricks Jobs API spec (``job.json``) for the task."""
     raw = _load_orchestration_options(config)
