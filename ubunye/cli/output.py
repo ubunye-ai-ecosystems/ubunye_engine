@@ -1,4 +1,4 @@
-"""``--json``: one JSON document on stdout, for a script or an agent.
+"""How a command ends: ``--json`` output, and one clean ``[ERROR]`` line.
 
 With ``--json`` a command prints exactly one JSON document to stdout and
 nothing else, errors included (as ``{"ok": false, "error": ...}``), and its
@@ -12,6 +12,11 @@ import json
 from typing import Any, NoReturn
 
 import typer
+import yaml
+from pydantic import ValidationError
+from typer.core import TyperGroup
+
+from ubunye.core.errors import UbunyeError
 
 JSON_HELP = "Print one JSON document to stdout, for scripts and agents. Errors are JSON too."
 
@@ -33,3 +38,19 @@ def fail(message: str, *, as_json: bool, **details: Any) -> NoReturn:
     else:
         typer.secho(f"[ERROR] {message}", fg=typer.colors.RED, err=True)
     raise typer.Exit(code=1)
+
+
+#: Errors the user can fix: they say what, where and what to try, so a traceback
+#: would only bury the message. Anything else is a bug and keeps its traceback.
+EXPECTED_ERRORS = (UbunyeError, FileNotFoundError, yaml.YAMLError, ValidationError)
+
+
+class CleanErrors(TyperGroup):
+    """A command group whose commands end an expected error in one ``[ERROR]``
+    message and exit code 1, the way ``ubunye run`` does (F-096)."""
+
+    def invoke(self, ctx: Any) -> Any:
+        try:
+            return super().invoke(ctx)
+        except EXPECTED_ERRORS as exc:
+            fail(str(exc), as_json=False)

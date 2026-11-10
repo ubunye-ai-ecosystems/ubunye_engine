@@ -75,7 +75,7 @@ def plan_k8s(
             },
         },
     }
-    plan = Plan("kubernetes", job)
+    plan = Plan("kubernetes", job, tools=["kubectl"])
     plan.commands.append(
         [
             "python",
@@ -178,7 +178,7 @@ def plan_container_apps(
         + ["UBUNYE_ENTRY_ARGS=" + json.dumps(_entry_args(path, mode, dt, {}, variables or {}))],
         "wait": wait,
     }
-    plan = Plan("container-apps", job)
+    plan = Plan("container-apps", job, tools=["az"])
     plan.commands.append(["python", "-c", _ACA_RUN, json.dumps(spec)])
     return plan
 

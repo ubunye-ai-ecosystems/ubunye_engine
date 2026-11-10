@@ -872,6 +872,10 @@ Processed manifests are archived to `~/.ubunye/fallback/synced/`.
 Deploy or run a task on a remote platform. Each platform has a guide under
 [Deployment](deployment.md).
 
+A problem you can fix (no `targets.yaml`, no token, a cloud CLI not on `PATH`, a
+config that does not validate) ends in one `[ERROR]` message that says what, where
+and what to try, with exit code 1. `ubunye export` works the same way.
+
 ### `deploy databricks`
 
 Deploy a task to Databricks as a scheduled job.

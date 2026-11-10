@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`ubunye deploy` and `ubunye export` end an expected error in one `[ERROR]`
+  message** (F-096), exit code 1, the way `ubunye run` does. No `targets.yaml`, no
+  token, a cloud CLI not on `PATH`, a bad task list or a config that does not
+  validate printed a full traceback; `deploy k8s` and `deploy container-apps` also
+  printed their whole launcher script. A missing `kubectl` or `az` is now found
+  before anything runs, and a failed launcher is named, never printed. A bug still
+  shows its traceback. A config that does not validate now raises `ConfigError`
+  (still a `ValueError`).
+
 ## [0.9.0] (2026-11-10)
 
 ### Added

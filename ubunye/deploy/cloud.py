@@ -36,6 +36,8 @@ class Plan:
     job: str
     uploads: List[Tuple[str, bytes]] = field(default_factory=list)  # (remote URI, content)
     commands: List[List[str]] = field(default_factory=list)
+    #: CLIs a launcher script calls: checked before anything runs.
+    tools: List[str] = field(default_factory=list)
     #: Filled by the run: what the job printed, when it was followed to the end.
     log: str = ""
 
@@ -68,8 +70,10 @@ def _run(argv: List[str], capture: bool = False) -> str:
         sys.stdout.write(text)
     if done.returncode != 0:
         detail = (done.stderr or done.stdout or "").strip()[-2000:] if capture else ""
+        # A launcher is a whole script passed to python -c: name it, never print it.
+        what = "The job launcher" if argv[:2] == ["python", "-c"] else f"`{' '.join(argv[:4])} ...`"
         error = DeployError(
-            f"`{' '.join(argv[:4])} ...` failed with exit code {done.returncode}.",
+            f"{what} failed with exit code {done.returncode}.",
             context={"Output": detail} if detail else None,
         )
         # A job that failed still printed its run record(s): keep the whole log.
@@ -99,6 +103,8 @@ def execute(plan: Plan) -> Plan:
     When the last command fails, ``plan.log`` still holds what it printed, and the
     :class:`DeployError` is raised: the caller can read the records of a failed job.
     """
+    for tool in plan.tools:
+        _cli(tool)
     for uri, data in plan.uploads:
         _upload(uri, data)
     for argv in plan.commands[:-1]:

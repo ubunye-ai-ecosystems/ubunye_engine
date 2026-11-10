@@ -20,6 +20,8 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
+from ubunye.core.errors import ConfigError, DeployError
+
 #: Printed around the run record at the end of a cloud run.
 RECORD_BEGIN = "=====UBUNYE-RUN-RECORD-BEGIN====="
 RECORD_END = "=====UBUNYE-RUN-RECORD-END====="
@@ -229,11 +231,11 @@ if __name__ == "__main__":
 def _tasks(task: Union[str, Sequence[str]]) -> List[str]:
     tasks = [task] if isinstance(task, str) else list(task)
     if not tasks or any(not t or any(c in t for c in ",/\\") for t in tasks):
-        raise ValueError(
+        raise ConfigError(
             f"a task is a folder name under usecase/package, without ',', '/' or a backslash: {task!r}"
         )
     if len(set(tasks)) != len(tasks):
-        raise ValueError(f"a task is given twice (its record would overwrite itself): {task!r}")
+        raise ConfigError(f"a task is given twice (its record would overwrite itself): {task!r}")
     return tasks
 
 
@@ -266,7 +268,7 @@ def bundle(usecase_dir: Path, usecase: str, package: str, task: Union[str, Seque
     return buffer.getvalue()
 
 
-class RecordIncomplete(ValueError):
+class RecordIncomplete(DeployError, ValueError):
     """The log does not hold the whole record, provably intact: never a partial record."""
 
 
