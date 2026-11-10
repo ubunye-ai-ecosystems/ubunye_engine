@@ -32,6 +32,8 @@ Limits on dollars, calls and seconds are checked before each call is sent, and a
 call that could pass one is refused (:mod:`ubunye.llm.budget`, prices in
 :mod:`ubunye.llm.prices`). Each logged call carries ``cost_usd`` (None when the
 model has no price) and the ``estimated_usd`` worst case that was reserved.
+Costs can be shown and capped in another currency, at a rate you give
+(:mod:`ubunye.llm.currency`); recorded costs stay in dollars.
 
 A long ``complete_many`` writes its progress to stderr (:mod:`ubunye.llm.progress`).
 """
@@ -415,7 +417,7 @@ class LLMPort:
         held: List[Tuple[Any, float]] = []
         try:
             for b in (run_budget, self.own_budget):
-                if b is not None and b.limited:
+                if b is not None:  # one with no limit still counts the spend
                     held.append((b, b.reserve(backend=self.name, request=request, price=price)))
         except LLMBudgetError:
             for b, reserved in held:

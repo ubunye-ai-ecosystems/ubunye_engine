@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Model costs in your currency** (ADR 015). `UBUNYE_LLM_CURRENCY=ZAR` with
+  `UBUNYE_LLM_FX_ZAR=18.40@2026-11-10` (the rate per US dollar and the day it was
+  read) shows model costs in rand, or any ISO 4217 currency. The engine never
+  fetches or guesses a rate: a currency with no rate stops the run with a clear
+  error. Prices and recorded costs stay in dollars; the run record's `llm_budget`
+  adds the currency, rate and date used, and `ubunye lineage trace` shows the
+  costs at that rate. Records without a currency read as dollars.
+
 ## [0.9.1] (2026-11-10)
 
 ### Changed

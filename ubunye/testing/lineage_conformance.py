@@ -101,7 +101,11 @@ def full_record(
         timings=[{"step": "orders", "input": True, "seconds": 1.5}],
         expectations=[{"output": "clean", "kind": "not_null", "column": "id", "passed": True}],
         llm_calls=[{"backend": "replay", "model": "m", "tokens": 10, "status": "ok"}],
-        llm_budget={"max_calls": 5, "calls": 1},
+        llm_budget={
+            "max_calls": 5,
+            "calls": 1,
+            "currency": {"code": "ZAR", "per_usd": 18.4, "as_of": "2026-11-10"},
+        },
         time_zone="Africa/Johannesburg",
         model_runs=[
             {

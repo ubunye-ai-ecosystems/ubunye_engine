@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from ubunye.core.errors import LLMBudgetError, LLMError
+from ubunye.llm import currency as fx
 from ubunye.llm import prices
 
 ENV = {
@@ -52,6 +53,8 @@ class Budget:
     spent_usd: float = 0.0
     calls: int = 0
     refused: int = 0
+    #: The display currency (ADR 015); None for US dollars.
+    currency: Optional[fx.Currency] = None
     _reserved: float = 0.0
     _started: float = field(default_factory=lambda: time.monotonic())
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
@@ -74,7 +77,7 @@ class Budget:
                     f"{var}={raw!r} is not a number",
                     hint=f"Set {var} to a number, or unset it for no limit.",
                 ) from None
-        return cls(**values)
+        return cls(**values, currency=fx.from_env())
 
     def reserve(self, *, backend: str, request: Any, price: Optional[prices.Price]) -> float:
         """Count a call's worst case against the limits, or refuse it. Returns the reservation."""
@@ -121,7 +124,7 @@ class Budget:
             self.spent_usd += reserved if actual is None else actual
 
     def summary(self) -> Dict[str, Any]:
-        return {
+        out: Dict[str, Any] = {
             "max_usd": self.max_usd,
             "max_calls": self.max_calls,
             "max_seconds": self.max_seconds,
@@ -129,6 +132,9 @@ class Budget:
             "calls": self.calls,
             "refused": self.refused,
         }
+        if self.currency is not None:
+            out["currency"] = self.currency.to_dict()
+        return out
 
 
 def _hint(reason: str) -> str:

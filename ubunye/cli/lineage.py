@@ -528,6 +528,9 @@ def _print_evidence(ctx: RunContext) -> None:
         for m in ctx.model_runs:
             line, warn = _model_line(m)
             typer.secho(f"    {line}", fg=typer.colors.YELLOW if warn else None)
+    from ubunye.llm import currency as fx
+
+    cur = fx.from_record(ctx)
     if ctx.llm_calls:
         typer.echo()
         typer.secho("  MODEL CALLS", fg=typer.colors.CYAN)
@@ -543,7 +546,7 @@ def _print_evidence(ctx: RunContext) -> None:
             if not costs:
                 money = ""
             elif len(known) == len(costs):
-                money = f", ${sum(known):.6f}"
+                money = f", {fx.money(sum(known), cur)}"
             else:
                 money = ", cost unknown (no price)"
             typer.secho(
@@ -559,9 +562,12 @@ def _print_evidence(ctx: RunContext) -> None:
             if b.get(name) is not None
         )
         typer.echo(
-            f"    budget {limits}: spent ${b.get('spent_usd', 0):.6f} on "
+            f"    budget{' ' + limits if limits else ''}: spent "
+            f"{fx.money(b.get('spent_usd', 0), cur)} on "
             f"{b.get('calls', 0)} calls, {b.get('refused', 0)} refused"
         )
+        if cur is not None:
+            typer.echo(f"    currency {cur.note()} (recorded in USD)")
     typer.echo()
 
 

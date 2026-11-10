@@ -191,7 +191,8 @@ class RunContext:
     #: Every language model call the task made (ubunye.llm): backend, model,
     #: tokens, seconds, status and the request's hash; never the prompt or answer.
     llm_calls: List[Dict[str, Any]] = field(default_factory=list)
-    #: The run's limits and what was spent (ubunye.llm.budget); empty with no limits.
+    #: The run's limits and what was spent (ubunye.llm.budget), in US dollars, and
+    #: the display currency, rate and date used (ADR 015); empty with neither.
     llm_budget: Dict[str, Any] = field(default_factory=dict)
     #: The session time zone the run cut time in (ADR 007), when the backend knows it.
     time_zone: Optional[str] = None

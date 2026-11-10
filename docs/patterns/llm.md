@@ -147,6 +147,28 @@ and refused; `ubunye lineage trace` prints both.
     under a ceiling their worst cases would not. Calls running at the same time share
     the ceiling. A refused call stops the task before anything is written.
 
+## Costs in your currency
+
+Providers price in US dollars, and the engine keeps every price and every recorded
+cost in dollars. To read the bill in another currency, name it and give the rate
+yourself, with the day you read it:
+
+```bash
+export UBUNYE_LLM_CURRENCY=ZAR
+export UBUNYE_LLM_FX_ZAR=18.40@2026-11-10   # rand per US dollar, and the date
+```
+
+Any ISO 4217 code works (`EUR`, `GBP`, `KES`); the rate variable is named after it
+(`UBUNYE_LLM_FX_EUR`). The engine never fetches or guesses a rate: a currency with
+no rate, or a rate with no date, stops the run before any call, and says what to
+set. Unset, or `USD`, means dollars.
+
+The run record keeps the dollar figures and adds the currency, the rate and its
+date to `llm_budget` (`"currency": {"code": "ZAR", "per_usd": 18.4, "as_of":
+"2026-11-10"}`), so a receipt always says which rate it used. `ubunye lineage
+trace` shows the costs in that currency, at that rate. Old records, with no
+currency, read as dollars.
+
 ## See the bill before the run
 
 `ubunye plan` prices a task's recorded calls (its replay file) at today's prices and

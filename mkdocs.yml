@@ -138,6 +138,7 @@ nav:
           - ADR 012 Model Runs and Features: architecture/adr-012-model-runs-and-feature-contract.md
           - ADR 013 Receipt Queries: architecture/adr-013-receipt-queries.md
           - ADR 014 MLflow Registry Aliases: architecture/adr-014-mlflow-registry-aliases.md
+          - ADR 015 Model Costs in a Display Currency: architecture/adr-015-model-costs-in-a-display-currency.md
       - Contributing: contributing.md
 
 markdown_extensions:

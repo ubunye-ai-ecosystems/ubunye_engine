@@ -32,6 +32,12 @@ entry each), `transform` (optional), `expectations` (optional) and `requires`
 (optional: upstream tasks that must have succeeded for this batch first, see
 [Job health and upstream checks](../patterns/job-health.md)).
 
+Model call limits, prices and the currency costs are shown in are not config
+keys: they are environment variables (`UBUNYE_LLM_*`, see
+[Language model steps](../patterns/llm.md#costs-in-your-currency)). They belong to whoever
+runs and pays for the task, and an exchange rate changes daily; the task itself
+would not change if it moved.
+
 Set `MODEL` and `VERSION` explicitly in production pipelines where job type or
 version is load-bearing (lineage records, model registry, orchestrator
 metadata). For quick local iteration the defaults are fine.

@@ -314,7 +314,11 @@ class Engine:
                         ):
                             outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
                     finally:
-                        state["llm_budget"] = budget.summary() if budget.limited else {}
+                        state["llm_budget"] = (
+                            budget.summary()
+                            if budget.limited or (budget.currency and state["llm_calls"])
+                            else {}
+                        )
                     once = self._hold_outputs(cfg, ctx, chain, outputs_map, state, held)
                     checked = self._check_expectations(cfg, once, state, measured=measured)
                     ports = self._to_ports(checked)
