@@ -1,0 +1,94 @@
+{
+  "model_name": "RiskModel",
+  "use_case": "fraud",
+  "versions": {
+    "1.0.0": {
+      "version": "1.0.0",
+      "stage": "archived",
+      "registered_at": "2026-11-10T10:04:52.138261+00:00",
+      "promoted_to_staging": "2026-11-10T10:04:52.138580+00:00",
+      "promoted_to_prod": "2026-11-10T10:04:52.138840+00:00",
+      "archived_at": "2026-11-10T10:04:52.139624+00:00",
+      "metrics": {
+        "auc": 0.9,
+        "loss": 0.3
+      },
+      "metadata": {
+        "library": "fixture",
+        "library_version": "1",
+        "drift_check_passed": true
+      },
+      "lineage_run_id": "run-1",
+      "config_hash": null,
+      "promoted_by": "carol"
+    },
+    "1.0.1": {
+      "version": "1.0.1",
+      "stage": "production",
+      "registered_at": "2026-11-10T10:04:52.139379+00:00",
+      "promoted_to_staging": null,
+      "promoted_to_prod": "2026-11-10T10:04:52.139624+00:00",
+      "archived_at": null,
+      "metrics": {
+        "auc": 0.7,
+        "loss": 0.5
+      },
+      "metadata": {
+        "library": "fixture",
+        "library_version": "1",
+        "drift_check_passed": true,
+        "promotion_forced": true,
+        "promotion_gates_skipped": {
+          "min_auc": 0.8,
+          "require_drift_check": true
+        }
+      },
+      "lineage_run_id": "run-2",
+      "config_hash": null,
+      "promoted_by": "dave"
+    },
+    "1.0.2": {
+      "version": "1.0.2",
+      "stage": "development",
+      "registered_at": "2026-11-10T10:04:52.140155+00:00",
+      "promoted_to_staging": null,
+      "promoted_to_prod": null,
+      "archived_at": null,
+      "metrics": {
+        "auc": 0.85,
+        "loss": 0.4
+      },
+      "metadata": {
+        "library": "fixture",
+        "library_version": "1",
+        "drift_check_passed": true
+      },
+      "lineage_run_id": "run-3",
+      "config_hash": null,
+      "promoted_by": "erin"
+    },
+    "2.0.0": {
+      "version": "2.0.0",
+      "stage": "archived",
+      "registered_at": "2026-11-10T10:04:52.140714+00:00",
+      "promoted_to_staging": null,
+      "promoted_to_prod": null,
+      "archived_at": null,
+      "metrics": {
+        "auc": 0.95
+      },
+      "metadata": {
+        "library": "fixture",
+        "library_version": "1",
+        "drift_check_passed": false
+      },
+      "lineage_run_id": null,
+      "config_hash": null,
+      "promoted_by": null
+    }
+  },
+  "promotion_gates": {
+    "min_auc": 0.8,
+    "require_drift_check": true
+  }
+}

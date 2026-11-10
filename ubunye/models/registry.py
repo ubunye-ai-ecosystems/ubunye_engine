@@ -1,18 +1,23 @@
-"""Model Registry — manages ML model versions and their lifecycle stages.
+"""Model Registry: manages ML model versions and their lifecycle stages.
 
-Storage layout on the filesystem::
+:class:`ModelRegistry` is one thin front over :mod:`ubunye.models.lifecycle`, for
+every registry backend (ADR 010). The lifecycle rules (version numbers, promotion
+gates, one production version at a time, rollback, archive, compare) live there
+once. A backend only stores versions.
+
+:class:`FilesystemRegistryBackend` is the default backend. Its layout::
 
     {store_path}/{use_case}/{model_name}/
-        registry.json                    ← ModelRecord (all versions index)
+        registry.json                    <- ModelRecord (all versions index)
         versions/
             1.0.0/
-                model/                   ← user's opaque artifact files
-                metadata.json            ← model.metadata() output
-                metrics.json             ← metrics from model.train()
+                model/                   <- user's opaque artifact files
+                metadata.json            <- model.metadata() output
+                metrics.json             <- metrics from model.train()
 
-Lifecycle stages (ModelStage): development → staging → production → archived.
+Lifecycle stages (ModelStage): development, staging, production, archived.
 When a new version is promoted to production, the current production version is
-automatically archived to ensure there is only one production version at a time.
+archived, so there is only one production version at a time.
 """
 
 from __future__ import annotations
@@ -24,15 +29,17 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from ubunye.core.errors import (
-    PromotionBlockedError,
-    RegistryNotFoundError,
-    VersionExistsError,
-    VersionNotFoundError,
-)
+from ubunye.core.errors import RegistryNotFoundError, VersionExistsError, VersionNotFoundError
 from ubunye.interfaces.registry import ModelVersionInfo
 from ubunye.models.base import UbunyeModel
-from ubunye.models.gates import PromotionGate
+from ubunye.models.lifecycle import (
+    _FIELDS,
+    GATES_KEY,
+    BackendLifecycle,
+    check_demote,
+    check_gates,
+    next_version,
+)
 
 #: Where FilesystemRegistryBackend keeps protocol metadata inside a version's metadata.
 _PROTOCOL_METADATA = "registry_metadata"
@@ -81,23 +88,19 @@ class ModelVersion:
             self.stage = ModelStage(self.stage)
 
     def to_info(self, *, name: str = "", artifact_path: str = "") -> ModelVersionInfo:
-        """Convert to the cross-boundary :class:`ModelVersionInfo` type."""
-        meta: Dict[str, str] = {}
-        if self.lineage_run_id:
-            meta["lineage_run_id"] = self.lineage_run_id
-        if self.config_hash:
-            meta["config_hash"] = self.config_hash
-        if self.promoted_by:
-            meta["promoted_by"] = self.promoted_by
-        if self.promoted_to_staging:
-            meta["promoted_to_staging"] = self.promoted_to_staging
-        if self.promoted_to_prod:
-            meta["promoted_to_prod"] = self.promoted_to_prod
-        if self.archived_at:
-            meta["archived_at"] = self.archived_at
+        """Convert to the cross-boundary :class:`ModelVersionInfo` type.
+
+        The model's metadata keeps its JSON types, so it converts back to the
+        same :class:`ModelVersion` (:func:`ubunye.models.lifecycle.to_model_version`).
+        """
+        own = dict(self.metadata or {})
+        meta: Dict[str, Any] = own
         # Metadata a caller passed through the RegistryBackend protocol (ADR 010).
-        for key, value in ((self.metadata or {}).get(_PROTOCOL_METADATA) or {}).items():
+        for key, value in (own.pop(_PROTOCOL_METADATA, None) or {}).items():
             meta.setdefault(str(key), str(value))
+        for key in _FIELDS:
+            if getattr(self, key):
+                meta[key] = getattr(self, key)
         return ModelVersionInfo(
             name=name,
             version=self.version,
@@ -148,8 +151,7 @@ class ModelRegistry:
         backend: The registry backend (ADR 010): a name registered under the
             ``ubunye.registry_backends`` entry point group, or a backend object.
             Not given, ``UBUNYE_REGISTRY_BACKEND`` decides, else ``filesystem``.
-            The filesystem runs the code below exactly as before 0.9; any other
-            backend gets this whole API built on its six protocol methods
+            Every backend gets this whole API built on its six protocol methods
             (:mod:`ubunye.models.lifecycle`).
     """
 
@@ -157,31 +159,15 @@ class ModelRegistry:
         from ubunye.models.backends import DEFAULT_REGISTRY_BACKEND, choose, resolve_registry
 
         self.store_path = str(store_path)
-        self._on: Optional[Any] = None  # BackendLifecycle, when not the filesystem
         if backend is None or isinstance(backend, str):
             self.backend_name = choose(backend)
-            if self.backend_name != DEFAULT_REGISTRY_BACKEND:
+            if self.backend_name == DEFAULT_REGISTRY_BACKEND:
+                backend = FilesystemRegistryBackend(self.store_path)
+            else:
                 backend = resolve_registry(self.backend_name, store=self.store_path)
         else:
             self.backend_name = type(backend).__name__
-        if backend is not None and not isinstance(backend, str):
-            from ubunye.models.lifecycle import BackendLifecycle
-
-            self._on = BackendLifecycle(backend)
-            return
-
-        # The SCHEME of the path picks the storage backend: a plain directory or
-        # file:// stays local (exactly the old behaviour), s3://, gs:// and friends
-        # go through fsspec, and any scheme registered under the
-        # ubunye.artifact_stores entry-point group goes to that plugin. The
-        # registry itself no longer knows what a disk is.
-        from ubunye.models.artifact_store import resolve_store
-
-        self._store = resolve_store(self.store_path)
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+        self._lifecycle = BackendLifecycle(backend)
 
     def register(
         self,
@@ -195,10 +181,6 @@ class ModelRegistry:
         promotion_gates: Optional[Dict[str, Any]] = None,
     ) -> ModelVersion:
         """Register a trained model as a new version (stage=development).
-
-        1. Saves model artifacts to ``versions/<version>/model/``.
-        2. Writes ``metadata.json`` and ``metrics.json``.
-        3. Adds a new :class:`ModelVersion` entry to ``registry.json``.
 
         Args:
             use_case: Logical use-case grouping (e.g. ``"fraud_detection"``).
@@ -220,63 +202,16 @@ class ModelRegistry:
             from ubunye.core.runtime import current_run_id
 
             lineage_run_id = current_run_id()
-
-        if self._on is not None:
-            return self._on.register(
-                use_case,
-                model_name,
-                version,
-                model,
-                metrics,
-                lineage_run_id=lineage_run_id,
-                registered_by=registered_by,
-                promotion_gates=promotion_gates,
-            )
-
-        record = self._load_or_create_record(use_case, model_name)
-        if promotion_gates is not None:
-            record.promotion_gates = dict(promotion_gates)
-
-        if version is None:
-            version = self._next_version(record)
-
-        if version in record.versions:
-            raise VersionExistsError(
-                f"Version '{version}' already exists for {use_case}/{model_name}.",
-                context={"Version": version, "Model": f"{use_case}/{model_name}"},
-                hint="Use a different version string or set auto_version=True.",
-            )
-
-        # Persist model artifacts. Models write real files (joblib, a Keras zip),
-        # and those need a real local directory — a Keras save fails outright on
-        # storage that cannot seek. staging_dir() gives them one and publishes it
-        # to wherever the store actually lives when the block ends.
-        version_dir = self._version_dir(use_case, model_name, version)
-        model_dir = self._store.join(version_dir, "model")
-        with self._store.staging_dir(model_dir) as local_dir:
-            model.save(str(local_dir))
-
-        # Write metadata and metrics
-        self._store.write_text(
-            self._store.join(version_dir, "metadata.json"),
-            json.dumps(model.metadata(), indent=2, default=str),
-        )
-        self._store.write_text(
-            self._store.join(version_dir, "metrics.json"),
-            json.dumps(metrics, indent=2, default=str),
-        )
-
-        model_version = ModelVersion(
-            version=version,
-            stage=ModelStage.DEVELOPMENT,
-            metrics=metrics,
-            metadata=model.metadata(),
+        return self._lifecycle.register(
+            use_case,
+            model_name,
+            version,
+            model,
+            metrics,
             lineage_run_id=lineage_run_id,
-            promoted_by=registered_by,
+            registered_by=registered_by,
+            promotion_gates=promotion_gates,
         )
-        record.versions[version] = model_version
-        self._save_record(record)
-        return model_version
 
     def promote(
         self,
@@ -296,74 +231,22 @@ class ModelRegistry:
         If promoting to production, the current production version is automatically
         archived.
 
-        Args:
-            use_case: Use-case grouping.
-            model_name: Model identifier.
-            version: Version string to promote.
-            to_stage: Target :class:`ModelStage`.
-            promoted_by: Optional username.
-            gates: Optional dict of promotion gate rules (see :class:`PromotionGate`).
-
         Raises:
-            ValueError: Version not found, or one or more promotion gates failed.
+            VersionNotFoundError: Version not found.
+            PromotionBlockedError: One or more promotion gates failed.
 
         Returns:
             Updated :class:`ModelVersion`.
         """
-        if self._on is not None:
-            return self._on.promote(
-                use_case,
-                model_name,
-                version,
-                to_stage,
-                promoted_by=promoted_by,
-                gates=gates,
-                force=force,
-            )
-        record = self._load_record(use_case, model_name)
-        mv = self._get_version_or_raise(record, version)
-
-        # Evaluate promotion gates if provided
-        if gates is None:
-            gates = record.promotion_gates
-        if gates and force:
-            mv.metadata = {
-                **(mv.metadata or {}),
-                "promotion_forced": True,
-                "promotion_gates_skipped": dict(gates),
-            }
-        elif gates:
-            gate = PromotionGate(gates)
-            failed = gate.failed_gates(mv.metrics, mv.metadata)
-            if failed:
-                details = "\n".join(f"  - {r.gate_name}: {r.message}" for r in failed)
-                raise PromotionBlockedError(
-                    f"Promotion blocked — {len(failed)} gate(s) failed:\n{details}",
-                    context={"Version": version, "Target stage": to_stage.value},
-                    hint="Fix the failing gates or adjust thresholds in promotion_gates config.",
-                )
-
-        now = _utcnow()
-
-        # Archive current production version before promoting new one
-        if to_stage == ModelStage.PRODUCTION:
-            current_prod = record.get_production_version()
-            if current_prod is not None and current_prod.version != version:
-                current_prod.stage = ModelStage.ARCHIVED
-                current_prod.archived_at = now
-
-        # Update stage timestamps
-        mv.stage = to_stage
-        mv.promoted_by = promoted_by
-        if to_stage == ModelStage.STAGING:
-            mv.promoted_to_staging = now
-        elif to_stage == ModelStage.PRODUCTION:
-            mv.promoted_to_prod = now
-        elif to_stage == ModelStage.ARCHIVED:
-            mv.archived_at = now
-
-        self._save_record(record)
-        return mv
+        return self._lifecycle.promote(
+            use_case,
+            model_name,
+            version,
+            to_stage,
+            promoted_by=promoted_by,
+            gates=gates,
+            force=force,
+        )
 
     def demote(
         self,
@@ -378,69 +261,18 @@ class ModelRegistry:
         ``staging`` from ``production``. Moving up is a promotion; use
         :meth:`promote`, which checks the promotion gates.
 
-        Args:
-            to_stage: Target stage (``development``, ``staging`` or ``archived``).
-
-        Returns:
-            Updated :class:`ModelVersion`.
-
         Raises:
             RegistryError: if the move would take the version up a stage.
         """
-        if self._on is not None:
-            return self._on.demote(use_case, model_name, version, to_stage)
-        from ubunye.models.lifecycle import check_demote
+        return self._lifecycle.demote(use_case, model_name, version, to_stage)
 
-        to_stage = ModelStage(to_stage)
-        record = self._load_record(use_case, model_name)
-        mv = self._get_version_or_raise(record, version)
-        check_demote(version, mv.stage.value, to_stage.value)
-        mv.stage = to_stage
-        self._save_record(record)
-        return mv
-
-    def rollback(
-        self,
-        use_case: str,
-        model_name: str,
-        to_version: str,
-    ) -> ModelVersion:
-        """Roll back production to a specific previous version.
-
-        1. Archives the current production version.
-        2. Promotes ``to_version`` to production.
-
-        Args:
-            to_version: The version string to restore to production.
-
-        Returns:
-            The restored :class:`ModelVersion` (now in production stage).
-        """
-        if self._on is not None:
-            return self._on.rollback(use_case, model_name, to_version)
-        record = self._load_record(use_case, model_name)
-        self._get_version_or_raise(record, to_version)  # validate exists
-
-        now = _utcnow()
-        current_prod = record.get_production_version()
-        if current_prod is not None and current_prod.version != to_version:
-            current_prod.stage = ModelStage.ARCHIVED
-            current_prod.archived_at = now
-
-        target = record.versions[to_version]
-        target.stage = ModelStage.PRODUCTION
-        target.promoted_to_prod = now
-
-        self._save_record(record)
-        return target
+    def rollback(self, use_case: str, model_name: str, to_version: str) -> ModelVersion:
+        """Roll production back to ``to_version``; the current production version is archived."""
+        return self._lifecycle.rollback(use_case, model_name, to_version)
 
     def archive(self, use_case: str, model_name: str, version: str) -> ModelVersion:
-        """Archive a model version.
-
-        Returns:
-            Updated :class:`ModelVersion`.
-        """
-        return self.demote(use_case, model_name, version, ModelStage.ARCHIVED)
+        """Archive a model version."""
+        return self._lifecycle.archive(use_case, model_name, version)
 
     def get_model(
         self,
@@ -453,63 +285,24 @@ class ModelRegistry:
         """Return the artifact path and version metadata for a model.
 
         Specify either ``version`` (exact) or ``stage`` (active version in that stage).
-
-        Args:
-            use_case: Use-case grouping.
-            model_name: Model identifier.
-            task_dir: Task directory containing model.py (passed to caller for loading).
-            version: Exact version string.
-            stage: Stage to look up active version for.
+        ``task_dir`` is accepted for older callers and not used.
 
         Returns:
-            ``(artifact_path, model_version)`` — caller calls
+            ``(artifact_path, model_version)``. The caller calls
             ``ModelClass.load(artifact_path)`` to obtain the model instance.
 
         Raises:
-            ValueError: No matching version found.
+            VersionNotFoundError: No matching version found.
         """
-        if self._on is not None:
-            return self._on.get_model(use_case, model_name, version=version, stage=stage)
-        record = self._load_record(use_case, model_name)
-
-        mv: ModelVersion
-        if version is not None:
-            mv = self._get_version_or_raise(record, version)
-        elif stage is not None:
-            active = record.get_active_version(stage)
-            if active is None:
-                raise VersionNotFoundError(
-                    f"No version of '{model_name}' is currently in stage '{stage.value}'.",
-                    context={"Model": model_name, "Stage": stage.value},
-                    hint="Register and promote a model version to this stage first.",
-                )
-            mv = active
-        else:
-            raise VersionNotFoundError(
-                "Specify either 'version' or 'stage'.",
-                hint="Pass version='x.y.z' or stage=ModelStage.PRODUCTION.",
-            )
-
-        remote = self._store.join(self._version_dir(use_case, model_name, mv.version), "model")
-        # The caller passes this to ModelClass.load(), which reads real files — so a
-        # remote store downloads to a local directory first. The local store returns
-        # the path untouched, exactly as before.
-        return self._store.materialize(remote), mv
+        return self._lifecycle.get_model(use_case, model_name, version=version, stage=stage)
 
     def list_versions(self, use_case: str, model_name: str) -> List[ModelVersion]:
         """List all registered versions for a model (newest first by registered_at).
 
         Raises:
-            FileNotFoundError: Model not found in registry.
+            RegistryNotFoundError: Model not found in registry.
         """
-        if self._on is not None:
-            return self._on.list_versions(use_case, model_name)
-        record = self._load_record(use_case, model_name)
-        return sorted(
-            record.versions.values(),
-            key=lambda v: v.registered_at,
-            reverse=True,
-        )
+        return self._lifecycle.list_versions(use_case, model_name)
 
     def compare_versions(
         self,
@@ -521,37 +314,50 @@ class ModelRegistry:
         """Compare metrics between two versions.
 
         Returns:
-            Dict mapping metric name → ``{"a": val_a, "b": val_b, "delta": diff}``.
+            Dict mapping metric name to ``{"a": val_a, "b": val_b, "delta": diff}``.
             Only metrics present in at least one version are included.
         """
-        if self._on is not None:
-            return self._on.compare_versions(use_case, model_name, version_a, version_b)
-        record = self._load_record(use_case, model_name)
-        va = self._get_version_or_raise(record, version_a)
-        vb = self._get_version_or_raise(record, version_b)
-        return compare_metrics(va.metrics, vb.metrics)
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _version_dir(self, use_case: str, model_name: str, version: str) -> str:
-        return self._store.join(self.store_path, use_case, model_name, "versions", version)
-
-    def _registry_path(self, use_case: str, model_name: str) -> str:
-        return self._store.join(self.store_path, use_case, model_name, "registry.json")
+        return self._lifecycle.compare_versions(use_case, model_name, version_a, version_b)
 
     def promotion_gates(self, use_case: str, model_name: str) -> Dict[str, Any]:
         """The gates stored with a model (empty if none were set)."""
-        if self._on is not None:
-            return self._on.promotion_gates(use_case, model_name)
-        return dict(self._load_record(use_case, model_name).promotion_gates)
+        return self._lifecycle.promotion_gates(use_case, model_name)
 
-    def _load_or_create_record(self, use_case: str, model_name: str) -> ModelRecord:
-        path = self._registry_path(use_case, model_name)
-        if self._store.exists(path):
-            return self._load_record(use_case, model_name)
-        return ModelRecord(model_name=model_name, use_case=use_case)
+
+# ---------------------------------------------------------------------------
+# FilesystemRegistryBackend: the default RegistryBackend
+# ---------------------------------------------------------------------------
+
+
+class FilesystemRegistryBackend:
+    """The default :class:`RegistryBackend`: a folder (or bucket) of JSON files.
+
+    The SCHEME of the store path picks where the files go: a plain directory or
+    ``file://`` stays local, ``s3://``, ``gs://`` and friends go through fsspec,
+    and any scheme registered under the ``ubunye.artifact_stores`` entry point
+    group goes to that plugin.
+
+    Metadata it reports keeps the JSON types the store holds. Writes are
+    synchronous: local disk is fast enough that a background worker would only
+    add overhead.
+    """
+
+    def __init__(self, store_path: str) -> None:
+        from ubunye.models.artifact_store import resolve_store
+
+        self._store_path = str(store_path)
+        self._store = resolve_store(self._store_path)
+
+    # -- the record ----------------------------------------------------------------
+
+    def _version_dir(self, use_case: str, model_name: str, version: str) -> str:
+        return self._store.join(self._store_path, use_case, model_name, "versions", version)
+
+    def _model_dir(self, use_case: str, model_name: str, version: str) -> str:
+        return self._store.join(self._version_dir(use_case, model_name, version), "model")
+
+    def _registry_path(self, use_case: str, model_name: str) -> str:
+        return self._store.join(self._store_path, use_case, model_name, "registry.json")
 
     def _load_record(self, use_case: str, model_name: str) -> ModelRecord:
         path = self._registry_path(use_case, model_name)
@@ -571,83 +377,43 @@ class ModelRegistry:
         )
 
     def _save_record(self, record: ModelRecord) -> None:
-        path = self._registry_path(record.use_case, record.model_name)
-        data: Dict[str, Any] = {
+        versions = {k: asdict(v) for k, v in record.versions.items()}
+        for v in versions.values():
+            v["stage"] = ModelStage(v["stage"]).value
+        data = {
             "model_name": record.model_name,
             "use_case": record.use_case,
-            "versions": {k: asdict(v) for k, v in record.versions.items()},
+            "versions": versions,
             "promotion_gates": record.promotion_gates,
         }
-        # Convert ModelStage enum values to strings for JSON serialisation
-        for v_dict in data["versions"].values():
-            if isinstance(v_dict.get("stage"), ModelStage):
-                v_dict["stage"] = v_dict["stage"].value
+        path = self._registry_path(record.use_case, record.model_name)
         self._store.write_text(path, json.dumps(data, indent=2))
 
     @staticmethod
-    def _next_version(record: ModelRecord) -> str:
-        """Auto-generate the next patch version based on existing versions."""
-        if not record.versions:
-            return "1.0.0"
-        parsed = []
-        for v in record.versions:
-            try:
-                parts = tuple(int(x) for x in v.split("."))
-                if len(parts) == 3:
-                    parsed.append(parts)
-            except ValueError:
-                pass
-        if not parsed:
-            return "1.0.0"
-        major, minor, patch = max(parsed)
-        return f"{major}.{minor}.{patch + 1}"
-
-    @staticmethod
-    def _get_version_or_raise(record: ModelRecord, version: str) -> ModelVersion:
+    def _version(record: ModelRecord, version: str) -> ModelVersion:
         mv = record.versions.get(version)
         if mv is None:
-            available = sorted(record.versions) or ["(none)"]
             raise VersionNotFoundError(
                 f"Version '{version}' not found in {record.use_case}/{record.model_name}.",
                 context={
                     "Version": version,
                     "Model": f"{record.use_case}/{record.model_name}",
-                    "Available": available,
+                    "Available": sorted(record.versions) or ["(none)"],
                 },
                 hint="Check the version string or list versions with 'ubunye models list'.",
             )
         return mv
 
+    def _info(self, record: ModelRecord, mv: ModelVersion) -> ModelVersionInfo:
+        path = self._model_dir(record.use_case, record.model_name, mv.version)
+        return mv.to_info(name=record.model_name, artifact_path=path)
 
-# ---------------------------------------------------------------------------
-# FilesystemRegistryBackend — RegistryBackend protocol adapter
-# ---------------------------------------------------------------------------
-
-
-class FilesystemRegistryBackend:
-    """Adapts :class:`ModelRegistry` to the :class:`RegistryBackend` protocol.
-
-    Delegates all operations to the underlying ``ModelRegistry`` and
-    converts between the legacy ``ModelVersion`` type and the protocol's
-    ``ModelVersionInfo``.
-
-    The filesystem backend is intentionally synchronous — local disk
-    writes are fast enough that the overhead of a background worker
-    thread is counterproductive.  Network-backed implementations
-    (e.g. ``MLflowRegistryBackend``) will use
-    :class:`~ubunye._internal.metadata_worker.MetadataWorker` for
-    non-blocking index updates while keeping artifact writes synchronous.
-    """
-
-    def __init__(self, store_path: str) -> None:
-        # Named, so UBUNYE_REGISTRY_BACKEND can never send the filesystem elsewhere.
-        self._registry = ModelRegistry(store_path, backend="filesystem")
-        self._store_path = store_path
+    # -- the protocol ----------------------------------------------------------------
 
     def promotion_gates(self, use_case: str, model_name: str) -> Dict[str, Any]:
         """The gates stored with a model (empty if none, or no model yet)."""
         try:
-            return self._registry.promotion_gates(use_case, model_name)
+            return dict(self._load_record(use_case, model_name).promotion_gates)
         except RegistryNotFoundError:
             return {}
 
@@ -666,31 +432,55 @@ class FilesystemRegistryBackend:
         metadata: Optional[Dict[str, str]] = None,
         lineage_run_id: Optional[str] = None,
     ) -> ModelVersionInfo:
-        from ubunye.models.lifecycle import GATES_KEY
-
         meta = dict(metadata or {})
-        # The gates live on the model's record, as ModelRegistry has always kept them.
+        # The gates live on the model's record, as they always have.
         gates_json = meta.pop(GATES_KEY, None)
-        mv = self._registry.register(
-            use_case=use_case,
-            model_name=model_name,
+        registered_by = meta.pop("promoted_by", None)
+        try:
+            record = self._load_record(use_case, model_name)
+        except RegistryNotFoundError:
+            record = ModelRecord(model_name=model_name, use_case=use_case)
+        if gates_json is not None:
+            record.promotion_gates = dict(json.loads(gates_json))
+        if version is None:
+            version = next_version(list(record.versions))
+        if version in record.versions:
+            raise VersionExistsError(
+                f"Version '{version}' already exists for {use_case}/{model_name}.",
+                context={"Version": version, "Model": f"{use_case}/{model_name}"},
+                hint="Use a different version string or leave it out to number it.",
+            )
+
+        # Models write real files (joblib, a Keras zip), and those need a real
+        # local directory: a Keras save fails on storage that cannot seek.
+        # staging_dir() gives them one and publishes it to the store at the end.
+        version_dir = self._version_dir(use_case, model_name, version)
+        with self._store.staging_dir(self._store.join(version_dir, "model")) as local_dir:
+            model.save(str(local_dir))
+        model_meta = model.metadata()
+        self._store.write_text(
+            self._store.join(version_dir, "metadata.json"),
+            json.dumps(model_meta, indent=2, default=str),
+        )
+        self._store.write_text(
+            self._store.join(version_dir, "metrics.json"),
+            json.dumps(metrics, indent=2, default=str),
+        )
+
+        mv = ModelVersion(
             version=version,
-            model=model,
+            stage=ModelStage.DEVELOPMENT,
             metrics=metrics,
+            metadata=model_meta,
             lineage_run_id=lineage_run_id,
-            registered_by=meta.pop("promoted_by", None),
-            promotion_gates=json.loads(gates_json) if gates_json else None,
+            promoted_by=registered_by,
         )
         if meta:
             # Kept, not dropped: it comes back from get() and list_versions().
-            record = self._registry._load_record(use_case, model_name)
-            mv = record.versions[mv.version]
             mv.metadata = {**(mv.metadata or {}), _PROTOCOL_METADATA: meta}
-            self._registry._save_record(record)
-        artifact_path = self._registry._store.join(
-            self._registry._version_dir(use_case, model_name, mv.version), "model"
-        )
-        return mv.to_info(name=model_name, artifact_path=artifact_path)
+        record.versions[version] = mv
+        self._save_record(record)
+        return self._info(record, mv)
 
     def get(
         self,
@@ -700,33 +490,32 @@ class FilesystemRegistryBackend:
         version: Optional[str] = None,
         stage: Optional[str] = None,
     ) -> Tuple[str, ModelVersionInfo]:
-        model_stage = ModelStage(stage) if stage else None
-        artifact_path, mv = self._registry.get_model(
-            use_case=use_case,
-            model_name=model_name,
-            version=version,
-            stage=model_stage,
-        )
-        return artifact_path, mv.to_info(name=model_name, artifact_path=artifact_path)
-
-    def list_versions(
-        self,
-        *,
-        use_case: str,
-        model_name: str,
-    ) -> List[ModelVersionInfo]:
-        versions = self._registry.list_versions(use_case, model_name)
-        return [
-            mv.to_info(
-                name=model_name,
-                artifact_path=str(
-                    self._registry._store.join(
-                        self._registry._version_dir(use_case, model_name, mv.version), "model"
-                    )
-                ),
+        record = self._load_record(use_case, model_name)
+        if version is not None:
+            mv = self._version(record, version)
+        elif stage is not None:
+            active = record.get_active_version(ModelStage(stage))
+            if active is None:
+                raise VersionNotFoundError(
+                    f"No version of '{model_name}' is currently in stage '{stage}'.",
+                    context={"Model": model_name, "Stage": stage},
+                    hint="Register and promote a model version to this stage first.",
+                )
+            mv = active
+        else:
+            raise VersionNotFoundError(
+                "Specify either 'version' or 'stage'.",
+                hint="Pass version='x.y.z' or stage=ModelStage.PRODUCTION.",
             )
-            for mv in versions
-        ]
+        # The caller passes this to ModelClass.load(), which reads real files, so a
+        # remote store downloads to a local directory first. A local one is as is.
+        path = self._store.materialize(self._model_dir(use_case, model_name, mv.version))
+        return path, mv.to_info(name=model_name, artifact_path=path)
+
+    def list_versions(self, *, use_case: str, model_name: str) -> List[ModelVersionInfo]:
+        record = self._load_record(use_case, model_name)
+        newest = sorted(record.versions.values(), key=lambda v: v.registered_at, reverse=True)
+        return [self._info(record, mv) for mv in newest]
 
     def promote(
         self,
@@ -739,16 +528,37 @@ class FilesystemRegistryBackend:
         promoted_by: Optional[str] = None,
         force: bool = False,
     ) -> ModelVersionInfo:
-        mv = self._registry.promote(
-            use_case=use_case,
-            model_name=model_name,
-            version=version,
-            to_stage=ModelStage(to_stage),
-            promoted_by=promoted_by,
-            gates=gates,
-            force=force,
-        )
-        return mv.to_info(name=model_name)
+        stage = ModelStage(to_stage)
+        record = self._load_record(use_case, model_name)
+        mv = self._version(record, version)
+        if gates is None:
+            gates = record.promotion_gates
+        if gates and force:
+            mv.metadata = {
+                **(mv.metadata or {}),
+                "promotion_forced": True,
+                "promotion_gates_skipped": dict(gates),
+            }
+        elif gates:
+            check_gates(gates, mv.to_info(name=model_name), stage.value)
+
+        now = _utcnow()
+        if stage == ModelStage.PRODUCTION:
+            # One production version at a time; the old one is archived in the same write.
+            current = record.get_production_version()
+            if current is not None and current.version != version:
+                current.stage = ModelStage.ARCHIVED
+                current.archived_at = now
+        mv.stage = stage
+        mv.promoted_by = promoted_by
+        if stage == ModelStage.STAGING:
+            mv.promoted_to_staging = now
+        elif stage == ModelStage.PRODUCTION:
+            mv.promoted_to_prod = now
+        elif stage == ModelStage.ARCHIVED:
+            mv.archived_at = now
+        self._save_record(record)
+        return self._info(record, mv)
 
     def demote(
         self,
@@ -758,26 +568,19 @@ class FilesystemRegistryBackend:
         version: str,
         to_stage: str,
     ) -> ModelVersionInfo:
-        mv = self._registry.demote(
-            use_case=use_case,
-            model_name=model_name,
-            version=version,
-            to_stage=ModelStage(to_stage),
-        )
-        return mv.to_info(name=model_name)
+        stage = ModelStage(to_stage)
+        record = self._load_record(use_case, model_name)
+        mv = self._version(record, version)
+        check_demote(version, mv.stage.value, stage.value)
+        mv.stage = stage
+        self._save_record(record)
+        return self._info(record, mv)
 
-    def delete(
-        self,
-        *,
-        use_case: str,
-        model_name: str,
-        version: str,
-    ) -> None:
-        version_dir = self._registry._version_dir(use_case, model_name, version)
-        self._registry._store.delete(version_dir)
-        record = self._registry._load_record(use_case, model_name)
+    def delete(self, *, use_case: str, model_name: str, version: str) -> None:
+        self._store.delete(self._version_dir(use_case, model_name, version))
+        record = self._load_record(use_case, model_name)
         record.versions.pop(version, None)
-        self._registry._save_record(record)
+        self._save_record(record)
 
 
 # ---------------------------------------------------------------------------

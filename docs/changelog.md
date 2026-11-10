@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **One path for the model registry.** `ModelRegistry` is now a thin front over
+  the lifecycle layer for every backend, the filesystem included. The filesystem
+  no longer keeps its own copy of the rules (version numbers, gates, one
+  production version, rollback, archive). Same API, same files on disk: a store
+  written by 0.9.0 reads and promotes the same (a fixture test pins it).
+  Reading a version's stage no longer downloads its artifact from a remote store.
+- `ModelRegistry.promotion_gates` gives `{}` for a model with no versions on the
+  filesystem too (it raised `RegistryNotFoundError`), like every other backend.
+- Metadata given through the `FilesystemRegistryBackend` protocol (kept nested
+  under `registry_metadata` on disk, unchanged) now reads back flat from
+  `ModelRegistry`, as it already did through the backend. A model whose own
+  `metadata()` uses a version field's name (`promoted_by`, `lineage_run_id`,
+  `config_hash`, the stage times) or `registry_metadata` reads back with that
+  key in the field, as on every other backend; no shipped model does.
+- An unknown stage name given to the filesystem backend raises `ValueError`; it
+  was written to `registry.json` as is.
+
+### Fixed
+
+- Registering with `promotion_gates={}` clears a model's stored gates on every
+  backend. Before, only the default filesystem path cleared them; MLflow and the
+  others kept the old gates.
+- A rollback keeps who promoted the version on every backend. Before, a
+  filesystem backend named by object, and the deprecated `MLflowRegistryBackend`,
+  set it to empty.
+
 ## [0.9.0] (2026-11-10)
 
 ### Added

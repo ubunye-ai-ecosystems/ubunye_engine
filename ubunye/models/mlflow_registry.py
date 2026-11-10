@@ -5,9 +5,9 @@ version in the MLflow Model Registry: a registered model version, its stage as a
 alias, everything else as version tags. It never calls the MLflow stage API, so the
 same code works where only aliases exist (Unity Catalog).
 
-``MLflowRegistryBackend`` is the older backend, deprecated in 0.9. It delegates artifact storage and lifecycle management to the filesystem
-:class:`~ubunye.models.registry.ModelRegistry` and layers MLflow
-experiment/run logging on top when MLflow is available.
+``MLflowRegistryBackend`` is the older backend, deprecated in 0.9. It stores
+versions with :class:`~ubunye.models.registry.FilesystemRegistryBackend` and
+layers MLflow experiment/run logging on top when MLflow is available.
 
 When MLflow is not installed or not configured, all operations still
 succeed — MLflow logging is best-effort and never blocks the pipeline.
@@ -31,13 +31,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote, urlparse
 
 from ubunye.core.errors import (
-    PromotionBlockedError,
     RegistryNotFoundError,
     VersionExistsError,
     VersionNotFoundError,
 )
 from ubunye.interfaces.registry import ModelVersionInfo
-from ubunye.models.lifecycle import check_demote
+from ubunye.models.lifecycle import check_demote, check_gates
 from ubunye.models.registry import FilesystemRegistryBackend
 
 logger = logging.getLogger(__name__)
@@ -456,7 +455,7 @@ class MLflowModelRegistryBackend:
         if gates and force:
             extra = {"promotion_forced": "true", "promotion_gates_skipped": _text(dict(gates))}
         elif gates:
-            self._check_gates(name, mv, gates, to_stage)
+            check_gates(gates, self._info(name, mv), to_stage)
         if promoted_by:
             extra["promoted_by"] = promoted_by
         return self._set_stage(name, mv, to_stage, extra)
@@ -531,20 +530,6 @@ class MLflowModelRegistryBackend:
             time.sleep(1)
             mv = self.client.get_model_version(name, mv.version)
         return mv
-
-    def _check_gates(self, name: str, mv: Any, gates: Dict[str, Any], to_stage: str) -> None:
-        from ubunye.models.gates import PromotionGate
-        from ubunye.models.lifecycle import _gate_metadata
-
-        info = self._info(name, mv)
-        failed = PromotionGate(gates).failed_gates(info.metrics, _gate_metadata(info.metadata))
-        if failed:
-            details = "\n".join(f"  - {r.gate_name}: {r.message}" for r in failed)
-            raise PromotionBlockedError(
-                f"Promotion blocked: {len(failed)} gate(s) failed:\n{details}",
-                context={"Version": info.version, "Target stage": to_stage},
-                hint="Fix the failing gates or adjust thresholds in promotion_gates config.",
-            )
 
     def _in_stage(self, name: str, stage: str) -> Any:
         alias = _ALIASES.get(stage)

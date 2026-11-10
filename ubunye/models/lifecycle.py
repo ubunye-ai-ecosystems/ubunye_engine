@@ -15,7 +15,8 @@ those six, so every backend gets it for free and stays small:
 
 Gates are stored as the version metadata key ``promotion_gates`` (JSON). A version
 registered without gates carries the model's current ones forward, so the newest
-version always holds the gates that apply. A backend that keeps gates its own way
+version always holds the gates that apply; gates given empty are stored as
+``{}``, which clears them. A backend that keeps gates its own way
 may offer ``promotion_gates(use_case, model_name)``; it is used when present.
 
 The stages are the public contract: ``development``, ``staging``, ``production``,
@@ -116,6 +117,20 @@ def _gate_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+def check_gates(gates: Dict[str, Any], info: ModelVersionInfo, to_stage: str) -> None:
+    """Raise :class:`PromotionBlockedError` when ``info`` fails any of ``gates``."""
+    failed = PromotionGate(gates).failed_gates(
+        dict(info.metrics or {}), _gate_metadata(dict(info.metadata or {}))
+    )
+    if failed:
+        details = "\n".join(f"  - {r.gate_name}: {r.message}" for r in failed)
+        raise PromotionBlockedError(
+            f"Promotion blocked: {len(failed)} gate(s) failed:\n{details}",
+            context={"Version": info.version, "Target stage": to_stage},
+            hint="Fix the failing gates or adjust thresholds in promotion_gates config.",
+        )
+
+
 class BackendLifecycle:
     """The :class:`ModelRegistry` API, done on top of a :class:`RegistryBackend`."""
 
@@ -131,6 +146,11 @@ class BackendLifecycle:
             return []
 
     def _info(self, use_case: str, model_name: str, version: str) -> ModelVersionInfo:
+        # From the list, so a remote artifact is not downloaded just to read its stage.
+        for info in self.backend.list_versions(use_case=use_case, model_name=model_name):
+            if info.version == version:
+                return info
+        # Not there: the backend's own get raises its clear not-found error.
         _, info = self.backend.get(use_case=use_case, model_name=model_name, version=version)
         return info
 
@@ -196,7 +216,7 @@ class BackendLifecycle:
             else (self.promotion_gates(use_case, model_name) if existing else {})
         )
         metadata: Dict[str, str] = {}
-        if gates:
+        if gates or promotion_gates is not None:  # given empty: the gates are cleared
             metadata[GATES_KEY] = json.dumps(gates, sort_keys=True)
         if registered_by:
             metadata["promoted_by"] = registered_by
@@ -272,16 +292,7 @@ class BackendLifecycle:
                     use_case, model_name, version, stage, promoted_by, gates=gates, force=True
                 )
         elif gates:
-            failed = PromotionGate(gates).failed_gates(
-                dict(info.metrics or {}), _gate_metadata(dict(info.metadata or {}))
-            )
-            if failed:
-                details = "\n".join(f"  - {r.gate_name}: {r.message}" for r in failed)
-                raise PromotionBlockedError(
-                    f"Promotion blocked: {len(failed)} gate(s) failed:\n{details}",
-                    context={"Version": version, "Target stage": stage},
-                    hint="Fix the failing gates or adjust thresholds in promotion_gates config.",
-                )
+            check_gates(gates, info, stage)
         # The gates are checked here; an empty dict tells the backend there is nothing left.
         return self._move_up(use_case, model_name, version, stage, promoted_by, gates={})
 
@@ -297,8 +308,10 @@ class BackendLifecycle:
         return to_model_version(info)
 
     def rollback(self, use_case: str, model_name: str, to_version: str) -> Any:
-        self._info(use_case, model_name, to_version)  # raises if missing
-        return self._move_up(use_case, model_name, to_version, "production", None, gates={})
+        info = self._info(use_case, model_name, to_version)  # raises if missing
+        # A rollback restores a version; who promoted it stays as it was.
+        by = (info.metadata or {}).get("promoted_by")
+        return self._move_up(use_case, model_name, to_version, "production", by, gates={})
 
     def archive(self, use_case: str, model_name: str, version: str) -> Any:
         return self.demote(use_case, model_name, version, "archived")
