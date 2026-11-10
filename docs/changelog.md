@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A clearer Project Structure diagram.** It zooms from a use case into a pipeline
+  (its tasks run in order) and into a task (`config.yaml` and `transformations.py`),
+  and colour-matches the folder path to the `-u`, `-p` and `-t` flags. It says
+  pipeline, not package, and has light and dark versions. The SVGs are drawn by
+  `scripts/diagrams/project_structure.py`.
 - **The Databricks example notebooks use the notebook API.** They now open a
   context with `ubunye.notebook()` and run `ctx.read()`, `ctx.transform()` and
   `ctx.write()` in separate cells, so you can see the data between steps. Catalog
