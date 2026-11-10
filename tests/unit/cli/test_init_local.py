@@ -105,3 +105,14 @@ class TestTemplates:
     def test_an_unknown_template(self, project):
         result = runner.invoke(app, ["init", *WHERE, "--template", "nope"])
         assert result.exit_code == 2 and "local" in result.output
+
+
+def test_the_comment_spells_task_dir_as_the_config_does(project):
+    """The comment said ``{ task_dir }`` (single braces), an f-string slip."""
+    assert runner.invoke(app, ["init", *WHERE]).exit_code == 0
+    text = (project / TASK / "config.yaml").read_text(encoding="utf-8")
+    assert "# {{ task_dir }} is this folder" in text
+    assert "{ task_dir }" not in text.replace("{{ task_dir }}", "")
+    # Jinja renders values after YAML drops comments, so the comment needs no escaping.
+    args = ["validate", "-d", "pipelines", "-u", "demo", "-p", "starter", "-t", "filter_adults"]
+    assert runner.invoke(app, args).exit_code == 0

@@ -972,34 +972,44 @@ class UbunyeConfig(BaseModel):
             )
         return v
 
+    def check_profile(self, profile: str | None) -> None:
+        """Raise ConfigProfileError when *profile* names no profile of this config.
+
+        A config with no ``ENGINE.profiles`` accepts any mode. ``run``,
+        ``validate`` and the Python API all go through this one rule.
+        """
+        profiles = self.ENGINE.profiles
+        if not profile or not profiles or profile in profiles:
+            return
+        from ubunye.core.errors import ConfigProfileError
+
+        available = sorted(profiles.keys())
+        hint = (
+            f"This config's profiles are: {', '.join(available)}. Names match "
+            "exactly, case included"
+        )
+        near = [name for name in available if name.casefold() == profile.casefold()]
+        if near:
+            hint += f"; did you mean '{near[0]}'? Pass -m {near[0]}"
+        hint += ". With no -m, run and validate use DEV."
+        raise ConfigProfileError(
+            f"Profile '{profile}' not found.",
+            context={"Profile": profile, "Available": available},
+            hint=hint,
+        )
+
     def merged_spark_conf(self, profile: str | None = None) -> Dict[str, str]:
         """Return base spark_conf merged with the named profile's overrides."""
         conf = dict(self.ENGINE.spark_conf)
         if profile and self.ENGINE.profiles:
-            if profile not in self.ENGINE.profiles:
-                from ubunye.core.errors import ConfigProfileError
-
-                available = sorted(self.ENGINE.profiles.keys())
-                raise ConfigProfileError(
-                    f"Profile '{profile}' not found.",
-                    context={"Profile": profile, "Available": available},
-                    hint=f"Valid profiles: {', '.join(available)}",
-                )
+            self.check_profile(profile)
             conf.update(self.ENGINE.profiles[profile].spark_conf)
         return conf
 
     def resolved_catalog(self, profile: str | None = None) -> Optional[str]:
         """Return the catalog name, with profile override if available."""
         if profile and self.ENGINE.profiles:
-            if profile not in self.ENGINE.profiles:
-                from ubunye.core.errors import ConfigProfileError
-
-                available = sorted(self.ENGINE.profiles.keys())
-                raise ConfigProfileError(
-                    f"Profile '{profile}' not found.",
-                    context={"Profile": profile, "Available": available},
-                    hint=f"Valid profiles: {', '.join(available)}",
-                )
+            self.check_profile(profile)
             override = self.ENGINE.profiles[profile].catalog
             if override is not None:
                 return override
@@ -1008,15 +1018,7 @@ class UbunyeConfig(BaseModel):
     def resolved_schema(self, profile: str | None = None) -> Optional[str]:
         """Return the schema name, with profile override if available."""
         if profile and self.ENGINE.profiles:
-            if profile not in self.ENGINE.profiles:
-                from ubunye.core.errors import ConfigProfileError
-
-                available = sorted(self.ENGINE.profiles.keys())
-                raise ConfigProfileError(
-                    f"Profile '{profile}' not found.",
-                    context={"Profile": profile, "Available": available},
-                    hint=f"Valid profiles: {', '.join(available)}",
-                )
+            self.check_profile(profile)
             override = self.ENGINE.profiles[profile].schema_name
             if override is not None:
                 return override
