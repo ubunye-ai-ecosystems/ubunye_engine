@@ -1,9 +1,9 @@
 """Ubunye CLI implemented with Typer.
 
 Commands:
-- init:     scaffold a new usecase/package/tasks
+- init:     scaffold a new usecase/pipeline/tasks
 - validate: validate config file(s) before execution
-- run:      run task(s) in a package
+- run:      run task(s) in a pipeline
 - doctor:   check this machine (and optionally tasks) before a run
 - gate:     fail a pull request when a run receipt regresses
 - plugins:  list discovered plugins
@@ -36,6 +36,7 @@ from ubunye.cli.init import init_app
 from ubunye.cli.lineage import lineage_app, lineage_backend_option, recorder_or_exit
 from ubunye.cli.models import models_app
 from ubunye.cli.output import emit, fail, json_option
+from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
 from ubunye.cli.prove import prove_app
 from ubunye.cli.runs_cmd import runs_app
 from ubunye.cli.sync import sync_app
@@ -89,8 +90,8 @@ def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path
 
 
 app.command("backends")(backends_command)
-app.command("doctor")(doctor_command)
-app.command("gate")(gate_command)
+app.command("doctor", cls=PipelineCommand)(doctor_command)
+app.command("gate", cls=PipelineCommand)(gate_command)
 
 
 @app.command("mcp")
@@ -136,11 +137,11 @@ def plugins():
     typer.echo(f"Transforms:{', '.join(sorted(reg.transforms)) or '-'}")
 
 
-@app.command()
+@app.command(cls=PipelineCommand)
 def config(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(..., "-t", "--task-list"),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
@@ -160,15 +161,15 @@ def config(
             raise typer.Exit(code=1)
 
 
-@app.command()
+@app.command(cls=PipelineCommand)
 def validate(
     usecase_dir: Path = typer.Option(
         ..., "-d", "--usecase-dir", help="Root directory of pipelines."
     ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Use case name."),
-    package: str = typer.Option(..., "-p", "--package", help="Pipeline/package name."),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(None, "-t", "--task-list", help="Task(s) to validate."),
-    all_tasks: bool = typer.Option(False, "--all", help="Validate all tasks in the package."),
+    all_tasks: bool = typer.Option(False, "--all", help="Validate all tasks in the pipeline."),
     profile: Optional[str] = typer.Option(
         None, "--profile", help="Profile to validate against (e.g. dev, prod)."
     ),
@@ -315,11 +316,11 @@ def validate(
         typer.secho(f"All {len(tasks_to_check)} task(s) passed validation.", fg=typer.colors.GREEN)
 
 
-@app.command()
+@app.command(cls=PipelineCommand)
 def plan(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(..., "-t", "--task-list"),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
@@ -433,22 +434,20 @@ def _print_plan(report: Dict[str, Any]) -> None:
     typer.echo()
 
 
-@app.command()
+@app.command(cls=PipelineCommand)
 def run(
     usecase_dir: Path = typer.Option(
         ..., "-d", "--usecase-dir", help="Specifies the directory path for the use case."
     ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Selects the desired use case."),
-    package: str = typer.Option(
-        ..., "-p", "--package", help="Selects a package from the specified use case."
-    ),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(
-        None, "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."
+        None, "-t", "--task-list", help="Specifies the task(s) to execute from the chosen pipeline."
     ),
     all_tasks: bool = typer.Option(
         False,
         "--all",
-        help="Run every task in the package. `validate` had this for years and `run` "
+        help="Run every task in the pipeline. `validate` had this for years and `run` "
         "did not, so the two commands taught different habits for the same job.",
     ),
     data_timestamp: Optional[str] = typer.Option(
@@ -494,7 +493,7 @@ def run(
         "finished this batch (-dt and --var), run the rest.",
     ),
 ):
-    """Run one or more tasks within a package sequentially."""
+    """Run one or more tasks within a pipeline sequentially."""
     variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
 
     # Resolve which tasks to run, the same way `validate` resolves them. The two

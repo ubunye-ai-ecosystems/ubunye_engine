@@ -30,6 +30,7 @@ import typer
 
 from ubunye.cli import backend_choice as backends_view
 from ubunye.cli.output import emit, json_option
+from ubunye.cli.pipeline_flag import pipeline_option
 from ubunye.cli.variables import cli_variables, var_option
 
 OK, WARN, FAIL = "ok", "warn", "fail"
@@ -337,7 +338,7 @@ def doctor_command(
         None, "-d", "--usecase-dir", help="Also check tasks under this pipelines folder."
     ),
     usecase: Optional[str] = typer.Option(None, "-u", "--usecase"),
-    package: Optional[str] = typer.Option(None, "-p", "--package"),
+    package: Optional[str] = pipeline_option(None),
     task_list: Optional[List[str]] = typer.Option(None, "-t", "--task-list"),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     mode: str = typer.Option("DEV", "-m", "--mode"),

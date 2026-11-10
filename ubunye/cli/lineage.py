@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 import typer
 
 from ubunye.cli.output import emit, fail, json_option
+from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
 from ubunye.core.errors import PluginNotFoundError
 from ubunye.lineage import stores
 from ubunye.lineage.context import RunContext, StepRecord
@@ -113,13 +114,13 @@ def _color(status: str) -> Any:
 # ---------------------------------------------------------------------------
 
 
-@lineage_app.command("show")
+@lineage_app.command("show", cls=PipelineCommand)
 def show(
     usecase_dir: Path = typer.Option(
         ..., "-d", "--usecase-dir", help="Root directory of pipelines."
     ),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: str = typer.Option(..., "-t", "--task"),
     run_id: Optional[str] = typer.Option(
         None, "--run-id", help="Specific run ID (default: latest)."
@@ -139,11 +140,11 @@ def show(
 # ---------------------------------------------------------------------------
 
 
-@lineage_app.command("list")
+@lineage_app.command("list", cls=PipelineCommand)
 def list_runs(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: str = typer.Option(..., "-t", "--task"),
     n: int = typer.Option(10, "-n", "--n", help="Number of recent runs to show."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
@@ -250,11 +251,11 @@ def compare_records(a: RunContext, b: RunContext) -> Dict[str, Any]:
     }
 
 
-@lineage_app.command("openlineage")
+@lineage_app.command("openlineage", cls=PipelineCommand)
 def openlineage_events(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: str = typer.Option(..., "-t", "--task"),
     run_id: Optional[str] = typer.Option(None, "--run-id", help="One run; default: every run."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
@@ -283,11 +284,11 @@ def openlineage_events(
                 emitter.send(event)
 
 
-@lineage_app.command("compare")
+@lineage_app.command("compare", cls=PipelineCommand)
 def compare(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: str = typer.Option(..., "-t", "--task"),
     run_id1: str = typer.Option(..., "--run-id1", help="First run ID."),
     run_id2: str = typer.Option(..., "--run-id2", help="Second run ID."),
@@ -365,16 +366,14 @@ def _print_data_hash(verdict: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
-@lineage_app.command("search")
+@lineage_app.command("search", cls=PipelineCommand)
 def search(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     task: Optional[str] = typer.Option(None, "-t", "--task", help="Restrict to this task name."),
     usecase: Optional[str] = typer.Option(
         None, "-u", "--usecase", help="Restrict to this usecase."
     ),
-    package: Optional[str] = typer.Option(
-        None, "-p", "--package", help="Restrict to this package."
-    ),
+    package: Optional[str] = pipeline_option(None, help="Only this pipeline."),
     status: Optional[str] = typer.Option(
         None, "--status", help="Filter by status: success|error|running."
     ),
@@ -445,11 +444,11 @@ def _print_steps(steps: List[StepRecord]) -> None:
             typer.secho(f"      source   : {step.source_note}", fg=colour)
 
 
-@lineage_app.command("trace")
+@lineage_app.command("trace", cls=PipelineCommand)
 def trace(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: str = typer.Option(..., "-t", "--task"),
     run_id: Optional[str] = typer.Option(None, "--run-id", help="Specific run (default: latest)."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
@@ -595,11 +594,11 @@ def _model_line(m: Dict[str, Any]) -> tuple:
 # ---------------------------------------------------------------------------
 
 
-@lineage_app.command("focus")
+@lineage_app.command("focus", cls=PipelineCommand)
 def focus_rows(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: str = typer.Option(..., "-t", "--task"),
     run_id: Optional[str] = typer.Option(None, "--run-id", help="Specific run (default: latest)."),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),

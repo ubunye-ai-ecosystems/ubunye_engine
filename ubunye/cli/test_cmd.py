@@ -22,6 +22,7 @@ import typer
 
 from ubunye.cli.backend_choice import resolve_or_exit
 from ubunye.cli.lineage import lineage_backend_option, recorder_or_exit
+from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.core.runtime import EngineContext
@@ -37,13 +38,13 @@ def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path
     return usecase_dir / usecase / package / task
 
 
-@test_app.command("run")
+@test_app.command("run", cls=PipelineCommand)
 def run_test(
     usecase_dir: Path = typer.Option(
         ..., "-d", "--usecase-dir", help="Root directory of pipelines."
     ),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(..., "-t", "--task-list", help="Task(s) to test."),
     profile: str = typer.Option("test", "--profile", help="Config profile to use (default: test)."),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),

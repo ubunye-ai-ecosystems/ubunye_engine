@@ -112,6 +112,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`-p/--pipeline` replaces `--package`.** The middle level of use case,
+  pipeline, task is called a pipeline everywhere now. Every CLI command that took
+  `-p/--package` takes `-p/--pipeline` ("Pipeline name."). `--package` still works
+  until 1.0: it is hidden from `--help` and prints one warning to stderr. Giving
+  both is an error. In Python, `run_pipeline()` and `job_health()` take
+  `pipeline=`; `package=` still works with a DeprecationWarning, and both is a
+  TypeError. The positional order of `run_pipeline()` is unchanged. The MCP
+  `health` tool takes `pipeline` and still accepts `package`. Run records keep
+  their `package` field.
 - **The Delta lineage store keeps the whole run record.** It used to store a
   `LineageRecord`, which dropped steps, hashes, timings, expectations and the
   environment. It now writes the record as JSON plus index columns, only appends,

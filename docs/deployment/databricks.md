@@ -169,7 +169,7 @@ ubunye deploy databricks --help
 |---|---|---|---|
 | `--usecase-dir` | `-d` | required | Root directory of pipelines |
 | `--usecase` | `-u` | required | Usecase name |
-| `--package` | `-p` | required | Pipeline/package name |
+| `--pipeline` | `-p` | required | Pipeline name |
 | `--task` | `-t` | required | Task name |
 | `--target` | | `dev` | Deploy target name |
 | `--mode` | `-m` | `PROD` | Config profile for the job |

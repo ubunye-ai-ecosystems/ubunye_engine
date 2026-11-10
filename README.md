@@ -321,7 +321,7 @@ outputs = ubunye.run_task("./pipelines/...", backend="pandas")
 
 # Multiple tasks
 results = ubunye.run_pipeline(
-    usecase_dir="./pipelines", usecase="fraud", package="etl",
+    usecase_dir="./pipelines", usecase="fraud", pipeline="etl",
     tasks=["claim_etl", "features"], mode="DEV",
 )
 ```

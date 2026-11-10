@@ -26,7 +26,7 @@ outputs = ubunye.run_task("pipelines/sales/etl/daily", backend="pandas")
 results = ubunye.run_pipeline(
     usecase_dir="pipelines",
     usecase="fraud_detection",
-    package="ingestion",
+    pipeline="ingestion",
     tasks=["claim_etl", "feature_engineering"],
     mode="nonprod",
     dt="202510",
