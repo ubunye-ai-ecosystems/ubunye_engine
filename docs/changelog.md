@@ -110,7 +110,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (F-102). It passed validation and failed at run time: the reader never read
   `db_name`. The message says what to use: `table: 'catalog.schema.table'`, or
   `catalog` + `schema` + `tbl_name` (now accepted by validate, as the reader always
-  read it), or `sql`.
+  read it), or `sql`. `ubunye init --template databricks` wrote such a read; it now
+  writes `table: main.raw_db.<task>_input`, and a test checks that every template
+  `init` writes passes `ubunye validate`.
 
 - **`ubunye validate` reports a write mode the writer cannot do** (F-103), with
   the message `ubunye plan` gives: a `jdbc` output with `mode: merge`, a `merge`

@@ -129,7 +129,8 @@ the same thing in pandas and in Spark, so the task runs with no Java
 task's own folder), so it runs from any folder.
 
 `--template databricks` writes the older scaffold instead: read a Unity Catalog
-table, write to an `s3a://` bucket. `ubunye init pipeline ...` is the same
+table (`table: main.raw_db.<task>_input`; change it to yours), write to an
+`s3a://` bucket. `ubunye init pipeline ...` is the same
 command with a subcommand name.
 
 `ubunye init` with no flags prints its help and subcommands and exits 0. Give one

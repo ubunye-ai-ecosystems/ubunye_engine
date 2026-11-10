@@ -97,8 +97,7 @@ CONFIG:
   inputs:
     tx_data:
       format: unity
-      db_name: raw_db
-      tbl_name: {task}_input
+      table: main.raw_db.{task}_input
   transform: {{}}
   outputs:
     output_features:

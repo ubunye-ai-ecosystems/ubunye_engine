@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
 import yaml
 from typer.testing import CliRunner
 
+from ubunye.cli import scaffold
 from ubunye.cli.main import app
 
 runner = CliRunner()
@@ -79,6 +81,16 @@ class TestInitPipeline:
         cfg = yaml.safe_load((tmp_path / "d" / "e" / "t" / "config.yaml").read_text())
         assert cfg["MODEL"] == "etl"
         assert "CONFIG" in cfg
+
+
+@pytest.mark.parametrize("template", scaffold.TEMPLATES)
+def test_every_template_init_writes_passes_validate(tmp_path, template):
+    """The databricks template wrote a unity read with db_name, which validate refuses."""
+    args = ["-d", str(tmp_path), "-u", "d", "-p", "e", "-t", "t"]
+    result = runner.invoke(app, ["init", *args, "--template", template])
+    assert result.exit_code == 0, result.output
+    result = runner.invoke(app, ["validate", *args])
+    assert result.exit_code == 0, result.output
 
 
 # ── init github-actions ──────────────────────────────────────────────
