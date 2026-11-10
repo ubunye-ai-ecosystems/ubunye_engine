@@ -15,6 +15,7 @@ name your package registers in its `pyproject.toml`).
 | [`RunRecordStore`](#runrecordstore) | A **run record store**: where run records go | `ubunye.lineage_backends` | `--lineage-backend`, then `UBUNYE_LINEAGE_BACKEND`, then `filesystem` |
 | [`LineageBackend`](#lineagebackend) | The older **lineage backend** contract, kept for code that uses it | `ubunye.lineage_backends` | As for the run record store |
 | [`AuthBackend`](#authbackend) | An **auth backend**: finds and checks Databricks credentials | `ubunye.auth_backends` | The credentials that are set |
+| [`RunIdentityProvider`](#runidentityprovider) | A **run identity provider**: who and where ran a task, and the job parameters a platform passes | `ubunye.run_identity` | All are asked, by `priority`; the first that finds its platform wins |
 
 These are not the same as an **execution backend** (`spark`, `pandas`, the
 engine a task runs on). That seam is a base class, not a protocol, and has its
@@ -254,6 +255,41 @@ See [Databricks authentication](databricks-auth.md).
 
 ---
 
+## RunIdentityProvider
+
+Says who and where ran a task (platform, workspace, job, job run, task, user,
+git commit and branch, deploy target), and reads the job parameters its
+platform passes (on Databricks, the notebook widgets). The result goes on every
+run record as `environment["identity"]`.
+See [ADR 015](architecture/adr-015-run-identity-and-job-settings.md).
+
+::: ubunye.core.identity.RunIdentityProvider
+    options:
+      show_root_heading: false
+      show_source: false
+      heading_level: 4
+
+A provider is built with no arguments. Both methods return `{}` when it is not
+on its platform; one that raises is logged and skipped, never failing a run.
+The first provider (lowest `priority`) that returns a `platform` owns the run
+fields; only `git_commit` and `git_branch` may come from a later one.
+
+**Built-in**:
+
+- `DatabricksIdentity` (`databricks`, priority 10): job parameters named like a
+  field (`git_commit`, `git_branch`, `deploy_target`, `job_run_id`, ...), then
+  the notebook context. Imports nothing from Databricks until called.
+- `CiIdentity` (`ci`, priority 20): GitHub Actions, GitLab CI, Azure Pipelines
+  and a generic `CI=true`, from the variables they set.
+- `LocalIdentity` (`local`, priority 90): user, host name, and `git rev-parse`
+  in the task folder.
+
+The job settings (`ubunye.core.settings.job_settings`) read their job
+parameters through these providers. See
+[Databricks: job parameters](deployment/databricks.md#job-parameters-ubunye-reads).
+
+---
+
 ## Entry point groups
 
 Every group the engine reads, with what it ships. Third-party packages add
@@ -265,6 +301,7 @@ their own classes under these groups in their `pyproject.toml`.
 | `ubunye.registry_backends` | Registry backends | `filesystem` (`FilesystemRegistryBackend`), `mlflow` (`MLflowModelRegistryBackend`) |
 | `ubunye.lineage_backends` | Run record stores | `filesystem` (`FileSystemLineageStore`), `delta` (`DeltaLineageBackend`) |
 | `ubunye.auth_backends` | Auth backends | `token` (`TokenAuthBackend`), `service_principal` (`ServicePrincipalAuthBackend`) |
+| `ubunye.run_identity` | Run identity providers | `databricks` (`DatabricksIdentity`), `ci` (`CiIdentity`), `local` (`LocalIdentity`) |
 | `ubunye.artifact_stores` | Where model files go, by URL scheme | `file` (`LocalArtifactStore`); a third party adds a scheme here |
 | `ubunye.backends` | Execution backends ([Execution backends](backends.md)) | `spark`, `databricks`, `pandas` |
 | `ubunye.readers` | Readers (`format:` of an input) | `hive`, `jdbc`, `s3`, `delta`, `binary`, `unity`, `rest_api` |

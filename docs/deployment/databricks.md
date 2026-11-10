@@ -374,6 +374,15 @@ Two rules the Databricks CLI enforces:
 **Unity Catalog** is Databricks' catalog of tables, volumes and who may use
 them. A catalog holds schemas; a schema holds tables.
 
+!!! note "Quoting catalog names"
+    A catalog passed as a job parameter (`catalog: ${var.catalog}`) is often
+    named with hyphens, like `aws-x-catalog`, and SQL needs those names in
+    backticks. In `config.yaml`, pass every such name through `| ident`
+    (`SELECT * FROM {{ catalog | ident }}.raw.trips`, with the parameter handed
+    over as `variables={"catalog": ...}`). It quotes the name once,
+    whether the parameter carries backticks or not. See
+    [SQL names](../config/jinja.md#sql-names-ident).
+
 ### Job files (`bundles/*.yaml`)
 
 Each file in `bundles/` defines jobs. The job runs a small notebook that calls
@@ -428,6 +437,105 @@ ubunye.run_task(
 The titanic example's
 [`run_titanic.py`](https://github.com/ubunye-ai-ecosystems/ubunye_engine/tree/main/examples/production/titanic_databricks/notebooks)
 is a full one, using `ubunye.notebook()`.
+
+### Job parameters Ubunye reads
+
+On serverless compute a job cannot set environment variables. Its **job
+parameters** are the channel: a notebook task sees them as widgets, and Ubunye
+reads them for you, with no `dbutils.widgets.get` in your notebook. On a
+cluster, a laptop or in CI the same settings can be environment variables
+instead. What the code passes wins, then a job parameter, then the environment
+variable. An empty parameter counts as not set.
+
+| Job parameter | Environment variable | What it does |
+|---|---|---|
+| `ubunye_run_records` | `UBUNYE_RUN_RECORDS` | Where run records go: a table name (`main.ops.ubunye_runs`) or a path. Setting it switches run records on. |
+| `ubunye_run_records_fallback` | `UBUNYE_RUN_RECORDS_FALLBACK` | A UC Volume path for the backup copy of a record that could not be saved. |
+| `dt` | `UBUNYE_DT` | The batch date, when the notebook does not pass one. |
+| `ubunye_mode` | `UBUNYE_MODE` | The mode (profile), when the notebook does not pass one. |
+
+Every run record also says **who and where ran it**: the platform, workspace,
+job, job run, task, the user or service principal, and the git commit, branch
+and deploy target. Ubunye reads the job context itself; the code version only
+the bundle knows, so pass it:
+
+| Job parameter | Value in `databricks.yml` | Recorded as |
+|---|---|---|
+| `git_commit` | `${bundle.git.commit}` | the commit that was deployed |
+| `git_branch` | `${bundle.git.branch}` | the branch it was deployed from |
+| `deploy_target` | `${bundle.target}` | `nonprod`, `prod`, ... |
+| `job_id`, `job_run_id` (optional) | `"{{job.id}}"`, `"{{job.run_id}}"` | only needed where the notebook context cannot be read |
+
+A full job file:
+
+```yaml
+# bundles/monthly_orders.yaml
+resources:
+  jobs:
+    monthly_orders:
+      name: ubunye-monthly-orders
+      max_concurrent_runs: 1
+      schedule:
+        quartz_cron_expression: "0 0 6 1 * ?"
+        timezone_id: "UTC"
+      parameters:
+        - name: ubunye_run_records
+          default: ${var.catalog}.ops.ubunye_runs
+        - name: ubunye_run_records_fallback
+          default: /Volumes/${var.catalog}/ops/ubunye_fallback
+        - name: dt
+          default: "{{job.start_time.iso_date}}"
+        - name: git_commit
+          default: ${bundle.git.commit}
+        - name: git_branch
+          default: ${bundle.git.branch}
+        - name: deploy_target
+          default: ${bundle.target}
+        - name: job_run_id
+          default: "{{job.run_id}}"
+      tasks:
+        - task_key: clean_orders
+          notebook_task:
+            notebook_path: ./notebooks/run_task.py
+            base_parameters:
+              task_dir: ${workspace.file_path}/pipelines/shop/orders/clean
+          # No cluster block: the task runs on serverless compute.
+```
+
+`${...}` is filled by the bundle when it deploys; `{{...}}` is filled by
+Databricks when the job runs. The notebook it runs needs nothing else:
+
+```python
+# Databricks notebook source
+# MAGIC %pip install "ubunye-engine==0.9.2"
+
+# COMMAND ----------
+dbutils.library.restartPython()
+
+# COMMAND ----------
+import ubunye
+
+task_dir = dbutils.widgets.get("task_dir")
+with ubunye.notebook(task_dir) as run:
+    sources = run.read()
+    outputs = run.transform(sources)
+    run.write(outputs)
+```
+
+Find the record of a deployed commit later in the run record table:
+
+```sql
+SELECT run_id, task_path, status,
+       get_json_object(record, '$.environment.identity.git_commit') AS git_commit,
+       get_json_object(record, '$.environment.identity.job_run_id') AS job_run_id
+FROM main.ops.ubunye_runs
+WHERE get_json_object(record, '$.environment.identity.git_commit') = '<sha>'
+```
+
+From Python, `ubunye.core.settings.job_settings()` gives the settings and
+where each came from, and `ubunye.core.identity.collect_identity()` gives the
+identity. Both work off Databricks and never fail a run. How it works:
+[ADR 015](../architecture/adr-015-run-identity-and-job-settings.md).
 
 ### A GitHub Actions workflow for bundles
 

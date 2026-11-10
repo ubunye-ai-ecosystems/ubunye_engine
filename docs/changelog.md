@@ -9,8 +9,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] (2026-11-10)
+
+### Added
+
+### - **Job settings read in one place**: `ubunye.core.settings.job_settings()`
+
+returns where run records go (`run_records`, `run_records_fallback`), the
+  batch date (`dt`) and the `mode`, and where each came from. What the code
+  passes wins, then the job's parameters (on Databricks, the notebook widgets:
+  the only channel on serverless compute, where a job cannot set environment
+  variables), then `UBUNYE_*` environment variables. It works off Databricks
+  and never fails a run for a platform reason
+  ([ADR 015](architecture/adr-015-run-identity-and-job-settings.md)).
+- **Who and where ran a task**: `ubunye.core.identity.collect_identity()`
+  returns the platform, workspace, job, job run, task, user, git commit and
+  branch, and deploy target. Platforms are plugins in the new
+  `ubunye.run_identity` entry point group: `databricks` (job parameters and
+  the notebook context, `dbutils` never imported at import time), `ci`
+  (GitHub Actions, GitLab, Azure Pipelines) and `local` (`git rev-parse` in
+  the task folder).
+
+- **Every run record says who and where ran it**, under
+  `environment["identity"]`: platform, workspace, job, job run, task, user,
+  git commit and branch, deploy target. The entry point passes it on the new
+  `EngineContext.identity`; when that is empty the recorder collects it, so the
+  CLI, `run_task`, `run_pipeline` and `notebook` all record it. The record
+  version stays 2 and older records read as before. `environment_hash` leaves
+  the identity out, so runs on the same environment still hash the same. The
+  Databricks deployment docs show the job parameters a `databricks.yml` passes
+  (`ubunye_run_records`, `git_commit: ${bundle.git.commit}`,
+  `git_branch: ${bundle.git.branch}`, `deploy_target: ${bundle.target}`) in a
+  full example.
+
+### - **A job notebook is three steps.** `with ubunye.notebook(task_dir, dt=dt) as run:`
+
+then `run.read()`, `run.transform(sources)`, `run.write(outputs)`. The block is
+  one run ([ADR 016](architecture/adr-016-notebook-as-a-run.md)): a success and
+  every failure leave a run record, and a failed one says where it failed in the
+  new `failed_stage` field (`setup`, `read`, `expectations`, `transform`, `write`,
+  `notebook`, or a step named with `run.step("score")`). Before, a notebook run
+  that failed before `write()` left no record. `run_task` records the same stages.
+- **Run records turn on from the job.** A run-record location switches them on:
+  `run_records=`, else the job parameter `ubunye_run_records`, else
+  `$UBUNYE_RUN_RECORDS`. A table name goes to the Delta store, a path to files.
+  `ubunye.notebook`, `run_task` and `run_pipeline` all read it; `lineage=False`
+  turns records off; `lineage=True, lineage_dir=` work as before. `dt` and `mode`
+  left empty (`dt=""` from an empty job parameter) come from the job parameters
+  `dt` / `ubunye_mode`, else `$UBUNYE_DT` / `$UBUNYE_MODE`.
+- Each notebook step prints one line (what it did, how long, or why it failed),
+  and the run's last line says where its record went. `quiet=True` turns it off.
+- The notebook checks `CONFIG.requires` against its run record store when records
+  are on (it never checked it before); without a store it warns.
+
+### Changed
+
+- The Delta run record store says what to do when it cannot create or write its
+  table: create it once, or grant CREATE TABLE (MODIFY) on the schema. The job
+  still goes on.
+- A run record that could not be saved is kept in a fallback folder only when one
+  is configured (`ubunye_run_records_fallback` / `$UBUNYE_RUN_RECORDS_FALLBACK`,
+  usually a Unity Catalog Volume) for runs whose records were switched on by a
+  location; with none, a warning says why. `lineage=True` keeps
+  `~/.ubunye/fallback`.
+- Notebook run records now carry the task's code hash (the notebook passes its
+  task folder to the run).
+
+### - **`| ident`, a Jinja filter for SQL names** (ADR 017). `{{ env.TELM_READ_CATALOG | ident }}`
+
+gives `` `aws-x-catalog` `` whether the value arrives with backticks or without,
+  drops surrounding spaces, and quotes each part of `catalog.schema.table` once.
+  A Databricks catalog with a hyphen no longer needs the config to guess how the
+  job parameter is spelled. An empty name is refused when the config loads.
+  `ubunye validate` (and its `--json`, as `sql`) and `ubunye plan` print each
+  input's SQL after templating. `ubunye doctor` no longer calls a variable
+  required when a filter such as `ident` sits before its `| default(...)`.
+- **Write mode `insert_new`** (ADR 018), with required `merge_keys`: only rows whose
+  keys are not in the target are inserted; existing rows never change, so the first
+  write of a key wins and a rerun adds nothing. On Spark it is a Delta `MERGE` with
+  only `WHEN NOT MATCHED THEN INSERT *` (null-safe keys), on a table or a path, on
+  `delta`, `unity`, and `s3` / `hive` with `file_format: delta`. The first run creates
+  the target; a path holding non-Delta files is refused, not written over. `validate`
+  and `plan` check it; pandas, `jdbc` and `rest_api` refuse it with a clear message.
+
+
 ### Fixed
 
+- **A Task sees the run's batch date.** `self.dt` and `self.variables` (`dt`, `dtf`,
+  `mode` and every `--var`) are set on the Task before `setup()`, from `run_task`, the
+  CLI and `ubunye.notebook`. Before, a Task had only `self.config`, so a backfill run
+  with `-dt` computed the current month instead of the one asked for.
 - The `deploy` workflow's config check named a sample pipeline that no longer
   exists and ended in `|| true`, so it could never fail. It now validates
   `fraud_detection/risk_scoring` and fails the job when the config is invalid.

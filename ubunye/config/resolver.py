@@ -37,7 +37,10 @@ def extract_env_references(raw_yaml: str) -> Set[str]:
     return set(_ENV_REF_RE.findall(raw_yaml))
 
 
-_ENV_REF_DEFAULT_RE = re.compile(r"\{\{\s*env\.(\w+)\s*(\|\s*default\b)?")
+# Filters without arguments (``| ident``, ``| lower``) may come before the default.
+_ENV_REF_DEFAULT_RE = re.compile(
+    r"\{\{\s*env\.(\w+)\s*(?:\|\s*(?!default\b)\w+\s*(?=\||\}\}))*(\|\s*default\b)?"
+)
 
 
 def required_env_references(raw_yaml: str) -> Set[str]:
@@ -47,6 +50,68 @@ def required_env_references(raw_yaml: str) -> Set[str]:
     without a default fails when it is unset.
     """
     return {name for name, default in _ENV_REF_DEFAULT_RE.findall(raw_yaml) if not default}
+
+
+def ident(value: Any) -> str:
+    """Quote a SQL name once, part by part: the ``| ident`` filter.
+
+    ``aws-x-catalog``, with or without backticks around it, gives the name in
+    backticks; ``cat.schema.table`` gives each of the three parts in backticks, joined
+    by dots. Whitespace around the name and around each part is dropped. A part
+    already in backticks keeps its text (a dot inside it is part of the name); a
+    backtick in a name is written doubled, the way Spark SQL and Databricks read it.
+    Quoting a quoted name again changes nothing, so a value may arrive from a job
+    parameter either way.
+
+        Raises ``ValueError`` for an empty name, an empty part (``a..b``), or a backtick
+        that quotes nothing (``a`b``, an unclosed one).
+    """
+    text = str(value)
+    parts: List[str] = []
+    i, n = 0, len(text)
+    while True:
+        while i < n and text[i].isspace():
+            i += 1
+        if i < n and text[i] == "`":
+            i += 1
+            chars: List[str] = []
+            while True:
+                if i >= n:
+                    raise ValueError(f"ident: {text!r} has a backtick that is never closed.")
+                if text[i] == "`":
+                    if i + 1 < n and text[i + 1] == "`":
+                        chars.append("`")
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                chars.append(text[i])
+                i += 1
+            part = "".join(chars)
+            while i < n and text[i].isspace():
+                i += 1
+        else:
+            start = i
+            while i < n and text[i] not in ".`":
+                i += 1
+            if i < n and text[i] == "`":
+                raise ValueError(
+                    f"ident: {text!r} has a backtick inside an unquoted name. "
+                    "Quote the whole part, or remove the backtick."
+                )
+            part = text[start:i].strip()
+        if not part:
+            raise ValueError(
+                f"ident: {text!r} is not a SQL name (it is empty, or has an empty part "
+                "between dots). Check the variable that fills it."
+            )
+        parts.append(part)
+        if i >= n:
+            break
+        if text[i] != ".":
+            raise ValueError(f"ident: {text!r} has text after a quoted part; expected a dot.")
+        i += 1
+    return ".".join("`" + p.replace("`", "``") + "`" for p in parts)
 
 
 def resolve_config(
@@ -92,6 +157,7 @@ def resolve_config(
 
     jinja_env = Environment(undefined=StrictUndefined)
     jinja_env.globals["env"] = env_source
+    jinja_env.filters["ident"] = ident
 
     available_vars = sorted(set(list(variables.keys()) + ["env"]))
 

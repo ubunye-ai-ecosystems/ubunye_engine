@@ -6,11 +6,12 @@ existed since the beginning; the writer was documented but never registered, so
 
 Config keys:
   - db_name + tbl_name: "fraud" + "claims"   # or table: "fraud.claims"
-  - mode: append|overwrite|errorifexists|ignore|merge|overwrite_partitions
+  - mode: append|overwrite|errorifexists|ignore|merge|insert_new|
+          overwrite_partitions
           (default: append)
   - file_format: parquet|orc|delta (default: parquet)
   - partitionBy: ["dt"]                      # optional
-  - merge_keys: ["id"]                       # mode: merge, needs file_format: delta
+  - merge_keys: ["id"]                       # merge / insert_new, need file_format: delta
   - options:                                 # Spark writer options
       compression: "snappy"
 """

@@ -268,9 +268,16 @@ def validate(
         task_dir = _task_path(usecase_dir, usecase, package, task)
         problems: List[str] = []
         task_warnings: List[str] = []
+        sql: Dict[str, str] = {}
         try:
             cfg = load_config(str(task_dir), variables=variables)
             cfg.check_profile(profile)
+            # The SQL as it will run, after templating (a `| ident` name quoted).
+            sql = {
+                name: " ".join(io.sql.split())
+                for name, io in sorted(cfg.CONFIG.inputs.items())
+                if io.sql
+            }
             from ubunye.core.task_runner import ignored_transform_message
 
             ignored = ignored_transform_message({"type": cfg.CONFIG.transform.type})
@@ -289,7 +296,13 @@ def validate(
         except (ValueError, FileNotFoundError) as e:
             problems = [str(e)]
         results.append(
-            {"task": task, "ok": not problems, "problems": problems, "warnings": task_warnings}
+            {
+                "task": task,
+                "ok": not problems,
+                "problems": problems,
+                "warnings": task_warnings,
+                "sql": sql,
+            }
         )
         failed += bool(problems)
 
@@ -302,6 +315,8 @@ def validate(
     for result in results:
         if result["ok"]:
             typer.secho(f"  [OK]   {result['task']}", fg=typer.colors.GREEN)
+            for name, text in result["sql"].items():
+                typer.echo(f"         sql {name}: {text}")
             for warning in result["warnings"]:
                 typer.secho(f"         [WARN] {warning}", fg=typer.colors.YELLOW)
             continue
@@ -404,6 +419,8 @@ def _print_plan(report: Dict[str, Any]) -> None:
     for entry in report["inputs"]:
         fmt = " ".join(x for x in (entry["format"], entry.get("file_format") or "") if x)
         typer.echo(f"    {entry['name']:<12} {fmt:<14} {entry['location']}")
+        if entry.get("sql"):
+            typer.echo(f"    {'':<12} sql {entry['sql']}")
         typer.echo(f"    {'':<12} {_size(entry)}")
     t = report["transform"]
     what = t["class"] or t["type"] or "-"

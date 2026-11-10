@@ -56,6 +56,19 @@ def _error_text(exc: BaseException, ctx: Any = None, cfg: Any = None) -> str:
     return error_text(exc, variables, cfg if isinstance(cfg, dict) else None)
 
 
+#: What a failed run's monitor is told on top: why, and in which stage (ADR 016).
+FAILURE = ("error", "failed_stage")
+
+
+def _failure(state: Dict[str, Any], exc: BaseException, ctx: Any, cfg: Any) -> Dict[str, Any]:
+    """The state plus why the run failed and the stage it was in (``state["stage"]``)."""
+    return {
+        **state,
+        "error": _error_text(exc, ctx, cfg),
+        "failed_stage": state.get("stage"),
+    }
+
+
 def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
     """Shared task-lifecycle contextmanager body for a single Monitor."""
     t0 = time.perf_counter()
@@ -71,9 +84,7 @@ def _wrap_monitor_task(monitor, ctx, cfg, state) -> Iterator[None]:
             outputs=None,
             status="error",
             duration_sec=time.perf_counter() - t0,
-            **_evidence(
-                monitor, {**state, "error": _error_text(exc, ctx, cfg)}, EVIDENCE + ("error",)
-            ),
+            **_evidence(monitor, _failure(state, exc, ctx, cfg), EVIDENCE + FAILURE),
         )
         raise
     else:
@@ -152,7 +163,7 @@ class LegacyMonitorsHook(Hook):
                     outputs=None,
                     status="error",
                     duration_sec=dur,
-                    **_evidence(m, {"error": _error_text(exc, ctx, cfg)}, ("error",)),
+                    **_evidence(m, _failure(state, exc, ctx, cfg), FAILURE),
                 )
             raise
         else:

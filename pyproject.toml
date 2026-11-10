@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ubunye-engine"
-version = "0.9.1"
+version = "0.9.2"
 description = "Config-first, backend-neutral data and ML pipelines that you can check on a laptop and prove anywhere"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -175,6 +175,13 @@ mlflow = "ubunye.models.mlflow_registry:MLflowModelRegistryBackend"
 [project.entry-points."ubunye.lineage_backends"]
 filesystem = "ubunye.lineage.storage:FileSystemLineageStore"
 delta = "ubunye.lineage.delta_store:DeltaLineageBackend"
+
+[project.entry-points."ubunye.run_identity"]
+# Who and where ran a task (ADR 015). Asked in priority order; the first that
+# finds its platform owns the run fields.
+databricks = "ubunye.plugins.run_identity:DatabricksIdentity"
+ci = "ubunye.plugins.run_identity:CiIdentity"
+local = "ubunye.plugins.run_identity:LocalIdentity"
 
 [project.entry-points."ubunye.auth_backends"]
 token = "ubunye.deploy.databricks.auth:TokenAuthBackend"

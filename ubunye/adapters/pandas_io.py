@@ -1562,12 +1562,12 @@ def execute_write(
         raise _refuse("Nothing to write to: no path.", connector=connector)
     # resolve() maps merge to save_mode "overwrite" for a first run, so honouring
     # only save_mode would turn a merge into a full overwrite. Refuse it.
-    if resolved.is_merge or resolved.options:
+    if resolved.is_merge or resolved.is_insert_new or resolved.options:
         raise SinkWriteError(
             f"The pandas backend does not support write mode '{resolved.mode}'"
             + (f" with {sorted(resolved.options)}." if resolved.options else "."),
             context={"Backend": "pandas", "connector": connector, "mode": resolved.mode},
-            hint="merge and replace_where are Delta modes. Use the Spark backend, or "
+            hint="merge, insert_new and replace_where are Delta modes. Use the Spark backend, or "
             "append, overwrite or overwrite_partitions with partitionBy.",
         )
 

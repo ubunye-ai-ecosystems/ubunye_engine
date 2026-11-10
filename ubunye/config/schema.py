@@ -45,7 +45,7 @@ class WriteMode(str, Enum):
     """Valid write modes for output connectors.
 
     The first four are Spark's native ``SaveMode`` values (``ERROR`` is the
-    alias Spark also accepts for ``errorifexists``). ``MERGE`` and
+    alias Spark also accepts for ``errorifexists``). ``MERGE``, ``INSERT_NEW`` and
     ``OVERWRITE_PARTITIONS`` are Ubunye's lakehouse modes — see
     ``ubunye.core.write_modes``. Not every connector supports every mode; the
     writer raises ``SinkWriteError`` at write time if it cannot honour one.
@@ -57,6 +57,7 @@ class WriteMode(str, Enum):
     ERROR = "error"
     IGNORE = "ignore"
     MERGE = "merge"
+    INSERT_NEW = "insert_new"
     OVERWRITE_PARTITIONS = "overwrite_partitions"
 
 

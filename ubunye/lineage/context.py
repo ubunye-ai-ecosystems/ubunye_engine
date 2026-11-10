@@ -198,6 +198,10 @@ class RunContext:
     #: Every model a ModelTransform trained or used in the run (ADR 012): the
     #: action, model, version, stage, and for training the gate result.
     model_runs: List[Dict[str, Any]] = field(default_factory=list)
+    #: The stage a failed run failed in (ADR 016): ``setup``, ``read``, ``transform``,
+    #: ``expectations``, ``write``, ``notebook`` (code between them in a notebook) or
+    #: a step the notebook named. None for a run that did not fail, or did not say.
+    failed_stage: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -238,4 +242,5 @@ class RunContext:
             llm_budget=dict(d.get("llm_budget") or {}),
             time_zone=d.get("time_zone"),
             model_runs=list(d.get("model_runs") or []),
+            failed_stage=d.get("failed_stage"),
         )

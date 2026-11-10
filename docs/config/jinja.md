@@ -141,7 +141,44 @@ Common filters:
 | `lower` | Convert to lowercase |
 | `replace(a, b)` | Replace substring `a` with `b` |
 | `trim` | Strip leading/trailing whitespace |
+| `ident` | Quote a SQL name once, part by part ([SQL names](#sql-names-ident)) |
 | `int`, `float` | Number conversion inside an expression (`{{ (n \| int) + 1 }}`); the rendered value is still text |
+
+---
+
+## SQL names: `ident`
+
+Ubunye adds one filter of its own. `| ident` quotes a table, schema or catalog
+name for SQL, once, part by part:
+
+```yaml
+CONFIG:
+  inputs:
+    trips:
+      format: unity
+      sql: "SELECT * FROM {{ env.TELM_READ_CATALOG | ident }}.raw.trips"
+  outputs:
+    clean:
+      format: unity
+      table: "{{ env.TELM_WRITE_TABLE | ident }}"   # a whole catalog.schema.table
+```
+
+| The value | Through `ident` |
+|---|---|
+| `aws-x-catalog` | `` `aws-x-catalog` `` |
+| `` `aws-x-catalog` `` | `` `aws-x-catalog` `` (not quoted twice) |
+| ` aws-x-catalog ` | `` `aws-x-catalog` `` (spaces dropped) |
+| `aws-x-catalog.gold.trips` | `` `aws-x-catalog`.`gold`.`trips` `` |
+
+Use it for every name that comes from a variable. A name with a hyphen must be
+quoted in SQL (`aws-x-catalog.raw.trips` unquoted reads as a subtraction), and a
+job parameter may arrive with backticks or without them, so writing the backticks
+into the config breaks one of the two. `| ident` takes either.
+
+An empty value, or one with an empty part (`a..b`), is refused when the config is
+loaded, naming the value. With a default, put the default first:
+`{{ env.CAT | default('dev-cat') | ident }}`. `ubunye validate` and `ubunye plan`
+print each input's SQL after templating, so you can see the quoted name.
 
 ---
 

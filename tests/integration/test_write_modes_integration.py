@@ -417,3 +417,105 @@ class TestDeltaMerge:
 
         rows = {r["id"]: r["dt"] for r in spark.read.format("delta").load(path).collect()}
         assert rows == {1: "2026-01-01", 3: "2026-01-02"}
+
+
+class TestDeltaInsertNew:
+    """``insert_new`` (ADR 018): only rows with new keys land; nothing existing changes."""
+
+    def _history(self, spark, ref):
+        last = spark.sql(f"DESCRIBE HISTORY {ref} LIMIT 1").collect()[0]
+        return last["operation"], dict(last["operationMetrics"] or {})
+
+    def _second_run_inserts_only_new_rows(self, spark, write, read, ref):
+        write(_rows(spark, [(1, "2026-01-01", 10.0), (2, "2026-01-01", 20.0)]))
+        before = {r["id"]: r["amount"] for r in read().collect()}
+        assert before == {1: 10.0, 2: 20.0}
+
+        # id=2 overlaps (with a different amount), id=3 is new.
+        write(_rows(spark, [(2, "2026-01-01", 999.0), (3, "2026-01-01", 30.0)]))
+
+        rows = {r["id"]: r["amount"] for r in read().collect()}
+        assert rows == {1: 10.0, 2: 20.0, 3: 30.0}  # the first write of id=2 wins
+        operation, metrics = self._history(spark, ref)
+        assert operation == "MERGE"
+        assert metrics.get("numTargetRowsInserted") == "1"
+        assert metrics.get("numTargetRowsUpdated") == "0"
+        assert metrics.get("numTargetRowsDeleted") == "0"
+        assert metrics.get("numTargetRowsCopied") == "0"  # no existing file rewritten
+
+        # The same batch again adds nothing.
+        write(_rows(spark, [(2, "2026-01-01", 999.0), (3, "2026-01-01", 30.0)]))
+        assert {r["id"]: r["amount"] for r in read().collect()} == rows
+        assert read().count() == 3
+
+    def test_delta_path(self, spark, backend, tmp_path):
+        _requires_delta(spark)
+        path = _out(tmp_path)
+        cfg = {"path": path, "mode": "insert_new", "merge_keys": ["id"]}
+
+        self._second_run_inserts_only_new_rows(
+            spark,
+            lambda df: DeltaWriter().write(df, cfg, backend),
+            lambda: spark.read.format("delta").load(path),
+            f"delta.`{path}`",
+        )
+
+    def test_delta_table(self, spark, backend, tmp_path):
+        _requires_delta(spark)
+        db = f"ubunye_insert_new_{uuid.uuid4().hex[:8]}"
+        spark.sql(f"CREATE DATABASE {db} LOCATION '{tmp_path / db}'")
+        table = f"{db}.trips"
+        cfg = {"table": table, "mode": "insert_new", "merge_keys": ["id"]}
+        try:
+            self._second_run_inserts_only_new_rows(
+                spark,
+                lambda df: DeltaWriter().write(df, cfg, backend),
+                lambda: spark.table(table),
+                table,
+            )
+        finally:
+            spark.sql(f"DROP DATABASE IF EXISTS {db} CASCADE")
+
+    def test_s3_writer_with_delta_file_format_and_composite_keys(self, spark, backend, tmp_path):
+        _requires_delta(spark)
+        path = _out(tmp_path)
+        cfg = {
+            "path": path,
+            "file_format": "delta",
+            "mode": "insert_new",
+            "options": {"merge_keys": "id, dt"},
+        }
+        S3Writer().write(_rows(spark, [(1, "2026-01-01", 10.0)]), cfg, backend)
+        S3Writer().write(
+            _rows(spark, [(1, "2026-01-01", 99.0), (1, "2026-01-02", 20.0)]), cfg, backend
+        )
+        rows = {
+            (r["id"], r["dt"]): r["amount"] for r in spark.read.format("delta").load(path).collect()
+        }
+        assert rows == {(1, "2026-01-01"): 10.0, (1, "2026-01-02"): 20.0}
+
+    def test_a_null_key_is_not_inserted_twice(self, spark, backend, tmp_path):
+        _requires_delta(spark)
+        path = _out(tmp_path)
+        cfg = {"path": path, "mode": "insert_new", "merge_keys": ["id"]}
+        batch = [(None, "2026-01-01", 1.0), (5, "2026-01-01", 5.0)]
+
+        DeltaWriter().write(_rows(spark, batch), cfg, backend)
+        DeltaWriter().write(_rows(spark, batch), cfg, backend)
+
+        assert spark.read.format("delta").load(path).count() == 2
+
+    def test_an_existing_path_that_is_not_delta_is_refused_not_replaced(
+        self, spark, backend, tmp_path
+    ):
+        _requires_delta(spark)
+        path = _out(tmp_path)
+        _rows(spark, [(1, "2026-01-01", 10.0)]).write.parquet(path)
+
+        with pytest.raises(SinkWriteError, match="not a Delta table"):
+            DeltaWriter().write(
+                _rows(spark, [(2, "2026-01-01", 20.0)]),
+                {"path": path, "mode": "insert_new", "merge_keys": ["id"]},
+                backend,
+            )
+        assert [r["id"] for r in spark.read.parquet(path).collect()] == [1]

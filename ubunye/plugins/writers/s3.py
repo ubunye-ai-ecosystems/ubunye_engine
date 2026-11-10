@@ -5,10 +5,11 @@ Writes a DataFrame to a given path using the configured format/mode.
 Config keys:
   - path: "s3a://bucket/prefix/"           # required
   - file_format: parquet|delta|csv|json|orc|avro (default: parquet)
-  - mode: append|overwrite|errorifexists|ignore|merge|overwrite_partitions
+  - mode: append|overwrite|errorifexists|ignore|merge|insert_new|
+          overwrite_partitions
           (default: append)
   - partitionBy: ["dt", "region"]          # optional
-  - merge_keys: ["id", "dt"]               # required for mode: merge (Delta only)
+  - merge_keys: ["id", "dt"]               # required for merge / insert_new (Delta)
   - replace_where: "dt = '2026-01-01'"     # optional Delta predicate for
                                            # mode: overwrite_partitions
   - options:                               # Spark writer options

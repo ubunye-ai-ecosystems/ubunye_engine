@@ -7,9 +7,10 @@ OPTIMIZE / ZORDER / VACUUM on Databricks.
 
 Config keys:
   - table: "main.fraud.claims_curated"      # or catalog/schema/tbl_name
-  - mode: append|overwrite|errorifexists|ignore|merge|overwrite_partitions
+  - mode: append|overwrite|errorifexists|ignore|merge|insert_new|
+          overwrite_partitions
           (default: append)
-  - merge_keys: ["policy_id", "ds"]         # required for mode: merge
+  - merge_keys: ["policy_id", "ds"]         # required for merge / insert_new
   - replace_where: "ds = '2026-01-01'"      # optional Delta predicate for
                                             # mode: overwrite_partitions
   - partitionBy: ["ds", "region"]           # optional

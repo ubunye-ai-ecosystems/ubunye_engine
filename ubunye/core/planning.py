@@ -152,6 +152,8 @@ def build_plan(
             "format": fmt,
             "file_format": io_cfg.get("file_format"),
             "location": _location(io_cfg),
+            # The SQL as it will run, after templating, on one line.
+            "sql": " ".join(str(io_cfg["sql"]).split()) if io_cfg.get("sql") else None,
             "checked": False,
             "produced_by": None,
         }
@@ -258,7 +260,7 @@ def build_plan(
         if path and _is_local(path):
             existing = _on_disk(path)
             entry["target_exists"] = existing["exists"]
-            if existing["exists"] and entry["save_mode"] == "errorifexists":
+            if existing["exists"] and entry["resolved_mode"] == "errorifexists":
                 problems.append(f"outputs.{name}: {path} already exists and the mode refuses that")
         outputs.append(entry)
 

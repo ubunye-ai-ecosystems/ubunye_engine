@@ -259,6 +259,7 @@ def execute_user_task(
     with _with_task_dir_on_path(task_dir):
         task_cls = _load_task_class(task_dir)
         task_obj = task_cls(config=cfg_dict)
+        task_obj.variables = dict(context.variables or {})  # dt and --var for the Task
         task_obj.setup()
 
         reg = Registry.from_entrypoints()
