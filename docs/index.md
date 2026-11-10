@@ -26,9 +26,7 @@ hide:
 </div>
 
 <figure class="ue-film">
-  <video class="ue-film__video" controls preload="metadata" playsinline poster="assets/video/ubunye-intro-poster.jpg" aria-label="Ubunye Engine intro film, 64 seconds: write a task once, run it on pandas, Spark and the clouds, and prove the rows are the same">
-    <source src="assets/video/ubunye-intro.mp4" type="video/mp4">
-  </video>
+  <iframe class="ue-film__video" src="https://www.youtube-nocookie.com/embed/m2cE4zEyEQM?rel=0" title="Ubunye Engine: One task. Every engine. Same answer." loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </figure>
 
 </div>
