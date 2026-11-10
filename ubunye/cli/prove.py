@@ -61,7 +61,21 @@ def _record(
     # The store follows $UBUNYE_LINEAGE_BACKEND (ADR 011); filesystem by default.
     lineage_dir = stores.location(usecase_dir)
     which = "latest" if run_id == "latest" else run_id
-    return _from_store(f"{usecase}/{package}/{task}", lineage_dir, which).to_dict()
+    task_path = f"{usecase}/{package}/{task}"
+    try:
+        return _from_store(task_path, lineage_dir, which).to_dict()
+    except FileNotFoundError as exc:
+        # Before any run record this was a raw traceback.
+        if which == "latest":
+            run_it = f"ubunye run -d {usecase_dir} -u {usecase} -p {package} -t {task} --lineage"
+            message = (
+                f"no run record of {task_path} under {lineage_dir}. "
+                f"Run the task with --lineage first: {run_it}"
+            )
+        else:
+            message = f"{str(exc).rstrip('.')}. Check --run-id."
+        typer.secho(message, fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
 
 
 @prove_app.command("observe", cls=PipelineCommand)
