@@ -7,11 +7,7 @@ demotion, rollback, and gated releases) without coupling to any specific ML libr
 
 ## Lifecycle stages
 
-```
-development → staging → production
-      ↓            ↓         ↓
-                       archived
-```
+![A version moves development, staging, production by promote through gates; demote moves it back; promoting to production archives the old one; rollback brings an archived one back](../assets/diagrams/model-registry.svg)
 
 | Stage | Meaning |
 |---|---|

@@ -3,6 +3,8 @@
 Every Ubunye task is driven by a single `config.yaml` file.
 This page explains the top-level structure. Each section links to a dedicated reference page.
 
+![config.yaml in four parts: MODEL and VERSION say what the job is, ENGINE how it runs, CONFIG (required) what it does, ORCHESTRATION when it runs](../assets/diagrams/config-anatomy.svg)
+
 ---
 
 ## Top-level keys

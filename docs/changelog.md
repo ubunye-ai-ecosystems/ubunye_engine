@@ -143,6 +143,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   write in YAML, and which also work on pandas. They keep the look of the
   original slides (dark stage, stacked cards, logos) and are drawn as SVG by the
   scripts in `scripts/diagrams/`.
+- **More diagrams, and one on the README.** New pictures for the parts of
+  `config.yaml` (Config Overview), what expectations do with bad rows
+  (Expectations), the run receipt and `ubunye gate` (Gate Pull Requests, ADR 006)
+  and the model stages (Model Registry). The README shows the home diagram.
 - **The Databricks example notebooks use the notebook API.** They now open a
   context with `ubunye.notebook()` and run `ctx.read()`, `ctx.transform()` and
   `ctx.write()` in separate cells, so you can see the data between steps. Catalog

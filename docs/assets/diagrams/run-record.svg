@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 650" width="1100" height="650" role="img" aria-label="Every run leaves a receipt: what it read, what it wrote with a row count and a hash of every row, the expectations, where it ran and how long it took, stored in .ubunye/lineage. The hash adds up a hash of each row, so row order does not matter and one changed cell changes it. ubunye gate compares two receipts and fails when the data changed but the task VERSION did not.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners; OpenTelemetry logo CC BY 4.0, the OpenTelemetry Authors.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="650" rx="22" fill="#1c1d22"/>
+<text x="30" y="52" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#f3f4f6" text-anchor="start" letter-spacing="1">EVERY RUN LEAVES A RECEIPT</text>
+<path d="M50 80h440v460H50z" fill="#ffffff"/><path d="M50 540l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6" fill="none" stroke="#1c1d22" stroke-width="4"/>
+<text x="74" y="120" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="22" font-weight="700" fill="#111827" text-anchor="start">claim_etl</text>
+<text x="74" y="144" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="400" fill="#5b6472" text-anchor="start">run 7c2e41</text>
+<path d="M70 164H470" stroke="#cbd5e1" stroke-dasharray="5 5"/>
+<svg x="74" y="180" width="26" height="26" viewBox="0 0 24 24"><path d="M3 5c0-1.1 4-2 9-2s9 .9 9 2l-2 14c0 1.1-3.1 2-7 2s-7-.9-7-2z" fill="#569A31"/><ellipse cx="12" cy="5" rx="9" ry="2" fill="#7cc35a"/></svg>
+<text x="112" y="200" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#5b6472" text-anchor="start" letter-spacing="1">read</text>
+<text x="200" y="200" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="400" fill="#111827" text-anchor="start">claims</text>
+<text x="466" y="200" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#111827" text-anchor="end">1000 rows</text>
+<svg x="74" y="238" width="26" height="26" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2.5" fill="#0f766e"/><path d="M2 9h20M2 15h20M9 9v12M15.5 9v12" stroke="#fff" stroke-width="1.6"/></svg>
+<text x="112" y="258" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#5b6472" text-anchor="start" letter-spacing="1">wrote</text>
+<text x="200" y="258" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="400" fill="#111827" text-anchor="start">clean</text>
+<text x="466" y="258" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#111827" text-anchor="end">940 rows</text>
+<text x="200" y="316" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#111827" text-anchor="start">row hash</text>
+<text x="466" y="316" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#0f766e" text-anchor="end">9f3a…c21</text>
+<svg x="74" y="346" width="26" height="26" viewBox="0 0 24 24"><path d="M12 2 21 5.5v6c0 5.4-3.8 9.3-9 10.5C6.8 20.8 3 16.9 3 11.5v-6z" fill="#6366f1"/><path d="M8 12l3 3 5-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<text x="112" y="366" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#5b6472" text-anchor="start" letter-spacing="1">checks</text>
+<text x="200" y="366" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="400" fill="#111827" text-anchor="start">expectations</text>
+<text x="466" y="366" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#111827" text-anchor="end">✓ passed</text>
+<svg x="74" y="404" width="26" height="26" viewBox="0 0 24 24"><path d="M16.922 0h2.623v18.104h-2.623zm-4.126 12.94h2.623v2.57h-2.623zm0-7.037h2.623v5.446h-2.623zm0 11.197h2.623v5.446h-2.623zM4.456 5.896h2.622V24H4.455zm4.213 2.559h2.623v2.57H8.67zm0 4.151h2.623v5.447H8.67zm0-11.187h2.623v5.446H8.67Z" fill="#150458"/></svg>
+<text x="112" y="424" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#5b6472" text-anchor="start" letter-spacing="1">where</text>
+<text x="200" y="424" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="400" fill="#111827" text-anchor="start">pandas, DEV</text>
+<text x="466" y="424" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#111827" text-anchor="end">ubunye 0.9.0</text>
+<text x="112" y="482" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#5b6472" text-anchor="start" letter-spacing="1">time</text>
+<text x="200" y="482" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="400" fill="#111827" text-anchor="start"></text>
+<text x="466" y="482" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#111827" text-anchor="end">4.2 s</text>
+<path d="M50 578a4 4 0 0 1 4-4h9.0l5 6h8.0a4 4 0 0 1 4 4v9.599999999999998a4 4 0 0 1-4 4H54a4 4 0 0 1-4-4z" fill="#a1a7b3" fill-opacity="0.85"/>
+<text x="92" y="592" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="400" fill="#a1a7b3" text-anchor="start">.ubunye/lineage/  (--lineage)</text>
+<rect x="560" y="30" width="510" height="270" rx="18" fill="none" stroke="#4a4d57" stroke-width="2"/>
+<text x="582" y="68" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#f3f4f6" text-anchor="start" letter-spacing="1">ONE HASH FOR EVERY ROW</text>
+<rect x="590" y="92" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="616" y="92" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="642" y="92" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="668" y="92" width="22" height="22" rx="4" fill="#cdeefb"/>
+<path d="M698 103H730" stroke="#a1a7b3" stroke-width="2"/>
+<rect x="734" y="92" width="46" height="22" rx="11" fill="#3b3e47"/>
+<text x="757" y="108" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#f3f4f6" text-anchor="middle">#a1</text>
+<path d="M780 103L830 171" stroke="#a1a7b3" stroke-width="1.5"/>
+<rect x="590" y="126" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="616" y="126" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="642" y="126" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="668" y="126" width="22" height="22" rx="4" fill="#cdeefb"/>
+<path d="M698 137H730" stroke="#a1a7b3" stroke-width="2"/>
+<rect x="734" y="126" width="46" height="22" rx="11" fill="#3b3e47"/>
+<text x="757" y="142" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#f3f4f6" text-anchor="middle">#7f</text>
+<path d="M780 137L830 171" stroke="#a1a7b3" stroke-width="1.5"/>
+<rect x="590" y="160" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="616" y="160" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="642" y="160" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="668" y="160" width="22" height="22" rx="4" fill="#cdeefb"/>
+<path d="M698 171H730" stroke="#a1a7b3" stroke-width="2"/>
+<rect x="734" y="160" width="46" height="22" rx="11" fill="#3b3e47"/>
+<text x="757" y="176" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#f3f4f6" text-anchor="middle">#3c</text>
+<path d="M780 171L830 171" stroke="#a1a7b3" stroke-width="1.5"/>
+<rect x="590" y="194" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="616" y="194" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="642" y="194" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="668" y="194" width="22" height="22" rx="4" fill="#cdeefb"/>
+<path d="M698 205H730" stroke="#a1a7b3" stroke-width="2"/>
+<rect x="734" y="194" width="46" height="22" rx="11" fill="#3b3e47"/>
+<text x="757" y="210" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#f3f4f6" text-anchor="middle">#e9</text>
+<path d="M780 205L830 171" stroke="#a1a7b3" stroke-width="1.5"/>
+<rect x="590" y="228" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="616" y="228" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="642" y="228" width="22" height="22" rx="4" fill="#cdeefb"/>
+<rect x="668" y="228" width="22" height="22" rx="4" fill="#cdeefb"/>
+<path d="M698 239H730" stroke="#a1a7b3" stroke-width="2"/>
+<rect x="734" y="228" width="46" height="22" rx="11" fill="#3b3e47"/>
+<text x="757" y="244" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#f3f4f6" text-anchor="middle">#52</text>
+<path d="M780 239L830 171" stroke="#a1a7b3" stroke-width="1.5"/>
+<circle cx="852" cy="171" r="22" fill="#3b3e47" stroke="#e6e6e6"/>
+<text x="852" y="180" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#f3f4f6" text-anchor="middle">+</text>
+<path d="M874 171H908" stroke="#e6e6e6" stroke-width="2.5" marker-end="url(#head)"/>
+<rect x="912" y="153" width="136" height="36" rx="8" fill="#ffffff"/>
+<text x="980" y="177" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#0f766e" text-anchor="middle">9f3a…c21</text>
+<text x="592" y="282" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#22c55e" text-anchor="start">↻ rows in any order: same hash</text>
+<text x="852" y="282" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#fbbf24" text-anchor="start">✎ one cell changed: new hash</text>
+<rect x="560" y="320" width="510" height="300" rx="18" fill="none" stroke="#4a4d57" stroke-width="2"/>
+<text x="582" y="358" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#f3f4f6" text-anchor="start" letter-spacing="1">COMPARE TWO RUNS</text>
+<path d="M584 386h170v80H584z" fill="#ffffff"/><path d="M584 466l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6" fill="none" stroke="#1c1d22" stroke-width="4"/>
+<text x="598" y="412" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#5b6472" text-anchor="start">base</text>
+<text x="598" y="442" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#0f766e" text-anchor="start">9f3a…c21</text>
+<path d="M760 426C790 426 790 466 812 466" fill="none" stroke="#e6e6e6" stroke-width="2.5" marker-end="url(#head)"/>
+<path d="M584 490h170v80H584z" fill="#ffffff"/><path d="M584 570l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6l7 6l7 -6" fill="none" stroke="#1c1d22" stroke-width="4"/>
+<text x="598" y="516" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#5b6472" text-anchor="start">this PR</text>
+<text x="598" y="546" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#b45309" text-anchor="start">b71d…04e</text>
+<path d="M760 530C790 530 790 466 812 466" fill="none" stroke="#e6e6e6" stroke-width="2.5" marker-end="url(#head)"/>
+<rect x="816" y="436" width="110" height="60" rx="30" fill="#2a2c33" stroke="#e6e6e6" stroke-width="2"/>
+<text x="871" y="461" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="700" fill="#a1a7b3" text-anchor="middle">ubunye</text>
+<text x="871" y="482" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="18" font-weight="700" fill="#f3f4f6" text-anchor="middle">gate</text>
+<path d="M926 466C944 466 940 426 948 426" fill="none" stroke="#22c55e" stroke-width="2.5" marker-end="url(#head)"/>
+<rect x="954" y="396" width="104" height="60" rx="12" fill="#22c55e" fill-opacity="0.18" stroke="#22c55e" stroke-width="2"/>
+<text x="1006" y="422" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#22c55e" text-anchor="middle">✓ pass</text>
+<text x="1006" y="442" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="400" fill="#f3f4f6" text-anchor="middle">same data</text>
+<path d="M926 466C944 466 940 536 948 536" fill="none" stroke="#ef4444" stroke-width="2.5" marker-end="url(#head)"/>
+<rect x="954" y="506" width="104" height="60" rx="12" fill="#ef4444" fill-opacity="0.18" stroke="#ef4444" stroke-width="2"/>
+<text x="1006" y="532" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#ef4444" text-anchor="middle">✗ fail</text>
+<text x="1006" y="552" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="400" fill="#f3f4f6" text-anchor="middle">changed, same VERSION</text>
+<text x="584" y="606" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#a1a7b3" text-anchor="start">checks: run · data · schema · rows · time</text>
+</svg>

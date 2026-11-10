@@ -5,6 +5,8 @@ every output after the transform and **before anything is written**, on Spark
 and on pandas alike. It can also state what an input must look like: see
 [Input contracts](#input-contracts).
 
+![Rows pass the rules before anything is written: pass is written, quarantine goes to a quarantine output, warn stays and is logged, fail stops the run; reconcile and the quarantine rate can also stop it](../assets/diagrams/expectations.svg)
+
 ```yaml
 CONFIG:
   inputs:
