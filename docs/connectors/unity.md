@@ -107,7 +107,7 @@ Replace only the partitions in the incoming DataFrame:
 | `mode` | see [Write modes](../config/io.md#write-modes) | No | Default `append`. All six modes supported |
 | `partitionBy` | list | No | Partition columns; required for `mode: overwrite_partitions` unless `replace_where` is set |
 | `merge_keys` | list \| string | Conditional | Required for `mode: merge` |
-| `replace_where` | string | No | Delta predicate for `mode: overwrite_partitions` |
+| `replace_where` | string | No | Delta predicate for `mode: overwrite_partitions`; on a Delta `append`, the batch's rows, replaced by each run ([Delta appends](s3.md#appends-that-land-once-and-reruns-that-correct)) |
 | `optimize` | dict | No | Writes only: `enabled`, `zorder_by` |
 | `vacuum` | dict | No | Writes only: `hours` of history to keep |
 | `options` | dict | No | Spark writer options; `comment` and `tblproperties` are applied to the table |

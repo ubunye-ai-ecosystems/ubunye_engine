@@ -20,6 +20,10 @@ Example config (config.yaml):
       options:
         batchsize: 5000
         isolationLevel: "READ_COMMITTED"
+
+An append with ``replace_where: "dt = '{{ dt }}'"`` lands its batch once: it is
+staged in a table beside the target, then one transaction deletes the rows the
+predicate selects and inserts the batch (``ubunye.adapters.spark.jdbc_batch``).
 """
 
 from __future__ import annotations
@@ -96,6 +100,27 @@ class JdbcWriter(Writer):
             merge_formats=self.MERGE_FILE_FORMATS,
             default="append",
         )
+
+        if resolved.batch_where:
+            # The batch is staged, then moved in by one database transaction that
+            # first deletes the rows replace_where selects (ADR 008, F-072).
+            from ubunye.adapters.spark import jdbc_batch
+
+            props = {}
+            if user is not None:
+                props["user"] = str(user)
+            if password is not None:
+                props["password"] = str(password)
+            jdbc_batch.append(
+                df,
+                url=url,
+                table=dbtable,
+                where=resolved.batch_where,
+                driver=driver,
+                props=props,
+                options=dict(cfg.get("options") or {}),
+            )
+            return
 
         writer = (
             df.write.format("jdbc")

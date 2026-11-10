@@ -53,7 +53,7 @@ These fields apply to most formats:
 | `options` | dict | Spark reader/writer options (e.g. `header`, `delimiter`). |
 | `mode` | see [Write modes](#write-modes) | Write mode (outputs only). |
 | `merge_keys` | list or string | Key columns for `mode: merge` (outputs only). |
-| `replace_where` | string | Delta predicate for `mode: overwrite_partitions` (outputs only). |
+| `replace_where` | string | Delta predicate for `mode: overwrite_partitions` (outputs only). On a Delta or JDBC `append`, the rows of the run's batch: each run replaces them, so a rerun corrects the batch instead of adding it twice. |
 
 ---
 

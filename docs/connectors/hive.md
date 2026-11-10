@@ -62,6 +62,7 @@ CONFIG:
 | `mode` | see [Write modes](../config/io.md#write-modes) | No | Default `append`. All six modes supported; `mode: merge` requires `file_format: delta` |
 | `merge_keys` | list \| string | Conditional | Required for `mode: merge` |
 | `partitionBy` | list | No | Writes only: partition columns |
+| `replace_where` | string | No | With `file_format: delta`: on an `append`, the batch's rows, replaced by each run ([Delta appends](s3.md#appends-that-land-once-and-reruns-that-correct)) |
 | `options` | dict | No | Spark reader/writer options |
 
 ---

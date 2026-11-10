@@ -72,6 +72,31 @@ CONFIG:
         truncate: "true"
 ```
 
+### A batch that lands once
+
+Spark's JDBC writer commits each partition on its own, so a plain append that fails
+part way leaves part of the batch, and a rerun inserts it again. Name the batch's
+rows with `replace_where` and the append lands once:
+
+```yaml
+    payments:
+      format: jdbc
+      url: "jdbc:postgresql://db-host:5432/billing"
+      table: billing.payments
+      mode: append
+      replace_where: "month = '{{ dt }}'"
+```
+
+Spark writes the batch into a staging table beside the target
+(`ubunye_stage_<id>`, same schema), then one database transaction deletes the rows
+the predicate selects and inserts the staged rows. It commits or changes nothing,
+and the staging table is dropped. A retry after a crash, and `--rerun` of a finished
+batch, replace the batch from the current data. The predicate is SQL in your
+database's dialect. The database user needs to create and drop a table in the
+target's schema. A staging table a killed run left behind holds no target data; the
+next run of the batch replaces it. Without `replace_where` an append is Spark's own,
+as before.
+
 ---
 
 ## Fields
@@ -88,6 +113,7 @@ CONFIG:
 | `password` | string | No | Database password: use [`secret://`](../config/secrets.md) or `{{ env.VAR }}` |
 | `fetchsize`, `partitionColumn`, `lowerBound`, `upperBound`, `numPartitions` | string or int | No | Read tuning, passed to Spark |
 | `mode` | `append` \| `overwrite` \| `errorifexists` \| `ignore` | No | Default `append`. Spark's native save modes only; `merge` and `overwrite_partitions` are Delta-only and are rejected by this connector |
+| `replace_where` | string | No | On an `append`: SQL selecting the batch's rows; the batch is staged, then those rows are replaced in one transaction ([above](#a-batch-that-lands-once)) |
 | `options` | dict | No | Spark JDBC options, applied last |
 
 ---
