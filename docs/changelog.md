@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `git_commit`, `git_branch`, `deploy_target` and `ubunye_mode`. Their configs
   quote the catalog and schema with `| ident`. The business logic and the
   local examples are unchanged.
+- **`examples/python_api` shows the job notebook shape.** A new
+  `run_as_notebook.py` runs `clean_data` as one `ubunye.notebook()` `with` block
+  on local Spark, with a run record in a local folder; the README shows the
+  same block as a Databricks job notebook. The `run_task` and `run_pipeline`
+  scripts are unchanged.
 
 ## [0.9.2] (2026-11-10)
 
