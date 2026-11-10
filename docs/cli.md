@@ -266,7 +266,9 @@ ubunye run \
     run succeeds. That works for appends to a folder of files on a local or shared
     disk, on pandas and on Spark. A Delta append (path or table) with
     `replace_where` has the batch's rows replaced in one commit; without it, a
-    retry after a crash adds nothing, and `--rerun` appends the batch again. Any
+    retry after a crash adds nothing, and `--rerun` appends the batch again. A JDBC
+    append with `replace_where` is staged and moved in by one transaction that
+    replaces the batch's rows. Any
     other append Ubunye cannot take back (a non-Delta catalog table, JDBC, or a
     Spark path on object storage such as `s3a://`) is appended again, and the run
     says so; write such outputs with `mode: overwrite_partitions` and

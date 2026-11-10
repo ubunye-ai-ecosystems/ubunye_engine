@@ -1,6 +1,6 @@
 # F-072: a JDBC append is not taken back after a crash, and --rerun appends it again
 
-**Status:** open (not fixed)
+**Status:** fixed for appends with `replace_where` on `fix/0.9-delta-jdbc-appends` (2026-11-10); a plain JDBC append is unchanged
 **Severity:** major
 **Source:** F-070 review of what ADR 008 still leaves unclaimed (2026-09-30)
 **Promise:** 5 (nothing is lost or doubled silently)
@@ -17,9 +17,10 @@ transaction on its own, so a killed job can leave part of the batch, and nothing
 records which part.
 
 ## Repro
-Not yet run. Any JDBC target (SQLite or Postgres in a container): a task that
-appends a batch through `format: jdbc`, killed after the write (as in F-070's
-integration test), then rerun with the same `dt`.
+`tests/integration/test_jdbc_append_reruns.py`, on Apache Derby embedded in memory
+(its jar ships with Spark, so no network): a task that appends a batch through
+`format: jdbc`, fails after the write, and is rerun with the same `dt`; and
+`--rerun` of a finished batch. Both held the batch twice before.
 
 ## Expected
 The batch lands once, or the run refuses and says how to clean up.
@@ -37,4 +38,19 @@ The batch lands once, or the run refuses and says how to clean up.
    the most work (per-dialect SQL).
 
 ## Fix
-None. Not in scope of F-070.
+Option 3, opt in through `replace_where` (option 2's predicate, without its two
+transactions). The batch is written to `ubunye_stage_<12 hex>` beside the target
+(named by task, output and batch under a lease, so a retry replaces a staging table
+a killed run left), then one transaction runs `DELETE FROM t WHERE <replace_where>`
+and `INSERT INTO t (cols) SELECT cols FROM stage`, and the staging table is
+dropped. Plain SQL; identifiers quoted by Spark's dialect for the URL. The lease
+notes the output as `idempotent: replaces`, so it is not named as unrepaired.
+
+3 of 4 integration cases fail on the old code (the batch twice after a failed run
+and after `--rerun`; the move-in seam missing); 4 of 4 pass. The fourth pins that a
+JDBC append without `replace_where` is unchanged.
+
+**Not fixed, said plainly:** a plain JDBC append (no `replace_where`). There is no
+generic way to know which rows a killed run inserted without a batch column, and a
+ledger table in the user's database is more than this needs. The run still names it
+after a crash, and the hint names `replace_where`.

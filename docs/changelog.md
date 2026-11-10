@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   example `"month = '{{ dt }}'"`) and each run replaces that batch's rows in one
   commit instead, so a retry or `--rerun` writes the corrected batch. Behaviour
   change: `replace_where` on an append was ignored before. See ADR 008.
+- **A JDBC append with `replace_where` lands its batch once** (F-072). Spark's JDBC
+  writer commits each partition on its own, so a failed run left part or all of the
+  batch and the rerun inserted it again. With `replace_where` the batch is written
+  to a staging table, then one database transaction deletes the batch's rows and
+  inserts the staged ones; the staging table is dropped. A JDBC append without it
+  is unchanged.
 
 - **The Databricks examples run on serverless again.** Four example configs set
   `spark.sql.sources.partitionOverwriteMode`, which serverless refuses. Since the

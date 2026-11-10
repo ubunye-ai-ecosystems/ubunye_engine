@@ -317,3 +317,36 @@ after the commit; a failed run on a path and through the `delta`, `hive` and
 table; a failed run corrected by the next; rows removed by hand reported; a run
 with no batch appends each time). 8 of 9 fail on the old code (the ninth pins
 unchanged behaviour); 9 of 9 pass. Bookkeeping: `tests/unit/core/test_batch_write.py`.
+
+## Addendum: a JDBC append with `replace_where` lands once (F-072, 2026-11-10)
+
+Spark's JDBC writer commits each partition in a transaction of its own: a run that
+dies part way leaves part of the batch, and nothing says which part. There are no
+files to claim, and no batch id in the table unless the user put one there.
+
+**Decision: opt in with `replace_where`; staged, then moved in by one database
+transaction.** For an append output that sets it, Spark writes the batch into
+`ubunye_stage_<12 hex>` beside the target (named by the task, output and batch
+under a lease, so a retry replaces a staging table a killed run left behind). Then
+one transaction runs `DELETE FROM <table> WHERE <replace_where>` and `INSERT INTO
+<table> (<columns>) SELECT <columns> FROM <stage>`, and commits; the staging table
+is dropped afterwards. A kill before the commit changes nothing in the target; a
+kill after it leaves the batch, which the rerun replaces with the same rows. The SQL
+is plain and portable; identifiers are quoted by Spark's own dialect for the URL.
+The lease notes the output as `idempotent: replaces`.
+
+**Why not generic.** A plain JDBC append has no way to name a killed run's rows.
+Options considered: a pre-delete then Spark's append (two transactions, a kill
+between them loses the batch until the rerun), or a ledger table of batches in the
+user's database (exactly once without a predicate, but it writes a table the user
+did not ask for). Neither is worth it while `replace_where` gives exactly once with
+one key the user already knows. A plain JDBC append is unchanged and still named
+after a crash.
+
+**Limits.** Needs a classic Spark session (a JVM; Spark Connect is refused with a
+clear error) and a database user that may create and drop a table in the target's
+schema. The predicate is in the database's SQL dialect. DDL inside a transaction is
+not needed: only the `DELETE` and `INSERT` are in it.
+
+**Proof:** `tests/integration/test_jdbc_append_reruns.py` on Apache Derby embedded
+in memory (its jar ships with Spark). 3 of 4 fail on the old code; 4 of 4 pass.

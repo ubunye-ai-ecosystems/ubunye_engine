@@ -224,3 +224,22 @@ def test_a_config_that_keys_its_own_delta_writes_is_left_alone(tmp_path, monkeyp
         save=lambda mode, opts: pytest.fail("must not write"),
     )
     lease.release()
+
+
+def test_a_jdbc_batch_append_needs_a_jvm_and_says_so():
+    from ubunye.adapters.spark import jdbc_batch
+    from ubunye.core.errors import SinkWriteError
+
+    with pytest.raises(SinkWriteError) as refused:
+        jdbc_batch._connect(object(), "jdbc:postgresql://db/x", None, {})
+    assert "classic Spark" in str(refused.value)
+
+
+def test_a_jdbc_staging_table_sits_beside_the_target_and_is_named_by_the_batch():
+    from ubunye.adapters.spark import jdbc_batch
+
+    bw = runs.BatchWrite(app_id="ubunye/uc/pkg/t/events/abc", version=0, how="replace", run_id="r")
+    a = jdbc_batch._stage_name("sales.events", bw)
+    assert a.startswith("sales.ubunye_stage_") and len(a.split(".")[1]) == 25
+    assert jdbc_batch._stage_name("sales.events", bw) == a  # a retry replaces a left one
+    assert jdbc_batch._stage_name("events", None) != jdbc_batch._stage_name("events", None)
