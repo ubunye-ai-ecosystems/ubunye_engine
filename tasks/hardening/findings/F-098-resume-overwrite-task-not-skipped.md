@@ -1,6 +1,6 @@
 # F-098: `--resume` never skips an overwrite-only task that finished its batch
 
-**Status:** open (target 0.9.1)
+**Status:** fixed (0.9.1)
 **Severity:** minor (the task runs again; the result is the same, the time is not)
 **Source:** review (full CLI test run before 0.9.0)
 **Promise:** none

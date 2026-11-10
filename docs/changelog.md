@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An unknown stage name given to the filesystem backend raises `ValueError`; it
   was written to `registry.json` as is.
 
+- **`ubunye deploy databricks` defaults to Databricks Runtime 17.3 LTS**
+  (`17.3.x-scala2.13`, Spark 4.0), the runtime `ubunye export databricks` already
+  used, for a target in `targets.yaml` that does not set `spark_version`. The old
+  default, 13.3 LTS, runs Spark 3.4, older than the engine supports (pyspark 3.5 or
+  later). A target that sets `spark_version` is unchanged.
+
 ### Fixed
 
 - Registering with `promotion_gates={}` clears a model's stored gates on every
@@ -36,6 +42,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A rollback keeps who promoted the version on every backend. Before, a
   filesystem backend named by object, and the deprecated `MLflowRegistryBackend`,
   set it to empty.
+
+- **`ubunye deploy` and `ubunye export` end an expected error in one `[ERROR]`
+  message** (F-096), exit code 1, the way `ubunye run` does. No `targets.yaml`, no
+  token, a cloud CLI not on `PATH`, a bad task list or a config that does not
+  validate printed a full traceback; `deploy k8s` and `deploy container-apps` also
+  printed their whole launcher script. A missing `kubectl` or `az` is now found
+  before anything runs, and a failed launcher is named, never printed. A bug still
+  shows its traceback. A config that does not validate now raises `ConfigError`
+  (still a `ValueError`).
+- **`--resume` skips a task that only overwrites once it finished the batch**
+  (F-098). Only a task with an append output was skipped, though the docs said every
+  finished task is. With `--lineage` (`lineage=True`), a task whose latest run record
+  for this batch (same `-dt` and `--var`) says `success` is now skipped with
+  `[SKIP]`, whatever it writes. Without run records an overwrite task runs again, as
+  the docs now say.
+
+### Deprecated
+
+Nothing in Ubunye, its docs or examples uses these. They still work, warn with a
+`DeprecationWarning`, and go in 1.0:
+
+- `registry.auto_version` in a `model` transform. It never did anything: a version
+  is made whenever `registry.version` is not set. Remove the key.
+- `ubunye.core.planning.plan_problems`, `ubunye.proving.matrix.render_many`,
+  `ubunye.plugins.ml.adapters.to_numpy_from_pandas` and `to_numpy_from_spark` (use
+  `ensure_Xy_numpy`), `ubunye.cli.backend_choice.capabilities_or_exit`, and
+  `ubunye.telemetry.otel.init_tracer` (use `setup`).
+
+### Removed
+
+- The private module `ubunye._internal.auto_detect` (`detect_registry_backend`,
+  `detect_lineage_backend`, `detect_auth_backend`). Nothing called it; the registry
+  backend has been chosen by `ubunye.models.backends.choose` since 0.9.0 (ADR 010),
+  and the lineage store by `ubunye.lineage.stores` (ADR 011).
+- Dead private code: a second copy of the engine version lookup in `ubunye plan`
+  (it now reads `ubunye.__version__`), and two attributes that were set and never
+  read (`notebook()`'s task object, `SklearnModel._last_metrics`).
+
 
 ## [0.9.0] (2026-11-10)
 

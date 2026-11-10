@@ -17,6 +17,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 
 from ubunye.core.errors import TargetNotFoundError
+from ubunye.orchestration.databricks_exporter import DEFAULT_SPARK_VERSION
 
 
 class DatabricksTargetConfig(BaseModel):
@@ -28,7 +29,8 @@ class DatabricksTargetConfig(BaseModel):
     token_env: str = "DATABRICKS_TOKEN"
     workspace_path: str = "/Workspace/ubunye"
     serverless: bool = True
-    spark_version: str = "13.3.x-scala2.12"
+    #: The same runtime `ubunye export databricks` uses (17.3 LTS, Spark 4.0).
+    spark_version: str = DEFAULT_SPARK_VERSION
     node_type_id: str = "i3.xlarge"
     num_workers: Optional[int] = None
     spark_conf: Dict[str, str] = {}

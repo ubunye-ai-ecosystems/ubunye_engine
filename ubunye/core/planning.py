@@ -109,15 +109,6 @@ def _writer_modes(writer_cls: Any) -> Tuple[Any, str]:
     return supported, default
 
 
-def _engine_version() -> str:
-    try:
-        from importlib.metadata import version
-
-        return version("ubunye-engine")
-    except Exception:
-        return "unknown"
-
-
 def build_plan(
     cfg: UbunyeConfig,
     *,
@@ -299,9 +290,11 @@ def build_plan(
 
     # A secret-looking variable's value, templated into a URL, path or message, is
     # masked everywhere in the report (it is printed, and served over `ubunye mcp`).
+    from ubunye import __version__
+
     report = {
         "task": task_name,
-        "engine_version": _engine_version(),
+        "engine_version": __version__,
         "backend": backend,
         "model": getattr(cfg.MODEL, "value", str(cfg.MODEL)),
         "config_version": cfg.VERSION,
@@ -351,5 +344,12 @@ def build_plans(
 
 
 def plan_problems(plans: Sequence[Dict[str, Any]]) -> Set[str]:
-    """Tasks whose plan has at least one problem."""
+    """Tasks whose plan has at least one problem. Deprecated: unused."""
+    import warnings
+
+    warnings.warn(
+        "plan_problems() is deprecated and will be removed in 1.0; read each plan's 'problems' list.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return {p["task"] for p in plans if p["problems"]}

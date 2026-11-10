@@ -110,7 +110,7 @@ def load_config(
         unknown = _extract_unknown_field_errors(exc)
         if unknown:
             raise ConfigFieldError(_format_unknown_fields(unknown, str(config_path))) from exc
-        raise ValueError(_format_validation_error(exc, str(config_path))) from exc
+        raise ConfigError(_format_validation_error(exc, str(config_path))) from exc
 
     if profile and profile not in cfg.ENGINE.profiles:
         available = sorted(cfg.ENGINE.profiles.keys())

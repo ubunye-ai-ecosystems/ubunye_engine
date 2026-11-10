@@ -164,6 +164,27 @@ def _check_upstream(task_dir: Path, context: EngineContext, requires: Any) -> No
         logger.info("Upstream %s succeeded for this batch (run %s).", r.task_path, r.run_id)
 
 
+def finished_run(context: EngineContext) -> Optional[Any]:
+    """The run that finished this task's batch, for ``--resume`` (F-098), or None.
+
+    That is the newest run record of the task with this run's batch (``dt`` and
+    ``--var``), when it says ``success``. Only run records know that a task that
+    overwrites finished, so without a store (no ``--lineage``), or for a run that
+    names no batch, this is None and the task runs.
+    """
+    variables = dict(context.variables or {})
+    recorded = context.run_records is not None or context.lineage_dir
+    if not recorded or not context.task_name or not runs.names_a_batch(variables):
+        return None
+    from ubunye.lineage import upstream
+
+    store = upstream_store(Path(context.task_dir or "."), context)
+
+    req = upstream.Requirement(context.task_name)
+    latest = upstream._runs_of_batch(store, req.task, upstream.batch_of(req, variables), None)
+    return latest[0] if latest and latest[0].status == "success" else None
+
+
 def execute_user_task(
     backend: Backend,
     task_dir: Path,

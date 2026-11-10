@@ -182,7 +182,6 @@ class NotebookContext:
             task_cls = _load_task_class(self._task_path)
             task_obj = task_cls(config=self._cfg_dict)
             task_obj.setup()
-            self._task_obj = task_obj
 
             reg = Registry.from_entrypoints()
             reg.register_transform(_USER_TASK_TRANSFORM_KEY, _make_user_task_transform(task_obj))
@@ -194,7 +193,6 @@ class NotebookContext:
                 },
             }
         else:
-            self._task_obj = None
             reg = Registry.from_entrypoints()
 
         # --- Phase E: build engine ---

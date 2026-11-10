@@ -13,10 +13,12 @@ from typing import Any, Dict, List, Optional
 
 import typer
 
+from ubunye.cli.output import CleanErrors
 from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
 
 deploy_app = typer.Typer(
     name="deploy",
+    cls=CleanErrors,
     help="Deploy task(s): Databricks, Glue, Dataproc, Kubernetes, Container Apps, EMR Serverless.",
     add_completion=False,
 )

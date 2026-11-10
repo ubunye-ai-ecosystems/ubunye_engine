@@ -35,7 +35,14 @@ def class_or_exit(name: str) -> Any:
 
 
 def capabilities_or_exit(name: str) -> Any:
-    """A backend's declared capabilities, without starting it."""
+    """A backend's declared capabilities, without starting it. Deprecated: unused."""
+    import warnings
+
+    warnings.warn(
+        "capabilities_or_exit() is deprecated and will be removed in 1.0; use class_or_exit(name).CAPABILITIES.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return class_or_exit(name).CAPABILITIES
 
 

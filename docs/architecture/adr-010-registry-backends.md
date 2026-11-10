@@ -66,6 +66,7 @@ party backend (installed through a real entry point) all run it.
   change backend without editing code.
 - `_internal.auto_detect.detect_registry_backend` follows the new order and is
   deprecated. It no longer returns `mlflow` because of `DATABRICKS_RUNTIME_VERSION`.
+  Nothing called it; the private module was removed in 0.9.1.
 - Gates and "one production version" are checked by core with a read before a
   write, not atomically. Two promotions racing on one model can both pass. The
   filesystem registry had the same gap.

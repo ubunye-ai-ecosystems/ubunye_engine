@@ -139,7 +139,10 @@ replace it.
 - **Resuming a pipeline is asked for by name.** `run --resume` (`run_pipeline(...,
   resume=True)`) skips the tasks that finished the batch and runs the rest. Skipping
   by default was tried and rejected: in an hourly pipeline (same `dt`, `t1` appends,
-  `t2` overwrites) it dropped `t1`'s new rows and exited 0 (skeptic round 6).
+  `t2` overwrites) it dropped `t1`'s new rows and exited 0 (skeptic round 6). A task
+  that only overwrites is never refused, so only its run records say it finished: with
+  run records (`--lineage`) it is skipped when its latest run of the batch succeeded
+  (0.9.1, F-098); without them it runs again.
 - **The note is written before anything is replaced.** If it cannot be written (a
   reader has it open), the run keeps its lease as it is and removes nothing; the next
   run of the batch writes the note first, then removes the replaced files, or waits.

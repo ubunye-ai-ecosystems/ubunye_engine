@@ -17,12 +17,14 @@ from typing import Any, Dict, List, Optional
 
 import typer
 
+from ubunye.cli.output import CleanErrors
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.orchestration import AirflowExporter, DatabricksExporter
 
 export_app = typer.Typer(
     name="export",
+    cls=CleanErrors,
     help="Export a task to an orchestrator: Airflow DAG, Databricks job, Spark pipeline.",
     add_completion=False,
 )

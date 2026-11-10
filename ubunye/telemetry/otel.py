@@ -240,7 +240,14 @@ def flush(timeout_millis: int = 5000) -> None:
 
 
 def init_tracer(service_name: str = "ubunye") -> None:
-    """Kept for code written against 0.5 and earlier; same as :func:`setup`."""
+    """Kept for code written against 0.5 and earlier; same as :func:`setup`. Deprecated."""
+    import warnings
+
+    warnings.warn(
+        "init_tracer() is deprecated and will be removed in 1.0; use setup().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     setup(service_name)
 
 
