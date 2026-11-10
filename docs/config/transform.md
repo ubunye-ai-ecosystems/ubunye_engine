@@ -155,7 +155,7 @@ ModelTransform().apply(
 | `backend` | string | `null` | Where the registry keeps models. Not set: the `UBUNYE_REGISTRY_BACKEND` environment variable, else `filesystem`. See [Model Registry](../ml/registry.md) |
 | `use_case` | string | `"default"` | Logical grouping for the model |
 | `version` | string | `null` | Explicit version; generated for you if `null` |
-| `auto_version` | bool | `true` | Accepted, but has no effect today: a version is generated whenever `version` is `null` |
+| `auto_version` | bool | `true` | Deprecated: it never had an effect, warns, and goes in 1.0. A version is generated whenever `version` is `null`. Remove the key |
 | `promote_to` | `development` \| `staging` \| `production` | `null` | Promote after registration |
 | `use_stage` | `development` \| `staging` \| `production` | `"production"` | Stage to load from (predict only) |
 | `promotion_gates` | dict | `null` | Metric thresholds that must pass before promotion |

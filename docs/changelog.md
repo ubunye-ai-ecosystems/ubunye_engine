@@ -172,6 +172,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ubunye sync lineage` command that replays it. The Delta store's own copy of
   that code is gone; its `save` raises like any store's.
 
+- **The docs say what 0.9.1 does.** Merging the docs rework dropped some 0.9.1
+  facts and kept older text they made false. Back in place: `deploy databricks
+  --run` and `--host` reading `DATABRICKS_HOST` (the Databricks guide also lost a
+  stray copy of that text in "What success looks like", and no longer says to
+  commit a `targets.yaml` for the workflow), `--resume` skipping an overwrite task
+  with `--lineage`, the Delta run record table's clustering and the three
+  statements for an existing table, the fallback manifest for every store, and
+  `python -m ubunye` taking only a local `--task-dir`. Fixed: `hooks=` and
+  `OTelHook` no longer said the run record is dropped, `secret://` in `spark_conf`
+  no longer said it is not read, `validate -m` no longer said a config with no
+  profiles fails, `registry.auto_version` is marked deprecated, and the
+  troubleshooting `doctor` output is the real 0.9.1 output (Java versions).
 - **The CLI reference shows every command again.** A code span broken across two
   lines put `<table>` at the start of a line, and Markdown read it as raw HTML:
   everything after "Where run records are stored" (lineage show, runs, models,

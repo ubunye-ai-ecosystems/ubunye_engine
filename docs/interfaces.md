@@ -159,8 +159,8 @@ from ubunye.interfaces import RunRecordStore
   in-memory `RunContext` cache to avoid parsing JSON again on search.
 - `DeltaLineageBackend`, entry point `ubunye.lineage_backends:delta`.
   Stores each run record whole (JSON plus index columns) in a Delta table or
-  path, through the active SparkSession or a local one it starts. A record it
-  cannot write goes to a fallback manifest, with a warning.
+  path, through the active SparkSession or a local one it starts. Like every
+  store, a record it cannot write goes to a fallback manifest, with a warning.
 
 **Which one is used**: `--lineage-backend` (or `lineage_backend=` in Python),
 else `UBUNYE_LINEAGE_BACKEND`, else `filesystem`. Where each keeps its records:
