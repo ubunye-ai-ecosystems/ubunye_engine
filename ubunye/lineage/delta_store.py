@@ -92,6 +92,19 @@ def _dict_to_record(d: Dict) -> LineageRecord:
     )
 
 
+def _quoted_table(location: str) -> str:
+    """A table name quoted once, part by part (the ``| ident`` rule); a path unchanged.
+
+    Unity Catalog names often have hyphens (``aws-db-x-catalog.schema.uby_run_records``),
+    and Spark reads an unquoted hyphen as a minus sign.
+    """
+    if is_path(location):
+        return location
+    from ubunye.config.resolver import ident
+
+    return ident(location)
+
+
 def is_path(location: str) -> bool:
     """A path (``s3://...``, ``/dbfs/...``, ``./runs``), not a table name."""
     return any(c in location for c in "/\\:")
@@ -171,7 +184,8 @@ class DeltaLineageBackend:
     """
 
     def __init__(self, table_or_path: str = ".ubunye/lineage_delta") -> None:
-        self._table_or_path = str(table_or_path)
+        self._name = str(table_or_path)  # as given: what messages show
+        self._table_or_path = _quoted_table(self._name)  # what Spark is given
         # For the older LineageRecord methods only (see the module docstring).
         self._use_spark = self._detect_spark()
         self._local_path = Path(table_or_path) if not self._use_spark else None
@@ -275,7 +289,7 @@ class DeltaLineageBackend:
 
     def _cannot(self, exc: Exception, what: str) -> RunRecordTableError:
         """Why the run record table cannot be used, and the one thing to do about it."""
-        loc = self._table_or_path
+        loc = self._name
         reason = (str(exc).strip().splitlines() or [type(exc).__name__])[0]
         if is_path(loc):
             hint = (
@@ -303,13 +317,29 @@ class DeltaLineageBackend:
         except ImportError:
             return  # the first append creates a plain table, as before
         loc = self._table_or_path
-        builder = DeltaTable.createIfNotExists(spark).addColumns(_schema())
-        builder = builder.location(loc) if is_path(loc) else builder.tableName(loc)
+        if not is_path(loc):
+            # SQL, not DeltaTable's builder: the builder refuses a catalog prefix
+            # (catalog.schema.table) on open-source Delta, and this quotes each part,
+            # so a hyphenated catalog such as aws-db-x-catalog works too.
+            self._create_table_sql(spark, loc)
+            return
+        builder = DeltaTable.createIfNotExists(spark).addColumns(_schema()).location(loc)
         if hasattr(builder, "clusterBy"):  # delta-spark 3.2 and later
             builder = builder.clusterBy("task_path")
         for key, value in _PROPERTIES.items():
             builder = builder.property(key, value)
         builder.execute()
+
+    def _create_table_sql(self, spark: Any, table: str) -> None:
+        columns = ", ".join(f"`{f.name}` {f.dataType.simpleString()}" for f in _schema().fields)
+        props = ", ".join(f"'{k}' = '{v}'" for k, v in _PROPERTIES.items())
+        create = f"CREATE TABLE IF NOT EXISTS {table} ({columns}) USING DELTA"
+        try:
+            spark.sql(f"{create} CLUSTER BY (task_path) TBLPROPERTIES ({props})")
+        except Exception:  # noqa: BLE001  a Delta with no liquid clustering (before 3.1)
+            if self._exists(spark):
+                return
+            spark.sql(f"{create} TBLPROPERTIES ({props})")
 
     # ------------------------------------------------------------------
     # RunRecordStore: the run record contract (ADR 011)

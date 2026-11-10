@@ -1023,7 +1023,7 @@ ubunye plugins
 
 ```bash
 ubunye version
-# Ubunye Engine v0.9.2
+# Ubunye Engine v0.9.3
 ```
 
 The version comes from the installed package metadata.

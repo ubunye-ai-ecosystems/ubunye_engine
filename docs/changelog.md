@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] (2026-11-11)
+
+### Fixed
+
+- **A run record table with a hyphenated or three-part name is created and written.**
+  The Delta run record store gave Spark the table name as written, so a Unity Catalog
+  catalog with hyphens (`aws-db-x-catalog.schema.uby_run_records`) could not be read,
+  and Delta's table builder refused any `catalog.schema.table` name on open-source
+  Delta. The job carried on, but no run was recorded. The store now quotes each part
+  once (the `| ident` rule) and creates the table with `CREATE TABLE IF NOT EXISTS ...
+  USING DELTA CLUSTER BY (task_path)`.
+
 ### Changed
 
 - **The Databricks examples follow the 0.9.2 job notebook.** The job notebooks
