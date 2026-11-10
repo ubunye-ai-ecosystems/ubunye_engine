@@ -1,8 +1,17 @@
 # OpenTelemetry
 
-Ubunye sends traces and metrics to any OpenTelemetry collector (Grafana,
-Honeycomb, Datadog, New Relic, Google Cloud, AWS X-Ray through ADOT, a
-self-hosted OTel Collector), configured by OpenTelemetry's own variables.
+For anyone who watches their systems in a monitoring tool (Grafana, Honeycomb,
+Datadog, New Relic, Google Cloud, AWS X-Ray through ADOT, a self-hosted OTel
+Collector) and wants Ubunye runs to show up there.
+
+- **The problem:** you can see your services' timings and errors in one place,
+  but not your data tasks.
+- **When to use it:** your monitoring tool takes OpenTelemetry (the open
+  standard for traces and metrics). A **trace** is a timeline of one run and its
+  steps; a **metric** is a number counted over many runs.
+- **The one command:** `UBUNYE_TELEMETRY=1 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 ubunye run -d pipelines -u shop -p orders -t clean`
+
+Ubunye is configured by OpenTelemetry's own variables:
 
 ```bash
 pip install 'ubunye-engine[otel]'
@@ -13,8 +22,10 @@ ubunye run -d pipelines -u shop -p orders -t clean
 ```
 
 `UBUNYE_TELEMETRY=1` turns on the telemetry hooks (it is read when a run starts,
-so setting it in a notebook works). Or pass the hook yourself:
-`Engine(extra_hooks=[OTelHook()])`, or `run_task(..., hooks=[OTelHook()])` (this replaces the default hooks, and with them the run record: see [Hooks](hooks.md)).
+so setting it in a notebook works). This is the way to use it with `--lineage`.
+You can also pass the hook yourself, `run_task(..., hooks=[OTelHook()])`, but
+that replaces the default hooks, and today that means no run record is written
+(see [Hooks](hooks.md#from-python-run_taskhooks)).
 
 ## Configuration
 
@@ -34,7 +45,7 @@ Everything buffered is flushed when a task ends, so a short CLI run still export
 
 ## Traces
 
-One span per task (`ubunye.task <usecase/package/task>`) with a child per read,
+One span (one timed block in the trace) per task (`ubunye.task <usecase/pipeline/task>`) with a child per read,
 transform and write. Attributes: `ubunye.run_id` (the same id as `ubunye
 lineage`), `ubunye.backend`, `ubunye.profile`, `ubunye.config_hash`,
 `ubunye.input` / `ubunye.output`. A failure is recorded on the span as an
