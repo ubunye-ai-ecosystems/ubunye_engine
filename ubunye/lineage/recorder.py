@@ -308,6 +308,7 @@ class LineageRecorder:
         timings: Optional[List[Dict[str, Any]]] = None,
         llm_calls: Optional[List[Dict[str, Any]]] = None,
         llm_budget: Optional[Dict[str, Any]] = None,
+        model_runs: Optional[List[Dict[str, Any]]] = None,
         hash_basis: Optional[Dict[str, str]] = None,
         source_versions: Optional[Dict[str, Any]] = None,
         error: Optional[str] = None,
@@ -323,6 +324,9 @@ class LineageRecorder:
         (:mod:`ubunye.lineage.source_version`). A recomputed input's version is
         taken again right after its hash; if it moved, the step says the digest
         is of a later state than the one read (F-046).
+
+        ``model_runs`` is each model the run trained or scored with: the
+        version, the stage and, for training, the gate result (ADR 012).
 
         ``error`` is why a failed run failed (the exception's type and message). It
         is kept in the record, with the values of secret-looking variables masked,
@@ -345,6 +349,8 @@ class LineageRecorder:
         ctx.expectations = list(expectations or [])
         ctx.llm_calls = list(llm_calls or [])
         ctx.llm_budget = dict(llm_budget or {})
+        # Each model a ModelTransform trained or used (ADR 012).
+        ctx.model_runs = list(model_runs or [])
 
         # --- Input StepRecords, hashed like outputs when the frames are given ---
         # Fingerprints taken in this record, by frame: the same frame is hashed once.

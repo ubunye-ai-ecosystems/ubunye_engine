@@ -103,6 +103,21 @@ def full_record(
         llm_calls=[{"backend": "replay", "model": "m", "tokens": 10, "status": "ok"}],
         llm_budget={"max_calls": 5, "calls": 1},
         time_zone="Africa/Johannesburg",
+        model_runs=[
+            {
+                "action": "train",
+                "model": "ChurnModel",
+                "version": "1.0.3",
+                "stage": "development",
+                "promote_to": "production",
+                "gate_result": "blocked",
+                "blocked_by": [
+                    {"gate": "min_auc", "metric": "auc", "actual": 0.71, "threshold": 0.8}
+                ],
+                "metrics": {"auc": 0.71},
+            },
+            {"action": "predict", "model": "ChurnModel", "version": "1.0.2", "stage": "staging"},
+        ],
     )
 
 

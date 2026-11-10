@@ -179,6 +179,10 @@ class ModelNotFittedError(UbunyeError, RuntimeError):
     """Raised when predict/save is called on an unfitted model."""
 
 
+class FeatureContractError(UbunyeError, KeyError):
+    """Raised at predict when the frame lacks a feature the model declared (ADR 012)."""
+
+
 # ---------------------------------------------------------------------------
 # Registry errors
 # ---------------------------------------------------------------------------

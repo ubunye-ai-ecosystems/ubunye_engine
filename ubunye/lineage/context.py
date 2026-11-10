@@ -195,6 +195,9 @@ class RunContext:
     llm_budget: Dict[str, Any] = field(default_factory=dict)
     #: The session time zone the run cut time in (ADR 007), when the backend knows it.
     time_zone: Optional[str] = None
+    #: Every model a ModelTransform trained or used in the run (ADR 012): the
+    #: action, model, version, stage, and for training the gate result.
+    model_runs: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -234,4 +237,5 @@ class RunContext:
             llm_calls=list(d.get("llm_calls") or []),
             llm_budget=dict(d.get("llm_budget") or {}),
             time_zone=d.get("time_zone"),
+            model_runs=list(d.get("model_runs") or []),
         )

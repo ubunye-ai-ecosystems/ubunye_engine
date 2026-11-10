@@ -374,3 +374,55 @@ ubunye lineage show -d pipelines -u fraud -p ml -t train --run-id abc123...
 ```
 
 This lets you trace exactly which data, config hash, and code produced each model version.
+
+### The run record names the model (0.9)
+
+The link also goes the other way. When a `ModelTransform` trains or scores, the run
+record gets a `model_runs` entry (ADR 012):
+
+- **train:** the model, the version registered, the stage it reached (or
+  `development`), and the gate result: `passed`, `blocked` with the gate, metric,
+  value and threshold that blocked it, `no gates`, or none when no promotion was asked.
+- **predict:** the model, the version and the stage it was loaded from.
+
+```bash
+ubunye lineage trace -d pipelines -u fraud -p ml -t train
+#   MODELS
+#     train FraudRiskModel 1.3.0 -> staging (gates passed)
+```
+
+`ubunye lineage show` prints the same entries as JSON.
+
+### Registry settings for a model transform
+
+| Key | Default | What it does |
+|---|---|---|
+| `on_blocked` | `raise` | A promotion the gates block fails the run. `record` keeps the run going; the version stays in `development` and the record says which gate blocked it. |
+| `stamp_columns` | `false` | Predict: add `model_version` and `model_stage` columns to the scored rows (pandas and Spark). Refuses to overwrite a column of that name. |
+| `check_features` | not set | Predict: compare the frame with the version's declared `features`. Not set: warn, record, and call the model. `true`: refuse the frame with `FeatureContractError`. `false`: no check. |
+
+```yaml
+transform:
+  params:
+    action: predict
+    model_class: model.FraudRiskModel
+    registry:
+      store: .ubunye/model_store
+      use_case: fraud_detection
+      use_stage: production
+      stamp_columns: true
+      check_features: true
+```
+
+`ubunye run` always runs the task's `transformations.py`, so call the transform from it:
+
+```python
+from ubunye.core.interfaces import Task
+from ubunye.plugins.transforms.model_transform import ModelTransform
+
+
+class Score(Task):
+    def transform(self, sources):
+        params = self.config["CONFIG"]["transform"]["params"]
+        return {"scored": ModelTransform().apply(sources, params, None)["predictions"]}
+```

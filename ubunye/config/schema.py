@@ -226,6 +226,14 @@ class RegistryConfig(BaseModel):
     promote_to: Optional[Literal["development", "staging", "production"]] = None
     use_stage: Literal["development", "staging", "production"] = "production"
     promotion_gates: Optional[Dict[str, Any]] = None
+    #: A promotion the gates block: "raise" fails the run (the default), "record"
+    #: keeps it going. Either way the run record says which gate blocked it (ADR 012).
+    on_blocked: Literal["raise", "record"] = "raise"
+    #: Predict: add model_version and model_stage columns to the scored rows.
+    stamp_columns: bool = False
+    #: Predict: a frame without a declared feature. Not set: warn and call the model;
+    #: true: refuse it before the model is called; false: do not check (ADR 012).
+    check_features: Optional[bool] = None
 
 
 class ModelTransformParams(BaseModel):

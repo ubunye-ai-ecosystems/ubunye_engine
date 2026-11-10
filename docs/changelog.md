@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The run record names the model** (ADR 012). A `ModelTransform` train puts the
+  model, the version it registered, the stage it reached and the gate result on
+  the record (`model_runs`): `passed`, or `blocked` with the gate, metric, value
+  and threshold. A predict puts the version and stage it used. A blocked
+  promotion still fails the run, and the failed run's record now says why;
+  `registry.on_blocked: record` keeps the run going instead. `ubunye lineage
+  trace` prints a MODELS section; `lineage show` includes the entries. The lineage
+  conformance suite checks every store keeps them.
+- **Scored rows can name their model.** `registry.stamp_columns: true` adds
+  `model_version` and `model_stage` columns to a `ModelTransform` predict, the
+  same on pandas and Spark. Off by default.
+- **Features are checked at predict** (ADR 012). A frame without a feature the
+  model version declares is logged and recorded before the model is called, and
+  a model that then fails gets a note naming the missing columns.
+  `registry.check_features: true` refuses the frame with `FeatureContractError`;
+  `false` skips the check. A model that declares no features works as before.
+
 - **Model registry backends are plugins, found by name** (ADR 010). The
   `ubunye.registry_backends` entry points existed but nothing used them, so a
   third party registry could be installed and never reached. Now
