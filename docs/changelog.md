@@ -65,6 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fetched when the backend is built, masked like any secret. A backend without Spark
   does not fetch it.
 
+- **The pandas backend reads a JSON file holding one array** (F-105), as Spark
+  reads it with `multiLine`. It read JSON Lines only, so a pretty-printed array
+  failed on its first line. JSON Lines, including an array on each line, reads as
+  before.
+
 - Registering with `promotion_gates={}` clears a model's stored gates on every
   backend. Before, only the default filesystem path cleared them; MLflow and the
   others kept the old gates.

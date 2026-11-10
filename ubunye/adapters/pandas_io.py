@@ -33,6 +33,7 @@ from __future__ import annotations
 import codecs
 import contextlib
 import glob
+import io
 import json
 import logging
 import os
@@ -695,6 +696,22 @@ def _skip(row: Any) -> str:
     return "skip"
 
 
+def _one_array(text: str) -> bool:
+    """True for a file holding one JSON array across lines, not JSON Lines.
+
+    Its first line opens the array and is not a whole JSON value by itself (a JSON
+    Lines file may hold an array on each line).
+    """
+    if not text.lstrip().startswith("["):
+        return False
+    first = text.lstrip().split("\n", 1)[0]
+    try:
+        json.loads(first)
+    except json.JSONDecodeError:
+        return True
+    return False
+
+
 def _read_json(
     files: List[str],
     opts: Dict[str, Any],
@@ -711,17 +728,22 @@ def _read_json(
     # Spark 4 reads a JSON lines value that lands in a text column as its exact
     # source text; only for lines read as bytes (no encoding option). Each row's
     # line (and its place in a line holding an array) is kept to find that text.
-    exact = not _truthy(opts.get("multiline", "false")) and "encoding" not in opts
+    multiline = _truthy(opts.get("multiline", "false"))
+    exact = not multiline and "encoding" not in opts
     sources: List[Any] = []
     for f in files:
         before = len(rows)
         with open(f, encoding=encoding) as handle:
-            if _truthy(opts.get("multiline", "false")):
-                doc = spark_json.loads(handle.read())
+            text = handle.read()
+            if multiline or _one_array(text):
+                # A file holding one JSON array reads as Spark reads it with
+                # multiLine, which it needs there (F-105).
+                doc = spark_json.loads(text)
                 rows.extend(doc if isinstance(doc, list) else [doc])
+                exact = exact and multiline
             else:
                 drop = _drop_malformed(opts)
-                for line in handle:
+                for line in io.StringIO(text):
                     if not line.strip():
                         continue
                     try:
