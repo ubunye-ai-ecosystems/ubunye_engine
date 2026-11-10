@@ -42,8 +42,11 @@ nav:
   - Getting Started:
       - Installation: getting_started/install.md
       - Quickstart: getting_started/quickstart.md
+      - Concepts: getting_started/concepts.md
       - Project Structure: getting_started/structure.md
-  - Writing Pipelines:
+      - "Tutorial 1: pandas and Spark": tutorials/01-local-parity.md
+      - "Tutorial 2: nine tables, checked": tutorials/02-olist-multi-table.md
+  - Writing Tasks:
       - Config Overview: config/overview.md
       - Inputs and Outputs: config/io.md
       - Engine and Profiles: config/engine.md
@@ -57,7 +60,7 @@ nav:
       - Hive: connectors/hive.md
       - JDBC: connectors/jdbc.md
       - Unity Catalog: connectors/unity.md
-      - S3 and Delta: connectors/s3.md
+      - Files and Delta (s3, delta, binary): connectors/s3.md
       - REST API: connectors/rest_api.md
       - Writing Your Own: connectors/plugin_guide.md
   - Machine Learning:
@@ -80,9 +83,13 @@ nav:
       - Kubernetes: deployment/kubernetes.md
       - AWS: deployment/aws.md
       - GCP: deployment/gcp.md
+      - Azure: deployment/azure.md
       - One command to the cloud: deployment/serverless.md
       - Anywhere with spark-submit: deployment/anywhere.md
   - How-to Guides:
+      - Run Records: guides/run-records.md
+      - Safe Reruns: guides/safe-reruns.md
+      - Writing portable transforms: guides/portable-transforms.md
       - Notebook Prototyping: patterns/notebook.md
       - RAG Document Pipeline: patterns/rag.md
       - Feature Store: patterns/features.md
@@ -101,14 +108,12 @@ nav:
       - Execution Backends: backends.md
       - Interfaces: interfaces.md
       - Errors: errors.md
+      - Troubleshooting: troubleshooting.md
+      - Upgrading: upgrading.md
       - Changelog: changelog.md
   - Proving Ground:
       - Overview: proving-ground/index.md
       - Latest results: proving-ground/latest.md
-      - "Tutorial 1: pandas and Spark": tutorials/01-local-parity.md
-      - "Tutorial 2: nine tables, checked": tutorials/02-olist-multi-table.md
-      - Writing portable transforms: guides/portable-transforms.md
-      - Where it starts from: research/proving-ground/current-state.md
   - Project:
       - Developer Guide: dev_guide.md
       - Architecture Decisions:
