@@ -25,6 +25,7 @@ variables:
     description: |
       Unity Catalog catalog for the ML outputs. Free Edition provisions only
       ``workspace`` by default; paid workspaces typically use ``main``.
+      A plain name: config.yaml quotes it with ``| ident``.
     default: "workspace"
   titanic_schema:
     description: Unity Catalog schema for the training audit log and predictions.
@@ -46,28 +47,78 @@ resources:
     titanic_train:
       name: titanic_ml_train
       max_concurrent_runs: 1
+      # Read by the engine on every task (serverless has no environment
+      # variables, so job parameters are the channel).
+      parameters:
+        - name: dt
+          default: ${var.data_timestamp}
+        - name: ubunye_mode
+          default: PROD
+        # Every run, success or failure, leaves one row here (plain names; the
+        # engine quotes). The first run creates the table.
+        - name: ubunye_run_records
+          default: ${var.titanic_catalog}.${var.titanic_schema}.ubunye_runs
+        # Which code ran: recorded in each run record.
+        - name: git_commit
+          default: ${bundle.git.commit}
+        - name: git_branch
+          default: ${bundle.git.branch}
+        - name: deploy_target
+          default: ${bundle.target}
+      # The Python packages the job needs. The engine (with scikit-learn and
+      # MLflow) is installed here, once, not with %pip in the notebook.
+      environments:
+        - environment_key: ubunye
+          spec:
+            environment_version: "3"
+            dependencies:
+              - "ubunye-engine[ml]==0.9.2"
       tasks:
         - task_key: train
+          environment_key: ubunye
           notebook_task:
             notebook_path: ./notebooks/train_titanic.py
             base_parameters:
               task_dir: ${workspace.file_path}/pipelines/titanic/ml/train_classifier
-              dt: ${var.data_timestamp}
-              mode: "PROD"
               titanic_catalog: ${var.titanic_catalog}
               titanic_schema: ${var.titanic_schema}
               min_auc: ${var.min_auc}
     titanic_predict:
       name: titanic_ml_predict
       max_concurrent_runs: 1
+      # Read by the engine on every task (serverless has no environment
+      # variables, so job parameters are the channel).
+      parameters:
+        - name: dt
+          default: ${var.data_timestamp}
+        - name: ubunye_mode
+          default: PROD
+        # Every run, success or failure, leaves one row here (plain names; the
+        # engine quotes). The first run creates the table.
+        - name: ubunye_run_records
+          default: ${var.titanic_catalog}.${var.titanic_schema}.ubunye_runs
+        # Which code ran: recorded in each run record.
+        - name: git_commit
+          default: ${bundle.git.commit}
+        - name: git_branch
+          default: ${bundle.git.branch}
+        - name: deploy_target
+          default: ${bundle.target}
+      # The Python packages the job needs. The engine (with scikit-learn and
+      # MLflow) is installed here, once, not with %pip in the notebook.
+      environments:
+        - environment_key: ubunye
+          spec:
+            environment_version: "3"
+            dependencies:
+              - "ubunye-engine[ml]==0.9.2"
       tasks:
         - task_key: predict
+          environment_key: ubunye
           notebook_task:
             notebook_path: ./notebooks/predict_titanic.py
             base_parameters:
               task_dir: ${workspace.file_path}/pipelines/titanic/ml/predict_classifier
-              dt: ${var.data_timestamp}
-              mode: "PROD"
               titanic_catalog: ${var.titanic_catalog}
               titanic_schema: ${var.titanic_schema}
 

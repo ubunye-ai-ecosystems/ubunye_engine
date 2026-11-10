@@ -10,7 +10,7 @@
 #
 # Uses serverless compute so it runs on Databricks Free Edition (where
 # classic-cluster creation is disallowed) and standard workspaces alike.
-# The notebook installs ``ubunye-engine`` at runtime via ``%pip``.
+# The job installs ``ubunye-engine`` through its environment, not ``%pip``.
 
 bundle:
   name: jhb-weather-ingest
@@ -24,7 +24,7 @@ variables:
       Unity Catalog catalog name for the output table. Defaults to
       ``workspace`` because that is the catalog Free Edition provisions
       automatically. Override to ``main`` (or your standard catalog) on
-      paid workspaces.
+      paid workspaces. A plain name: config.yaml quotes it with ``| ident``.
     default: "workspace"
   weather_schema:
     description: Unity Catalog schema name for the output table.
@@ -47,19 +47,44 @@ resources:
         quartz_cron_expression: "0 0 6 * * ?"
         timezone_id: "Africa/Johannesburg"
         pause_status: UNPAUSED
+      # Read by the engine on every task (serverless has no environment
+      # variables, so job parameters are the channel).
+      parameters:
+        - name: dt
+          default: ${var.data_timestamp}
+        - name: ubunye_mode
+          default: PROD
+        # Every run, success or failure, leaves one row here (plain names; the
+        # engine quotes). The first run creates the table.
+        - name: ubunye_run_records
+          default: ${var.weather_catalog}.${var.weather_schema}.ubunye_runs
+        # Which code ran: recorded in each run record.
+        - name: git_commit
+          default: ${bundle.git.commit}
+        - name: git_branch
+          default: ${bundle.git.branch}
+        - name: deploy_target
+          default: ${bundle.target}
+      # The Python packages the job needs. The engine is installed here, once,
+      # not with %pip in the notebook.
+      environments:
+        - environment_key: ubunye
+          spec:
+            environment_version: "3"
+            dependencies:
+              - "ubunye-engine==0.9.2"
       tasks:
         - task_key: ingest_forecast
+          environment_key: ubunye
           notebook_task:
             notebook_path: ./notebooks/run_jhb_weather.py
             base_parameters:
               task_dir: ${workspace.file_path}/pipelines/jhb_weather/ingestion/hourly_forecast
-              dt: ${var.data_timestamp}
-              mode: "PROD"
               weather_catalog: ${var.weather_catalog}
               weather_schema: ${var.weather_schema}
           # Serverless compute: no new_cluster / existing_cluster_id block.
           # Databricks routes notebook_task to serverless when no cluster
-          # spec is supplied. The notebook installs ubunye-engine via %pip.
+          # spec is supplied.
 
 targets:
   nonprod:

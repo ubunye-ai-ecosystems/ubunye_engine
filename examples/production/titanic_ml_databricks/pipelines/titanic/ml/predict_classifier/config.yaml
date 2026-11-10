@@ -32,7 +32,7 @@ CONFIG:
   outputs:
     predictions:
       format: unity
-      table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic_ml') }}.predictions"
+      table: "{{ env.TITANIC_CATALOG | default('workspace') | ident }}.{{ env.TITANIC_SCHEMA | default('titanic_ml') | ident }}.predictions"
       mode: overwrite
       file_format: delta
       options:

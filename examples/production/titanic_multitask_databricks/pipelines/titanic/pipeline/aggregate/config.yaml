@@ -16,12 +16,12 @@ CONFIG:
   inputs:
     cleaned:
       format: unity
-      table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic') }}.titanic_cleaned"
+      table: "{{ env.TITANIC_CATALOG | default('workspace') | ident }}.{{ env.TITANIC_SCHEMA | default('titanic') | ident }}.titanic_cleaned"
   transform: {}
   outputs:
     survival_summary:
       format: unity
-      table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic') }}.survival_summary"
+      table: "{{ env.TITANIC_CATALOG | default('workspace') | ident }}.{{ env.TITANIC_SCHEMA | default('titanic') | ident }}.survival_summary"
       mode: overwrite
       options:
         overwriteSchema: "true"

@@ -36,7 +36,7 @@ CONFIG:
   outputs:
     survival_by_class:
       format: unity
-      table: "{{ env.TITANIC_CATALOG | default('workspace') }}.{{ env.TITANIC_SCHEMA | default('titanic') }}.survival_by_class"
+      table: "{{ env.TITANIC_CATALOG | default('workspace') | ident }}.{{ env.TITANIC_SCHEMA | default('titanic') | ident }}.survival_by_class"
       mode: overwrite
       options:
         overwriteSchema: "true"

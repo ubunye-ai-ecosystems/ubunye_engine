@@ -31,7 +31,7 @@ REST ingestion into a Unity Catalog table on a scheduled Databricks job. The
 fourth is the ML lifecycle: `UbunyeModel`, MLflow logging and a
 filesystem-backed model registry on a UC volume, with a promotion gate. The
 two multitask examples chain two tasks: `ubunye run -t clean_data -t aggregate`
-locally, `ubunye.run_pipeline()` on Databricks. Their `transformations.py`
+locally, one `ubunye.notebook()` block per task on Databricks. Their `transformations.py`
 files are byte-identical too; only the configs change (`s3` paths to `unity`
 tables). The last one calls a language model through `ubunye.llm` and replays
 the committed answers, so it runs with no key, no network and no cost.
@@ -88,8 +88,9 @@ They differ in the PROD partition count and in the output.
 |----------------------------------|--------------------------------------------------------|-----------------------------------------------------------------|
 | Engine session                   | Created by `SparkBackend`, or none with `--backend pandas` | The notebook's session, reused by `DatabricksBackend`       |
 | How the CSV gets staged          | `scripts/fetch_titanic.sh` (curl; local or CI)         | `notebooks/run_titanic.py` downloads it into a UC volume with `urllib.request.urlretrieve` |
-| How env vars are set             | `export TITANIC_INPUT_PATH=...` before `ubunye run`    | `os.environ[...]` in the notebook, from job widgets             |
-| How the pipeline is invoked      | `ubunye run -d ... -t survival_by_class`               | `ubunye.run_task(task_dir=..., dt=..., mode=..., lineage=True)` |
+| How env vars are set             | `export TITANIC_INPUT_PATH=...` before `ubunye run`    | From the job parameters of the same name in lower case; the CSV path with `env=` |
+| How the pipeline is invoked      | `ubunye run -d ... -t survival_by_class`               | `with ubunye.notebook(task_dir, dt=dt) as run:` then `run.read()`, `run.transform()`, `run.write()` |
+| Run records                      | `--lineage` writes them under `.ubunye/lineage`        | The job parameter `ubunye_run_records` (a table) switches them on, with the git commit the job passes |
 | Output validation                | `scripts/validate_output.py` diffs against the golden parquet; `scripts/same_receipt.sh` compares the Spark and pandas run records | PySpark unit tests check the golden parquet; query the table after a run |
 
 ---
@@ -106,7 +107,7 @@ the bottleneck is I/O locality.
 | Unit tests of the aggregation itself                               | Either               | Both use a session-scoped local SparkSession fixture, so the same code runs in CI.        |
 | Data lives in Unity Catalog or a Databricks Delta table            | `titanic_databricks` | Reading UC tables and volumes needs a Databricks runtime; elsewhere you pay to move data. |
 | Production batch job on a schedule with Databricks Jobs            | `titanic_databricks` | Asset Bundles give you the job as code and versioned deploys.                             |
-| Ad-hoc analysis in a notebook                                      | `titanic_databricks` | `ubunye.run_task()` reuses the active SparkSession, so the notebook just works.           |
+| Ad-hoc analysis in a notebook                                      | `titanic_databricks` | `ubunye.notebook()` reuses the active SparkSession, so the notebook just works.           |
 
 Rule of thumb: if your input is a `/Volumes/...` path or a
 `<catalog>.<schema>.<table>` name, use the Databricks example. Otherwise the
@@ -126,7 +127,7 @@ bundles work on a paid workspace with small changes.
 | **Compute**          | Serverless only. The bundles have no cluster block, so tasks run on serverless. | Same bundles work. Add a cluster block only if you need classic compute. |
 | **Catalog**          | `workspace` (the bundle default).                        | Usually `main`: `databricks bundle deploy --target nonprod --var="titanic_catalog=main"`. |
 | **Input files**      | UC volumes (`/Volumes/...`). Serverless blocks `file:///tmp/...`. | Same.                                                        |
-| **Engine install**   | Each notebook runs `%pip install ubunye-engine==0.7.0`.  | Same. Pin a newer version when you upgrade.                           |
+| **Engine install**   | The job's environment (`environments` in `databricks.yml`) installs `ubunye-engine==0.9.2`; no `%pip`. | Same. Pin a newer version when you upgrade.                           |
 
 The `databricks.yml` in each example is a reference bundle. `ubunye deploy
 databricks` can build an equivalent job for one task instead; add `--dry-run`

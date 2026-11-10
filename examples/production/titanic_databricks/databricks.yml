@@ -2,13 +2,13 @@
 # job spec automatically. Kept here as reference for users who want to see what
 # Ubunye produces under the hood, or for teams who prefer hand-managed bundles.
 #
-# Databricks Asset Bundle — Titanic Survival pipeline.
+# Databricks Asset Bundle: Titanic Survival pipeline.
 #
 # Uses serverless compute and writes the result as a Unity Catalog managed
 # Delta table. Runs on Databricks Free Edition (which disallows classic-
-# cluster creation) and on standard paid workspaces alike. The notebook
-# downloads the Titanic CSV to /tmp at runtime and installs ubunye-engine
-# via %pip - so no DBFS bootstrap and no manual workspace setup required.
+# cluster creation) and on standard paid workspaces alike. The job installs
+# ubunye-engine through its environment; the notebook puts the Titanic CSV on
+# a UC volume on its first run, so no manual workspace setup is needed.
 
 bundle:
   name: titanic-survival
@@ -22,6 +22,7 @@ variables:
       Unity Catalog catalog for the output table. Defaults to ``workspace``
       because that is the catalog Free Edition provisions automatically.
       Override to ``main`` (or your standard catalog) on paid workspaces.
+      A plain name: config.yaml quotes it with ``| ident``.
     default: "workspace"
   titanic_schema:
     description: Unity Catalog schema for the output table.
@@ -40,14 +41,39 @@ resources:
     titanic_survival:
       name: titanic_survival_by_class
       max_concurrent_runs: 1
+      # Read by the engine on every task (serverless has no environment
+      # variables, so job parameters are the channel).
+      parameters:
+        - name: dt
+          default: ${var.data_timestamp}
+        - name: ubunye_mode
+          default: PROD
+        # Every run, success or failure, leaves one row here (plain names; the
+        # engine quotes). The first run creates the table.
+        - name: ubunye_run_records
+          default: ${var.titanic_catalog}.${var.titanic_schema}.ubunye_runs
+        # Which code ran: recorded in each run record.
+        - name: git_commit
+          default: ${bundle.git.commit}
+        - name: git_branch
+          default: ${bundle.git.branch}
+        - name: deploy_target
+          default: ${bundle.target}
+      # The Python packages the job needs. The engine is installed here, once,
+      # not with %pip in the notebook.
+      environments:
+        - environment_key: ubunye
+          spec:
+            environment_version: "3"
+            dependencies:
+              - "ubunye-engine==0.9.2"
       tasks:
         - task_key: run_pipeline
+          environment_key: ubunye
           notebook_task:
             notebook_path: ./notebooks/run_titanic.py
             base_parameters:
               task_dir: ${workspace.file_path}/pipelines/titanic/analytics/survival_by_class
-              dt: ${var.data_timestamp}
-              mode: "PROD"
               titanic_catalog: ${var.titanic_catalog}
               titanic_schema: ${var.titanic_schema}
           # Serverless compute: no new_cluster / existing_cluster_id block.

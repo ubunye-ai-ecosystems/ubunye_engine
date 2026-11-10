@@ -31,54 +31,64 @@ catalog). On paid workspaces, override `titanic_catalog=main`.
 
 ```
 titanic_ml_train (Job)
+├── environment "ubunye": ubunye-engine[ml]==0.9.2   # installed by the job, no %pip
+├── parameters: dt, ubunye_mode=PROD,
+│               ubunye_run_records=workspace.titanic_ml.ubunye_runs,
+│               git_commit, git_branch, deploy_target
 └── train (Notebook task, serverless)
     ├── notebook: notebooks/train_titanic.py
     └── base_parameters:
         ├── task_dir:        <workspace>/pipelines/titanic/ml/train_classifier
-        ├── dt:              2026-04-15
-        ├── mode:            PROD
         ├── titanic_catalog: workspace
         ├── titanic_schema:  titanic_ml
         └── min_auc:         0.80
 
 titanic_ml_predict (Job)
+├── environment and parameters: the same as titanic_ml_train
 └── predict (Notebook task, serverless)
     ├── notebook: notebooks/predict_titanic.py
     └── base_parameters:
         ├── task_dir:        <workspace>/pipelines/titanic/ml/predict_classifier
-        ├── dt:              2026-04-15
-        ├── mode:            PROD
         ├── titanic_catalog: workspace
         └── titanic_schema:  titanic_ml
 ```
 
+Both notebooks do their setup first, then run the task as one `with` block:
+
+```python
+with ubunye.notebook(task_dir, dt=dt, env={"TITANIC_INPUT_PATH": csv_path}) as run:
+    sources = run.read()               # READ: the Titanic CSV, nothing changed yet
+    outputs = run.transform(sources)   # TRANSFORM: transformations.py
+    run.write(outputs)                 # WRITE: data-quality rules, then the table
+```
+
+Success or failure, each run leaves one row in
+`workspace.titanic_ml.ubunye_runs`: the status, the step that failed, the job
+run, and the git commit, branch and deploy target.
+
 The **train** notebook:
 
-1. Provisions `workspace.titanic_ml` schema and two UC volumes (`data` +
-   `model_store`).
-2. Downloads the Titanic CSV into `/Volumes/workspace/titanic_ml/data/titanic.csv`.
-3. Sets `TITANIC_MODEL_STORE=/Volumes/.../model_store`,
-   `MLFLOW_EXPERIMENT_NAME=/Shared/titanic_ml`, `TITANIC_MIN_AUC`.
-4. Opens a notebook context with `ctx = ubunye.notebook(task_dir, ...)`.
-   `TITANIC_CATALOG` and `TITANIC_SCHEMA` come from the widgets;
-   `TITANIC_INPUT_PATH` is passed with `env=`.
-5. `ctx.read()`, then `ctx.transform()` runs
+1. Setup: the `workspace.titanic_ml` schema, two UC volumes (`data` +
+   `model_store`), and the Titanic CSV in
+   `/Volumes/workspace/titanic_ml/data/titanic.csv`. It sets
+   `TITANIC_MODEL_STORE=/Volumes/.../model_store`,
+   `MLFLOW_EXPERIMENT_NAME=/Shared/titanic_ml` and `TITANIC_MIN_AUC`.
+2. READ loads the CSV. TRANSFORM runs
    `train_classifier/transformations.py`, which fits the model, logs to
    MLflow, registers the version, and attempts promotion to `staging`. If
-   the AUC gate blocks promotion, it raises `PromotionBlockedError` and the
-   job fails before anything is written.
-6. `ctx.write()` appends a one-row audit DataFrame to
+   the AUC gate blocks promotion, it raises `PromotionBlockedError`: nothing
+   is written and the run is recorded as failed at `transform`.
+3. WRITE appends a one-row audit DataFrame to
    `workspace.titanic_ml.training_metrics`.
 
 The **predict** notebook:
 
 1. Asserts the input CSV is present (train must run first).
-2. Opens a notebook context the same way, then `ctx.read()` and
-   `ctx.transform()` run `predict_classifier/transformations.py`, which
+2. READ, then TRANSFORM runs `predict_classifier/transformations.py`, which
    loads the current production version (or falls back to staging) from
    the registry, scores the raw DataFrame, and tags each row with the
    model version and stage.
-3. `ctx.write()` overwrites `workspace.titanic_ml.predictions`.
+3. WRITE overwrites `workspace.titanic_ml.predictions`.
 
 ---
 

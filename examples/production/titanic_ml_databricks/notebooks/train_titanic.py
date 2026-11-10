@@ -2,111 +2,79 @@
 # MAGIC %md
 # MAGIC # Titanic Classifier: training (Databricks serverless)
 # MAGIC
-# MAGIC Invoked by the ``titanic_train`` job defined in ``databricks.yml``. The
-# MAGIC job passes its parameters in as widgets. You can also open this notebook
-# MAGIC and run it cell by cell.
+# MAGIC Run by the `titanic_train` job in `databricks.yml`. The job gives this
+# MAGIC notebook everything it needs as parameters: the task folder, the run date,
+# MAGIC the catalog and schema, the promotion gate, where to save run records, and
+# MAGIC the git commit.
 # MAGIC
-# MAGIC The training logic lives in
-# MAGIC ``pipelines/titanic/ml/train_classifier/transformations.py``. This
-# MAGIC notebook runs it through the notebook API: ``ctx.read()``,
-# MAGIC ``ctx.transform()`` (trains, registers and gates the model) and
-# MAGIC ``ctx.write()`` (writes the audit row).
+# MAGIC **No logic here.** The training, registration and promotion gate are in
+# MAGIC `pipelines/titanic/ml/train_classifier/transformations.py` and `model.py`.
+# MAGIC
+# MAGIC The job installs the engine with its `ml` extra (`environments` in
+# MAGIC `databricks.yml`). To run this notebook by hand, give it an environment with
+# MAGIC `ubunye-engine[ml]==0.9.2`, or run `%pip install "ubunye-engine[ml]==0.9.2"`
+# MAGIC once in a cell above this one.
 
 # COMMAND ----------
 
-# MAGIC %pip install "ubunye-engine[ml]==0.8.0"
-
-# COMMAND ----------
-
-dbutils.library.restartPython()
-
-# COMMAND ----------
-
-# Widgets come after the restart, so they are read once. A job run fills them
-# from base_parameters; the defaults are for running the notebook by hand.
+# For a run by hand. A job run fills these from its parameters.
 dbutils.widgets.text("task_dir", "", "Workspace task directory (absolute)")
 dbutils.widgets.text("dt", "2026-04-15", "Data timestamp")
-dbutils.widgets.dropdown("mode", "PROD", ["DEV", "PROD"], "Run mode")
 dbutils.widgets.text("titanic_catalog", "workspace", "Unity Catalog catalog")
 dbutils.widgets.text("titanic_schema", "titanic_ml", "Unity Catalog schema")
 dbutils.widgets.text("min_auc", "0.80", "Promotion gate: minimum AUC")
 
-task_dir = dbutils.widgets.get("task_dir")
-dt = dbutils.widgets.get("dt")
-mode = dbutils.widgets.get("mode")
-titanic_catalog = dbutils.widgets.get("titanic_catalog")
-titanic_schema = dbutils.widgets.get("titanic_schema")
-min_auc = dbutils.widgets.get("min_auc")
-
-assert task_dir, "task_dir must be supplied by the job (see databricks.yml)"
-
 # COMMAND ----------
 
-# The schema and two UC volumes: one for the input CSV, one for the model
-# registry. UC volumes are the only local path serverless allows.
-spark.sql(f"CREATE SCHEMA IF NOT EXISTS {titanic_catalog}.{titanic_schema}")
-spark.sql(f"CREATE VOLUME IF NOT EXISTS {titanic_catalog}.{titanic_schema}.data")
-spark.sql(f"CREATE VOLUME IF NOT EXISTS {titanic_catalog}.{titanic_schema}.model_store")
-
-# COMMAND ----------
-
-# Put the Titanic CSV in the volume once. Later runs reuse it.
+# Setup, not part of the task: the schema, two UC volumes (the input CSV and the
+# model registry) and the CSV itself (fetched once, later runs reuse it). UC
+# volumes are the only local path serverless allows.
 import os
 import urllib.request
 
-csv_path = f"/Volumes/{titanic_catalog}/{titanic_schema}/data/titanic.csv"
+catalog = dbutils.widgets.get("titanic_catalog")
+schema = dbutils.widgets.get("titanic_schema")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS `{catalog}`.`{schema}`")
+spark.sql(f"CREATE VOLUME IF NOT EXISTS `{catalog}`.`{schema}`.data")
+spark.sql(f"CREATE VOLUME IF NOT EXISTS `{catalog}`.`{schema}`.model_store")
 
+csv_path = f"/Volumes/{catalog}/{schema}/data/titanic.csv"
 if not os.path.exists(csv_path):
     urllib.request.urlretrieve(
         "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv",
         csv_path,
     )
-    print(f"Fetched Titanic CSV -> {csv_path}")
-else:
-    print(f"Titanic CSV already present at {csv_path}")
 
 # transformations.py reads these three straight from os.environ (they are not
 # in config.yaml), so they are set here.
-os.environ["TITANIC_MODEL_STORE"] = f"/Volumes/{titanic_catalog}/{titanic_schema}/model_store"
-os.environ["TITANIC_MIN_AUC"] = min_auc
+os.environ["TITANIC_MODEL_STORE"] = f"/Volumes/{catalog}/{schema}/model_store"
+os.environ["TITANIC_MIN_AUC"] = dbutils.widgets.get("min_auc")
 os.environ["MLFLOW_EXPERIMENT_NAME"] = "/Shared/titanic_ml"
 
 # COMMAND ----------
 
 import ubunye
 
-# config.yaml uses {{ env.TITANIC_CATALOG }} and {{ env.TITANIC_SCHEMA }}:
-# ubunye.notebook() fills them from the widgets of the same name in lower case.
-# TITANIC_INPUT_PATH has no widget, so it is passed in with env=.
-ctx = ubunye.notebook(
-    task_dir,
-    mode=mode,
-    dt=dt,
+# COMMAND ----------
+
+# config.yaml's {{ env.TITANIC_CATALOG }} and {{ env.TITANIC_SCHEMA }} come from
+# the parameters of the same name in lower case. The CSV path has no parameter,
+# so it is passed with env=.
+with ubunye.notebook(
+    dbutils.widgets.get("task_dir"),
+    dt=dbutils.widgets.get("dt"),
     env={"TITANIC_INPUT_PATH": csv_path},
-    lineage=True,
-)
-print(f"Values resolved: {ctx.env_vars}")
+) as run:
+    # READ: load every input under CONFIG.inputs in config.yaml (the Titanic CSV),
+    # one DataFrame per input. Nothing is changed yet.
+    sources = run.read()
 
-# COMMAND ----------
+    # TRANSFORM: run transformations.py. It trains the model, registers it and
+    # runs the promotion gate; a failed gate raises PromotionBlockedError here and
+    # the run is recorded as failed. One DataFrame per output (the audit row).
+    outputs = run.transform(sources)
 
-sources = ctx.read()
-for name, df in sources.items():
-    print(f"--- input: {name} ({df.count()} rows) ---")
-    df.show(5, truncate=False)
-
-# COMMAND ----------
-
-# Trains the model, registers it and runs the promotion gate. A failed gate
-# raises PromotionBlockedError here, and nothing is written.
-outputs = ctx.transform(sources)
-
-# The one-row audit log shows the promotion outcome and headline metrics.
-for name, df in outputs.items():
-    print(f"--- output: {name} ---")
-    df.show(truncate=False)
-
-# COMMAND ----------
-
-ctx.write(outputs)
-print(f"Outputs written: {list(outputs.keys())}")
-ctx.close()
+    # WRITE: check the data-quality rules first. If one fails, nothing is written
+    # and the run is recorded as failed. Otherwise each output is written to its
+    # table.
+    run.write(outputs)
