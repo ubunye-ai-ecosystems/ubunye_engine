@@ -9,7 +9,10 @@ from typer.testing import CliRunner
 from ubunye.cli.main import app
 from ubunye.cli.pipeline_flag import rewrite_package_flag
 
-runner = CliRunner()
+try:  # Click before 8.2 mixes stderr into stdout unless asked not to
+    runner = CliRunner(mix_stderr=False)
+except TypeError:  # Click 8.2+ always keeps them apart
+    runner = CliRunner()
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 _CONFIG = {
@@ -61,7 +64,13 @@ def _validate(tmp_path, *pipeline_args):
 
 
 def _text(result):
-    return _ANSI.sub("", result.output)
+    # stdout and stderr together, whichever Click version split them.
+    try:
+        err = result.stderr
+    except ValueError:
+        err = ""
+    out = result.output if err in result.output else result.output + err
+    return _ANSI.sub("", out)
 
 
 @pytest.mark.parametrize("command", _COMMANDS, ids=" ".join)
