@@ -1009,7 +1009,8 @@ class UbunyeConfig(BaseModel):
         """Raise ConfigProfileError when *profile* names no profile of this config.
 
         A config with no ``ENGINE.profiles`` accepts any mode. ``run``,
-        ``validate`` and the Python API all go through this one rule.
+        ``validate``, ``plan``, ``doctor`` and the Python API all go through
+        this one rule.
         """
         profiles = self.ENGINE.profiles
         if not profile or not profiles or profile in profiles:
@@ -1024,7 +1025,7 @@ class UbunyeConfig(BaseModel):
         near = [name for name in available if name.casefold() == profile.casefold()]
         if near:
             hint += f"; did you mean '{near[0]}'? Pass -m {near[0]}"
-        hint += ". With no -m, run and validate use DEV."
+        hint += ". With no -m, run, validate, plan and doctor use DEV."
         raise ConfigProfileError(
             f"Profile '{profile}' not found.",
             context={"Profile": profile, "Available": available},

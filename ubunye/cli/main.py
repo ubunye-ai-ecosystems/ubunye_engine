@@ -357,6 +357,7 @@ def plan(
         name = f"{usecase}/{package}/{task}"
         try:
             cfg = load_config(str(task_dir), variables)
+            cfg.check_profile(mode)
         except (ValueError, FileNotFoundError) as exc:
             if as_json:
                 fail(str(exc), as_json=True, task=name)

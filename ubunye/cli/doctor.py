@@ -236,8 +236,13 @@ def plugin_checks() -> List[Check]:
     return checks
 
 
-def task_checks(task_dir: Path, task: str, variables: dict) -> List[Check]:
-    """The environment variables a task needs, and whether its config loads."""
+def task_checks(
+    task_dir: Path, task: str, variables: dict, profile: Optional[str] = None
+) -> List[Check]:
+    """The environment variables a task needs, and whether its config loads.
+
+    With *profile*, the config must define it, as ``run`` checks.
+    """
     from ubunye.config import load_config
     from ubunye.config.resolver import required_env_references
 
@@ -263,7 +268,7 @@ def task_checks(task_dir: Path, task: str, variables: dict) -> List[Check]:
     checks += _secret_checks(task, raw)
 
     try:
-        load_config(str(config_path), variables)
+        load_config(str(config_path), variables).check_profile(profile)
     except Exception as exc:
         first = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
         checks.append(Check(f"task {task}: config", FAIL, first))
@@ -329,7 +334,7 @@ def doctor_command(
         else:
             variables = cli_variables(dt=data_timestamp, dtf=None, mode=mode, var=var)
             for task in task_list:
-                checks += task_checks(usecase_dir / usecase / package / task, task, variables)
+                checks += task_checks(usecase_dir / usecase / package / task, task, variables, mode)
 
     ok = not any(c.status == FAIL for c in checks)
     if as_json:

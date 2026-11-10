@@ -60,12 +60,9 @@ Most commands that act on a task share these flags. Where a section below says
 | `--var` | | Extra template variable, `key=value`, repeatable (`run`, `validate`, `plan`, `config`, `doctor`, `test run`, `runs wait-for`, `export spark-pipeline`, `deploy`). See [Jinja](config/jinja.md#cli-injected-variables) |
 | `--json` | | Print one JSON document for scripts and agents. See [Machine output](#machine-output-json) |
 
-Not every command checks `-m` against the profiles the same way:
-
-| Command | What it does with `-m` |
-|---|---|
-| `run`, `test run` (`--profile`), `config`, `validate` | Refuses a name the config does not define. A config with no profiles accepts any name. `run` and `validate` default to `DEV` |
-| `plan`, `doctor` | Do not check it |
+`run`, `test run` (`--profile`), `config`, `validate`, `plan` and `doctor` check
+`-m` one way: a name the config does not define is refused, and a config with no
+profiles accepts any name. They default to `DEV` (`test run` to `test`).
 
 !!! warning "Upper or lower case"
     The examples use `DEV` and `PROD`. `export airflow` and `export databricks`
@@ -132,7 +129,8 @@ the same thing in pandas and in Spark, so the task runs with no Java
 task's own folder), so it runs from any folder.
 
 `--template databricks` writes the older scaffold instead: read a Unity Catalog
-table, write to an `s3a://` bucket. `ubunye init pipeline ...` is the same
+table (`table: main.raw_db.<task>_input`; change it to yours), write to an
+`s3a://` bucket. `ubunye init pipeline ...` is the same
 command with a subcommand name.
 
 `ubunye init` with no flags prints its help and subcommands and exits 0. Give one
@@ -175,8 +173,11 @@ Common flags `-d -u -p -t` are required (`-t`: the tasks to include in the deplo
 
 ## `ubunye validate`
 
-Render Jinja and validate the config schema, before Spark starts. Exits `0` on
-success and non-zero if any task fails.
+Render Jinja and validate the config schema, before Spark starts. It also checks
+each output's write mode against its writer (a `merge` with no `merge_keys`, a
+`jdbc` output with `mode: merge`), with the message `plan` gives, and each
+`secret://` provider, in `ENGINE.spark_conf` too. Exits `0` on success and
+non-zero if any task fails.
 
 ```bash
 ubunye validate -d pipelines -u fraud_detection -p ingestion -t claim_etl -dt 2024-06-01
@@ -191,7 +192,7 @@ Common flags: `-d -u -p` (required), `-t`, `-dt`, `-dtf`, `--var`, `--json`.
 |---|---|---|---|
 | `--all` | | false | Validate every task in the pipeline (instead of `-t`) |
 | `--profile` | | | Profile to check (`DEV`, `PROD`, ...) |
-| `--mode` | `-m` | | The same as `--profile`, the word `run` uses. Giving both with different values is an error. Unlike `run`, a config with no profiles fails when either is given (see [Common flags](#common-flags)) |
+| `--mode` | `-m` | | The same as `--profile`, the word `run` uses. Giving both with different values is an error. As for `run`, a config with no profiles accepts any name |
 | `--backend` | | | Also check every input and output against what this backend can do, without starting it |
 
 ---
@@ -247,7 +248,7 @@ It checks:
 - with `--backend`, that the backend can do what each input and output needs;
 - which environment variables the config uses but are not set (a warning).
 
-It does not check `-m` against the profiles; `validate` does.
+It checks `-m` against the profiles the way `run` does.
 
 Common flags: `-d -u -p -t` (required; `-t` in run order), `-dt`, `-dtf`, `-m`
 (default `DEV`), `--var`, `--json`. Plus:
@@ -287,7 +288,7 @@ It checks:
   default that are not set, and whether its config loads and validates.
 
 Common flags, all optional: `-d` (also check tasks under this pipelines folder),
-`-u`, `-p`, `-t`, `-dt`, `-m` (default `DEV`, not checked against the profiles),
+`-u`, `-p`, `-t`, `-dt`, `-m` (default `DEV`, checked as `run` checks it),
 `--var`, `--json`.
 
 Each line is `[OK]`, `[WARN]` or `[FAIL]`, with a fix under anything that is not
@@ -335,7 +336,7 @@ ubunye run -d pipelines -u fraud_detection -p ingestion -t claim_etl \
 ```
 
 Common flags: `-d -u -p` (required), `-t` (or `--all`), `-dt`, `-dtf`, `-m`
-(default `DEV`), `--var`. `run` picks the profile with `-m` only (it has no
+(default `DEV`; `ubunye export` defaults to production), `--var`. `run` picks the profile with `-m` only (it has no
 `--profile`). Plus:
 
 | Flag | Default | Description |
@@ -355,7 +356,10 @@ Common flags: `-d -u -p` (required), `-t` (or `--all`), `-dt`, `-dtf`, `-m`
     A batch is a task with its `-dt` and `--var` values. Running a finished batch
     of a task that appends is refused, so the data does not land twice: pass
     `--rerun` to replace it, or `--resume` to finish a pipeline that stopped half
-    way. What each kind of output does: [Safe reruns](guides/safe-reruns.md).
+    way. `--resume` knows an append task finished from its output. A task that
+    only overwrites is skipped only with `--lineage`, when its latest run record
+    for the batch says `success`; without run records it runs again. What each
+    kind of output does: [Safe reruns](guides/safe-reruns.md).
 
 ---
 
@@ -415,11 +419,30 @@ ubunye lineage list -d pipelines -u shop -p orders -t clean --lineage-dir main.o
 The Delta store keeps the whole record as JSON, plus columns to query it by
 (`run_id`, `task_path`, `usecase`, `package`, `task`, `status`, `started_at`,
 `ended_at`, `variables`, `record_version`, `written_at`). It only appends; the
-row written last for a run is the run. If a record cannot be written (no Spark,
-no Delta, no access), it is kept in `~/.ubunye/fallback/<run_id>/lineage.jsonl`
-with a warning, and
-`ubunye sync lineage --lineage-backend delta --lineage-dir <table>` replays it. A store of your own passes
-`ubunye.testing.lineage_conformance` (see [Interfaces](interfaces.md)).
+row written last for a run is the run.
+
+If any store cannot write a record (a lineage folder that cannot be written; no
+Spark, no Delta or no access for a table), it is kept in
+`~/.ubunye/fallback/<run_id>/lineage.jsonl`, and the warning names the
+`ubunye sync lineage` command that replays it (for Delta,
+`ubunye sync lineage --lineage-backend delta --lineage-dir <table>`).
+
+Each save is one small file, so a table the Delta store creates is clustered by
+`task_path` and compacts itself (`delta.autoOptimize.autoCompact`): reading one
+task's runs stays quick after thousands of runs. A table made before 0.9.1 is
+used as it is. To give it the same, run once (checked on open-source Delta 4.4;
+Databricks takes the same statements):
+
+```sql
+ALTER TABLE main.ops.ubunye_runs CLUSTER BY (task_path);
+ALTER TABLE main.ops.ubunye_runs SET TBLPROPERTIES ('delta.autoOptimize.autoCompact' = 'true');
+OPTIMIZE main.ops.ubunye_runs;
+```
+
+For a path, write ``delta.`s3://bucket/ubunye/runs` `` in place of the table name.
+
+A store of your own passes `ubunye.testing.lineage_conformance` (see
+[Interfaces](interfaces.md)).
 
 Why it works this way: [ADR 011](architecture/adr-011-run-record-stores.md).
 
@@ -575,8 +598,9 @@ again every `--poll` (default `60s`). A task can ask the same in its config with
 
 Replay fallback manifests into the configured stores. When a run record or a
 model registry write fails during a run, the record is kept in a local file
-under `~/.ubunye/fallback/` so the run does not fail. This command replays
-them, skipping records already written, and moves each processed manifest to
+under `~/.ubunye/fallback/` so the run does not fail. A run record goes there
+whatever the store, and the warning names the command that replays it. This
+command replays them, skipping records already written, and moves each processed manifest to
 `~/.ubunye/fallback/synced/`. How it works: [Interfaces](interfaces.md#fallback-manifests-and-ubunye-sync).
 
 ```bash
@@ -621,8 +645,9 @@ Common flags: `-d -u -p` and `-t` (one task), all required; `-m` (default
 |---|---|---|
 | `--target` | `dev` | Deploy target from `targets.yaml` |
 | `--dry-run` | false | Print the job spec without deploying |
-| `--host` | | Databricks host for an ad hoc deploy (skips `targets.yaml`) |
+| `--host` | `$DATABRICKS_HOST` | Databricks host, used only when there is no `targets.yaml` |
 | `--token` | `DATABRICKS_TOKEN` | Name of the env var that holds the token |
+| `--run` | false | Start a run of the job after deploying it, and print its link |
 
 `targets.yaml` is read from `<usecase-dir>/<usecase>/targets.yaml`, and a
 `targets.yaml` in the task folder overrides it. See
@@ -1004,4 +1029,7 @@ The version comes from the installed package metadata.
     Kubernetes): it runs one task,
     `python -m ubunye --task-dir <folder with config.yaml> --mode PROD --dt <dt>`,
     attached to the SparkSession spark-submit made. Its only other flags are
-    `--lineage` and `--log-level`. See [Deploy anywhere](deployment/anywhere.md).
+    `--lineage` and `--log-level`. `--task-dir` must be a local folder; a bucket
+    URI (`s3://`, `gs://`) does not work. To run from a bucket, use
+    `ubunye deploy glue`, `dataproc` or `emr-serverless`. See
+    [Deploy anywhere](deployment/anywhere.md).

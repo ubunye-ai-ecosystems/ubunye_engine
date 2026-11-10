@@ -26,7 +26,7 @@ from pydantic import BaseModel, ValidationError
 from ubunye.core.errors import (
     ConfigError,
     ConfigFieldError,
-    ConfigProfileError,
+    ConfigProfileError,  # noqa: F401  (importable from here before 0.9.1)
     ConfigTemplateError,
 )
 
@@ -51,11 +51,12 @@ def load_config(
         CLI-provided template variables (e.g. ``{"dt": "2025-01-01"}``).
         Passed as Jinja2 globals alongside ``{{ env.* }}``.
     profile:
-        Optional profile name (``dev``, ``prod``, …). When provided, the
-        returned config's ``ENGINE.spark_conf`` is pre-merged with the
-        profile's overrides via :meth:`UbunyeConfig.merged_spark_conf`.
-        The config object itself is returned unmodified; callers can call
-        ``cfg.merged_spark_conf(profile)`` at any time.
+        Optional profile name (``dev``, ``prod``, ...). Checked with
+        :meth:`UbunyeConfig.check_profile`, as ``run`` checks ``-m``: a name
+        the config does not define raises ``ConfigProfileError``, and a
+        config with no profiles accepts any name. The config is returned
+        unmodified; call ``cfg.merged_spark_conf(profile)`` for the merged
+        Spark settings.
 
     Returns
     -------
@@ -112,14 +113,7 @@ def load_config(
             raise ConfigFieldError(_format_unknown_fields(unknown, str(config_path))) from exc
         raise ConfigError(_format_validation_error(exc, str(config_path))) from exc
 
-    if profile and profile not in cfg.ENGINE.profiles:
-        available = sorted(cfg.ENGINE.profiles.keys())
-        raise ConfigProfileError(
-            f"Profile '{profile}' is not defined in {config_path}.",
-            context={"Profile": profile, "Available": available or ["(none)"]},
-            hint=f"Check your --profile flag. Valid profiles: {', '.join(available) or '(none defined)'}",
-        )
-
+    cfg.check_profile(profile)
     return cfg
 
 

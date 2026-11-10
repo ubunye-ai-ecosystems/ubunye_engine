@@ -21,7 +21,7 @@ The engine ships a small runner, `python -m ubunye`, for exactly this. Its flags
 
 | Flag | Default | Description |
 |---|---|---|
-| `--task-dir` | (required) | The task folder, the one holding `config.yaml` |
+| `--task-dir` | (required) | The task folder, the one holding `config.yaml`. A local folder: a bucket URI (`s3://`, `gs://`) does not work |
 | `--mode` | `PROD` | The profile |
 | `--dt` | | The `{{ dt }}` for the config |
 | `--lineage` | off | Write a run record |

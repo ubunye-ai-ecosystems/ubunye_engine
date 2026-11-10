@@ -23,8 +23,8 @@ ubunye run -d pipelines -u shop -p orders -t clean
 
 `UBUNYE_TELEMETRY=1` turns on the telemetry hooks (it is read when a run starts,
 so setting it in a notebook works). This is the way to use it with `--lineage`.
-You can also pass the hook yourself, `run_task(..., hooks=[OTelHook()])`, but
-that replaces the default hooks, and today that means no run record is written
+You can also pass the hook yourself, `run_task(..., hooks=[OTelHook()])`. It is
+added to the default hooks, so the run record is still written
 (see [Hooks](hooks.md#from-python-run_taskhooks)).
 
 ## Configuration

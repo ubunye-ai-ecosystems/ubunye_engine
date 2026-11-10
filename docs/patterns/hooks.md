@@ -71,7 +71,7 @@ There are two ways in. Pick by how you run the task.
 
 | You run the task with | Use | Run record written? |
 |---|---|---|
-| Python: `ubunye.run_task(...)` | `hooks=[...]` | No, today (see the warning) |
+| Python: `ubunye.run_task(...)` | `hooks=[...]` | Yes, with `lineage=True` |
 | The CLI: `ubunye run ...` | A package that registers the hook, plus `UBUNYE_TELEMETRY=1` | Yes, with `--lineage` |
 
 ### From Python: `run_task(hooks=[...])`

@@ -54,10 +54,9 @@ The whole value must be the reference; a secret is not spliced into a longer
 string. Put a password in its own field (`password:`), not inside a URL.
 
 References are read in input and output blocks (any key, at any depth, such as
-`password:` or `auth.token:`). They are **not** read in `ENGINE.spark_conf`: a
-`secret://` value there reaches Spark as plain text. For cloud storage keys, let
-the platform log in (an instance role, workload identity) instead of setting keys
-in `spark_conf`.
+`password:` or `auth.token:`) and in `ENGINE.spark_conf` (above). For cloud
+storage keys, letting the platform log in (an instance role, workload identity)
+is still simpler than setting keys in `spark_conf`.
 
 ## Checked before a run, fetched during it
 

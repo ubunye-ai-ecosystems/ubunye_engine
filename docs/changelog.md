@@ -110,7 +110,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (F-102). It passed validation and failed at run time: the reader never read
   `db_name`. The message says what to use: `table: 'catalog.schema.table'`, or
   `catalog` + `schema` + `tbl_name` (now accepted by validate, as the reader always
-  read it), or `sql`.
+  read it), or `sql`. `ubunye init --template databricks` wrote such a read; it now
+  writes `table: main.raw_db.<task>_input`, and a test checks that every template
+  `init` writes passes `ubunye validate`.
 
 - **`ubunye validate` reports a write mode the writer cannot do** (F-103), with
   the message `ubunye plan` gives: a `jdbc` output with `mode: merge`, a `merge`
@@ -170,6 +172,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ubunye sync lineage` command that replays it. The Delta store's own copy of
   that code is gone; its `save` raises like any store's.
 
+- **The docs say what 0.9.1 does.** Merging the docs rework dropped some 0.9.1
+  facts and kept older text they made false. Back in place: `deploy databricks
+  --run` and `--host` reading `DATABRICKS_HOST` (the Databricks guide also lost a
+  stray copy of that text in "What success looks like", and no longer says to
+  commit a `targets.yaml` for the workflow), `--resume` skipping an overwrite task
+  with `--lineage`, the Delta run record table's clustering and the three
+  statements for an existing table, the fallback manifest for every store, and
+  `python -m ubunye` taking only a local `--task-dir`. Fixed: `hooks=` and
+  `OTelHook` no longer said the run record is dropped, `secret://` in `spark_conf`
+  no longer said it is not read, `validate -m` no longer said a config with no
+  profiles fails, `registry.auto_version` is marked deprecated, and the
+  troubleshooting `doctor` output is the real 0.9.1 output (Java versions).
 - **The CLI reference shows every command again.** A code span broken across two
   lines put `<table>` at the start of a line, and Markdown read it as raw HTML:
   everything after "Where run records are stored" (lineage show, runs, models,
@@ -181,6 +195,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `dev` and `prod` passed `validate` and then stopped `run`. The error now lists the
   profiles and, when only the case differs, says which one you meant. `run` prints
   the same message instead of a traceback.
+- **`ubunye plan` and `ubunye doctor` check `-m` too.** `plan -m XYZ` said
+  "Plan OK" on a config whose profiles are `DEV` and `PROD`, and `doctor` passed
+  it. Both now refuse a profile the config does not define, with the message
+  `run` gives, and accept any name on a config with no profiles.
+- **`load_config(profile=...)` follows the same rule** (and so `run_task`,
+  `run_pipeline` and `notebook`, which pass `profile=` to it). It refused any
+  profile on a config with no profiles, which `run` accepts. It now calls
+  `UbunyeConfig.check_profile`, the one rule, and its error is the one `run`
+  prints. It is still a `ConfigProfileError`.
 - **`prove observe` before any run** is a clean error (exit 2) that says to run the
   task with `--lineage` first, not a traceback. An unknown `--run-id` is too.
 - **The warning for `CONFIG.transform.type`** no longer says it became an error in
