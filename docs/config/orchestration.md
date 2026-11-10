@@ -1,8 +1,9 @@
 # Orchestration
 
-The `ORCHESTRATION` section provides metadata for exporting your task to an
-orchestration platform. It does **not** affect how `ubunye run` executes the task:
-it is used only by `ubunye export airflow` and `ubunye export databricks`.
+The `ORCHESTRATION` section says when and how a scheduler should run your task: a
+schedule, retries, an owner. This page is for anyone handing a task to Airflow or a
+Databricks job. It does **not** affect how `ubunye run` executes the task: it is
+used only by `ubunye export airflow` and `ubunye export databricks`.
 
 ![ubunye export turns the ORCHESTRATION block into an Airflow DAG, a Databricks job.json or a Spark Declarative Pipeline](../assets/diagrams/export.svg)
 
@@ -31,7 +32,7 @@ ORCHESTRATION:
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `type` | `airflow` or `databricks` | required | Target platform. `prefect` and `dagster` are accepted by the schema but have no exporter yet (see issue #29) |
+| `type` | `airflow` or `databricks` | required | Target platform. `prefect` and `dagster` are accepted by the schema but have no exporter yet |
 | `schedule` | string | `null` | Cron expression for the DAG/workflow schedule |
 | `retries` | int | `2` | Number of automatic retries on failure (Airflow) |
 | `owner` | string | `null` | Team or person responsible (shown in Airflow UI) |
@@ -52,23 +53,43 @@ and `timezone_id` (default `UTC`). Other keys there are ignored.
 
 ---
 
+## Which profile an export uses
+
+Each export writes a profile name into the command it generates. The defaults
+differ, in name and in case:
+
+| Command | Flag | Default |
+|---|---|---|
+| `ubunye run` | `-m` | `DEV` |
+| `ubunye export airflow` | `--profile` | `prod` (lower case) |
+| `ubunye export databricks` | `--profile` | `prod` (lower case) |
+| `ubunye export spark-pipeline` | `-m` | `PROD` (upper case) |
+
+A profile name must match a key under `ENGINE.profiles` exactly, case included
+(see [Engine & Profiles](engine.md#using-profiles-at-runtime)). So name your
+profiles `DEV` and `PROD`, and always pass the profile to `export airflow` and
+`export databricks` (`--profile PROD`) rather than relying on its lower-case
+default. A config with no `profiles:` ignores the name.
+
+---
+
 ## Airflow export
 
 ```bash
 ubunye export airflow \
     -c pipelines/fraud/etl/claims/config.yaml \
     -o dags/claims_etl.py \
-    --profile prod
+    --profile PROD
 ```
 
 The generated DAG contains a single `BashOperator` that runs:
 
 ```bash
-ubunye run -d <pipelines folder> -u fraud -p etl -t claims -m prod -dt {{ ds }}
+ubunye run -d <pipelines folder> -u fraud -p etl -t claims -m PROD -dt {{ ds }}
 ```
 
 `--profile` on `export` becomes `-m` in the command (`ubunye run` has no
-`--profile`). It defaults to `prod`, while `ubunye run` defaults to `DEV`. `{{ ds }}` is Airflow's logical date, so each scheduled run gets its
+`--profile`). `{{ ds }}` is Airflow's logical date, so each scheduled run gets its
 own `dt`. The pipelines folder is the absolute path of the one the config sits
 in; pass `--usecase-dir` when Airflow sees it at another path. `--backend` and
 `--lineage` on `export airflow` are added to the command too.
@@ -83,7 +104,7 @@ Schedule, retries, owner, and tags are read from `ORCHESTRATION`.
 ubunye export databricks \
     -c pipelines/fraud/etl/claims/config.yaml \
     -o jobs/claims_etl.json \
-    --profile prod
+    --profile PROD
 ```
 
 The generated JSON can be submitted with the Databricks CLI:
@@ -138,7 +159,7 @@ task in it, so the task can run where only Spark is installed, or be handed to a
 team that standardised on it:
 
 ```bash
-ubunye export spark-pipeline -c pipelines/shop/orders/clean/config.yaml -o clean-pipeline -dt 2026-07-13
+ubunye export spark-pipeline -c pipelines/shop/orders/clean/config.yaml -o clean-pipeline -dt 2026-07-13 -m PROD
 cd clean-pipeline && spark-pipelines run      # needs pyspark[connect] 4.1+
 ```
 
