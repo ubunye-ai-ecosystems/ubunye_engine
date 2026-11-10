@@ -1,8 +1,11 @@
 # Quickstart
 
-Your first pipeline, running on your laptop in a few minutes, with no Java and
-no cloud account. The commands in step 2 are run by the test suite exactly as
-written, on every change, so they work as shown.
+Your first task, running on your laptop in a few minutes, with no Java and no
+cloud account. For anyone new to Ubunye. The commands in step 2 are run by the
+test suite exactly as written, on every change, so they work as shown.
+
+New words (use case, pipeline, task, run record) are explained in
+[Concepts](concepts.md).
 
 ---
 
@@ -30,7 +33,8 @@ ubunye lineage list -d pipelines -u demo -p starter -t filter_adults
 
 What each one did:
 
-1. **`init`** made a folder, and the folder is the whole task:
+1. **`init`** made a task folder, and the folder is the whole task. `-d` is the
+   pipelines folder, `-u` the use case, `-p` the pipeline, `-t` the task:
 
     ```
     pipelines/demo/starter/filter_adults/
@@ -40,6 +44,10 @@ What each one did:
         notebooks/           a notebook for trying things step by step
     ```
 
+    In `config.yaml`, input and output both say `format: s3`. That is the file
+    connector: `s3` means any file path, on your disk or in a cloud bucket, not only
+    Amazon S3.
+
 2. **`plan`** checked everything it could without moving any data: the input
    file is there, the transform loads, the write mode makes sense, and the
    pandas backend can do all of it. It exits `1` if anything would stop the run.
@@ -48,18 +56,21 @@ What each one did:
    `pipelines/demo/starter/filter_adults/output/adults/` as Parquet. With
    `--backend pandas` that happens in plain Python, no Java involved.
 
-4. **`lineage list`** shows the record the run left: when it ran, how it went,
-   how many rows came out. Each record also keeps a hash of every row written,
-   so two runs can be compared exactly (`ubunye lineage compare`).
+4. **`lineage list`** shows the run record the run left (`--lineage` wrote it):
+   when it ran, how it went, how many rows came out. Each record also keeps a
+   hash of every row read and written, so two runs can be compared exactly.
 
     ```
     RUN_ID     STARTED              STATUS        DUR  ROWS
     ------------------------------------------------------------
-    a6d3cf8b  2026-10-26T11:58:28  success      1.3s  in:8  out:5
+    dede6d1c  2026-11-10T10:34:34  success      0.3s  in:8  out:5
     ```
 
+    Your run ID and time will differ.
+
 If a command fails because of the machine (no Java, an old pyarrow, a missing
-environment variable), `ubunye doctor` says which, and how to fix it.
+environment variable), `ubunye doctor` says which, and how to fix it. See
+[Troubleshooting](../troubleshooting.md).
 
 ---
 
@@ -74,10 +85,42 @@ class FilterAdults(Task):
         return {"adults": people[people["age"] >= 18]}
 ```
 
-Change `18` to `21` and run it again. `ubunye lineage list` now shows two runs;
-`ubunye lineage compare ... --run-id1 <first> --run-id2 <second>` shows that
-the code hash, the output row count (5 to 4) and the output data hash changed,
-while the input stayed the same.
+Change `18` to `21` and run it again, with `--lineage` so it leaves a record:
+
+```bash
+ubunye run -d pipelines -u demo -p starter -t filter_adults --backend pandas --lineage
+ubunye lineage list -d pipelines -u demo -p starter -t filter_adults
+```
+
+The list now shows two runs, newest first:
+
+```
+RUN_ID     STARTED              STATUS        DUR  ROWS
+------------------------------------------------------------
+9913a5f1  2026-11-10T10:34:39  success      0.3s  in:8  out:4
+dede6d1c  2026-11-10T10:34:34  success      0.3s  in:8  out:5
+```
+
+Compare them. Put your own two run IDs in place of these:
+
+```bash
+ubunye lineage compare -d pipelines -u demo -p starter -t filter_adults \
+  --run-id1 dede6d1c --run-id2 9913a5f1
+```
+
+```
+  code_hash: sha256:b6e66360... -> sha256:49d550bd...  CHANGED
+  Input 'people':
+      row_count: 8  (unchanged)
+      data_hash: sha256:00d7526f...  (unchanged)
+  Output 'adults':
+      row_count: 5 -> 4  CHANGED
+      data_hash: sha256:622fcbc6... -> sha256:7420fc72...  CHANGED
+```
+
+(Shortened here: the real output prints full hashes, plus the config, schema and
+environment hashes.) The code changed, the input stayed the same, and the output
+lost one row.
 
 The line `people[people["age"] >= 18]` means the same thing in pandas and in
 Spark, which is why this task can run on either.
@@ -86,15 +129,41 @@ Spark, which is why this task can run on either.
 
 ## 4. Run the same folder on Spark
 
-With Java installed and `pip install "ubunye-engine[spark]"`, leave out
-`--backend`:
+You need Java ([which version](install.md#system-requirements)) and
+`pip install "ubunye-engine[spark]"`. Change `21` back to `18` in
+`transformations.py`, then run without `--backend`:
 
 ```bash
 ubunye run -d pipelines -u demo -p starter -t filter_adults --lineage
 ```
 
-Same folder, same config, same result: the run record carries the same data
-hash as the pandas run. On Databricks the notebook's session is used
+Now check that Spark wrote exactly what pandas wrote. List the runs, then compare
+the Spark run (the newest) with your first pandas run (the oldest, the same code):
+
+```bash
+ubunye lineage list -d pipelines -u demo -p starter -t filter_adults
+ubunye lineage compare -d pipelines -u demo -p starter -t filter_adults \
+  --run-id1 <pandas run id> --run-id2 <spark run id>
+```
+
+When the two backends agree, every hash says `(unchanged)` and only the time
+differs:
+
+```
+  status: success  (unchanged)
+  duration_sec: 0.27769826199801173 -> 2.659492216000217  CHANGED
+  config_hash: sha256:8bd62c96...  (unchanged)
+  code_hash: sha256:b6e66360...  (unchanged)
+  Input 'people':
+      row_count: 8  (unchanged)
+      data_hash: sha256:00d7526f...  (unchanged)
+  Output 'adults':
+      row_count: 5  (unchanged)
+      schema_hash: sha256:9c8ec3b8...  (unchanged)
+      data_hash: sha256:622fcbc6...  (unchanged)
+```
+
+Same folder, same config, same rows. On Databricks the notebook's session is used
 automatically.
 
 ---
@@ -113,6 +182,8 @@ print(len(outputs["adults"]))   # a pandas DataFrame
 ## Common errors
 
 Every error says what went wrong, where, and what to try.
+
+More symptoms and fixes: [Troubleshooting](../troubleshooting.md).
 
 **A typo in a field name**
 
@@ -151,6 +222,7 @@ See the full [Error Reference](../errors.md).
 
 | Topic | Link |
 |---|---|
+| The words, in one page | [Concepts](concepts.md) |
 | How a config is laid out | [Config Reference](../config/overview.md) |
 | Reading and writing data | [Connectors](../connectors/overview.md) |
 | Choosing Spark or pandas | [Execution Backends](../backends.md) |
