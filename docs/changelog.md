@@ -70,6 +70,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failed on its first line. JSON Lines, including an array on each line, reads as
   before.
 
+- **The C01 proving workload runs on pandas without a Narwhals warning** (F-106).
+  Its counts and sums were cast inside the group-by, which made Narwhals fall back
+  to a slow per-group apply and warn "Found complex group-by expression". The casts
+  now follow the aggregation. Same outputs, same golden digest.
+
 - Registering with `promotion_gates={}` clears a model's stored gates on every
   backend. Before, only the default filesystem path cleared them; MLflow and the
   others kept the old gates.
