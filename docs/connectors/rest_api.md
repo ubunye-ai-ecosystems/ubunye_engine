@@ -1,11 +1,13 @@
 # REST API Connector
 
-Reads from and writes to HTTP REST endpoints.
-Supports pagination, authentication, rate limiting, retries, and optional schema enforcement.
+Reads records from an HTTP API, and posts records to one. Use it when a task's
+data lives behind a web API rather than in files or a database. It handles
+pagination, authentication, rate limits, retries, and an optional schema.
 
 It runs on every shipped backend: `spark`, `databricks` and `pandas`. On a laptop,
 `--backend pandas` pulls from an API with no Spark and no Java. Both backends give
-the same rows and types (see [Types](#types)).
+the same rows and types (see [Types](#types)). For worked scenarios, see
+[REST API patterns](../patterns/rest_api.md).
 
 It needs the `requests` package: `pip install "ubunye-engine[rest]"`.
 
@@ -22,6 +24,28 @@ CONFIG:
       format: rest_api
       url: "https://api.example.com/v1/customers"
 ```
+
+### A typical read
+
+Most APIs need a token, return records under a key, and split them over pages:
+
+```yaml
+CONFIG:
+  inputs:
+    customers:
+      format: rest_api
+      url: "https://api.example.com/v1/customers"
+      auth:
+        type: bearer
+        token: "secret://env/API_TOKEN"   # see Secrets
+      response:
+        root_key: data                    # records are in response["data"]
+      pagination:
+        type: cursor
+        cursor_response_key: next_cursor
+```
+
+The sections below explain each part. The full example shows every read setting.
 
 ### Full example
 
@@ -43,7 +67,7 @@ CONFIG:
 
       auth:
         type: bearer                     # bearer | api_key_header | api_key_query | basic
-        token: "{{ env.API_TOKEN }}"
+        token: "secret://env/API_TOKEN"
 
       pagination:
         type: offset                     # offset | cursor | next_link
@@ -76,7 +100,7 @@ CONFIG:
     ```yaml
     auth:
       type: bearer
-      token: "{{ env.API_TOKEN }}"
+      token: "secret://env/API_TOKEN"
     ```
 
 === "API key (header)"
@@ -85,7 +109,7 @@ CONFIG:
     auth:
       type: api_key_header
       header: X-Api-Key          # the default
-      key: "{{ env.API_KEY }}"
+      key: "secret://env/API_KEY"
     ```
 
 === "API key (query param)"
@@ -94,7 +118,7 @@ CONFIG:
     auth:
       type: api_key_query
       param: api_key             # the default
-      key: "{{ env.API_KEY }}"
+      key: "secret://env/API_KEY"
     ```
 
 === "Basic auth"
@@ -103,8 +127,11 @@ CONFIG:
     auth:
       type: basic
       username: "{{ env.API_USER }}"
-      password: "{{ env.API_PASS }}"
+      password: "secret://env/API_PASS"
     ```
+
+Give the token, key or password as a [`secret://`](../config/secrets.md)
+reference; it is read only when the connector runs.
 
 Secrets stay out of logs and error messages. The auth token, key and password,
 an `Authorization` header or a header with a secret-looking name, and a query
@@ -192,58 +219,6 @@ Without `root_key`, the entire response body is treated as the record (or list o
 
 ---
 
-## Types
-
-Without a `schema`, the types come from every record, by Spark's own rules
-(`createDataFrame`). The pandas backend follows the same rules, so a task gives the
-same frame on both:
-
-| JSON value | Column type |
-|---|---|
-| whole number | `bigint` |
-| decimal number | `double` |
-| text | `string` |
-| `true` / `false` | `boolean` |
-| object | `map<string, ...>` (not a struct) |
-| array | `array<...>` |
-
-- Columns are in name order. A key that first appears in a later record goes last.
-- A field that is a number in some records and text in others is `string`: `7`
-  becomes `"7"`, `true` becomes `"true"`.
-- A map has no entry order. pandas keeps the JSON's order. Spark does not keep
-  one you can rely on: Spark classic takes it from a Java HashMap, and that order
-  changed between Java 11 and Java 21; Spark Connect keeps the JSON's. Do not
-  depend on it. The run record's hash sorts maps by key, so it does not either.
-  On pandas a map cell is a list of `(key, value)` pairs; `dict(cell)` makes it a
-  dict.
-
-Spark refuses some records, and so does pandas, with the same error:
-
-- a field that is a whole number in one record and a decimal in another
-  (`CANNOT_MERGE_TYPE`);
-- a field that is null in every record (`CANNOT_DETERMINE_TYPE`);
-- a field that is an object in one record and a number in another.
-
-For any of these, declare the field under `schema`. `string` takes any value, as text.
-
-Known differences, on records where Spark 3.5 and Spark 4 also disagree:
-
-- Spark 3.5 writes a large or tiny decimal number in a text column the Java way
-  (`1.0E7`), where Spark 4 and pandas write `10000000.0`.
-- Spark 3.5 takes a map's value type from its first non-null entry only. Spark 4
-  and pandas look at every entry, so `{"a": 1, "b": "x"}` is `map<string,string>`
-  there. On Spark 3.5, give a map one kind of value.
-
-Records with no fields (`[{}, {}]`) give one row each and no columns, on both.
-
-A whole number outside the 64 bit range (past 9223372036854775807) is refused on
-pandas, with the field's name. Spark classic stores null there without a word.
-Declare the field as `string` to keep it as text on both.
-
-One difference from every Spark: a record that is a JSON array (`[1, "a"]`)
-instead of an object. Spark reads it as a row with columns `_1`, `_2`...; pandas
-refuses it. Point `response.root_key` at the list of objects instead.
-
 ## Schema
 
 Declare the schema for production pipelines. Only the declared columns are kept,
@@ -273,6 +248,67 @@ the transform.
 
 ---
 
+## Types
+
+Without a `schema`, the column types are inferred from the records, by the same
+rules on Spark and pandas, so a task gives the same frame on both. Some records
+are refused on both, for example a field that is null in every record, or a whole
+number in one record and a decimal in another. Declare such a field under `schema`
+(`string` takes any value, as text).
+
+??? note "Spark vs pandas details"
+    Without a `schema`, the types come from every record, by Spark's own rules
+    (`createDataFrame`). The pandas backend follows the same rules, so a task gives the
+    same frame on both:
+
+    | JSON value | Column type |
+    |---|---|
+    | whole number | `bigint` |
+    | decimal number | `double` |
+    | text | `string` |
+    | `true` / `false` | `boolean` |
+    | object | `map<string, ...>` (not a struct) |
+    | array | `array<...>` |
+
+    - Columns are in name order. A key that first appears in a later record goes last.
+    - A field that is a number in some records and text in others is `string`: `7`
+      becomes `"7"`, `true` becomes `"true"`.
+    - A map has no entry order. pandas keeps the JSON's order. Spark does not keep
+      one you can rely on: Spark classic takes it from a Java HashMap, and that order
+      changed between Java 11 and Java 21; Spark Connect keeps the JSON's. Do not
+      depend on it. The run record's hash sorts maps by key, so it does not either.
+      On pandas a map cell is a list of `(key, value)` pairs; `dict(cell)` makes it a
+      dict.
+
+    Spark refuses some records, and so does pandas, with the same error:
+
+    - a field that is a whole number in one record and a decimal in another
+      (`CANNOT_MERGE_TYPE`);
+    - a field that is null in every record (`CANNOT_DETERMINE_TYPE`);
+    - a field that is an object in one record and a number in another.
+
+    For any of these, declare the field under `schema`. `string` takes any value, as text.
+
+    Known differences, on records where Spark 3.5 and Spark 4 also disagree:
+
+    - Spark 3.5 writes a large or tiny decimal number in a text column the Java way
+      (`1.0E7`), where Spark 4 and pandas write `10000000.0`.
+    - Spark 3.5 takes a map's value type from its first non-null entry only. Spark 4
+      and pandas look at every entry, so `{"a": 1, "b": "x"}` is `map<string,string>`
+      there. On Spark 3.5, give a map one kind of value.
+
+    Records with no fields (`[{}, {}]`) give one row each and no columns, on both.
+
+    A whole number outside the 64 bit range (past 9223372036854775807) is refused on
+    pandas, with the field's name. Spark classic stores null there without a word.
+    Declare the field as `string` to keep it as text on both.
+
+    One difference from every Spark: a record that is a JSON array (`[1, "a"]`)
+    instead of an object. Spark reads it as a row with columns `_1`, `_2`...; pandas
+    refuses it. Point `response.root_key` at the list of objects instead.
+
+---
+
 ## Write
 
 ```yaml
@@ -285,7 +321,7 @@ CONFIG:
         Content-Type: application/json
       auth:
         type: bearer
-        token: "{{ env.API_TOKEN }}"
+        token: "secret://env/API_TOKEN"
       batch_size: 100            # records per request
       rate_limit:
         requests_per_second: 5
@@ -353,7 +389,7 @@ CONFIG:
       url: "https://crm.example.com/api/v2/customers"
       auth:
         type: bearer
-        token: "{{ env.CRM_TOKEN }}"
+        token: "secret://env/CRM_TOKEN"
       pagination:
         type: next_link
         next_key: next

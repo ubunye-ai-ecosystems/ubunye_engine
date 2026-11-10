@@ -1,5 +1,9 @@
 # Ingestion
 
+These examples live in the companion repository
+[ubunye-ai-ecosystems/ubunye-examples](https://github.com/ubunye-ai-ecosystems/ubunye-examples).
+Run the commands from a clone of it ([setup per place](index.md#before-you-start-once-per-environment)).
+
 Getting data in. Four examples: catalog tables with SQL, a public web API,
 raw unstructured files, and a real relational database over JDBC.
 
@@ -19,7 +23,7 @@ and write with `merge` so re-running never duplicates rows.
 
 === "Laptop"
 
-    Seed the sample-shaped tables once (see Start Here), then:
+    Seed the sample-shaped tables once (see [Start here](index.md#before-you-start-once-per-environment)), then:
 
     ```bash
     platforms/run_task.sh examples/01_ingest_tables_sql retail ingestion customer_revenue

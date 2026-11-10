@@ -1,5 +1,10 @@
 # Proving ground: the state it starts from
 
+!!! warning "History"
+    This is the audit as of 2026-09-28, engine 0.7.1. Many gaps listed here are now
+    closed: each gap below says which. For today's results see
+    [Latest results](../../proving-ground/latest.md).
+
 Audited 2026-09-28 against the code, not the docs: engine `hardening/real-world` at
 fa1b456 (main is v0.7.1, the latest release and PyPI version), `ubunye-infra` main,
 `ubunye-examples` main. The claim being built toward: the same logical workload runs on
@@ -38,23 +43,38 @@ All cloud runs so far used engine 0.7.0 on 2026-09-24/25 and agree: `documents`
 1. **No joined result.** Each workflow compares itself with a hard-coded value or one
    other environment; nothing gathers all environments into one comparison, and nothing
    says NOT RUN for an environment that did not run.
+   **Closed:** `ubunye prove report` compares every environment with one reference and
+   marks a missing one NOT RUN ([the proving ground](../../proving-ground/index.md)).
 2. **Two truths.** The examples' `platforms/fingerprint.py` hashes Delta tables its own
    way; the engine's receipt hash is the one ADR 006 defends. The proving ground uses
    the receipt.
+   **Closed for the proving ground:** it compares only the run record's hashes.
 3. **Logs are not evidence.** Databricks and SDP print hashes; they should upload the
    record.
+   **Closed:** Databricks now uploads its run record and is compared like every other
+   environment ([latest](../../proving-ground/latest.md)).
 4. **One cloud workload, and it is Spark-only.** `11_run_anywhere` writes Delta; there is
    no workload proven on pandas and on the clouds alike.
+   **Closed:** C01, R1 and R2 are portable and PASS on pandas, local Spark and five
+   cloud or container environments ([latest](../../proving-ground/latest.md)).
 5. **No teardown.** Glue and Container Apps jobs and pushed images are kept and reused
    (idle cost near zero, images cost storage); staged data is cleared before a run,
    not after.
+   **Closed:** after the 2026-09-29 runs, a check of every cloud found no job, stored
+   object, image or workspace folder left from either workload.
 6. **Credentials:** AWS, GCP and Azure sandboxes use OIDC; Databricks uses a stored
    token (migration path: Databricks OIDC federation for GitHub Actions); the examples
    repo's cloud jobs use stored keys and are skipped unless set.
+   **Partly closed:** Databricks proving runs now use a service principal (OAuth machine
+   to machine), not a stored user token. The examples repo was not re-audited.
 7. **Reliability** (hardening experiments E-01 to E-05, `tasks/hardening/`): append is
    not rerun-safe (F-011, F-019), killed runs stay `running` (F-013), pandas lacks
    `overwrite_partitions` and REST (F-012, F-015), hashing costs about 4 s per million
    rows on pandas (F-014).
+   **Closed:** append reruns and killed runs by ADR 008 and its follow-ups (F-011,
+   F-013, F-019, F-031); pandas `overwrite_partitions` (F-012) and REST on pandas
+   (F-015); hashing made faster (F-014, about 1.5 s per million rows on pandas after
+   the fix).
 
 ## Backlog hygiene done on 2026-09-28
 

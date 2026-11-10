@@ -1,11 +1,18 @@
 # Hooks: Observing Task Runs
 
-Hooks let you watch a task run without changing Engine code. Every task and
-every step (Reader / Transform / Writer) is wrapped in a hook context
-manager, so you see the start, the end, and any exception that escaped.
+For anyone who wants to log, time, alert on or audit a task run without
+changing the task or the engine.
 
-Use hooks to add logging, metrics, tracing, alerts, audit records, drift
-checks: anything that observes but does not change the pipeline.
+- **The problem:** you want to know when a task starts, ends or fails, and how
+  long each step took, but you don't want that code inside every task.
+- **When to use it:** logging, metrics, tracing, alerts, audit records, drift
+  checks: anything that watches a run but does not change it.
+- **The one command:** `run_task("pipelines/shop/orders/clean", hooks=[MyHook()])`
+  from Python, or ship the hook as a package and set `UBUNYE_TELEMETRY=1` so
+  `ubunye run` loads it.
+
+Every task, and every step in it (each read, the transform, each write), is
+wrapped in a hook. Your hook sees the start, the end, and any error that escaped.
 
 ---
 
@@ -45,7 +52,7 @@ Both methods are optional: inherit from `Hook` and only override what you need.
 | `ctx` | `EngineContext` | `run_id`, `task_name`, `profile` |
 | `cfg` | `dict` | Full resolved task config |
 | `state` | `dict` | Shared scratchpad. On task exit, `state["outputs"]` holds the outputs map (success only). |
-| `name` | `str` | Step name, e.g. `"Reader:hive"`, `"Transform:noop"`, `"Writer:s3"` |
+| `name` | `str` | Step name, e.g. `"Reader:s3"`, `"Transform:_ubunye_user_task"` (your `transformations.py`), `"Writer:s3"` |
 | `meta` | `dict \| None` | Step-specific metadata, e.g. `{"input": "claims_raw"}` |
 
 ### Rules
@@ -60,32 +67,42 @@ Both methods are optional: inherit from `Hook` and only override what you need.
 
 ## Registering hooks
 
-### Per-engine (explicit)
+There are two ways in. Pick by how you run the task.
+
+| You run the task with | Use | Run record written? |
+|---|---|---|
+| Python: `ubunye.run_task(...)` | `hooks=[...]` | No, today (see the warning) |
+| The CLI: `ubunye run ...` | A package that registers the hook, plus `UBUNYE_TELEMETRY=1` | Yes, with `--lineage` |
+
+### From Python: `run_task(hooks=[...])`
 
 ```python
-from ubunye.core.runtime import Engine
+from ubunye import run_task
 
-engine = Engine(hooks=[MyHook(), AnotherHook()])
-engine.run(cfg)
+outputs = run_task(
+    "pipelines/shop/orders/clean",
+    backend="pandas",
+    hooks=[MyHook(), AnotherHook()],
+)
 ```
 
-Explicit hooks **replace** the default set. Add `LegacyMonitorsHook(cfg)`
-yourself if you still want user monitors from `CONFIG.monitors`. To keep the
-default set and add yours to it, pass `Engine(extra_hooks=[MyHook()])` instead.
+`hooks=` **replaces** the default set of hooks. Two things follow:
 
-From the Python API, `run_task(task_dir, hooks=[...])` also replaces the
-default set. Note that the run record (`lineage=True`) is itself added as an
-extra hook, so it is not written when you pass `hooks=`.
+- User monitors from `CONFIG.monitors` stop running. Add
+  `LegacyMonitorsHook(cfg)` from `ubunye.telemetry.hooks` yourself if you need them.
+- The run record is not written (next box).
 
-### Environment (default set)
+!!! warning "No run record with `hooks=`, today"
+    The run record is itself written by a hook. When you pass `hooks=`, it is
+    replaced too, so `run_task(..., hooks=[...], lineage=True)` runs fine but
+    writes **no** run record. This is a known bug. Until it is fixed, use the
+    package route below when you need both your hook and a run record.
 
-With no `hooks=` argument, the engine discovers hooks via the
-`ubunye.hooks` Python entry point group. When `UBUNYE_TELEMETRY=1`,
-every discovered hook class is instantiated with no arguments.
-`LegacyMonitorsHook(cfg)` is always appended so user monitors in
-`CONFIG.monitors` continue to run regardless of the flag.
+### From the CLI: ship the hook as a package
 
-Ship your own hook from a separate package:
+Register the hook class under the `ubunye.hooks` entry point group in your
+package (an entry point is a name in `pyproject.toml` that tells Python where
+to find your class; see [Writing a Plugin](../connectors/plugin_guide.md)):
 
 ```toml
 # your-package/pyproject.toml
@@ -93,15 +110,29 @@ Ship your own hook from a separate package:
 slack = "your_package.hooks:SlackAlertHook"
 ```
 
-After `pip install your-package`, Ubunye picks it up automatically, with no
-Engine changes, no config changes. Hooks needing constructor arguments
-should still be passed via `Engine(hooks=[...])`.
+`pip install your-package`, then turn hook loading on and run as usual:
 
 ```bash
 export UBUNYE_TELEMETRY=1
-export UBUNYE_PROM_PORT=8000
-ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl
+ubunye run -d ./pipelines -u fraud_detection -p ingestion -t claim_etl --lineage
 ```
+
+- Entry point hooks load **only** when `UBUNYE_TELEMETRY` is set (to `1`, or
+  any value other than `0`, `false`, `no`, `off` or empty). Without it they are
+  ignored. No engine or config changes are needed.
+- Each class is built with no arguments, so read settings from environment
+  variables (as `SlackAlertHook` below does with `SLACK_WEBHOOK_URL`). A hook
+  that needs arguments goes through `run_task(hooks=[...])`.
+- These hooks are added to the default set, so `CONFIG.monitors` still runs and
+  `--lineage` still writes the run record.
+- The built-in Prometheus hook reads `UBUNYE_PROM_PORT` (for example `8000`) to
+  serve its metrics.
+
+??? note "Under the hood: the `Engine` class"
+    `run_task` builds an `Engine` from `ubunye.core.runtime`. `Engine(hooks=[...])`
+    replaces the default set; `Engine(extra_hooks=[...])` adds to it. `Engine.run(cfg)`
+    takes an already rendered config dict and runs config transforms, not your
+    `transformations.py`, so it is not the way to run a task. Use `run_task`.
 
 ---
 
@@ -140,9 +171,10 @@ class SlackAlertHook(Hook):
 Wire it in:
 
 ```python
-engine = Engine(hooks=[SlackAlertHook()])
-engine.run(cfg)
+run_task("pipelines/shop/orders/clean", hooks=[SlackAlertHook()])
 ```
+
+Or register it as an entry point (above) so every `ubunye run` uses it.
 
 ---
 
@@ -193,19 +225,29 @@ class TimingHook(Hook):
             print(f"[{ctx.run_id[:8]}] {name} took {dur:.2f}s")
 ```
 
-Output during a run:
+Run it on a task that reads one CSV and writes one Parquet file:
+
+```python
+from ubunye import run_task
+
+run_task("shop/orders/clean", backend="pandas", hooks=[TimingHook()])
+```
+
+What success looks like:
 
 ```
-[5b3f91aa] Reader:hive took 0.42s
-[5b3f91aa] Transform:noop took 0.01s
-[5b3f91aa] Writer:s3 took 1.37s
+[018d570d] Reader:s3 took 0.26s
+[018d570d] Transform:_ubunye_user_task took 0.00s
+[018d570d] Writer:s3 took 0.01s
 ```
+
+`Transform:_ubunye_user_task` is your task's `transformations.py`.
 
 ---
 
 ## Composing hooks
 
-`HookChain` combines multiple hooks. Engine uses it internally, but you can
+`HookChain` combines multiple hooks. The engine uses it internally, but you can
 use it yourself for complex setups:
 
 ```python
@@ -216,7 +258,7 @@ chain = HookChain([EventLoggerHook(), PrometheusHook(), MyHook()])
 ```
 
 - **Enter order**: as listed.
-- **Exit order**: reverse (LIFO), so outermost hook sees inner hooks' work.
+- **Exit order**: reverse (last in, first out), so the outermost hook sees inner hooks' work.
 - **Broken hooks**: if one raises on `__enter__`, the others still run.
 
 ---
@@ -237,11 +279,12 @@ If you need to change pipeline behavior, write a plugin
 
 ## Source reference
 
-| File | What it contains |
-|---|---|
-| `ubunye/core/hooks.py` | `Hook` base class, `HookChain` multiplexer |
-| `ubunye/telemetry/hooks/events.py` | JSON event logger hook |
-| `ubunye/telemetry/hooks/otel.py` | OpenTelemetry spans and metrics ([OpenTelemetry](opentelemetry.md)) |
-| `ubunye/telemetry/hooks/prometheus.py` | Prometheus metrics |
-| `ubunye/telemetry/hooks/monitors.py` | Legacy `CONFIG.monitors` bridge |
-| `tests/unit/test_hooks.py` | Reference tests: recording hook, failure propagation, dry-run |
+??? note "Under the hood: where the code lives"
+    | File | What it contains |
+    |---|---|
+    | `ubunye/core/hooks.py` | `Hook` base class, `HookChain` multiplexer |
+    | `ubunye/telemetry/hooks/events.py` | JSON event logger hook |
+    | `ubunye/telemetry/hooks/otel.py` | OpenTelemetry spans and metrics ([OpenTelemetry](opentelemetry.md)) |
+    | `ubunye/telemetry/hooks/prometheus.py` | Prometheus metrics |
+    | `ubunye/telemetry/hooks/monitors.py` | Legacy `CONFIG.monitors` bridge |
+    | `tests/unit/test_hooks.py` | Reference tests: recording hook, failure propagation, dry-run |

@@ -1,5 +1,9 @@
 # Machine learning
 
+These examples live in the companion repository
+[ubunye-ai-ecosystems/ubunye-examples](https://github.com/ubunye-ai-ecosystems/ubunye-examples).
+Run the commands from a clone of it ([setup per place](index.md#before-you-start-once-per-environment)).
+
 Training models and using them. Two examples: the full lifecycle done
 properly, and the same model built in three frameworks to prove the engine
 does not care which one you pick.
@@ -22,7 +26,7 @@ never registered at all.
 
 === "Laptop"
 
-    Seed once (see Start Here), then run the three tasks in order:
+    Seed once (see [Start here](index.md#before-you-start-once-per-environment)), then run the three tasks in order:
 
     ```bash
     TAXI_MODEL_STORE=/tmp/ubunye/model_store \
@@ -90,5 +94,47 @@ instead of crowning a half-percent lead.
 
 === "Kubernetes"
 
-    Same command as Docker, inside a Job using the `ubunye-ml:ci` image. Give
-    the pod at least 5Gi of memory: three frameworks is a real appetite.
+    The examples repo has no ready manifest for this one, so here is the
+    Docker command wrapped in a Job. It follows `platforms/k8s/job-template.yaml`,
+    with the `ubunye-ml:ci` image and at least 5Gi of memory: three frameworks
+    is a real appetite. Save it as `job-ml-frameworks.yaml`, then
+    `kubectl apply -f job-ml-frameworks.yaml`:
+
+    ```yaml
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: ubunye-ml-frameworks
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: ubunye
+              image: ubunye-ml:ci
+              imagePullPolicy: Never # side-loaded into kind
+              command: ["bash", "-c"]
+              args:
+                - >-
+                  . platforms/spark_env.sh && python platforms/seed.py &&
+                  platforms/run_task.sh examples/04_ml_taxi_fare taxi_fare ml feature_engineering &&
+                  platforms/run_task.sh examples/10_ml_frameworks fare_bench ml
+                  train_sklearn train_torch train_keras select_champion
+              env:
+                - name: BENCH_MODEL_STORE
+                  value: /data/model_store
+                - name: DATA_DIR
+                  value: /data
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+              resources:
+                requests: { memory: "5Gi", cpu: "2" }
+                limits: { memory: "7Gi" }
+          volumes:
+            - name: data
+              emptyDir: {}
+    ```
+
+    Follow it with `kubectl logs -f job/ubunye-ml-frameworks`.

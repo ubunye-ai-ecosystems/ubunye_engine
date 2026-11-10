@@ -1,7 +1,20 @@
 # Architecture decisions
 
-Each record says what was decided, why, and what it costs. They are short on
-purpose: the code and its tests are the detail.
+Why the engine is built the way it is. Each record (an ADR, architecture decision
+record) says what was decided, why, and what it costs. They are short on purpose: the
+code and its tests are the detail. They are written for contributors and for anyone who
+wants to know why Ubunye behaves as it does.
+
+Three words used on these pages, in plain terms:
+
+- **Hexagon:** the engine's core, drawn as a shape with many sides, one per kind of
+  outside thing it talks to. The core holds the rules and decisions and knows nothing
+  about any particular engine or cloud.
+- **Port:** a side of that shape: the contract the core sets for one kind of outside
+  thing, such as "something that holds a table" or "somewhere to store run records".
+- **Adapter:** the code that makes one real thing (Spark, pandas, a database, a cloud)
+  fit a port. Swapping an adapter changes what Ubunye talks to without changing the
+  core.
 
 | ADR | Decision | Since |
 |---|---|---|

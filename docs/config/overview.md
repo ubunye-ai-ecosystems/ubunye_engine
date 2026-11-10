@@ -1,7 +1,8 @@
 # Config Reference: Overview
 
-Every Ubunye task is driven by a single `config.yaml` file.
-This page explains the top-level structure. Each section links to a dedicated reference page.
+Every Ubunye task is driven by a single `config.yaml` file. This page is for anyone
+writing one: it explains the top-level keys, which command catches which mistake,
+and links to a page for each section.
 
 ![config.yaml in four parts: MODEL and VERSION say what the job is, ENGINE how it runs, CONFIG (required) what it does, ORCHESTRATION when it runs](../assets/diagrams/config-anatomy.svg)
 
@@ -39,8 +40,9 @@ metadata). For quick local iteration the defaults are fine.
 
 ## Jinja templating
 
-Config values are rendered through Jinja2 **before** Pydantic validation.
-You can use environment variables, CLI-injected variables, and filters anywhere in the YAML:
+Config values are filled in by Jinja2 (`{{ ... }}` placeholders) **before** the
+config is checked. You can use environment variables, CLI-injected variables, and
+filters in any value in the YAML:
 
 ```yaml
 CONFIG:
@@ -57,13 +59,37 @@ See [Jinja Templating](jinja.md) for all supported syntax.
 
 ## Validation
 
-Ubunye validates the rendered YAML against strict Pydantic v2 models.
-Unknown fields are rejected with typo suggestions; undefined Jinja
-variables fail immediately. Run validation before deploying:
+Ubunye checks the rendered YAML against a strict schema, written with Pydantic (a
+Python library that checks data against declared fields and types). Unknown fields
+are rejected with typo suggestions; undefined Jinja variables fail immediately. Run
+validation before deploying:
 
 ```bash
 ubunye validate -d pipelines -u fraud -p etl -t claims
 ```
+
+### Which command catches what
+
+Three commands check a task before it runs. Each catches different mistakes, so run
+`validate` in CI, and `plan` and `doctor` on the machine that will run the task.
+
+| Mistake | `validate` | `plan` | `doctor` |
+|---|---|---|---|
+| Unknown or misspelt key, wrong type (schema) | yes | yes | yes |
+| A connector key that connector does not read (`paht:` on `s3`) | yes | yes | yes |
+| A template variable that is not set | yes | yes | yes, and names each missing environment variable |
+| A `secret://` provider name that does not exist | yes | yes | yes |
+| A secret provider whose package is not installed | no | no | yes |
+| A write mode the connector cannot do (`jdbc` with `mode: merge`) | no | yes | no |
+| `overwrite_partitions` with no `partitionBy` or `replace_where` | no | yes | no |
+| A local input path with nothing there | no | yes | no |
+| A connector the backend cannot serve (`jdbc` on pandas) | with `--backend` | with `--backend` | no |
+| A profile name that is not under `ENGINE.profiles` (default `DEV`) | yes | no | no |
+| Missing packages: Java, Delta, a backend, a plugin | no | no | yes |
+
+`validate` and `run` check the profile name the same way, and both default to
+`-m DEV`. See
+[Engine & Profiles](engine.md#using-profiles-at-runtime).
 
 ### Strict field checking
 
@@ -77,10 +103,9 @@ keys accepts any key. See [Writing a Plugin](../connectors/plugin_guide.md).
 
 ### Strict template variables
 
-The Jinja resolver uses `StrictUndefined`: any `{{ var }}` that isn't
-provided as a CLI variable or environment variable raises immediately instead
-of silently producing an empty string. Use `| default(...)` for optional
-values.
+A `{{ var }}` that is not given as a CLI variable or environment variable stops the
+config from loading, instead of silently becoming an empty string. (Jinja calls this
+mode `StrictUndefined`.) Use `| default(...)` for optional values.
 
 ---
 

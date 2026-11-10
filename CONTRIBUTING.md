@@ -37,7 +37,7 @@ pre-commit install
 | Tier | Command | Needs |
 |---|---|---|
 | Unit | `pytest tests/unit -m "not integration"` | nothing else |
-| Spark | `pytest tests/integration` | Java 17 or 21 and `pip install -e ".[spark,delta]"` |
+| Spark | `pytest tests/integration` | Java ([supported versions](https://ubunye-ai-ecosystems.github.io/ubunye_engine/getting_started/install/)) and `pip install -e ".[spark,delta]"` |
 | Types | `python -m mypy ubunye` | nothing else |
 | Lint | `pre-commit run --all-files` | nothing else |
 | Docs | `pip install -r docs/requirements.txt && mkdocs build --strict` | nothing else |
@@ -51,6 +51,10 @@ which a new backend runs too) and a distributed check: one task on a single
 core and on a two-executor Spark must leave the same run record, with the
 driver's result size capped far below the data, so nothing may pull rows back
 to the driver.
+
+How to write a unit test (with no Spark) or a Spark test: see
+[Writing tests](https://ubunye-ai-ecosystems.github.io/ubunye_engine/dev_guide/#writing-tests)
+in the Developer Guide.
 
 CI also times every pull request against the branch it goes into
 (`benchmarks/guard.py`) and fails it if an operation gets more than 30% slower.

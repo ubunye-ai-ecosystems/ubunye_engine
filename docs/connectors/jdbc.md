@@ -1,7 +1,9 @@
 # JDBC Connector
 
-Reads and writes any JDBC-compatible database: PostgreSQL, MySQL, Oracle, SQL Server,
-Redshift, Snowflake (via JDBC driver), and more.
+Reads and writes any database that has a JDBC driver (Java's standard way to talk
+to a database): PostgreSQL, MySQL, Oracle, SQL Server, Redshift, Snowflake, and
+more. Needs Spark. Passwords are given as [`secret://`](../config/secrets.md)
+references.
 
 ---
 
@@ -15,7 +17,7 @@ CONFIG:
       url: "jdbc:postgresql://db-host:5432/mydb"
       table: public.customers          # or use sql:
       user: "{{ env.DB_USER }}"
-      password: "{{ env.DB_PASS }}"
+      password: "secret://env/DB_PASS"
       options:
         fetchsize: "10000"
 ```
@@ -29,7 +31,7 @@ top-level keys or go under `options`; both reach Spark the same way:
       url: "jdbc:postgresql://db-host:5432/mydb"
       table: public.transactions
       user: "{{ env.DB_USER }}"
-      password: "{{ env.DB_PASS }}"
+      password: "secret://env/DB_PASS"
       options:
         partitionColumn: id
         lowerBound: "1"
@@ -46,7 +48,7 @@ Custom SQL:
       url: "jdbc:postgresql://db-host:5432/mydb"
       sql: "SELECT * FROM orders WHERE created_at >= '{{ dt }}'"
       user: "{{ env.DB_USER }}"
-      password: "{{ env.DB_PASS }}"
+      password: "secret://env/DB_PASS"
 ```
 
 !!! note "Requirement"
@@ -65,7 +67,7 @@ CONFIG:
       url: "jdbc:postgresql://db-host:5432/mydb"
       table: ml.predictions
       user: "{{ env.DB_USER }}"
-      password: "{{ env.DB_PASS }}"
+      password: "secret://env/DB_PASS"
       mode: append
       options:
         batchsize: "5000"
@@ -110,9 +112,9 @@ as before.
 | `sql` | string | Conditional | SQL query, reads only (alternative to `table`) |
 | `driver` | string | No | JDBC driver class, e.g. `org.postgresql.Driver` |
 | `user` | string | No | Database username |
-| `password` | string | No | Database password: use [`secret://`](../config/secrets.md) or `{{ env.VAR }}` |
+| `password` | string | No | Database password, as a [`secret://`](../config/secrets.md) reference (`secret://env/DB_PASS`, `secret://aws-sm/prod/db#password`) |
 | `fetchsize`, `partitionColumn`, `lowerBound`, `upperBound`, `numPartitions` | string or int | No | Read tuning, passed to Spark |
-| `mode` | `append` \| `overwrite` \| `errorifexists` \| `ignore` | No | Default `append`. Spark's native save modes only; `merge` and `overwrite_partitions` are Delta-only and are rejected by this connector |
+| `mode` | `append` \| `overwrite` \| `errorifexists` \| `ignore` | No | Default `append`. Spark's native save modes only; `merge` and `overwrite_partitions` are refused by this connector. `ubunye plan` catches that before a run; `ubunye validate` does not ([write modes](../config/io.md#write-modes)) |
 | `replace_where` | string | No | On an `append`: SQL selecting the batch's rows; the batch is staged, then those rows are replaced in one transaction ([above](#a-batch-that-lands-once)) |
 | `options` | dict | No | Spark JDBC options, applied last |
 
@@ -142,7 +144,7 @@ ENGINE:
     # spark.jars: "/opt/spark/jars/pg.jar,/opt/spark/jars/mysql.jar"
 ```
 
-`spark.jars` is fixed when the Spark session starts, so this works only when
-Ubunye creates the session (`ubunye run` on the `spark` backend). On Databricks,
-install the driver via the cluster Libraries UI; elsewhere pass it to
-`spark-submit --jars`.
+`spark.jars` is fixed when the Spark session starts (see
+[Spark keys fixed at session start](../config/engine.md#spark-keys-fixed-at-session-start)).
+On Databricks, install the driver via the cluster Libraries UI; elsewhere pass it
+to `spark-submit --jars`.

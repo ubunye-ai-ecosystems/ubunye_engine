@@ -1,9 +1,17 @@
 # OpenLineage
 
+For anyone whose company tracks where data comes from in a data catalogue
+(Marquez, DataHub, OpenMetadata, Google Dataplex, and others) and wants Ubunye
+runs to show up there.
+
+- **The problem:** the catalogue shows every other job's inputs and outputs, but
+  not your Ubunye tasks.
+- **When to use it:** your catalogue reads [OpenLineage](https://openlineage.io),
+  the open standard for sending "this job read X and wrote Y" events.
+- **The one command:** `OPENLINEAGE_URL=http://localhost:5000 ubunye run -d pipelines -u shop -p orders -t clean --lineage`
+
 Every recorded run (`ubunye run --lineage`, `run_task(lineage=True)`) can send
-its receipt to any catalogue that reads [OpenLineage](https://openlineage.io):
-Marquez, DataHub, OpenMetadata, Google Dataplex, and others. Nothing extra to
-install.
+its run record to the catalogue as OpenLineage events. Nothing extra to install.
 
 ```bash
 export OPENLINEAGE_URL=http://localhost:5000      # a Marquez server
@@ -22,7 +30,7 @@ The same environment variables OpenLineage's own clients read:
 | `OPENLINEAGE_URL` | send over HTTP to this server |
 | `OPENLINEAGE_ENDPOINT` | path on it, default `api/v1/lineage` |
 | `OPENLINEAGE_API_KEY` | sent as `Authorization: Bearer <key>` |
-| `OPENLINEAGE_NAMESPACE` | the job namespace, default `ubunye` |
+| `OPENLINEAGE_NAMESPACE` | the job namespace, default `ubunye` (see below) |
 | `OPENLINEAGE_DISABLED` | `true` turns emission off |
 | `UBUNYE_OPENLINEAGE_FILE` | also append every event, one JSON per line, to this file |
 
@@ -31,7 +39,17 @@ never fails a run.**
 
 ## What is in an event
 
-- **The job**: namespace and `usecase.package.task`. **The run**: the run's UUID,
+Two OpenLineage words first:
+
+- A **namespace** is the group a name belongs to, so two things with the same
+  name don't clash. Jobs are grouped under `OPENLINEAGE_NAMESPACE`; datasets under
+  where they live (`s3://bucket`, `hive`, a database server).
+- A **facet** is one labelled block of extra detail attached to a run, a job or a
+  dataset, such as "rows written". Catalogues show the standard facets they know,
+  and keep the rest.
+
+- **The job**: the namespace and the task's name as `usecase.pipeline.task`
+  (for example `shop.orders.clean`). **The run**: the run's UUID,
   the same `run_id` as in `ubunye lineage`.
 - **Every input and output as a dataset**, named by the OpenLineage naming
   conventions: `s3://bucket` + key (also for `s3a://`), `gs://bucket` + path,
@@ -43,7 +61,7 @@ never fails a run.**
   [expectation](../config/expectations.md), passed or not), `errorMessage` on a
   failed run (the error's type and message, as the run record's `error` holds it,
   with the values of secret-looking variables masked).
-- **The receipt**: a `ubunye_evidence` run facet (config, code and environment
+- **The run record**: a `ubunye_evidence` run facet (config, code and environment
   hashes, the environment, template variables, per-step timings, expectation
   results) and a `ubunye_hash` facet on each dataset (row count, schema hash,
   data hash). Their schemas are in [`docs/schemas`](https://github.com/ubunye-ai-ecosystems/ubunye_engine/tree/main/docs/schemas).

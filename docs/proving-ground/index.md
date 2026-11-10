@@ -1,9 +1,15 @@
 # The proving ground
 
 Ubunye says a task runs the same on a laptop, on Spark, on Databricks and on the
-clouds. The proving ground is how that stops being a claim: the same workload is run in
-each place, and the run records (ADR 006) are compared, dimension by dimension. An
-environment that did not run says so.
+clouds. The proving ground is how that stops being a claim: the same workload (a fixed
+task with fixed data) is run in each place, and the run records are compared, dimension
+by dimension. An environment that did not run says so. This page explains how; the
+numbers are in [Latest results](latest.md). To try it yourself, follow
+[Tutorial 1](../tutorials/01-local-parity.md).
+
+The latest cloud results were measured with engine 0.7.2. Engine 0.9.0 has not been
+re-run on the clouds yet; locally, C01 gives the same digest on pandas and Spark with
+0.9.0.
 
 ## The contract
 
@@ -65,11 +71,25 @@ as a bill), and a link to the run.
 |---|---|---|
 | `c01-portable-etl` | a portable (Narwhals) join, filter, null group keys, integer money, timestamps cut to a day | `examples/proving/c01_portable_etl`; PASS on pandas, local Spark, Kubernetes (kind), AWS Glue 5.0, GCP Dataproc Serverless, Azure Container Apps and Databricks serverless, one digest ([latest](latest.md)) |
 | `r1-food-prices-clean`, `r1-food-prices-monitor` | a real two step pipeline (WFP food prices in Africa): a folder of CSV files with a declared schema, units turned into a price per kg, expectations, a monthly table and alerts; the second step reads what the first wrote | `examples/real-world/food_prices_africa` (committed sample); both steps in one launch per environment, each compared on its own; PASS on the same seven environments, digests `f61e0f0544f5` and `021cc19ca2b6` ([latest](latest.md)) |
-| `r2-olist-clean`, `r2-olist-orders_fact`, `r2-olist-monthly` | a three step pipeline over nine joined tables (Olist e-commerce): input contracts on raw CSV files, quarantine, reconcile (rows and money sums) and a warning, a CSV with a byte order mark and one with text over several lines | `examples/real-world/olist_ecommerce` (committed synthetic sample); digests on pandas `6affe2f5382c`, `6dcf270328d8`, `a0bd206029ca`, the same on Spark in CI; not yet run on the clouds |
+| `r2-olist-clean`, `r2-olist-orders_fact`, `r2-olist-monthly` | a three step pipeline over nine joined tables (Olist e-commerce): input contracts on raw CSV files, quarantine, reconcile (rows and money sums) and a warning, a CSV with a byte order mark and one with text over several lines | `examples/real-world/olist_ecommerce` (committed synthetic sample); all three steps in one launch per environment; PASS on the same seven environments, digests `6affe2f5382c`, `6dcf270328d8` and `a0bd206029ca` ([latest](latest.md)) |
 
-What the proving ground has found is recorded as findings in `tasks/hardening/`: F-021
-(a Spark session's day depended on the machine's time zone, ADR 007) and F-023 (a cloud
-run's record was lost when the log store cut its line). R1 added F-034 (a deploy ran one task per launch),
-F-035 (a record lost when the log store cut a line inside its marker), F-036
-(expectations on Spark needed pyarrow, which the Spark images lack) and F-037 (a failed
-Kubernetes Job held the deploy for its whole timeout).
+## What is not proven yet
+
+Hadoop/YARN and EMR Serverless have no proving run yet, so the docs do not claim
+them. Neither is claimed until a run says so.
+
+## What it has found
+
+Each problem the proving ground found was fixed in the engine:
+
+- A Spark session's day depended on the machine's time zone. Spark now runs in UTC
+  unless you set a zone, and the report fails a run set to a different zone. Why it
+  works this way: [ADR 007](../architecture/adr-007-one-time-zone.md).
+- A cloud run's record was lost when the cloud's log store cut a long line, and again
+  when it cut a line inside the record's start or end marker.
+- A deploy ran only one task per launch; it now runs every `-t` in order in one launch.
+- Expectations (data checks) on Spark needed pyarrow, which the Spark images lack.
+- A failed Kubernetes Job held the deploy for its whole timeout.
+
+Why it works this way: [ADR 006](../architecture/adr-006-run-record.md) (the run record
+that is compared).

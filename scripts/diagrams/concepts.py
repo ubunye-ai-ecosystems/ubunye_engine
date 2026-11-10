@@ -177,12 +177,12 @@ def profiles() -> str:
     )
     sheets = [
         (
-            "prod",
+            "PROD",
             [("executor.memory", "32g", "#c2410c"), ("executor.cores", "8", "#c2410c")],
             "#f97316",
         ),
-        ("staging", [("executor.memory", "8g", None)], "#3b82f6"),
-        ("dev", [("shuffle.partitions", "4", None), ("executor.memory", "512m", None)], "#94a3b8"),
+        ("STAGING", [("executor.memory", "8g", None)], "#3b82f6"),
+        ("DEV", [("shuffle.partitions", "4", None), ("executor.memory", "512m", None)], "#94a3b8"),
     ]
     for i in reversed(range(3)):
         name, lines, colour = sheets[i]
@@ -204,7 +204,7 @@ def profiles() -> str:
         'stroke-width="2"/>'
     )
     parts.append(
-        t(656, 59, "-m prod", size=15, weight=700, font=MONO, fill="#f97316", anchor="middle")
+        t(656, 59, "-m PROD", size=15, weight=700, font=MONO, fill="#f97316", anchor="middle")
     )
 
     parts.append(flow_arrow(762, 210, 812, 210))
@@ -218,7 +218,7 @@ def profiles() -> str:
     ]
     parts.append(yaml_card(820, 140, 250, "merged", merged, "#f97316"))
     parts.append(box(36, 330, 1034, 56, rx=14, stroke="#4a4d57"))
-    parts.append(t(60, 365, "-m Prod", size=16, weight=700, font=MONO, fill="#ef4444"))
+    parts.append(t(60, 365, "-m prod", size=16, weight=700, font=MONO, fill="#ef4444"))
     parts.append(
         t(
             150,
@@ -253,8 +253,8 @@ if __name__ == "__main__":
         "profiles",
         W,
         410,
-        "Profiles: the base ENGINE.spark_conf plus the profile named by -m. With -m prod, executor "
+        "Profiles: the base ENGINE.spark_conf plus the profile named by -m. With -m PROD, executor "
         "memory becomes 32g and executor cores 8, and shuffle partitions stay 200 from the base. "
-        "-m Prod is refused, because names match exactly.",
+        "-m prod is refused, because names match exactly.",
         profiles(),
     )

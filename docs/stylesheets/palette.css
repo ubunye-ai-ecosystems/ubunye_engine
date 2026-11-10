@@ -1,0 +1,130 @@
+/* Ubunye Engine: one visual identity with the diagrams.
+   The diagrams sit on a dark stage (#1c1d22) with orange, teal, purple and light
+   blue accents. The header uses that stage in both themes; the page itself stays
+   white (light) or close to the stage (dark). Text and link colours below pass
+   WCAG AA (4.5:1) on their background. */
+
+:root {
+  --ue-stage: #1c1d22;
+  --ue-stage-deep: #141519;
+  --ue-ink-on-stage: #f3f4f6;
+  --ue-orange: #ff9d5c;
+  --ue-teal: #3dd6c3;
+  --ue-purple: #b49cff;
+  --ue-sky: #cdeefb;
+  --ue-stripe: linear-gradient(90deg, var(--ue-orange), var(--ue-teal) 50%, var(--ue-purple));
+}
+
+/* Light theme ------------------------------------------------------------ */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--ue-stage);
+  --md-primary-fg-color--light: #2c2e35;
+  --md-primary-fg-color--dark: var(--ue-stage-deep);
+  --md-primary-bg-color: var(--ue-ink-on-stage);
+  --md-primary-bg-color--light: rgba(243, 244, 246, 0.7);
+
+  /* Teal and orange darkened until they read on white:
+     #0b7468 is 5.7:1 and #b34a00 is 5.4:1 on #ffffff. */
+  --md-accent-fg-color: #b34a00;
+  --md-accent-fg-color--transparent: rgba(255, 157, 92, 0.12);
+  --md-accent-bg-color: #ffffff;
+  --md-typeset-a-color: #0b7468;
+}
+
+/* Dark theme ------------------------------------------------------------- */
+[data-md-color-scheme="slate"] {
+  --md-hue: 230;
+  --md-default-bg-color: var(--ue-stage);
+  --md-primary-fg-color: var(--ue-stage-deep);
+  --md-primary-fg-color--light: #2c2e35;
+  --md-primary-fg-color--dark: #0d0e11;
+  --md-primary-bg-color: var(--ue-ink-on-stage);
+  --md-primary-bg-color--light: rgba(243, 244, 246, 0.7);
+
+  /* On #1c1d22: teal #3dd6c3 is 9.3:1, orange #ff9d5c is 8.2:1. */
+  --md-accent-fg-color: var(--ue-orange);
+  --md-accent-fg-color--transparent: rgba(255, 157, 92, 0.12);
+  --md-accent-bg-color: var(--ue-stage);
+  --md-typeset-a-color: var(--ue-teal);
+  --md-code-bg-color: #24262c;
+}
+
+/* Header and tabs: the diagram stage, with a thin stripe in the three
+   accent colours underneath. */
+.md-header {
+  background-color: var(--md-primary-fg-color);
+}
+
+.md-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--ue-stripe);
+}
+
+.md-tabs {
+  background-color: var(--md-primary-fg-color);
+}
+
+.md-tabs__link {
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+.md-tabs__link:hover,
+.md-tabs__item--active .md-tabs__link {
+  opacity: 1;
+  color: var(--ue-orange);
+}
+
+/* The logo is black line art; the header is dark in both themes, so flip it
+   to white there and in the mobile drawer's dark title bar. */
+.md-header__button.md-logo img,
+.md-nav--primary > .md-nav__title .md-logo img {
+  filter: invert(1);
+}
+
+/* Search box on the dark header. */
+.md-search__form {
+  background-color: rgba(243, 244, 246, 0.1);
+}
+
+.md-search__form:hover {
+  background-color: rgba(243, 244, 246, 0.16);
+}
+
+/* Buttons: orange with stage-coloured text (8.2:1). The outline button keeps
+   the link colour so it reads in both themes. */
+.md-typeset .md-button--primary {
+  background-color: var(--ue-orange);
+  border-color: var(--ue-orange);
+  color: var(--ue-stage);
+}
+
+.md-typeset .md-button--primary:focus,
+.md-typeset .md-button--primary:hover {
+  background-color: #ffb684;
+  border-color: #ffb684;
+  color: var(--ue-stage);
+}
+
+.md-typeset .md-button:not(.md-button--primary) {
+  color: var(--md-typeset-a-color);
+  border-color: currentColor;
+}
+
+.md-typeset .md-button:not(.md-button--primary):focus,
+.md-typeset .md-button:not(.md-button--primary):hover {
+  background-color: var(--md-typeset-a-color);
+  border-color: var(--md-typeset-a-color);
+  color: var(--md-default-bg-color);
+}
+
+/* Content tabs and the active nav link pick up the accent. */
+.md-typeset .tabbed-labels > label:hover,
+.md-nav__link--active {
+  color: var(--md-typeset-a-color);
+}
