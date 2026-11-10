@@ -562,7 +562,22 @@ The Delta store keeps the whole record as JSON, plus columns to query it by
 row written last for a run is the run. If a record cannot be written (no Spark,
 no Delta, no access), it is kept in `~/.ubunye/fallback/<run_id>/lineage.jsonl`
 with a warning; `ubunye sync lineage --lineage-backend delta --lineage-dir
-<table>` replays it. A store of your own passes
+<table>` replays it.
+
+Each save is one small file, so a table the store creates is clustered by
+`task_path` and compacts itself (`delta.autoOptimize.autoCompact`): reading one
+task's runs stays quick after thousands of runs. A table made before 0.9.1 is
+used as it is. To give it the same, run once (checked on open-source Delta 4.4;
+Databricks takes the same statements):
+
+```sql
+ALTER TABLE main.ops.ubunye_runs CLUSTER BY (task_path);
+ALTER TABLE main.ops.ubunye_runs SET TBLPROPERTIES ('delta.autoOptimize.autoCompact' = 'true');
+OPTIMIZE main.ops.ubunye_runs;
+```
+
+For a path, write ``delta.`s3://bucket/ubunye/runs` `` in place of the table name.
+A store of your own passes
 `ubunye.testing.lineage_conformance` (see [Interfaces](interfaces.md)).
 
 ### `lineage show`
@@ -845,8 +860,11 @@ RUN. `--json FILE` and `--md FILE` write the matrix and the table.
 
 Replay fallback manifests against configured backends. When a metadata write
 (lineage or model registry) fails during a run, the record is appended to a
-local JSONL manifest under `~/.ubunye/fallback/` so the run does not fail. This
-command replays them, skipping records already written.
+local JSONL manifest under `~/.ubunye/fallback/` so the run does not fail. A
+run record goes there whatever the store (a lineage folder that cannot be
+written, a Delta table that cannot be reached), and the warning names the
+command that replays it. This command replays them, skipping records already
+written.
 
 ### `sync lineage`
 

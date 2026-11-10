@@ -15,11 +15,17 @@ is lost, plus a few columns to find it by: ``run_id``, ``task_path``,
 row written last for each run. Appends never conflict, so jobs on different
 clusters can write to one table at once.
 
+Every append writes one small file. So the store creates its table clustered by
+``task_path`` (liquid clustering) with auto compaction on
+(``delta.autoOptimize.autoCompact``): Delta merges the small files after a write,
+and ``OPTIMIZE`` sorts them by task. Open-source Delta (3.1 and later) and
+Databricks both honour these. A table that already exists is used as it is.
+
 It needs a SparkSession with Delta: the active one, or a local one it starts
-(``pip install 'ubunye-engine[delta]'``). When a record cannot be written, it is
-kept in a fallback manifest (``~/.ubunye/fallback/<run_id>/lineage.jsonl``,
-Decision 2) and a warning says so; ``ubunye sync lineage --lineage-backend
-delta`` replays it. It never goes quietly to a local file other jobs cannot see.
+(``pip install 'ubunye-engine[delta]'``). A save that fails raises; the recorder
+keeps the record in a fallback manifest (``~/.ubunye/fallback/<run_id>/lineage.jsonl``,
+Decision 2), as for every store, and ``ubunye sync lineage --lineage-backend delta``
+replays it. It never goes quietly to a local file other jobs cannot see.
 
 The older ``LineageRecord`` methods (``record``, ``get_run``, ``search_records``,
 ``compact``) are kept. As before, without an active SparkSession when the
@@ -32,7 +38,6 @@ import json
 import logging
 import time
 import warnings
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
@@ -47,6 +52,8 @@ logger = logging.getLogger(__name__)
 
 _DELTA_EXTENSION = "io.delta.sql.DeltaSparkSessionExtension"
 _DELTA_CATALOG = "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+#: Set on a table the store creates, never on one that exists (F-099).
+_PROPERTIES = {"delta.autoOptimize.autoCompact": "true"}
 
 
 def _record_to_dict(record: LineageRecord) -> Dict:
@@ -169,6 +176,7 @@ class DeltaLineageBackend:
         self._use_spark = self._detect_spark()
         self._local_path = Path(table_or_path) if not self._use_spark else None
         self._warned_local = False
+        self._ready = False  # the table is known to exist
         self._worker: Optional[_MetadataWorker] = None
 
     @staticmethod
@@ -246,53 +254,42 @@ class DeltaLineageBackend:
         w = Window.partitionBy("task_path", "run_id").orderBy(F.col("written_at").desc())
         return df.withColumn("_n", F.row_number().over(w)).filter(F.col("_n") == 1).drop("_n")
 
-    def _append(self, ctx: RunContext) -> None:
-        spark = self._session()
-        df = spark.createDataFrame([_row(ctx)], schema=_schema())
-        writer = df.write.format("delta").mode("append")
-        if is_path(self._table_or_path):
-            writer.save(self._table_or_path)
-        else:
-            writer.saveAsTable(self._table_or_path)
-
-    def _fallback(self, ctx: RunContext, exc: Exception) -> None:
-        """Keep a record that could not be written (Decision 2), and say so."""
-        from ubunye._internal import metadata_worker
-
-        manifest = metadata_worker._FALLBACK_ROOT / ctx.run_id / "lineage.jsonl"
-        doc = ctx.to_dict()
-        doc["_fallback_at"] = datetime.now(timezone.utc).isoformat()
-        doc["_lineage_backend"] = "delta"
-        doc["_location"] = self._table_or_path
+    def _create(self, spark: Any) -> None:
+        """Create the table, clustered by task_path, with auto compaction (F-099)."""
         try:
-            manifest.parent.mkdir(parents=True, exist_ok=True)
-            with manifest.open("a", encoding="utf-8") as fh:
-                fh.write(json.dumps(doc, ensure_ascii=False, default=str) + "\n")
-            kept = f"It was kept in {manifest}"
-        except OSError as io_exc:
-            kept = f"It could not be kept either ({io_exc})"
-        logger.warning(
-            "The run record of %s (run %s) was not written to the Delta lineage store %s: "
-            "%s. %s; replay it with 'ubunye sync lineage --lineage-backend delta "
-            "--lineage-dir %s'.",
-            ctx.task_path,
-            ctx.run_id,
-            self._table_or_path,
-            exc,
-            kept,
-            self._table_or_path,
-        )
+            from delta.tables import DeltaTable
+        except ImportError:
+            return  # the first append creates a plain table, as before
+        loc = self._table_or_path
+        builder = DeltaTable.createIfNotExists(spark).addColumns(_schema())
+        builder = builder.location(loc) if is_path(loc) else builder.tableName(loc)
+        if hasattr(builder, "clusterBy"):  # delta-spark 3.2 and later
+            builder = builder.clusterBy("task_path")
+        for key, value in _PROPERTIES.items():
+            builder = builder.property(key, value)
+        try:
+            builder.execute()
+        except Exception:
+            if not self._exists(spark):  # not another job creating it at the same time
+                raise
 
     # ------------------------------------------------------------------
     # RunRecordStore: the run record contract (ADR 011)
     # ------------------------------------------------------------------
 
     def save(self, ctx: RunContext) -> None:
-        """Append the record; if that fails, keep it in a fallback manifest and warn."""
-        try:
-            self._append(ctx)
-        except Exception as exc:
-            self._fallback(ctx, exc)
+        """Append the record. A failure raises; the recorder keeps the record."""
+        spark = self._session()
+        if not self._ready:
+            if not self._exists(spark):
+                self._create(spark)
+            self._ready = True
+        df = spark.createDataFrame([_row(ctx)], schema=_schema())
+        writer = df.write.format("delta").mode("append")
+        if is_path(self._table_or_path):
+            writer.save(self._table_or_path)
+        else:
+            writer.saveAsTable(self._table_or_path)
 
     def load(self, task_path: str, run_id: str) -> RunContext:
         """One run of a task, by its run id or the first characters of it."""
@@ -424,7 +421,7 @@ class DeltaLineageBackend:
         if self._use_spark:
             from ubunye.lineage.storage import _record_to_ctx
 
-            self._append(_record_to_ctx(record))
+            self.save(_record_to_ctx(record))
         else:
             self._write_local(record)
 

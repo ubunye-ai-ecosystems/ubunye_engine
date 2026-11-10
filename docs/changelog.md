@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default, 13.3 LTS, runs Spark 3.4, older than the engine supports (pyspark 3.5 or
   later). A target that sets `spark_version` is unchanged.
 
+- **A first Delta append of a named batch makes no history lookups** (F-100).
+  The two `DESCRIBE HISTORY` calls around each keyed append, there only to warn
+  that Delta skipped a batch an earlier run had committed, now run only when an
+  earlier run of the batch could have: the run took over a dead run's lease, or a
+  failed run that wrote the batch left a note beside it. Same warning, fewer steps.
+
 ### Fixed
 
 - Registering with `promotion_gates={}` clears a model's stored gates on every
@@ -57,6 +63,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for this batch (same `-dt` and `--var`) says `success` is now skipped with
   `[SKIP]`, whatever it writes. Without run records an overwrite task runs again, as
   the docs now say.
+
+- **The Delta run record store no longer grows one file per save for ever**
+  (F-099). A table it creates is clustered by `task_path` (liquid clustering)
+  with auto compaction on (`delta.autoOptimize.autoCompact`), so Delta merges
+  the small files each append leaves: 200 saves leave under 60 files, not 200.
+  An existing table is used as it is; `docs/cli.md` shows the three statements
+  that turn the same on for it.
+- **A run record no store could write is kept, whatever the store** (F-097).
+  When the filesystem store could not write (its folder under a file), the
+  record was lost with a log line, and `ubunye sync lineage` found nothing. Now
+  every store's failed save goes one way, through the recorder, to
+  `~/.ubunye/fallback/<run_id>/lineage.jsonl`, and the warning names the
+  `ubunye sync lineage` command that replays it. The Delta store's own copy of
+  that code is gone; its `save` raises like any store's.
 
 ### Deprecated
 
