@@ -4,7 +4,8 @@ The best guide to what a run will call is what it called before, so the plan
 prices the task's replay file (its recorded answers, one per distinct request) at
 today's prices and sets that against the run's limits. It reads no data and calls
 no model. A task that has never been recorded gets its limits and mode checked,
-and no estimate.
+and no estimate. With a display currency (ADR 015) the section also carries the
+currency, the rate used and the estimate in that currency; dollars stay.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ubunye.core.errors import LLMError
 from ubunye.llm import MODES, prices
+from ubunye.llm import currency as fx
 
 _USES = ("from ubunye import llm", "import ubunye.llm", "from ubunye.llm")
 
@@ -67,12 +69,21 @@ def plan_section(
     mode = (os.environ.get("UBUNYE_LLM_MODE") or "live").strip().lower()
     if mode not in MODES:
         problems.append(f"llm: UBUNYE_LLM_MODE={mode!r} is not one of {', '.join(MODES)}")
+    cur: Optional[fx.Currency] = None
     try:
-        limits = Budget.from_env().summary()
+        budget = Budget.from_env()
+        limits, cur = budget.summary(), budget.currency
     except LLMError as exc:
-        problems.append(f"llm: {exc.args[0]}")
+        hint = f". {exc.hint}" if exc.hint else ""
+        problems.append(f"llm: {exc.args[0]}{hint}")
         limits = {}
-    max_usd = limits.get("max_usd")
+    # The money ceilings set: max_usd, and max_<code> in the display currency.
+    caps = {
+        name: (value, None if name == "max_usd" else cur)
+        for name, value in limits.items()
+        if name.startswith("max_") and name not in ("max_calls", "max_seconds")
+        if value is not None
+    }
 
     recorded = _recorded(replay_file) if replay_file.exists() else []
     estimate: Optional[float] = None
@@ -86,21 +97,27 @@ def plan_section(
     elif recorded:
         costs = [g["cost_usd"] for g in recorded]
         estimate = sum(costs) if all(c is not None for c in costs) else None
-        if max_usd is not None:
+        for name, (cap, c) in caps.items():
+            var = f"UBUNYE_LLM_{name.upper()}"
             for g in recorded:
                 if g["cost_usd"] is None:
                     problems.append(
-                        f"llm: UBUNYE_LLM_MAX_USD is set but {g['backend']}/{g['model']} has "
+                        f"llm: {var} is set but {g['backend']}/{g['model']} has "
                         "no price, so its calls will be refused; give it price= or a "
                         "UBUNYE_LLM_PRICES file (a free local model: price=(0, 0))"
                     )
-            if estimate is not None and estimate > max_usd:
+            if estimate is not None and (estimate if c is None else c.amount(estimate)) > cap:
                 warnings.append(
-                    f"llm: a run like the recorded one costs ${estimate:.6f}, over "
-                    f"UBUNYE_LLM_MAX_USD=${max_usd:g}; calls past the ceiling will be refused"
+                    f"llm: a run like the recorded one costs {fx.money(estimate, c)}, over "
+                    f"{var}={_cap(cap, c)}; calls past the ceiling will be refused"
                 )
-    if mode != "replay" and max_usd is None:
-        warnings.append("llm: live model calls with no dollar ceiling (UBUNYE_LLM_MAX_USD)")
+    if mode != "replay" and not caps:
+        warnings.append(
+            "llm: live model calls with no dollar ceiling (UBUNYE_LLM_MAX_USD)"
+            if cur is None
+            else f"llm: live model calls with no cost ceiling (UBUNYE_LLM_MAX_{cur.code} "
+            "or UBUNYE_LLM_MAX_USD)"
+        )
 
     section = {
         "uses_llm": uses_llm(source),
@@ -108,7 +125,13 @@ def plan_section(
         "replay_file": str(replay_file),
         "recorded": recorded,
         "estimated_usd": estimate,
+        "currency": cur.to_dict() if cur else None,
+        "estimated": cur.amount(estimate) if cur and estimate is not None else estimate,
         "limits": {k: v for k, v in limits.items() if k.startswith("max_")},
         "prices_as_of": prices.AS_OF,
     }
     return section, problems, warnings
+
+
+def _cap(value: float, currency: Optional[fx.Currency]) -> str:
+    return f"${value:g}" if currency is None else f"{currency.code} {value:g}"

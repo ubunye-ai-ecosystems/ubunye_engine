@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `UBUNYE_LLM_MAX_<CODE>`) caps a run in the display currency, checked before each
   call like `UBUNYE_LLM_MAX_USD`, which works as before. With both set, both apply.
   A ceiling in a currency that is not the display currency is an error.
+- **`ubunye plan` shows the bill in your currency.** With a display currency, the
+  model bill and its ceiling are in that currency, and one line names the rate,
+  its date and the dollar estimate. `--json` adds `currency` and `estimated`
+  next to `estimated_usd`. A plan problem from a model setting now also says what
+  to set.
 
 ## [0.9.1] (2026-11-10)
 

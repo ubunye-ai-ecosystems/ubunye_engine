@@ -201,6 +201,19 @@ It warns when the estimate is over the ceiling, and when live calls have no doll
 ceiling at all. A task never recorded gets its mode and limits checked, and no
 estimate. `ubunye plan --json` carries the same in each task's `llm` section.
 
+With a [display currency](#costs-in-your-currency), the bill is in that currency and
+one more line names the rate, its date and the dollar estimate:
+
+```
+  Model calls  mode live, max_zar=5
+    openai_compatible/stub-labeller: 6 recorded calls, 115 tokens in, 6 out, ZAR 0.002668
+    estimated ZAR 0.002668 of ZAR 5 (prices as of 2026-09-24)
+    in ZAR at 18.4 per USD, rate as of 2026-11-10 (estimated $0.000145, prices in USD)
+```
+
+`--json` adds `currency` (`code`, `per_usd`, `as_of`) and `estimated` (in that
+currency) next to `estimated_usd`. A currency with no rate is a problem (exit 1).
+
 ## In CI: replay, and gate
 
 Commit the replay file with the task and replay it in CI: no key, no spend, the

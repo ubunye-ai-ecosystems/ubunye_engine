@@ -420,21 +420,28 @@ def _print_plan(report: Dict[str, Any]) -> None:
     if llm:
         limits = ", ".join(f"{k}={v:g}" for k, v in llm["limits"].items() if v is not None)
         typer.echo(f"  Model calls  mode {llm['mode']}" + (f", {limits}" if limits else ""))
+        from ubunye.llm import currency as fx
+
+        cur = fx.from_dict(llm.get("currency"))
         for g in llm["recorded"]:
-            money = "no price" if g["cost_usd"] is None else f"${g['cost_usd']:.6f}"
+            money = "no price" if g["cost_usd"] is None else fx.money(g["cost_usd"], cur)
             typer.echo(
                 f"    {g['backend']}/{g['model']}: {g['calls']} recorded calls, "
                 f"{g['input_tokens']} tokens in, {g['output_tokens']} out, {money}"
             )
-        if llm["estimated_usd"] is not None:
-            ceiling = llm["limits"].get("max_usd")
-            of = f" of ${ceiling:g}" if ceiling is not None else ""
+        usd = llm["estimated_usd"]
+        if usd is not None:
+            name, unit = (f"max_{cur.code.lower()}", f"{cur.code} ") if cur else ("max_usd", "$")
+            ceiling = llm["limits"].get(name)
+            of = f" of {unit}{ceiling:g}" if ceiling is not None else ""
             typer.echo(
-                f"    estimated ${llm['estimated_usd']:.6f}{of} "
-                f"(prices as of {llm['prices_as_of']})"
+                f"    estimated {fx.money(usd, cur)}{of} (prices as of {llm['prices_as_of']})"
             )
         elif not llm["recorded"]:
             typer.echo("    no recorded calls to estimate from (UBUNYE_LLM_MODE=record once)")
+        if cur is not None:
+            dollars = f"estimated ${usd:.6f}, " if usd is not None else ""
+            typer.echo(f"    in {cur.note()} ({dollars}prices in USD)")
     for warning in report["warnings"]:
         typer.secho(f"  warning: {warning}", fg=typer.colors.YELLOW)
     for problem in report["problems"]:

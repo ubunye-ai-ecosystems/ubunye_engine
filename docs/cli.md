@@ -246,7 +246,20 @@ It checks:
 - every write mode resolves (`merge` without `merge_keys` is caught here, not
   on a cluster after the transform ran);
 - with `--backend`, that the backend can do what each input and output needs;
-- which environment variables the config uses but are not set (a warning).
+- which environment variables the config uses but are not set (a warning);
+- for a task that calls a language model, the bill: its recorded calls priced at
+  today's prices, against the run's ceiling
+  ([Language model steps](patterns/llm.md#see-the-bill-before-the-run)).
+
+With `UBUNYE_LLM_CURRENCY` set, the model bill is in that currency, with one line
+for the rate and its date:
+
+```text
+  Model calls  mode live, max_zar=5
+    openai_compatible/stub-labeller: 6 recorded calls, 115 tokens in, 6 out, ZAR 0.002668
+    estimated ZAR 0.002668 of ZAR 5 (prices as of 2026-09-24)
+    in ZAR at 18.4 per USD, rate as of 2026-11-10 (estimated $0.000145, prices in USD)
+```
 
 It checks `-m` against the profiles the way `run` does.
 
