@@ -84,11 +84,11 @@ Three commands check a task before it runs. Each catches different mistakes, so 
 | `overwrite_partitions` with no `partitionBy` or `replace_where` | no | yes | no |
 | A local input path with nothing there | no | yes | no |
 | A connector the backend cannot serve (`jdbc` on pandas) | with `--backend` | with `--backend` | no |
-| A profile name that is not under `ENGINE.profiles` | only with `-m` | no | no |
+| A profile name that is not under `ENGINE.profiles` (default `DEV`) | yes | no | no |
 | Missing packages: Java, Delta, a backend, a plugin | no | no | yes |
 
-`ubunye run` itself always checks the profile name (it defaults to `-m DEV`), so a
-profile mistake that `validate` did not see stops the run at the start. See
+`validate` and `run` check the profile name the same way, and both default to
+`-m DEV`. See
 [Engine & Profiles](engine.md#using-profiles-at-runtime).
 
 ### Strict field checking

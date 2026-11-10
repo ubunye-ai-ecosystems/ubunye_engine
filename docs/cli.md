@@ -64,8 +64,7 @@ Not every command checks `-m` against the profiles the same way:
 
 | Command | What it does with `-m` |
 |---|---|
-| `run`, `test run` (`--profile`), `config` | Refuses a name the config does not define. A config with no profiles accepts any name |
-| `validate` | Checks only when `-m` or `--profile` is given. Then a config with no profiles fails too: `Valid profiles: (none defined)` |
+| `run`, `test run` (`--profile`), `config`, `validate` | Refuses a name the config does not define. A config with no profiles accepts any name. `run` and `validate` default to `DEV` |
 | `plan`, `doctor` | Do not check it |
 
 !!! warning "Upper or lower case"
@@ -246,7 +245,7 @@ It checks:
 - with `--backend`, that the backend can do what each input and output needs;
 - which environment variables the config uses but are not set (a warning).
 
-It does not check `-m` against the profiles; `validate -m` does.
+It does not check `-m` against the profiles; `validate` does.
 
 Common flags: `-d -u -p -t` (required; `-t` in run order), `-dt`, `-dtf`, `-m`
 (default `DEV`), `--var`, `--json`. Plus:

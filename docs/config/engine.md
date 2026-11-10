@@ -91,18 +91,20 @@ ubunye run -d pipelines -u fraud -p etl -t claims -m DEV
 ubunye run -d pipelines -u fraud -p etl -t claims -m PROD
 ```
 
-Use the same profile name, in the same case, for `validate` and `run`.
-`ubunye validate` checks the profile only when you pass `-m` or `--profile`.
-Without it, nothing checks the name: a config whose profiles are `dev` and `prod`
-passes `validate` (and `plan`), then `ubunye run` with its default `-m DEV` stops:
+`validate` checks the profile the same way `run` does, and also defaults to `DEV`.
+So a config whose profiles are `dev` and `prod` fails `validate` before it can fail
+a run:
 
 ```text
+Profile 'DEV' not found.
+
   Profile:   DEV
   Available: ['dev', 'prod']
-  Hint: Valid profiles: dev, prod
+  Hint: This config's profiles are: dev, prod. Names match exactly, case included; did you mean 'dev'? Pass -m dev. With no -m, run and validate use DEV.
 ```
 
-So validate with the profile you will run: `ubunye validate ... -m PROD`.
+Validate with the profile you will run: `ubunye validate ... -m PROD`. `plan` and
+`doctor` do not check the profile name.
 
 ---
 
