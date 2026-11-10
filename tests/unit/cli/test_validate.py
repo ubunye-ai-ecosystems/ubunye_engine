@@ -233,7 +233,10 @@ class TestValidateCLI:
         assert result.exit_code == 0
 
     def test_nonexistent_profile_fails(self, tmp_path):
-        _scaffold_task(tmp_path, "fraud", "ingestion", "task_a", _VALID_CONFIG)
+        # A config with no profiles accepts any mode, as `run` does; one that
+        # defines profiles must name the one asked for.
+        cfg = {**_VALID_CONFIG, "ENGINE": {"profiles": {"dev": {"spark_conf": {}}}}}
+        _scaffold_task(tmp_path, "fraud", "ingestion", "task_a", cfg)
         result = runner.invoke(
             app,
             [
@@ -373,3 +376,62 @@ def test_config_help_says_it_validates_not_shows():
     summary = result.stdout.split("Options")[0]
     assert "Show" not in summary
     assert "Validate config files" in summary
+
+
+class TestValidateChecksTheProfileLikeRun:
+    """validate checks the profile for its mode the way run does.
+
+    A config with profiles dev and prod passed `validate` with no -m, then
+    `run` (whose -m defaults to DEV) failed with Profile 'DEV' not found. And a
+    config with no profiles failed `validate -m DEV` while `run` accepted it.
+    """
+
+    BODY = (
+        'MODEL: "etl"\n'
+        'VERSION: "1.0.0"\n'
+        "{engine}"
+        "CONFIG:\n"
+        "  inputs:\n"
+        '    src: {{format: s3, path: "/in"}}\n'
+        "  transform: {{}}\n"
+        "  outputs:\n"
+        '    dst: {{format: s3, path: "/out", mode: append}}\n'
+    )
+    PROFILES = "ENGINE:\n  profiles:\n    dev: {spark_conf: {}}\n    prod: {spark_conf: {}}\n"
+    ARGS = ["-d", "", "-u", "uc", "-p", "pkg", "-t", "t1"]
+
+    def _task(self, tmp_path, engine=""):
+        task = tmp_path / "uc" / "pkg" / "t1"
+        task.mkdir(parents=True)
+        (task / "config.yaml").write_text(self.BODY.format(engine=engine), encoding="utf-8")
+        args = list(self.ARGS)
+        args[1] = str(tmp_path)
+        return args
+
+    def test_no_mode_fails_like_run_when_DEV_is_not_a_profile(self, tmp_path):
+        args = self._task(tmp_path, self.PROFILES)
+        result = runner.invoke(app, ["validate", *args])
+        assert result.exit_code == 1, result.output
+        assert "Profile 'DEV' not found" in result.output
+        assert "dev, prod" in result.output
+        assert "case included" in result.output
+        assert "did you mean 'dev'" in result.output
+
+    def test_run_fails_the_same_way_without_a_traceback(self, tmp_path):
+        args = self._task(tmp_path, self.PROFILES)
+        result = runner.invoke(app, ["run", *args, "--backend", "pandas"])
+        assert result.exit_code == 1
+        assert "Profile 'DEV' not found" in result.output
+        assert result.exception is None or isinstance(result.exception, SystemExit)
+
+    def test_a_config_with_no_profiles_accepts_any_mode(self, tmp_path):
+        args = self._task(tmp_path)
+        for flag in (["-m", "DEV"], ["--profile", "prod"], []):
+            result = runner.invoke(app, ["validate", *args, *flag])
+            assert result.exit_code == 0, (flag, result.output)
+
+    def test_a_named_profile_still_passes(self, tmp_path):
+        args = self._task(tmp_path, self.PROFILES)
+        for flag in (["-m", "dev"], ["--profile", "prod"]):
+            result = runner.invoke(app, ["validate", *args, *flag])
+            assert result.exit_code == 0, (flag, result.output)

@@ -106,7 +106,7 @@ ConfigProfileError: Profile 'staging' not found.
 
   Profile:   staging
   Available: ['dev', 'prod']
-  Hint: Valid profiles: dev, prod
+  Hint: This config's profiles are: dev, prod. Names match exactly, case included. With no -m, run and validate use DEV.
 ```
 
 **Missing env variable (Jinja)**

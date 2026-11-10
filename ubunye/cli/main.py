@@ -44,7 +44,7 @@ from ubunye.cli.test_cmd import test_app
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.core import runs
-from ubunye.core.errors import ExpectationError
+from ubunye.core.errors import ConfigProfileError, ExpectationError
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
 from ubunye.lineage.upstream import UpstreamNotReady
@@ -238,15 +238,15 @@ def validate(
             err=True,
         )
         raise typer.Exit(code=1)
-    profile = profile or mode
+    # With neither, the mode is DEV, as in `run`, and it is checked the way
+    # `run` checks it: a config with no profiles accepts any mode.
+    profile = profile or mode or "DEV"
 
     # Inject the SAME template variables `run` injects. validate used to pass only
     # dt, so a config using {{ mode }} or {{ dtf }} ran fine and failed validation —
     # the one command whose whole job is to catch problems BEFORE the run invented
     # one the run did not have.
-    variables = cli_variables(
-        dt=data_timestamp, dtf=data_timestamp_format, mode=profile or "DEV", var=var
-    )
+    variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=profile, var=var)
     failed = 0
 
     caps = None
@@ -263,7 +263,8 @@ def validate(
         problems: List[str] = []
         task_warnings: List[str] = []
         try:
-            cfg = load_config(str(task_dir), variables=variables, profile=profile)
+            cfg = load_config(str(task_dir), variables=variables)
+            cfg.check_profile(profile)
             from ubunye.core.task_runner import ignored_transform_message
 
             ignored = ignored_transform_message({"type": cfg.CONFIG.transform.type})
@@ -545,6 +546,13 @@ def run(
             raise typer.Exit(code=1)
 
     first_cfg = configs[task_list[0]]
+    try:
+        first_cfg.check_profile(mode)
+    except ConfigProfileError as e:
+        typer.secho(
+            f"[ERROR] Config error in '{task_list[0]}':\n{e}", fg=typer.colors.RED, err=True
+        )
+        raise typer.Exit(code=1)
     spark_conf = first_cfg.merged_spark_conf(mode)
     spark_conf["spark.submit.deployMode"] = deploy_mode
 
