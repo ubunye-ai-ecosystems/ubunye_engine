@@ -42,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A task the backend cannot run is one `[ERROR]` line in `ubunye run`** (F-113).
+  A `BackendCapabilityError` (say, a `hive` input on `--backend pandas`) printed a
+  full traceback box. It now ends in `[ERROR] Run refused for <task>: ...` with the
+  hint and exit code 1, like the other refusals. Nothing ran, as before.
+
 - **Spark with no usable Java fails in one clean message** (F-112). The spark
   backend now looks for Java (JAVA_HOME, then `java` on PATH) and its version before
   it starts a session. No Java, or one older than the installed Spark needs, raises

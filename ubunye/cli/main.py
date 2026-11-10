@@ -44,7 +44,7 @@ from ubunye.cli.test_cmd import test_app
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.core import runs
-from ubunye.core.errors import ExpectationError, SparkSessionError
+from ubunye.core.errors import BackendCapabilityError, ExpectationError, SparkSessionError
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task, finished_run
 from ubunye.lineage.upstream import UpstreamNotReady
@@ -614,10 +614,9 @@ def run(
                 # Nothing ran, so a refusal, not a crash.
                 typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
                 raise typer.Exit(code=1)
-            except runs.RunLeaseHeld as e:
+            except (runs.RunLeaseHeld, BackendCapabilityError) as e:
                 # A refusal, not a crash: nothing ran, so no traceback.
-                typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
-                raise typer.Exit(code=1)
+                fail(f"Run refused for {task}: {e}", as_json=False)
             except ExpectationError as e:
                 if not e.results:
                     # Not a verdict on the data (no rule results): narwhals missing,

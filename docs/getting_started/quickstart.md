@@ -137,7 +137,7 @@ Pass it with `--var region=gauteng`, or give it a default:
 **Something the backend cannot do**
 
 ```
-This task cannot run on the pandas backend:
+[ERROR] Run refused for copy: This task cannot run on the pandas backend:
   - input 'orders' uses the 'hive' connector, which needs spark; the pandas backend does not provide it.
 ```
 
