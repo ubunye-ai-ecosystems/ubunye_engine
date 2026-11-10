@@ -26,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `[SKIP]`, whatever it writes. Without run records an overwrite task runs again, as
   the docs now say.
 
+### Changed
+
+- **`ubunye deploy databricks` defaults to Databricks Runtime 17.3 LTS**
+  (`17.3.x-scala2.13`, Spark 4.0), the runtime `ubunye export databricks` already
+  used, for a target in `targets.yaml` that does not set `spark_version`. The old
+  default, 13.3 LTS, runs Spark 3.4, older than the engine supports (pyspark 3.5 or
+  later). A target that sets `spark_version` is unchanged.
+
 ### Deprecated
 
 Nothing in Ubunye, its docs or examples uses these. They still work, warn with a
