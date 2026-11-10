@@ -104,6 +104,11 @@ ubunye models demote \
     --store .ubunye/model_store
 ```
 
+`--to` takes `development`, `staging` or `archived`. Demote only moves a version
+down: `staging` only from `production`, and never to `production`. Moving up is
+a promotion, so it goes through `promote` and its gates. The Python API
+(`ModelRegistry.demote`) refuses the same moves with a `RegistryError`.
+
 ### Rollback
 
 Restores a previous version to production and archives the current one:
@@ -353,6 +358,8 @@ archive and compare. Your backend must:
 - report stages with the public names (`development`, `staging`, `production`,
   `archived`), whatever it calls them inside;
 - raise `VersionNotFoundError` for a version or stage it does not have;
+- refuse a `demote` that moves a version up: call
+  `ubunye.models.lifecycle.check_demote(version, current_stage, to_stage)` first;
 - return `list_versions` newest first;
 - return from `get` an artifact path that `YourModel.load()` can read.
 

@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ubunye.core.errors import VersionNotFoundError
 from ubunye.interfaces.registry import ModelVersionInfo
+from ubunye.models.lifecycle import check_demote
 
 _TO_ALIAS = {
     "development": "dev",
@@ -143,6 +144,8 @@ class JsonRegistryBackend:
     def demote(
         self, *, use_case: str, model_name: str, version: str, to_stage: str
     ) -> ModelVersionInfo:
+        current = _FROM_ALIAS[self._entry(use_case, model_name, version)["alias"]]
+        check_demote(version, current, to_stage)  # demote never moves a version up
         return self._move(use_case, model_name, version, to_stage)
 
     def delete(self, *, use_case: str, model_name: str, version: str) -> None:

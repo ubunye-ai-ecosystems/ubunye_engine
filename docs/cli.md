@@ -747,6 +747,10 @@ ubunye models demote \
 
 Target stages: `development`, `staging`, `archived`.
 
+Demote only moves a version down. `staging` is allowed only from `production`;
+`production` is never a choice. To move a version up, use `models promote`,
+which checks the promotion gates.
+
 ### `models rollback`
 
 ```bash

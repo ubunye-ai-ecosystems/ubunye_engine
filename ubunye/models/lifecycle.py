@@ -9,7 +9,9 @@ those six, so every backend gets it for free and stays small:
 - promotion gates, stored with the model and checked here before a promotion
   (``force`` skips them);
 - one production version at a time (the old one is archived);
-- rollback, archive and compare.
+- rollback, archive and compare;
+- demote only ever moves a version down (:func:`check_demote`), so it cannot be
+  used to skip the promotion gates.
 
 Gates are stored as the version metadata key ``promotion_gates`` (JSON). A version
 registered without gates carries the model's current ones forward, so the newest
@@ -29,6 +31,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ubunye.core.errors import (
     PromotionBlockedError,
+    RegistryError,
     RegistryNotFoundError,
     VersionExistsError,
     VersionNotFoundError,
@@ -64,6 +67,27 @@ def to_model_version(info: ModelVersionInfo) -> Any:
         metrics=dict(info.metrics or {}),
         metadata=meta,
         **fields,
+    )
+
+
+def check_demote(version: str, current: str, to_stage: str) -> None:
+    """Refuse a demote that would move a version up.
+
+    Demote goes to ``development`` or ``archived`` from anywhere, and to ``staging``
+    only from ``production`` (or ``staging``). Reaching ``staging`` or
+    ``production`` from lower down is a promotion and must pass the gates, so it
+    goes through ``promote``. Every registry backend calls this in its ``demote``.
+    """
+    if to_stage in ("development", "archived"):
+        return
+    if to_stage == "staging" and current in ("staging", "production"):
+        return
+    raise RegistryError(
+        f"Cannot demote version {version} from '{current}' to '{to_stage}': "
+        "demote only moves a version down.",
+        context={"Version": version, "Stage now": current, "Target stage": to_stage},
+        hint="Use promote to move a version up; it checks the promotion gates. "
+        "Demote goes to development, archived, or staging from production.",
     )
 
 
@@ -262,11 +286,13 @@ class BackendLifecycle:
         return self._move_up(use_case, model_name, version, stage, promoted_by, gates={})
 
     def demote(self, use_case: str, model_name: str, version: str, to_stage: Any) -> Any:
+        stage = _stage_name(to_stage)
+        check_demote(version, self._info(use_case, model_name, version).stage, stage)
         info = self.backend.demote(
             use_case=use_case,
             model_name=model_name,
             version=version,
-            to_stage=_stage_name(to_stage),
+            to_stage=stage,
         )
         return to_model_version(info)
 

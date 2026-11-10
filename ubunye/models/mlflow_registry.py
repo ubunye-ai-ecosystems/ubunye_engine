@@ -37,6 +37,7 @@ from ubunye.core.errors import (
     VersionNotFoundError,
 )
 from ubunye.interfaces.registry import ModelVersionInfo
+from ubunye.models.lifecycle import check_demote
 from ubunye.models.registry import FilesystemRegistryBackend
 
 logger = logging.getLogger(__name__)
@@ -469,7 +470,9 @@ class MLflowModelRegistryBackend:
         to_stage: str,
     ) -> ModelVersionInfo:
         name = self.model_name(use_case, model_name)
-        return self._set_stage(name, self._find(name, version), to_stage, {})
+        mv = self._find(name, version)
+        check_demote(version, (mv.tags or {}).get(_STAGE_TAG, "development"), to_stage)
+        return self._set_stage(name, mv, to_stage, {})
 
     def delete(self, *, use_case: str, model_name: str, version: str) -> None:
         name = self.model_name(use_case, model_name)

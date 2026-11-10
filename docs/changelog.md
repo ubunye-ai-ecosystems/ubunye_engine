@@ -81,6 +81,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`models demote` can no longer move a version up past its gates** (F-091).
+  `ubunye models demote --to production` put a version in production without
+  checking its promotion gates, and without the `promotion_forced` mark. Demote
+  now only moves a version down: `--to` takes `development`, `staging` or
+  `archived`, and `staging` only from `production`. The library refuses the same
+  moves (`ModelRegistry.demote` and every built in registry backend raise
+  `RegistryError`), and the registry conformance suite checks it for every
+  backend. `models promote --to` now takes only `staging` or `production`, as its
+  help said. A wrong `--to` is a usage error (exit 2) that lists the choices.
+
 - **Rerun safety reads the run record store you chose** (ADR 008, ADR 011). With
   `--lineage-backend delta` (or any store other than the filesystem), a run that
   took over a dead run's lease looked for its record in local files, found none,

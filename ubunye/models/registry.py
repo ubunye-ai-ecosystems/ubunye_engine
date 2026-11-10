@@ -374,16 +374,27 @@ class ModelRegistry:
     ) -> ModelVersion:
         """Demote a model version to a lower stage.
 
+        Demote only moves a version down: to ``development`` or ``archived``, or to
+        ``staging`` from ``production``. Moving up is a promotion; use
+        :meth:`promote`, which checks the promotion gates.
+
         Args:
-            to_stage: Target stage (typically ``development`` or ``staging``).
+            to_stage: Target stage (``development``, ``staging`` or ``archived``).
 
         Returns:
             Updated :class:`ModelVersion`.
+
+        Raises:
+            RegistryError: if the move would take the version up a stage.
         """
         if self._on is not None:
             return self._on.demote(use_case, model_name, version, to_stage)
+        from ubunye.models.lifecycle import check_demote
+
+        to_stage = ModelStage(to_stage)
         record = self._load_record(use_case, model_name)
         mv = self._get_version_or_raise(record, version)
+        check_demote(version, mv.stage.value, to_stage.value)
         mv.stage = to_stage
         self._save_record(record)
         return mv
