@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 640" width="1100" height="640" role="img" aria-label="Write it once. A task is one folder. Settings in YAML, logic in Python.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="640" rx="22" fill="#1c1d22"/>
+<text x="550.0" y="92" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="52" font-weight="700" fill="#f3f4f6" text-anchor="middle">Write it once.</text>
+<text x="550.0" y="134" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="400" fill="#a1a7b3" text-anchor="middle">A task is one folder. Settings in YAML, logic in Python.</text>
+<rect x="400" y="180" width="300" height="320" rx="22" fill="#cdeefb"/>
+<text x="424" y="220" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="25" font-weight="700" fill="#0f172a" text-anchor="start">claim_etl/</text>
+<rect x="424" y="242" width="119.0" height="200" rx="12" fill="#e85d5d"/>
+<path d="M424 402h119.0v28a12 12 0 0 1-12 12h-95.0a12 12 0 0 1-12-12z" fill="#d93434"/>
+<text x="483.5" y="331.0" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#fff" text-anchor="middle">&lt;/&gt;</text>
+<text x="483.5" y="429" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#fff" text-anchor="middle">.yaml</text>
+<text x="483.5" y="464" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">what</text><rect x="557.0" y="242" width="119.0" height="200" rx="12" fill="#5b8f6c"/>
+<path d="M557.0 402h119.0v28a12 12 0 0 1-12 12h-95.0a12 12 0 0 1-12-12z" fill="#4caf50"/>
+<text x="616.5" y="331.0" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#fff" text-anchor="middle">&lt;/&gt;</text>
+<text x="616.5" y="429" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#fff" text-anchor="middle">.py</text>
+<text x="616.5" y="464" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">how</text>
+<path d="M388 340H330" stroke="#e85d5d" stroke-width="2"/>
+<text x="320" y="334" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#f3f4f6" text-anchor="end">config.yaml</text>
+<text x="320" y="360" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="400" fill="#a1a7b3" text-anchor="end">what to read and write</text>
+<path d="M712 340H770" stroke="#4caf50" stroke-width="2"/>
+<text x="780" y="334" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#f3f4f6" text-anchor="start">transformations.py</text>
+<text x="780" y="360" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="400" fill="#a1a7b3" text-anchor="start">how to change the data</text>
+<rect x="40" y="558" width="1020" height="50" rx="25" fill="#26282f"/>
+<text x="72" y="589" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#ff9d5c" text-anchor="start" letter-spacing="2">HOW</text>
+<text x="124" y="589" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" xml:space="preserve"><tspan fill="#f3f4f6">use case / pipeline / task</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">ubunye run -u fraud_detection -p ingestion -t claim_etl</tspan></text>
+</svg>

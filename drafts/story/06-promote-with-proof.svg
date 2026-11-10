@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 640" width="1100" height="640" role="img" aria-label="Promote with proof. A model moves up only when it passes its gates.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="640" rx="22" fill="#1c1d22"/>
+<text x="550.0" y="92" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="52" font-weight="700" fill="#f3f4f6" text-anchor="middle">Promote with proof.</text>
+<text x="550.0" y="134" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="400" fill="#a1a7b3" text-anchor="middle">A model moves up only when it passes its gates.</text>
+<rect x="170" y="420" width="220" height="80" rx="14" fill="#94a3b8" fill-opacity="0.22" stroke="#94a3b8" stroke-width="2.5"/>
+<text x="280" y="482" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#94a3b8" text-anchor="middle">development</text>
+<rect x="450" y="350" width="220" height="150" rx="14" fill="#3b82f6" fill-opacity="0.22" stroke="#3b82f6" stroke-width="2.5"/>
+<text x="560" y="482" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#3b82f6" text-anchor="middle">staging</text>
+<rect x="730" y="280" width="220" height="220" rx="14" fill="#22c55e" fill-opacity="0.22" stroke="#22c55e" stroke-width="2.5"/>
+<text x="840" y="482" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#22c55e" text-anchor="middle">production</text>
+<rect x="200" y="324" width="160" height="84" rx="14" fill="#cdeefb"/>
+<text x="220" y="360" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#0f172a" text-anchor="start">1.3.0</text>
+<text x="220" y="390" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="400" fill="#5b6472" text-anchor="start">auc 0.91</text>
+<rect x="480" y="254" width="160" height="84" rx="14" fill="#cdeefb"/>
+<text x="500" y="290" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#0f172a" text-anchor="start">1.2.0</text>
+<text x="500" y="320" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="400" fill="#5b6472" text-anchor="start">auc 0.89</text>
+<rect x="760" y="184" width="160" height="84" rx="14" fill="#cdeefb"/>
+<text x="780" y="220" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#0f172a" text-anchor="start">1.1.0</text>
+<text x="780" y="250" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="400" fill="#5b6472" text-anchor="start">auc 0.88</text>
+<path d="M364 362C420.0 362 420.0 300 476 300" fill="none" stroke="#22c55e" stroke-width="3" marker-end="url(#head)"/>
+<svg x="398.0" y="270" width="44" height="44" viewBox="0 0 24 24"><path d="M12 2 21 5.5v6c0 5.4-3.8 9.3-9 10.5C6.8 20.8 3 16.9 3 11.5v-6z" fill="#6366f1"/><path d="M8 12l3 3 5-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<path d="M644 292C700.0 292 700.0 230 756 230" fill="none" stroke="#22c55e" stroke-width="3" marker-end="url(#head)"/>
+<svg x="678.0" y="200" width="44" height="44" viewBox="0 0 24 24"><path d="M12 2 21 5.5v6c0 5.4-3.8 9.3-9 10.5C6.8 20.8 3 16.9 3 11.5v-6z" fill="#6366f1"/><path d="M8 12l3 3 5-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<circle cx="930" cy="210" r="9" fill="#22c55e"/>
+<rect x="40" y="558" width="1020" height="50" rx="25" fill="#26282f"/>
+<text x="72" y="589" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#ff9d5c" text-anchor="start" letter-spacing="2">HOW</text>
+<text x="124" y="589" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" xml:space="preserve"><tspan fill="#f3f4f6">ubunye models promote --to production</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">gates: min_auc 0.85</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">rollback  archive</tspan></text>
+</svg>

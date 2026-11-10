@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 640" width="1100" height="640" role="img" aria-label="Prove it's the same. Every run leaves a receipt with a hash of every row.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="640" rx="22" fill="#1c1d22"/>
+<text x="550.0" y="92" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="52" font-weight="700" fill="#f3f4f6" text-anchor="middle">Prove it's the same.</text>
+<text x="550.0" y="134" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="400" fill="#a1a7b3" text-anchor="middle">Every run leaves a receipt with a hash of every row.</text>
+<path d="M160 190h210v170H160z" fill="#ffffff"/><path d="M160 360l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7" fill="none" stroke="#1c1d22" stroke-width="5"/>
+<text x="182" y="226" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#5b6472" text-anchor="start">laptop</text>
+<text x="182" y="264" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="400" fill="#111827" text-anchor="start">940 rows</text>
+<text x="182" y="318" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="27" font-weight="700" fill="#0f766e" text-anchor="start">9f3a…c21</text>
+<path d="M265 372V408H550" fill="none" stroke="#22c55e" stroke-width="3"/>
+<path d="M450 190h210v170H450z" fill="#ffffff"/><path d="M450 360l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7" fill="none" stroke="#1c1d22" stroke-width="5"/>
+<text x="472" y="226" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#5b6472" text-anchor="start">cloud</text>
+<text x="472" y="264" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="400" fill="#111827" text-anchor="start">940 rows</text>
+<text x="472" y="318" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="27" font-weight="700" fill="#0f766e" text-anchor="start">9f3a…c21</text>
+<path d="M555 372V408H550" fill="none" stroke="#22c55e" stroke-width="3"/>
+<path d="M740 190h210v170H740z" fill="#ffffff"/><path d="M740 360l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7l8 7l8 -7" fill="none" stroke="#1c1d22" stroke-width="5"/>
+<text x="762" y="226" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#5b6472" text-anchor="start">Databricks</text>
+<text x="762" y="264" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="400" fill="#111827" text-anchor="start">940 rows</text>
+<text x="762" y="318" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="27" font-weight="700" fill="#0f766e" text-anchor="start">9f3a…c21</text>
+<path d="M845 372V408H550" fill="none" stroke="#22c55e" stroke-width="3"/>
+<path d="M550 408V428" stroke="#22c55e" stroke-width="3"/>
+<circle cx="550" cy="468" r="38" fill="#22c55e"/>
+<text x="550" y="484" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="42" font-weight="700" fill="#1c1d22" text-anchor="middle">✓</text>
+<text x="606" y="476" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#22c55e" text-anchor="start">same rows, everywhere</text>
+<rect x="40" y="558" width="1020" height="50" rx="25" fill="#26282f"/>
+<text x="72" y="589" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#ff9d5c" text-anchor="start" letter-spacing="2">HOW</text>
+<text x="124" y="589" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" xml:space="preserve"><tspan fill="#f3f4f6">ubunye run --lineage</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">rows hashed in any order</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">ubunye prove</tspan><tspan fill="#a1a7b3">  </tspan><tspan fill="#f3f4f6">ubunye gate</tspan></text>
+</svg>

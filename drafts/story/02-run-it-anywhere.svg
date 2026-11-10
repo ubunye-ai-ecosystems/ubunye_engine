@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 640" width="1100" height="640" role="img" aria-label="Run it anywhere. The same folder, unchanged. Only the place changes.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="640" rx="22" fill="#1c1d22"/>
+<text x="550.0" y="92" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="52" font-weight="700" fill="#f3f4f6" text-anchor="middle">Run it anywhere.</text>
+<text x="550.0" y="134" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="400" fill="#a1a7b3" text-anchor="middle">The same folder, unchanged. Only the place changes.</text>
+<rect x="90" y="220" width="210" height="220" rx="22" fill="#cdeefb"/>
+<text x="114" y="260" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#0f172a" text-anchor="start">claim_etl/</text>
+<rect x="114" y="282" width="74.0" height="100" rx="12" fill="#e85d5d"/>
+<path d="M114 342h74.0v28a12 12 0 0 1-12 12h-50.0a12 12 0 0 1-12-12z" fill="#d93434"/>
+<text x="151.0" y="321.0" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#fff" text-anchor="middle">&lt;/&gt;</text>
+<text x="151.0" y="369" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#fff" text-anchor="middle">.yaml</text>
+<text x="151.0" y="404" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">what</text><rect x="202.0" y="282" width="74.0" height="100" rx="12" fill="#5b8f6c"/>
+<path d="M202.0 342h74.0v28a12 12 0 0 1-12 12h-50.0a12 12 0 0 1-12-12z" fill="#4caf50"/>
+<text x="239.0" y="321.0" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#fff" text-anchor="middle">&lt;/&gt;</text>
+<text x="239.0" y="369" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="19" font-weight="700" fill="#fff" text-anchor="middle">.py</text>
+<text x="239.0" y="404" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">how</text>
+<path d="M300 330C443.0 330 443.0 222 586 222" fill="none" stroke="#e6e6e6" stroke-width="3" marker-end="url(#head)"/>
+<circle cx="650" cy="222" r="52" fill="#ffffff"/>
+<svg x="621.4" y="193.4" width="57.2" height="57.2" viewBox="0 0 24 24"><path d="M16.922 0h2.623v18.104h-2.623zm-4.126 12.94h2.623v2.57h-2.623zm0-7.037h2.623v5.446h-2.623zm0 11.197h2.623v5.446h-2.623zM4.456 5.896h2.622V24H4.455zm4.213 2.559h2.623v2.57H8.67zm0 4.151h2.623v5.447H8.67zm0-11.187h2.623v5.446H8.67Z" fill="#150458"/></svg>
+<text x="724" y="222" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#f3f4f6" text-anchor="start">your laptop</text>
+<text x="724" y="250" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="400" fill="#a1a7b3" text-anchor="start">--backend pandas</text>
+<path d="M300 330C443.0 330 443.0 340 586 340" fill="none" stroke="#e6e6e6" stroke-width="3" marker-end="url(#head)"/>
+<circle cx="650" cy="340" r="52" fill="#ffffff"/>
+<svg x="621.4" y="311.4" width="57.2" height="57.2" viewBox="0 0 24 24"><path d="M10.812 0c-.425.013-.845.215-1.196.605a3.593 3.593 0 00-.493.722c-.355.667-.425 1.415-.556 2.143a551.9 551.9 0 00-.726 4.087c-.027.16-.096.227-.244.273C5.83 8.386 4.06 8.94 2.3 9.514c-.387.125-.773.289-1.114.506-1.042.665-1.196 1.753-.415 2.71.346.422.79.715 1.284.936 1.1.49 2.202.976 3.3 1.47.019.01.036.013.053.019h-.004l1.306.535c0 .023.002.045 0 .073-.2 2.03-.39 4.063-.58 6.095-.04.419-.012.831.134 1.23.317.87 1.065 1.148 1.881.701.372-.204.666-.497.937-.818 1.372-1.623 2.746-3.244 4.113-4.872.111-.133.205-.15.363-.098.349.117.697.231 1.045.347h.001c.02.012.045.02.073.03l.142.042c1.248.416 2.68.775 3.929 1.19.4.132.622.164 1.045.098.311-.048.592-.062.828-.236.602-.33.995-.957.988-1.682-.005-.427-.154-.813-.35-1.186-.82-1.556-1.637-3.113-2.461-4.666-.078-.148-.076-.243.037-.375 1.381-1.615 2.756-3.236 4.133-4.855.272-.32.513-.658.653-1.058.308-.878-.09-1.57-1-1.741a2.783 2.783 0 00-1.235.069c-1.974.521-3.947 1.041-5.918 1.57-.175.047-.26.015-.355-.144a353.08 353.08 0 00-2.421-4.018 4.61 4.61 0 00-.652-.849c-.371-.37-.802-.549-1.227-.536zm.172 3.703a.592.592 0 01.189.211c.87 1.446 1.742 2.89 2.609 4.338.07.118.135.16.277.121 1.525-.41 3.052-.813 4.579-1.217.367-.098.735-.193 1.103-.289a.399.399 0 01-.1.2c-1.259 1.48-2.516 2.962-3.779 4.438-.11.13-.12.22-.04.37.937 1.803 1.768 3.309 2.498 4.76l-3.696-1.019c-.538-.18-1.077-.358-1.615-.539-.163-.055-.25-.03-.36.1-1.248 1.488-2.504 2.97-3.759 4.454a.398.398 0 01-.18.132c.035-.378.068-.757.104-1.136.149-1.572.297-3.144.451-4.716-.03-.318.117-.405-.322-.545-1.493-.593-3.346-1.321-4.816-1.905a.595.595 0 01.24-.134c1.797-.57 3.595-1.14 5.394-1.705.127-.04.199-.092.211-.233.013-.148.05-.294.076-.441.241-1.363.483-2.726.726-4.088.068-.386.14-.771.21-1.157z" fill="#E25A1C"/></svg>
+<text x="724" y="340" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#f3f4f6" text-anchor="start">a Spark cluster</text>
+<text x="724" y="368" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="400" fill="#a1a7b3" text-anchor="start">spark</text>
+<path d="M300 330C443.0 330 443.0 458 586 458" fill="none" stroke="#e6e6e6" stroke-width="3" marker-end="url(#head)"/>
+<circle cx="650" cy="458" r="52" fill="#ffffff"/>
+<svg x="621.4" y="429.4" width="57.2" height="57.2" viewBox="0 0 24 24"><path d="M.95 14.184L12 20.403l9.919-5.55v2.21L12 22.662l-10.484-5.96-.565.308v.77L12 24l11.05-6.218v-4.317l-.515-.309L12 19.118l-9.867-5.653v-2.21L12 16.805l11.05-6.218V6.32l-.515-.308L12 11.974 2.647 6.681 12 1.388l7.76 4.368.668-.411v-.566L12 0 .95 6.27v.72L12 13.207l9.919-5.55v2.26L12 15.52 1.516 9.56l-.565.308Z" fill="#FF3621"/></svg>
+<text x="724" y="458" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#f3f4f6" text-anchor="start">Databricks</text>
+<text x="724" y="486" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" font-weight="400" fill="#a1a7b3" text-anchor="start">attaches to the notebook</text>
+<rect x="40" y="558" width="1020" height="50" rx="25" fill="#26282f"/>
+<text x="72" y="589" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#ff9d5c" text-anchor="start" letter-spacing="2">HOW</text>
+<text x="124" y="589" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" xml:space="preserve"><tspan fill="#f3f4f6">--backend pandas | spark | databricks</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">ubunye deploy glue | dataproc | k8s | emr-serverless</tspan></text>
+</svg>

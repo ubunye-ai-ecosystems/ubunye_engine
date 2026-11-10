@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 640" width="1100" height="640" role="img" aria-label="Bad data never lands. Every row is checked before anything is written.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="640" rx="22" fill="#1c1d22"/>
+<text x="550.0" y="92" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="52" font-weight="700" fill="#f3f4f6" text-anchor="middle">Bad data never lands.</text>
+<text x="550.0" y="134" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="400" fill="#a1a7b3" text-anchor="middle">Every row is checked before anything is written.</text>
+<rect x="110" y="210" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="150" y="210" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="190" y="210" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="230" y="210" width="30" height="30" rx="6" fill="#f59e0b"/>
+<rect x="270" y="210" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="110" y="254" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="150" y="254" width="30" height="30" rx="6" fill="#f59e0b"/>
+<rect x="190" y="254" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="230" y="254" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="270" y="254" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="110" y="298" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="150" y="298" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="190" y="298" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="230" y="298" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="270" y="298" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="110" y="342" width="30" height="30" rx="6" fill="#f59e0b"/>
+<rect x="150" y="342" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="190" y="342" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="230" y="342" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="270" y="342" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="110" y="386" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="150" y="386" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="190" y="386" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="230" y="386" width="30" height="30" rx="6" fill="#cdeefb"/>
+<rect x="270" y="386" width="30" height="30" rx="6" fill="#f59e0b"/>
+<path d="M320 320C390.0 320 390.0 320 460 320" fill="none" stroke="#e6e6e6" stroke-width="3" marker-end="url(#head)"/>
+<svg x="470" y="240" width="160" height="160" viewBox="0 0 24 24"><path d="M12 2 21 5.5v6c0 5.4-3.8 9.3-9 10.5C6.8 20.8 3 16.9 3 11.5v-6z" fill="#6366f1"/><path d="M8 12l3 3 5-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<path d="M640 300C700.0 300 700.0 250 760 250" fill="none" stroke="#22c55e" stroke-width="3" marker-end="url(#head)"/>
+<path d="M640 340C700.0 340 700.0 420 760 420" fill="none" stroke="#f59e0b" stroke-width="3" marker-end="url(#head)"/>
+<rect x="770" y="212" width="76" height="76" rx="8" fill="#ffffff"/><svg x="780" y="222" width="56" height="56" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2.5" fill="#0f766e"/><path d="M2 9h20M2 15h20M9 9v12M15.5 9v12" stroke="#fff" stroke-width="1.6"/></svg>
+<rect x="866" y="236" width="26" height="26" rx="5" fill="#cdeefb"/>
+<rect x="902" y="236" width="26" height="26" rx="5" fill="#cdeefb"/>
+<rect x="938" y="236" width="26" height="26" rx="5" fill="#cdeefb"/>
+<rect x="974" y="236" width="26" height="26" rx="5" fill="#cdeefb"/>
+<text x="866" y="300" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#22c55e" text-anchor="start">written</text>
+<rect x="770" y="382" width="76" height="76" rx="8" fill="#ffffff"/><svg x="780" y="392" width="56" height="56" viewBox="0 0 24 24"><path d="M4 7h16l-1.6 14H5.6z" fill="#d97706"/><rect x="2.5" y="3.5" width="19" height="3.5" rx="1.2" fill="#f59e0b"/></svg>
+<rect x="866" y="406" width="26" height="26" rx="5" fill="#f59e0b"/>
+<rect x="902" y="406" width="26" height="26" rx="5" fill="#f59e0b"/>
+<text x="866" y="470" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#f59e0b" text-anchor="start">quarantined</text>
+<rect x="40" y="558" width="1020" height="50" rx="25" fill="#26282f"/>
+<text x="72" y="589" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#ff9d5c" text-anchor="start" letter-spacing="2">HOW</text>
+<text x="124" y="589" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" xml:space="preserve"><tspan fill="#f3f4f6">CONFIG.expectations</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">not_null  unique  between  one_of</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">fail | quarantine | warn</tspan></text>
+</svg>

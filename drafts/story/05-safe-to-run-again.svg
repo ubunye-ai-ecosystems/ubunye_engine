@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 640" width="1100" height="640" role="img" aria-label="Safe to run again. A batch lands once, even after a crash.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="640" rx="22" fill="#1c1d22"/>
+<text x="550.0" y="92" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="52" font-weight="700" fill="#f3f4f6" text-anchor="middle">Safe to run again.</text>
+<text x="550.0" y="134" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="400" fill="#a1a7b3" text-anchor="middle">A batch lands once, even after a crash.</text>
+<rect x="600" y="200" width="320" height="260" rx="18" fill="#ffffff"/>
+<text x="624" y="240" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="20" font-weight="700" fill="#111827" text-anchor="start">dt = 2026-11-10</text>
+<rect x="624" y="264" width="272" height="26" rx="6" fill="#cdeefb"/>
+<rect x="624" y="300" width="272" height="26" rx="6" fill="#cdeefb"/>
+<rect x="624" y="336" width="272" height="26" rx="6" fill="#cdeefb"/>
+<rect x="624" y="372" width="272" height="26" rx="6" fill="#cdeefb"/>
+<rect x="624" y="408" width="272" height="26" rx="6" fill="#cdeefb"/>
+<rect x="110" y="220" width="150" height="60" rx="30" fill="#22c55e" fill-opacity="0.18" stroke="#22c55e" stroke-width="2.5"/>
+<text x="185" y="258" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="22" font-weight="700" fill="#22c55e" text-anchor="middle">run 1</text>
+<rect x="110" y="380" width="150" height="60" rx="30" fill="#ef4444" fill-opacity="0.18" stroke="#ef4444" stroke-width="2.5"/>
+<text x="185" y="418" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="22" font-weight="700" fill="#ef4444" text-anchor="middle">run 2</text>
+<path d="M266 250C428.0 250 428.0 280 590 280" fill="none" stroke="#22c55e" stroke-width="3" marker-end="url(#head)"/>
+<path d="M266 410H420" stroke="#ef4444" stroke-width="3" stroke-dasharray="8 6"/>
+<rect x="422" y="374" width="72" height="72" rx="8" fill="#ffffff"/><svg x="432" y="384" width="52" height="52" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="12" rx="2.5" fill="#f59e0b"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#f59e0b" stroke-width="2.6"/><circle cx="12" cy="16" r="2" fill="#7c2d12"/></svg>
+<text x="458" y="480" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#ef4444" text-anchor="middle">refused</text>
+<text x="760" y="500" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#22c55e" text-anchor="middle">the batch lands once</text>
+<rect x="40" y="558" width="1020" height="50" rx="25" fill="#26282f"/>
+<text x="72" y="589" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#ff9d5c" text-anchor="start" letter-spacing="2">HOW</text>
+<text x="124" y="589" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="16" xml:space="preserve"><tspan fill="#f3f4f6">one lease per batch (task + dt)</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">--rerun replaces</tspan><tspan fill="#a1a7b3">   ·   </tspan><tspan fill="#f3f4f6">--resume finishes</tspan></text>
+</svg>
