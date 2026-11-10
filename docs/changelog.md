@@ -81,6 +81,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CLI docs and help say what the commands do** (F-094). `docs/cli.md` said
+  `python -m ubunye` runs the same CLI; it is a separate runner for
+  `spark-submit` (`--task-dir`, `--mode`, `--dt`), and the page now says so. The
+  `version` example shows 0.9.0, the middle level is called a pipeline where the
+  page still said package, and `ubunye config --help` says it validates (it never
+  showed anything).
+
 - **`export databricks` defaults are current** (F-095). With no `wheel_dbfs_path`
   the job named the wheel `ubunye_engine-0.1.0`; it now names the installed
   version's wheel. The default job cluster runtime moves from `13.3.x-scala2.12`
