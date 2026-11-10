@@ -108,7 +108,8 @@ class TestAutoDetect:
     def test_registry_defaults_to_filesystem(self):
         from ubunye._internal.auto_detect import detect_registry_backend
 
-        assert detect_registry_backend() == "filesystem"
+        with pytest.warns(DeprecationWarning):
+            assert detect_registry_backend() == "filesystem"
 
     def test_lineage_defaults_to_filesystem(self):
         from ubunye._internal.auto_detect import detect_lineage_backend

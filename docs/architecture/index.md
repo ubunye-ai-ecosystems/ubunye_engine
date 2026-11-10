@@ -14,6 +14,7 @@ purpose: the code and its tests are the detail.
 | [007](adr-007-one-time-zone.md) | One time zone for every backend, UTC unless the task says | unreleased |
 | [008](adr-008-rerun-safety.md) | A rerun is safe: one live run per batch, appends land once | unreleased |
 | [009](adr-009-compute-outputs-once.md) | Each output is computed once; checks, write and run record get that copy | unreleased |
+| [010](adr-010-registry-backends.md) | Registry backends are plugins, found by name | unreleased |
 
 ## The rule behind all of them
 

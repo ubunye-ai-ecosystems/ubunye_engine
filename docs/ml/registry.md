@@ -65,7 +65,8 @@ Output:
 ```
 
 Add `--json` to `list` (and to `compare`) for one JSON document, for scripts and
-agents.
+agents. Every `models` command takes `--backend` / `-b` (see
+[Choosing a backend](#choosing-a-backend)).
 
 ### Show version details
 
@@ -243,6 +244,95 @@ registry.rollback("fraud_detection", "FraudRiskModel", "1.2.0")
 # Compare
 diff = registry.compare_versions("fraud_detection", "FraudRiskModel", "1.2.0", "1.3.0")
 # Returns: {"auc": {"a": 0.91, "b": 0.93, "delta": 0.02}, ...}
+```
+
+---
+
+## Choosing a backend
+
+Where models live is a plugin: a **registry backend** (ADR 010). Two ship with
+Ubunye:
+
+| Name | What it does |
+|---|---|
+| `filesystem` | The default. A folder, or an `s3://`, `gs://` or `abfss://` URL. No cloud service needed. |
+| `mlflow` | The filesystem registry, plus a best effort MLflow run for each register and promote. |
+
+The backend is chosen in one order:
+
+1. the name you ask for: `--backend` / `-b` on every `ubunye models` command,
+   `registry.backend` in a model transform, or `backend=` in Python;
+2. else the `UBUNYE_REGISTRY_BACKEND` environment variable;
+3. else `filesystem`.
+
+The host never decides: running on Databricks does not switch you to MLflow.
+`--store` (or `registry.store`) is handed to the backend as it is.
+
+```bash
+ubunye models list -u fraud_detection -m FraudRiskModel -s .ubunye/model_store -b mlflow
+```
+
+```yaml
+transform:
+  type: model
+  params:
+    action: train
+    model_class: "model.FraudRiskModel"
+    registry:
+      store: ".ubunye/model_store"
+      backend: mlflow          # optional
+      use_case: fraud_detection
+```
+
+```python
+from ubunye.models import ModelRegistry, resolve_registry
+
+registry = ModelRegistry(".ubunye/model_store", backend="mlflow")
+backend = resolve_registry("mlflow", store=".ubunye/model_store")  # the raw backend
+```
+
+`ubunye.models.backends.available()` lists the installed names. Asking for one that is not installed fails with that list.
+
+### Writing a backend
+
+A backend is a class with six methods, the
+[`RegistryBackend`](../interfaces.md) protocol: `register`, `get`,
+`list_versions`, `promote`, `demote` and `delete`. Its constructor takes the
+store string. Register it in your package:
+
+```toml
+[project.entry-points."ubunye.registry_backends"]
+myreg = "my_package.registry:MyRegistryBackend"
+```
+
+`pip install` your package and `--backend myreg` works. No edit to Ubunye.
+
+Keep it small. Ubunye does the rest on top of those six methods, for every
+backend: version numbers when none is given, refusing a duplicate version,
+promotion gates (stored as the `promotion_gates` metadata key and checked
+before `promote` is called), one production version at a time, rollback,
+archive and compare. Your backend must:
+
+- persist the `metadata` and `lineage_run_id` it is given and return them in
+  `ModelVersionInfo.metadata`;
+- report stages with the public names (`development`, `staging`, `production`,
+  `archived`), whatever it calls them inside;
+- raise `VersionNotFoundError` for a version or stage it does not have;
+- return `list_versions` newest first;
+- return from `get` an artifact path that `YourModel.load()` can read.
+
+Prove it with the conformance suite:
+
+```python
+import pytest
+
+from ubunye.testing.registry_conformance import RegistryConformance
+
+
+class TestMyRegistry(RegistryConformance):
+    @pytest.fixture
+    def backend(self, tmp_path):
+        return MyRegistryBackend(str(tmp_path / "store"))
 ```
 
 ---

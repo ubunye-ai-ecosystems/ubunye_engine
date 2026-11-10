@@ -11,6 +11,9 @@ Commands::
     ubunye models rollback --use-case fraud --model FraudRiskModel --version 1.1.0 --store ...
     ubunye models archive  --use-case fraud --model FraudRiskModel --version 1.0.0 --store ...
     ubunye models compare  --use-case fraud --model FraudRiskModel --store ... --versions 1.1.0 1.2.0
+
+Every command takes ``--backend`` / ``-b`` to choose the registry backend
+(ADR 010); without it ``UBUNYE_REGISTRY_BACKEND`` decides, else ``filesystem``.
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from typing import Any, Dict, List, Optional
 import typer
 
 from ubunye.cli.output import emit, fail, json_option
+from ubunye.core.errors import UbunyeError
 from ubunye.models.registry import ModelRegistry, ModelStage, ModelVersion
 
 models_app = typer.Typer(
@@ -37,6 +41,21 @@ _use_case_opt = typer.Option(..., "--use-case", "-u", help="Use-case grouping.")
 _model_opt = typer.Option(..., "--model", "-m", help="Model name.")
 _store_opt = typer.Option(..., "--store", "-s", help="Model store path.")
 _version_opt = typer.Option(..., "--version", "-v", help="Version string.")
+_backend_opt = typer.Option(
+    None,
+    "--backend",
+    "-b",
+    help="Registry backend (an entry point in ubunye.registry_backends). "
+    "Default: UBUNYE_REGISTRY_BACKEND, else filesystem.",
+)
+
+
+def _open(store: str, backend: Optional[str], as_json: bool = False) -> ModelRegistry:
+    """The registry at ``store`` on the chosen backend, or a clear error and exit 1."""
+    try:
+        return ModelRegistry(store, backend=backend)
+    except UbunyeError as e:
+        fail(str(e), as_json=as_json)
 
 
 # ---------------------------------------------------------------------------
@@ -49,10 +68,11 @@ def list_versions(
     use_case: str = _use_case_opt,
     model: str = _model_opt,
     store: str = _store_opt,
+    backend: Optional[str] = _backend_opt,
     as_json: bool = json_option(),
 ):
     """List all registered versions for a model (newest first)."""
-    registry = ModelRegistry(store)
+    registry = _open(store, backend, as_json)
     try:
         versions = registry.list_versions(use_case, model)
     except FileNotFoundError as e:
@@ -78,10 +98,11 @@ def info(
     use_case: str = _use_case_opt,
     model: str = _model_opt,
     store: str = _store_opt,
+    backend: Optional[str] = _backend_opt,
     version: str = _version_opt,
 ):
     """Show full details of a specific model version as JSON."""
-    registry = ModelRegistry(store)
+    registry = _open(store, backend)
     try:
         versions = registry.list_versions(use_case, model)
     except FileNotFoundError as e:
@@ -110,6 +131,7 @@ def promote(
     use_case: str = _use_case_opt,
     model: str = _model_opt,
     store: str = _store_opt,
+    backend: Optional[str] = _backend_opt,
     version: str = _version_opt,
     to: str = typer.Option(..., "--to", help="Target stage: staging | production."),
     promoted_by: Optional[str] = typer.Option(None, "--promoted-by", help="Username."),
@@ -135,7 +157,7 @@ def promote(
         )
         raise typer.Exit(code=1)
 
-    registry = ModelRegistry(store)
+    registry = _open(store, backend)
     try:
         gates = registry.promotion_gates(use_case, model)
         if force and gates:
@@ -167,6 +189,7 @@ def demote(
     use_case: str = _use_case_opt,
     model: str = _model_opt,
     store: str = _store_opt,
+    backend: Optional[str] = _backend_opt,
     version: str = _version_opt,
     to: str = typer.Option(..., "--to", help="Target stage: development | staging | archived."),
 ):
@@ -181,7 +204,7 @@ def demote(
         )
         raise typer.Exit(code=1)
 
-    registry = ModelRegistry(store)
+    registry = _open(store, backend)
     try:
         mv = registry.demote(use_case, model, version, target_stage)
         typer.secho(
@@ -203,10 +226,11 @@ def rollback(
     use_case: str = _use_case_opt,
     model: str = _model_opt,
     store: str = _store_opt,
+    backend: Optional[str] = _backend_opt,
     version: str = _version_opt,
 ):
     """Roll back production to a specific previous version."""
-    registry = ModelRegistry(store)
+    registry = _open(store, backend)
     try:
         mv = registry.rollback(use_case, model, version)
         typer.secho(
@@ -228,10 +252,11 @@ def archive(
     use_case: str = _use_case_opt,
     model: str = _model_opt,
     store: str = _store_opt,
+    backend: Optional[str] = _backend_opt,
     version: str = _version_opt,
 ):
     """Archive a model version."""
-    registry = ModelRegistry(store)
+    registry = _open(store, backend)
     try:
         mv = registry.archive(use_case, model, version)
         typer.secho(
@@ -253,6 +278,7 @@ def compare(
     use_case: str = _use_case_opt,
     model: str = _model_opt,
     store: str = _store_opt,
+    backend: Optional[str] = _backend_opt,
     versions: List[str] = typer.Option(..., "--versions", help="Two version strings to compare."),
     as_json: bool = json_option(),
 ):
@@ -261,7 +287,7 @@ def compare(
         fail("Provide exactly two --versions values.", as_json=as_json)
 
     version_a, version_b = versions[0], versions[1]
-    registry = ModelRegistry(store)
+    registry = _open(store, backend, as_json)
     try:
         diff = registry.compare_versions(use_case, model, version_a, version_b)
     except (FileNotFoundError, ValueError) as e:

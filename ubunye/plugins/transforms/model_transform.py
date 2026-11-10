@@ -20,6 +20,7 @@ Config example::
         model_dir: null                        # optional; null = use sys.path
         registry:
           store: ".ubunye/model_store"
+          backend: filesystem                  # optional; see ADR 010
           use_case: "fraud_detection"
           auto_version: true
           promote_to: staging
@@ -108,7 +109,8 @@ class ModelTransform(Transform):
             version = registry_cfg.get("version")  # None → auto-generate
             lineage_run_id = _get_run_id(backend)
 
-            registry = ModelRegistry(store)
+            # backend: the config key, else UBUNYE_REGISTRY_BACKEND, else filesystem.
+            registry = ModelRegistry(store, backend=registry_cfg.get("backend"))
             model_version = registry.register(
                 use_case=use_case,
                 model_name=model_class.rsplit(".", 1)[-1],
@@ -156,7 +158,8 @@ class ModelTransform(Transform):
             use_stage = ModelStage(registry_cfg.get("use_stage", "production"))
             model_name = model_class.rsplit(".", 1)[-1]
 
-            registry = ModelRegistry(store)
+            # backend: the config key, else UBUNYE_REGISTRY_BACKEND, else filesystem.
+            registry = ModelRegistry(store, backend=registry_cfg.get("backend"))
             artifact_path, _ = registry.get_model(
                 use_case=use_case,
                 model_name=model_name,
