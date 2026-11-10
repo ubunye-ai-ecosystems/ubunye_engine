@@ -129,7 +129,9 @@ def identity(found: Settings, task_dir: Optional[Union[str, Path]] = None) -> Di
         explicit = {
             k: getattr(found, k) for k in ("run_records", "run_records_fallback", "dt", "mode")
         }
-        who = collect_identity(job_settings(explicit), task_dir=task_dir)
+        who = collect_identity(
+            job_settings(explicit), task_dir=str(task_dir) if task_dir is not None else None
+        )
         return dict(who.as_dict())
     except Exception as exc:  # noqa: BLE001  identity is evidence, never a failure
         logger.debug("The run identity could not be collected: %s", exc)
