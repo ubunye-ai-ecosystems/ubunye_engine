@@ -7,13 +7,7 @@ One template, two palettes (light and dark). Re-run after changing a label:
 
 from __future__ import annotations
 
-from pathlib import Path
-from xml.sax.saxutils import escape
-
-OUT = Path(__file__).resolve().parents[2] / "docs" / "assets" / "diagrams"
-
-SANS = "Roboto, 'Segoe UI', Helvetica, Arial, sans-serif"
-MONO = "'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace"
+from _svg import MONO, OUT, SANS, spans, text
 
 PALETTES = {
     "light": {
@@ -43,22 +37,6 @@ PALETTES = {
 W = 720
 X0, X1 = 20, W - 20  # panel edges
 PAD = 24  # inner padding
-
-
-def text(x, y, s, *, size=16, fill, weight=400, font=SANS, anchor="start", extra=""):
-    return (
-        f'<text x="{x}" y="{y}" font-family="{font}" font-size="{size}" '
-        f'font-weight="{weight}" fill="{fill}" text-anchor="{anchor}"{extra}>{escape(s)}</text>'
-    )
-
-
-def spans(x, y, parts, *, size, font=MONO):
-    """One line of text in several colours: parts = [(text, colour, weight), ...]."""
-    inner = "".join(f'<tspan fill="{c}" font-weight="{w}">{escape(t)}</tspan>' for t, c, w in parts)
-    return (
-        f'<text x="{x}" y="{y}" font-family="{font}" font-size="{size}" '
-        f'xml:space="preserve">{inner}</text>'
-    )
 
 
 def panel(y, h, colour, p):
