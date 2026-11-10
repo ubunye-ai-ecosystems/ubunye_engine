@@ -126,7 +126,7 @@ def _detect_backend(
     if spark is not None:
         # Attaching to a given session is the Databricks backend's own constructor.
         attach: Any = backends.load_class("databricks")
-        return attach(spark=spark, conf=spark_conf or {})
+        return attach(spark=spark, conf=backends.spark_conf_for(attach, spark_conf))
     return backends.resolve(None, app_name=app_name, conf=spark_conf or {})
 
 

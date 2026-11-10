@@ -59,6 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`write_modes.resolve_for`) now serves both. A writer that declares no modes is
   not held to any, as before.
 
+- **`secret://` in `ENGINE.spark_conf` is checked and resolved** (F-104). It
+  reached Spark as literal text, and a misspelt provider passed `ubunye validate`.
+  Validate now checks it (base and profiles), and a Spark backend gets the value,
+  fetched when the backend is built, masked like any secret. A backend without Spark
+  does not fetch it.
+
 - Registering with `promotion_gates={}` clears a model's stored gates on every
   backend. Before, only the default filesystem path cleared them; MLflow and the
   others kept the old gates.

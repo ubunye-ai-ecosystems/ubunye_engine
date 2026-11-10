@@ -104,6 +104,18 @@ class EngineConfig(BaseModel):
     catalog: Optional[str] = None
     schema_name: Optional[str] = None
 
+    @model_validator(mode="after")
+    def _check_secret_references(self) -> "EngineConfig":
+        """``secret://`` in spark_conf names an installed provider (F-104). Nothing is fetched."""
+        from ubunye.core import secrets
+
+        errors = secrets.problems(self.spark_conf, "ENGINE.spark_conf")
+        for name, profile in self.profiles.items():
+            errors += secrets.problems(profile.spark_conf, f"ENGINE.profiles.{name}.spark_conf")
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
+
 
 # ---------------------------------------------------------------------------
 # CONFIG sub-models
