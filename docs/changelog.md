@@ -42,6 +42,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Saving a Delta run record from a CLI or pandas run is about twice as fast**
+  (F-116). With no active SparkSession the Delta run record store starts a local
+  one, and Delta read the run record log in 50 tasks on every save. That session,
+  and only that one, now sets `spark.databricks.delta.snapshotPartitions=1` and
+  turns off the Spark UI and console progress bar. Measured on the dev box (16 cores,
+  8 saves): about 1.35 s to 0.72 s per save. A session the user or the platform
+  started is never changed.
+
+- **Each command's help says its default profile plainly** (F-115). `ubunye export`
+  defaults to production (`--profile prod` for `airflow` and `databricks`, `-m PROD`
+  for `spark-pipeline`) and `ubunye run` to `DEV`. The defaults are unchanged; the
+  help of `export spark-pipeline` and `run` now says so, as `export airflow` and
+  `export databricks` already did, and `docs/cli.md` says it once for all.
+
+- **`python -m ubunye` documents only what works** (F-114). Its docstring showed
+  `spark-submit ... -m ubunye` (spark-submit takes a file, not `-m`) and a
+  `--task-dir s3a://...` (only a local folder works); `docs/deployment/anywhere.md`
+  said "path or bucket". Both now show the file path and a local task folder, and
+  point to `ubunye deploy glue|dataproc|emr-serverless` for running from a bucket.
+
+- **A task the backend cannot run is one `[ERROR]` line in `ubunye run`** (F-113).
+  A `BackendCapabilityError` (say, a `hive` input on `--backend pandas`) printed a
+  full traceback box. It now ends in `[ERROR] Run refused for <task>: ...` with the
+  hint and exit code 1, like the other refusals. Nothing ran, as before.
+
+- **Spark with no usable Java fails in one clean message** (F-112). The spark
+  backend now looks for Java (JAVA_HOME, then `java` on PATH) and its version before
+  it starts a session. No Java, or one older than the installed Spark needs, raises
+  `SparkSessionError` with the versions that work, and `ubunye run` prints it as one
+  `[ERROR]` line instead of pyspark's `[JAVA_GATEWAY_EXITED]` traceback. A session
+  that is already running, or Spark Connect, is not checked. `ubunye doctor` and
+  `ubunye backends` ask the same function, so the spark backend is no longer called
+  usable with no Java. The Java versions are now right everywhere: Spark 4 runs on
+  Java 17 or 21, Spark 3.5 on Java 8, 11 or 17 (the doctor's fix text said 17 or 11).
+
+- **`ubunye deploy dockerfile --out img/` writes `img/Dockerfile`** (F-111). A path
+  ending in `/` is a folder: it is made when missing. Before, a missing `img/` gave
+  a file named `img`.
+
+- **The workflow from `ubunye init github-actions` works out of the box** (F-110).
+  `ubunye deploy databricks --host` now reads `DATABRICKS_HOST`, the secret the
+  workflow sets, so the deploy step needs no committed `targets.yaml` (a
+  `targets.yaml`, when there is one, still wins). The manual "Run job" step now
+  starts the job with the new `--run` flag; before, it deployed again and started
+  nothing. `--run` starts a run after the deploy and prints its link. The
+  workflow's "Notebook output link" step is gone: the run step prints the link.
+
 - Registering with `promotion_gates={}` clears a model's stored gates on every
   backend. Before, only the default filesystem path cleared them; MLflow and the
   others kept the old gates.

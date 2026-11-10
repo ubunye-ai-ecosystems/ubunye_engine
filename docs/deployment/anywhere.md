@@ -13,13 +13,14 @@ command. They take a Python file. The engine ships one:
 spark-submit \
   --py-files deps.zip \
   /path/to/site-packages/ubunye/__main__.py \
-  --task-dir /path/or/bucket/to/pipelines/sales/etl/daily \
+  --task-dir /local/path/pipelines/sales/etl/daily \
   --mode PROD --dt 2026-07-14
 ```
 
 Where you do have a shell, `python -m ubunye --task-dir ... --mode PROD --dt ...`
 does the same. Its flags: `--task-dir` (the folder holding `config.yaml`,
 required), `--mode` (default `PROD`), `--dt`, `--lineage` and `--log-level`.
+`--task-dir` must be a local folder; a bucket URI (`s3://`, `gs://`) does not work.
 The `ubunye deploy` commands for Glue, Dataproc and containers upload or bake in
 a small `ubunye_entry.py` that does this job for you ([Serverless](serverless.md)).
 

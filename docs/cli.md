@@ -104,7 +104,9 @@ command with a subcommand name.
 ### `init github-actions`
 
 Write a GitHub Actions workflow that validates the config and runs tests on pull
-requests, then deploys to Databricks on merge to `main`.
+requests, then deploys to Databricks on merge to `main`. A manual run of the workflow
+(`run_after_deploy`) deploys and starts the job. It needs only the `DATABRICKS_HOST`
+and `DATABRICKS_TOKEN` secrets: with no `targets.yaml` the deploy uses `DATABRICKS_HOST`.
 
 ```bash
 ubunye init github-actions -d pipelines -u fraud -p ingestion -t claim_etl
@@ -256,7 +258,7 @@ ubunye run \
 | `--all` | | | false | Run every task in the pipeline |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--data-timestamp-format` | `-dtf` | no | | Timestamp format |
-| `--mode` | `-m` | no | `DEV` | Run mode (DEV/PROD) |
+| `--mode` | `-m` | no | `DEV` | Run mode (DEV/PROD). `ubunye export` defaults to production instead |
 | `--deploy-mode` | | no | `client` | Spark deploy mode (cluster/client) |
 | `--lineage` | | no | false | Record lineage for this run |
 | `--lineage-dir` | | no | `.ubunye/lineage` | Where lineage records go: a directory under `-d` for the filesystem store, as given for any other |
@@ -545,7 +547,7 @@ Run records go to a store, chosen by name (ADR 011), in this order:
 | Store | `--lineage-dir` is | Needs |
 |---|---|---|
 | `filesystem` (default) | a directory under `--usecase-dir`: `<usecase_dir>/.ubunye/lineage/<usecase>/<pipeline>/<task>/<run_id>.json` | nothing |
-| `delta` | a Delta table name (`main.ops.ubunye_runs`) or path (`s3://bucket/ubunye/runs`), used as given | `pip install 'ubunye-engine[delta]'`, a SparkSession with Delta (the active one, or a local one it starts) |
+| `delta` | a Delta table name (`main.ops.ubunye_runs`) or path (`s3://bucket/ubunye/runs`), used as given | `pip install 'ubunye-engine[delta]'`, a SparkSession with Delta (the active one, or a local one it starts and tunes for its small table) |
 | a plugin | whatever that store takes, as given | its package, registered in `ubunye.lineage_backends` |
 
 Jobs that share no disk can share a table:
@@ -928,8 +930,9 @@ ubunye deploy databricks \
 | `--mode` | `-m` | no | `PROD` | Config profile for the job |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--dry-run` | | no | false | Print the job spec without deploying |
-| `--host` | | no | | Databricks host for an ad-hoc deploy (skips `targets.yaml`) |
+| `--host` | | no | `$DATABRICKS_HOST` | Databricks host, used only when there is no `targets.yaml` |
 | `--token` | | no | `DATABRICKS_TOKEN` | Name of the env var that holds the token |
+| `--run` | | no | false | Start a run of the job after deploying it, and print its link |
 
 `targets.yaml` is read from `<usecase-dir>/<usecase>/targets.yaml`, and a
 `targets.yaml` in the task folder overrides it. See
@@ -1072,7 +1075,7 @@ ubunye deploy dockerfile container --pipelines pipelines --out build/Dockerfile
 |---|---|---|
 | `--pipelines` | `pipelines` | Folder copied into the image as `/app/pipelines` |
 | `--engine` | `ubunye-engine` | pip requirement for the engine |
-| `--out` | | Write here instead of printing. A folder gets `<folder>/Dockerfile`; missing folders are made |
+| `--out` | | Write here instead of printing. A folder, or a path ending in `/` such as `img/`, gets `<folder>/Dockerfile`; missing folders are made |
 
 ---
 
@@ -1080,6 +1083,11 @@ ubunye deploy dockerfile container --pipelines pipelines --out build/Dockerfile
 
 Generate orchestration artifacts from a task's `config.yaml`. Defaults come from
 the config's `ORCHESTRATION` block (see [Orchestration](config/orchestration.md)).
+
+`ubunye export` defaults to production (`--profile prod` for `airflow` and
+`databricks`, `-m PROD` for `spark-pipeline`), while `ubunye run` defaults to `DEV`:
+an export is what a scheduler runs, a run is usually a try on your own machine.
+Pass the profile you mean when it matters.
 
 ### `export airflow`
 
@@ -1135,6 +1143,6 @@ ubunye export spark-pipeline \
 | `--name` | | no | | Pipeline name |
 | `--catalog` | | no | | Catalog |
 | `--database` | | no | | Database |
-| `--mode` | `-m` | no | `PROD` | Config profile |
+| `--mode` | `-m` | no | `PROD` | Config profile. The default is `PROD`, while `ubunye run` defaults to `DEV` |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--var` | | no | | Extra template variable, `key=value` (repeatable) |

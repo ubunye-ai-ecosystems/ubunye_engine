@@ -20,7 +20,6 @@ import ubunye  # noqa: E402
 from ubunye.api import _detect_backend  # noqa: E402
 from ubunye.cli.main import app  # noqa: E402
 from ubunye.core import backends as registry  # noqa: E402
-from ubunye.core.errors import BackendCapabilityError  # noqa: E402
 
 runner = CliRunner()
 
@@ -109,9 +108,12 @@ class TestRun:
     def test_a_task_the_backend_cannot_run_stops_before_it_starts(self, tmp_path):
         _task(tmp_path, input_format="hive")
         result = runner.invoke(app, ["run", *_args(tmp_path, "--backend", "pandas")])
-        assert result.exit_code != 0
-        assert isinstance(result.exception, BackendCapabilityError)
-        assert "'hive' connector, which needs spark" in str(result.exception)
+        # One [ERROR] message, no traceback (F-113): the user can fix this.
+        assert result.exit_code == 1
+        assert isinstance(result.exception, SystemExit), result.exception
+        assert "[ERROR]" in result.output
+        assert "'hive' connector, which needs spark" in result.output
+        assert "Hint:" in result.output and "Traceback" not in result.output
         assert not (tmp_path / "out").exists()
 
 

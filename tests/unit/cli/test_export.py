@@ -182,3 +182,19 @@ def test_export_help_says_its_profile_default_differs_from_run():
     for target in ("airflow", "databricks"):
         result = runner.invoke(app, ["export", target, "--help"], env={"COLUMNS": "200"})
         assert "prod" in result.stdout and "DEV" in result.stdout
+
+
+def test_each_help_says_export_defaults_to_production_and_run_to_dev():
+    """The defaults differ on purpose and stay; each help says so plainly (F-115)."""
+    import re
+
+    expected = {
+        ("export", "airflow"): "Default prod, not the DEV",
+        ("export", "databricks"): "Default prod, not the DEV",
+        ("export", "spark-pipeline"): "Default PROD, not the DEV",
+        ("run",): "Default DEV; `ubunye export` defaults to production",
+    }
+    for command, phrase in expected.items():
+        result = runner.invoke(app, [*command, "--help"], env={"COLUMNS": "300"})
+        text = " ".join(re.sub(r"\x1b\[[0-9;]*m|[│╭╮╰╯─]", " ", result.output).split())
+        assert phrase in text, (command, text)

@@ -271,3 +271,12 @@ def test_dockerfile_out_as_a_folder_writes_a_dockerfile_in_it(tmp_path):
     assert result.exit_code == 0, result.output
     assert (out / "Dockerfile").is_file()
     assert (out / "ubunye_entry.py").read_text(encoding="utf-8") == package.ENTRY_SCRIPT
+
+
+def test_dockerfile_out_ending_in_a_separator_is_a_folder_even_if_missing(tmp_path):
+    """`--out img/` makes img/ and writes img/Dockerfile, not a file named img (F-111)."""
+    out = Path(tmp_path) / "img"
+    result = runner.invoke(app, ["deploy", "dockerfile", "container", "--out", f"{out}{os.sep}"])
+    assert result.exit_code == 0, result.output
+    assert (out / "Dockerfile").is_file()
+    assert (out / "ubunye_entry.py").is_file()
