@@ -16,6 +16,7 @@ purpose: the code and its tests are the detail.
 | [009](adr-009-compute-outputs-once.md) | Each output is computed once; checks, write and run record get that copy | unreleased |
 | [010](adr-010-registry-backends.md) | Registry backends are plugins, found by name | unreleased |
 | [011](adr-011-run-record-stores.md) | Run records are stored through a plugin, found by name | unreleased |
+| [013](adr-013-receipt-queries.md) | Job health and upstream checks are receipt queries | unreleased |
 | [014](adr-014-mlflow-registry-aliases.md) | The MLflow registry backend uses the Model Registry: stages are aliases, the rest are tags | unreleased |
 
 ## The rule behind all of them

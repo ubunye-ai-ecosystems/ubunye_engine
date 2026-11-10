@@ -17,9 +17,17 @@ import numbers
 import re
 from enum import Enum
 from functools import lru_cache
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -657,6 +665,40 @@ class ExpectationSet(BaseModel):
         return self
 
 
+class RequiresSpec(BaseModel):
+    """One entry of ``CONFIG.requires``: an upstream task that must have succeeded
+    for this batch before the task starts (ADR 013, ``ubunye.lineage.upstream``)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: The upstream task, ``usecase/package/task``.
+    task: str
+    #: Which batch counts: names whose values must equal this run's, or name to
+    #: value. Left out: every variable naming this run's batch (all but mode, dtf).
+    variables: Optional[Union[List[str], Dict[str, Any]]] = None
+    #: Wait up to this long for the upstream ("90s", "15m", "2h", "1d"), then refuse.
+    wait: Optional[Union[int, float, str]] = None
+    #: How often to look again while waiting. Default 60s.
+    poll: Optional[Union[int, float, str]] = None
+
+    @field_validator("task")
+    @classmethod
+    def _task_path(cls, v: str) -> str:
+        parts = v.strip().strip("/").split("/")
+        if len(parts) != 3 or not all(parts):
+            raise ValueError(f"requires.task '{v}' must name a task as usecase/package/task")
+        return "/".join(parts)
+
+    @field_validator("wait", "poll")
+    @classmethod
+    def _duration(cls, v: Any) -> Any:
+        if v is not None:
+            from ubunye.lineage.health import parse_duration
+
+            parse_duration(v)
+        return v
+
+
 class TaskConfig(BaseModel):
     """The ``CONFIG`` section of a task: inputs, transform, outputs."""
 
@@ -670,6 +712,17 @@ class TaskConfig(BaseModel):
     #: before the transform (an input contract, F-018). See
     #: ``ubunye.core.expectations``.
     expectations: Dict[str, ExpectationSet] = Field(default_factory=dict)
+    #: Upstream tasks that must have succeeded for this batch before this one
+    #: starts, checked from run records (ADR 013).
+    requires: List[RequiresSpec] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def _leave_out_empty_requires(self, handler: SerializerFunctionWrapHandler) -> Any:
+        """A config with no ``requires`` dumps, and so hashes, exactly as before."""
+        data = handler(self)
+        if isinstance(data, dict) and not data.get("requires"):
+            data.pop("requires", None)
+        return data
 
     @model_validator(mode="after")
     def _check_secret_references(self) -> "TaskConfig":
