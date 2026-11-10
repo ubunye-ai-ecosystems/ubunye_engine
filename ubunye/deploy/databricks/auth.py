@@ -82,8 +82,7 @@ class ServicePrincipalAuthBackend:
     """AuthBackend implementation using Databricks OAuth (M2M).
 
     Reads ``DATABRICKS_CLIENT_ID`` and ``DATABRICKS_CLIENT_SECRET``
-    from environment variables.  Service principal auth takes priority
-    over token auth when both are available (see ``auto_detect``).
+    from environment variables.
     """
 
     def resolve(self, workspace_url: str, **kwargs: str) -> Credentials:

@@ -22,7 +22,6 @@ Config example::
           store: ".ubunye/model_store"
           backend: filesystem                  # optional; see ADR 010
           use_case: "fraud_detection"
-          auto_version: true
           promote_to: staging
           promotion_gates:
             min_auc: 0.85
@@ -43,6 +42,7 @@ Note on model_dir:
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import Any, Dict, List, Optional
 
 from ubunye.core.errors import FeatureContractError, PromotionBlockedError, UbunyeError
@@ -136,6 +136,13 @@ class ModelTransform(Transform):
 
         registry_cfg = cfg.get("registry")
         if registry_cfg:
+            if "auto_version" in registry_cfg:
+                warnings.warn(
+                    "registry.auto_version does nothing: a version is made whenever "
+                    "registry.version is not set. Remove the key; it is refused from 1.0.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
             use_case = registry_cfg.get("use_case", "default")
             store = registry_cfg["store"]
             version = registry_cfg.get("version")  # None → auto-generate

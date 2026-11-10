@@ -230,6 +230,7 @@ class RegistryConfig(BaseModel):
     backend: Optional[str] = None
     use_case: Optional[str] = "default"
     version: Optional[str] = None
+    #: Deprecated, does nothing: a version is made whenever ``version`` is not set.
     auto_version: bool = True
     promote_to: Optional[Literal["development", "staging", "production"]] = None
     use_stage: Literal["development", "staging", "production"] = "production"

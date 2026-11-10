@@ -287,4 +287,12 @@ def render_markdown(matrix: Dict[str, Any]) -> str:
 
 
 def render_many(matrices: List[Dict[str, Any]]) -> str:
+    """Deprecated: unused; join :func:`render_markdown` of each matrix."""
+    import warnings
+
+    warnings.warn(
+        "render_many() is deprecated and will be removed in 1.0; join render_markdown() of each matrix.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return "# Proving ground\n\n" + "\n".join(render_markdown(m) for m in matrices)

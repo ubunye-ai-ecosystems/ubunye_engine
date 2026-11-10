@@ -26,6 +26,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `[SKIP]`, whatever it writes. Without run records an overwrite task runs again, as
   the docs now say.
 
+### Deprecated
+
+Nothing in Ubunye, its docs or examples uses these. They still work, warn with a
+`DeprecationWarning`, and go in 1.0:
+
+- `registry.auto_version` in a `model` transform. It never did anything: a version
+  is made whenever `registry.version` is not set. Remove the key.
+- `ubunye.core.planning.plan_problems`, `ubunye.proving.matrix.render_many`,
+  `ubunye.plugins.ml.adapters.to_numpy_from_pandas` and `to_numpy_from_spark` (use
+  `ensure_Xy_numpy`), `ubunye.cli.backend_choice.capabilities_or_exit`, and
+  `ubunye.telemetry.otel.init_tracer` (use `setup`).
+
+### Removed
+
+- The private module `ubunye._internal.auto_detect` (`detect_registry_backend`,
+  `detect_lineage_backend`, `detect_auth_backend`). Nothing called it; the registry
+  backend has been chosen by `ubunye.models.backends.choose` since 0.9.0 (ADR 010),
+  and the lineage store by `ubunye.lineage.stores` (ADR 011).
+- Dead private code: a second copy of the engine version lookup in `ubunye plan`
+  (it now reads `ubunye.__version__`), and two attributes that were set and never
+  read (`notebook()`'s task object, `SklearnModel._last_metrics`).
+
 ## [0.9.0] (2026-11-10)
 
 ### Added

@@ -19,9 +19,7 @@ from __future__ import annotations
 import os
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from ubunye._internal.auto_detect import detect_registry_backend
+from ubunye.models.backends import choose
 from ubunye.plugins.writers import unity
 
 
@@ -64,17 +62,13 @@ def test_the_registry_backend_can_be_chosen_explicitly():
     with patch.dict(
         os.environ, {"UBUNYE_REGISTRY_BACKEND": "filesystem", "DATABRICKS_RUNTIME_VERSION": "15.4"}
     ):
-        with pytest.warns(DeprecationWarning):
-            assert detect_registry_backend() == "filesystem"
+        assert choose() == "filesystem"
 
 
 def test_the_host_does_not_pick_the_registry():
     """ADR 010: explicit > UBUNYE_REGISTRY_BACKEND > filesystem. Databricks alone is no choice."""
     with patch.dict(os.environ, {"DATABRICKS_RUNTIME_VERSION": "15.4"}, clear=True):
-        with patch("ubunye._internal.auto_detect._has_package", return_value=True):
-            with pytest.warns(DeprecationWarning):
-                assert detect_registry_backend() == "filesystem"
+        assert choose() == "filesystem"
 
     with patch.dict(os.environ, {"UBUNYE_REGISTRY_BACKEND": "mlflow"}, clear=True):
-        with pytest.warns(DeprecationWarning):
-            assert detect_registry_backend() == "mlflow"
+        assert choose() == "mlflow"
