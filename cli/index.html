@@ -4993,25 +4993,9 @@ it, run it, see what ran, then deploy. Every command also takes <code>--help</co
 </tr>
 </tbody>
 </table>
-<p>Not every command checks <code>-m</code> against the profiles the same way:</p>
-<table>
-<thead>
-<tr>
-<th>Command</th>
-<th>What it does with <code>-m</code></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>run</code>, <code>test run</code> (<code>--profile</code>), <code>config</code>, <code>validate</code></td>
-<td>Refuses a name the config does not define. A config with no profiles accepts any name. <code>run</code> and <code>validate</code> default to <code>DEV</code></td>
-</tr>
-<tr>
-<td><code>plan</code>, <code>doctor</code></td>
-<td>Do not check it</td>
-</tr>
-</tbody>
-</table>
+<p><code>run</code>, <code>test run</code> (<code>--profile</code>), <code>config</code>, <code>validate</code>, <code>plan</code> and <code>doctor</code> check
+<code>-m</code> one way: a name the config does not define is refused, and a config with no
+profiles accepts any name. They default to <code>DEV</code> (<code>test run</code> to <code>test</code>).</p>
 <div class="admonition warning">
 <p class="admonition-title">Upper or lower case</p>
 <p>The examples use <code>DEV</code> and <code>PROD</code>. <code>export airflow</code> and <code>export databricks</code>
@@ -5109,7 +5093,8 @@ the same thing in pandas and in Spark, so the task runs with no Java
 (<code>--backend pandas</code>) and on Spark unchanged. Its paths use <code>{{ task_dir }}</code> (the
 task's own folder), so it runs from any folder.</p>
 <p><code>--template databricks</code> writes the older scaffold instead: read a Unity Catalog
-table, write to an <code>s3a://</code> bucket. <code>ubunye init pipeline ...</code> is the same
+table (<code>table: main.raw_db.&lt;task&gt;_input</code>; change it to yours), write to an
+<code>s3a://</code> bucket. <code>ubunye init pipeline ...</code> is the same
 command with a subcommand name.</p>
 <p><code>ubunye init</code> with no flags prints its help and subcommands and exits 0. Give one
 of <code>-d -u -p -t</code> and you must give all four.</p>
@@ -5154,7 +5139,9 @@ and the default scaffold is the local one above.</p>
 </div>
 <h3 id="init-github-actions"><code>init github-actions</code><a class="headerlink" href="#init-github-actions" title="Permanent link">¶</a></h3>
 <p>Write a GitHub Actions workflow that validates the config and runs tests on pull
-requests, then deploys to Databricks on merge to <code>main</code>.</p>
+requests, then deploys to Databricks on merge to <code>main</code>. A manual run of the workflow
+(<code>run_after_deploy</code>) deploys and starts the job. It needs only the <code>DATABRICKS_HOST</code>
+and <code>DATABRICKS_TOKEN</code> secrets: with no <code>targets.yaml</code> the deploy uses <code>DATABRICKS_HOST</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ubunye<span class="w"> </span>init<span class="w"> </span>github-actions<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ubunye<span class="w"> </span>init<span class="w"> </span>github-actions<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>--no-deploy
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>ubunye<span class="w"> </span>init<span class="w"> </span>github-actions<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>task_a<span class="w"> </span>-t<span class="w"> </span>task_b<span class="w"> </span>--extras<span class="w"> </span>ml,dev
@@ -5204,8 +5191,11 @@ requests, then deploys to Databricks on merge to <code>main</code>.</p>
 </table>
 <hr>
 <h2 id="ubunye-validate"><code>ubunye validate</code><a class="headerlink" href="#ubunye-validate" title="Permanent link">¶</a></h2>
-<p>Render Jinja and validate the config schema, before Spark starts. Exits <code>0</code> on
-success and non-zero if any task fails.</p>
+<p>Render Jinja and validate the config schema, before Spark starts. It also checks
+each output's write mode against its writer (a <code>merge</code> with no <code>merge_keys</code>, a
+<code>jdbc</code> output with <code>mode: merge</code>), with the message <code>plan</code> gives, and each
+<code>secret://</code> provider, in <code>ENGINE.spark_conf</code> too. Exits <code>0</code> on success and
+non-zero if any task fails.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ubunye<span class="w"> </span>validate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>-dt<span class="w"> </span><span class="m">2024</span>-06-01
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>ubunye<span class="w"> </span>validate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>--all<span class="w">         </span><span class="c1"># every task</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>ubunye<span class="w"> </span>validate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>-m<span class="w"> </span>DEV
@@ -5238,7 +5228,7 @@ success and non-zero if any task fails.</p>
 <td><code>--mode</code></td>
 <td><code>-m</code></td>
 <td></td>
-<td>The same as <code>--profile</code>, the word <code>run</code> uses. Giving both with different values is an error. Unlike <code>run</code>, a config with no profiles fails when either is given (see <a href="#common-flags">Common flags</a>)</td>
+<td>The same as <code>--profile</code>, the word <code>run</code> uses. Giving both with different values is an error. As for <code>run</code>, a config with no profiles accepts any name</td>
 </tr>
 <tr>
 <td><code>--backend</code></td>
@@ -5288,7 +5278,7 @@ no engine and moves no data, and exits <code>1</code> if it finds a problem.</p>
 <li>with <code>--backend</code>, that the backend can do what each input and output needs;</li>
 <li>which environment variables the config uses but are not set (a warning).</li>
 </ul>
-<p>It does not check <code>-m</code> against the profiles; <code>validate</code> does.</p>
+<p>It checks <code>-m</code> against the profiles the way <code>run</code> does.</p>
 <p>Common flags: <code>-d -u -p -t</code> (required; <code>-t</code> in run order), <code>-dt</code>, <code>-dtf</code>, <code>-m</code>
 (default <code>DEV</code>), <code>--var</code>, <code>--json</code>. Plus:</p>
 <table>
@@ -5334,7 +5324,7 @@ guard a CI job or an agent before a real run.</p>
   default that are not set, and whether its config loads and validates.</li>
 </ul>
 <p>Common flags, all optional: <code>-d</code> (also check tasks under this pipelines folder),
-<code>-u</code>, <code>-p</code>, <code>-t</code>, <code>-dt</code>, <code>-m</code> (default <code>DEV</code>, not checked against the profiles),
+<code>-u</code>, <code>-p</code>, <code>-t</code>, <code>-dt</code>, <code>-m</code> (default <code>DEV</code>, checked as <code>run</code> checks it),
 <code>--var</code>, <code>--json</code>.</p>
 <p>Each line is <code>[OK]</code>, <code>[WARN]</code> or <code>[FAIL]</code>, with a fix under anything that is not
 OK. A warning is about the environment and matters only for what you use (Spark
@@ -5367,7 +5357,7 @@ with the reason. See <a href="../backends/">Execution backends</a>.</p>
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">    </span>-m<span class="w"> </span>PROD<span class="w"> </span>--lineage<span class="w"> </span>-dt<span class="w"> </span><span class="m">2024</span>-06-01
 </code></pre></div>
 <p>Common flags: <code>-d -u -p</code> (required), <code>-t</code> (or <code>--all</code>), <code>-dt</code>, <code>-dtf</code>, <code>-m</code>
-(default <code>DEV</code>), <code>--var</code>. <code>run</code> picks the profile with <code>-m</code> only (it has no
+(default <code>DEV</code>; <code>ubunye export</code> defaults to production), <code>--var</code>. <code>run</code> picks the profile with <code>-m</code> only (it has no
 <code>--profile</code>). Plus:</p>
 <table>
 <thead>
@@ -5426,7 +5416,10 @@ with the reason. See <a href="../backends/">Execution backends</a>.</p>
 <p>A batch is a task with its <code>-dt</code> and <code>--var</code> values. Running a finished batch
 of a task that appends is refused, so the data does not land twice: pass
 <code>--rerun</code> to replace it, or <code>--resume</code> to finish a pipeline that stopped half
-way. What each kind of output does: <a href="../guides/safe-reruns/">Safe reruns</a>.</p>
+way. <code>--resume</code> knows an append task finished from its output. A task that
+only overwrites is skipped only with <code>--lineage</code>, when its latest run record
+for the batch says <code>success</code>; without run records it runs again. What each
+kind of output does: <a href="../guides/safe-reruns/">Safe reruns</a>.</p>
 </div>
 <hr>
 <h2 id="ubunye-test-run"><code>ubunye test run</code><a class="headerlink" href="#ubunye-test-run" title="Permanent link">¶</a></h2>
@@ -5504,7 +5497,7 @@ them take <code>-d -u -p -t</code> (required), <code>--lineage-dir</code> (defau
 <tr>
 <td><code>delta</code></td>
 <td>a Delta table name (<code>main.ops.ubunye_runs</code>) or path (<code>s3://bucket/ubunye/runs</code>), used as given</td>
-<td><code>pip install 'ubunye-engine[delta]'</code>, a SparkSession with Delta (the active one, or a local one it starts)</td>
+<td><code>pip install 'ubunye-engine[delta]'</code>, a SparkSession with Delta (the active one, or a local one it starts and tunes for its small table)</td>
 </tr>
 <tr>
 <td>a plugin</td>
@@ -5521,16 +5514,29 @@ them take <code>-d -u -p -t</code> (required), <code>--lineage-dir</code> (defau
 <p>The Delta store keeps the whole record as JSON, plus columns to query it by
 (<code>run_id</code>, <code>task_path</code>, <code>usecase</code>, <code>package</code>, <code>task</code>, <code>status</code>, <code>started_at</code>,
 <code>ended_at</code>, <code>variables</code>, <code>record_version</code>, <code>written_at</code>). It only appends; the
-row written last for a run is the run. If a record cannot be written (no Spark,
-no Delta, no access), it is kept in <code>~/.ubunye/fallback/&lt;run_id&gt;/lineage.jsonl</code>
-with a warning, and
-<code>ubunye sync lineage --lineage-backend delta --lineage-dir &lt;table&gt;</code> replays it. A store of your own passes
-<code>ubunye.testing.lineage_conformance</code> (see <a href="../interfaces/">Interfaces</a>).</p>
+row written last for a run is the run.</p>
+<p>If any store cannot write a record (a lineage folder that cannot be written; no
+Spark, no Delta or no access for a table), it is kept in
+<code>~/.ubunye/fallback/&lt;run_id&gt;/lineage.jsonl</code>, and the warning names the
+<code>ubunye sync lineage</code> command that replays it (for Delta,
+<code>ubunye sync lineage --lineage-backend delta --lineage-dir &lt;table&gt;</code>).</p>
+<p>Each save is one small file, so a table the Delta store creates is clustered by
+<code>task_path</code> and compacts itself (<code>delta.autoOptimize.autoCompact</code>): reading one
+task's runs stays quick after thousands of runs. A table made before 0.9.1 is
+used as it is. To give it the same, run once (checked on open-source Delta 4.4;
+Databricks takes the same statements):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">main</span><span class="p">.</span><span class="n">ops</span><span class="p">.</span><span class="n">ubunye_runs</span><span class="w"> </span><span class="k">CLUSTER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="p">(</span><span class="n">task_path</span><span class="p">);</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">main</span><span class="p">.</span><span class="n">ops</span><span class="p">.</span><span class="n">ubunye_runs</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">TBLPROPERTIES</span><span class="w"> </span><span class="p">(</span><span class="s1">'delta.autoOptimize.autoCompact'</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'true'</span><span class="p">);</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">OPTIMIZE</span><span class="w"> </span><span class="n">main</span><span class="p">.</span><span class="n">ops</span><span class="p">.</span><span class="n">ubunye_runs</span><span class="p">;</span>
+</code></pre></div>
+<p>For a path, write <code>delta.`s3://bucket/ubunye/runs`</code> in place of the table name.</p>
+<p>A store of your own passes <code>ubunye.testing.lineage_conformance</code> (see
+<a href="../interfaces/">Interfaces</a>).</p>
 <p>Why it works this way: <a href="../architecture/adr-011-run-record-stores/">ADR 011</a>.</p>
 <h3 id="lineage-show"><code>lineage show</code><a class="headerlink" href="#lineage-show" title="Permanent link">¶</a></h3>
 <p>Show a run record as formatted JSON (the latest, or <code>--run-id</code>). Takes <code>--json</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>--run-id<span class="w"> </span>&lt;run_id&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>--run-id<span class="w"> </span>&lt;run_id&gt;
 </code></pre></div>
 <p>Each input also records its source's version (<code>source_version</code>), so the record
 can say whether the input's data hash is of what the run read
@@ -5539,15 +5545,15 @@ can say whether the input's data hash is of what the run read
 <h3 id="lineage-list"><code>lineage list</code><a class="headerlink" href="#lineage-list" title="Permanent link">¶</a></h3>
 <p>List recent runs for a task (newest first). <code>-n/--n</code> sets how many (default 10).
 Takes <code>--json</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>list<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>list<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>list<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>list<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span>
 </code></pre></div>
 <h3 id="lineage-compare"><code>lineage compare</code><a class="headerlink" href="#lineage-compare" title="Permanent link">¶</a></h3>
 <p>Diff two run records: status, config, code and environment hashes (naming the
 packages whose versions changed), and each input's and output's row count,
 schema hash and data hash. Takes <code>--json</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>compare<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">    </span>--run-id1<span class="w"> </span>&lt;id1&gt;<span class="w"> </span>--run-id2<span class="w"> </span>&lt;id2&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>compare<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">    </span>--run-id1<span class="w"> </span>&lt;id1&gt;<span class="w"> </span>--run-id2<span class="w"> </span>&lt;id2&gt;
 </code></pre></div>
 <p>A data hash is compared only when both runs have one made the same way.
 Two missing hashes show as "unknown", and a record from before 0.7.0 (which
@@ -5557,37 +5563,37 @@ hashed a sample) shows as "not comparable" with a newer one. See
 <p>Search all recorded runs across tasks. Only <code>-d</code> is required; <code>-u</code>, <code>-p</code> and
 <code>-t</code> narrow the search, <code>--status</code> takes <code>success</code>, <code>error</code> or <code>running</code>, and
 <code>--since</code> takes an ISO date. Takes <code>--json</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>search<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-t<span class="w"> </span>claim_etl
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>search<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>--status<span class="w"> </span>success<span class="w"> </span>--since<span class="w"> </span><span class="m">2024</span>-06-01
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>search<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-t<span class="w"> </span>claim_etl
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>search<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>--status<span class="w"> </span>success<span class="w"> </span>--since<span class="w"> </span><span class="m">2024</span>-06-01
 </code></pre></div>
 <h3 id="lineage-trace"><code>lineage trace</code><a class="headerlink" href="#lineage-trace" title="Permanent link">¶</a></h3>
 <p>Print the input, transform and output data flow graph for a run (latest, or
 <code>--run-id</code>). Takes <code>--json</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>trace<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>trace<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
 </code></pre></div>
 <h3 id="lineage-openlineage"><code>lineage openlineage</code><a class="headerlink" href="#lineage-openlineage" title="Permanent link">¶</a></h3>
 <p>Print stored runs as OpenLineage events, one JSON per line (START, then
 COMPLETE or FAIL). <code>--run-id</code> picks one run (default: every run), <code>--namespace</code>
 sets the job namespace, and <code>--send</code> also sends them where <code>OPENLINEAGE_URL</code>
 points (a backfill). See <a href="../patterns/openlineage/">OpenLineage</a>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>openlineage<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>openlineage<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl
 </code></pre></div>
 <h3 id="lineage-focus"><code>lineage focus</code><a class="headerlink" href="#lineage-focus" title="Permanent link">¶</a></h3>
 <p>A run's model calls as FOCUS 1.4 cost rows, for FinOps tools. <code>--format</code> is
 <code>csv</code> (default) or <code>jsonl</code>; <code>-o/--output</code> writes a file instead of stdout;
 <code>--run-id</code> picks a run (default: latest).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>focus<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>-o<span class="w"> </span>cost.csv
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>focus<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>-o<span class="w"> </span>cost.csv
 </code></pre></div>
 <hr>
 <h2 id="ubunye-gate"><code>ubunye gate</code><a class="headerlink" href="#ubunye-gate" title="Permanent link">¶</a></h2>
 <p>Compare a run's record with a baseline and exit <code>1</code> if it regresses. See
 <a href="../patterns/gate/">Gate</a>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1"># two run records saved with `ubunye lineage show --json`</span>
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>ubunye<span class="w"> </span>gate<span class="w"> </span>--baseline<span class="w"> </span>base.json<span class="w"> </span>--candidate<span class="w"> </span>head.json
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="c1"># from the run record store: by run id, or latest / previous</span>
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>ubunye<span class="w"> </span>gate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>shop<span class="w"> </span>-p<span class="w"> </span>orders<span class="w"> </span>-t<span class="w"> </span>clean<span class="w">                </span><span class="c1"># previous vs latest</span>
-<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>ubunye<span class="w"> </span>gate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>shop<span class="w"> </span>-p<span class="w"> </span>orders<span class="w"> </span>-t<span class="w"> </span>clean<span class="w"> </span>--baseline<span class="w"> </span>1a2b3c4d
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="c1"># two run records saved with `ubunye lineage show --json`</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>ubunye<span class="w"> </span>gate<span class="w"> </span>--baseline<span class="w"> </span>base.json<span class="w"> </span>--candidate<span class="w"> </span>head.json
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="c1"># from the run record store: by run id, or latest / previous</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>ubunye<span class="w"> </span>gate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>shop<span class="w"> </span>-p<span class="w"> </span>orders<span class="w"> </span>-t<span class="w"> </span>clean<span class="w">                </span><span class="c1"># previous vs latest</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>ubunye<span class="w"> </span>gate<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>shop<span class="w"> </span>-p<span class="w"> </span>orders<span class="w"> </span>-t<span class="w"> </span>clean<span class="w"> </span>--baseline<span class="w"> </span>1a2b3c4d
 </code></pre></div>
 <p>Common flags <code>-d -u -p</code> and <code>--task/-t</code> (one task) find the records in the store;
 <code>--lineage-dir</code> and <code>--lineage-backend</code> as for <code>lineage</code>; <code>--json</code>. Plus:</p>
@@ -5655,8 +5661,8 @@ answer is no, and both take <code>--json</code>. See
 <a href="../patterns/job-health/">Job health and upstream checks</a> and
 <a href="../architecture/adr-013-receipt-queries/">ADR 013</a>.</p>
 <h3 id="runs-health"><code>runs health</code><a class="headerlink" href="#runs-health" title="Permanent link">¶</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>ubunye<span class="w"> </span>runs<span class="w"> </span>health<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>pay<span class="w"> </span><span class="o">[</span>-p<span class="w"> </span>monthly<span class="o">]</span><span class="w"> </span><span class="o">[</span>--max-age<span class="w"> </span>36h<span class="o">]</span><span class="w"> </span><span class="o">[</span>--stuck-after<span class="w"> </span>6h<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>ubunye<span class="w"> </span>runs<span class="w"> </span>health<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>--task<span class="w"> </span>pay/monthly/calc<span class="w"> </span>--task<span class="w"> </span>pay/monthly/send
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>ubunye<span class="w"> </span>runs<span class="w"> </span>health<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>pay<span class="w"> </span><span class="o">[</span>-p<span class="w"> </span>monthly<span class="o">]</span><span class="w"> </span><span class="o">[</span>--max-age<span class="w"> </span>36h<span class="o">]</span><span class="w"> </span><span class="o">[</span>--stuck-after<span class="w"> </span>6h<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>ubunye<span class="w"> </span>runs<span class="w"> </span>health<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>--task<span class="w"> </span>pay/monthly/calc<span class="w"> </span>--task<span class="w"> </span>pay/monthly/send
 </code></pre></div>
 <p>Per task: state (<code>ok</code>, <code>running</code>, <code>failing</code>, <code>stuck</code>, <code>stale</code>, <code>never_run</code>), last
 status, when it last succeeded, runs in a row that failed, and runs still
@@ -5664,7 +5670,7 @@ status, when it last succeeded, runs in a row that failed, and runs still
 is failing, stuck, or older than <code>--max-age</code>. <code>-d</code> is required; <code>-u</code>, <code>-p</code> and
 <code>--task usecase/pipeline/task</code> (repeatable) pick the tasks.</p>
 <h3 id="runs-wait-for"><code>runs wait-for</code><a class="headerlink" href="#runs-wait-for" title="Permanent link">¶</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>ubunye<span class="w"> </span>runs<span class="w"> </span>wait-for<span class="w"> </span>pay/monthly/calc<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>--var<span class="w"> </span><span class="nv">month</span><span class="o">=</span><span class="m">2026</span>-10<span class="w"> </span><span class="o">[</span>--timeout<span class="w"> </span>2h<span class="o">]</span><span class="w"> </span><span class="o">[</span>--poll<span class="w"> </span>60s<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>ubunye<span class="w"> </span>runs<span class="w"> </span>wait-for<span class="w"> </span>pay/monthly/calc<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>--var<span class="w"> </span><span class="nv">month</span><span class="o">=</span><span class="m">2026</span>-10<span class="w"> </span><span class="o">[</span>--timeout<span class="w"> </span>2h<span class="o">]</span><span class="w"> </span><span class="o">[</span>--poll<span class="w"> </span>60s<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
 </code></pre></div>
 <p>Exit 0 once the task has a successful run for this batch (<code>-dt</code> and every
 <code>--var</code> match), 1 otherwise. <code>--timeout</code> (default 0, look once) waits, looking
@@ -5674,14 +5680,15 @@ again every <code>--poll</code> (default <code>60s</code>). A task can ask the s
 <h2 id="ubunye-sync"><code>ubunye sync</code><a class="headerlink" href="#ubunye-sync" title="Permanent link">¶</a></h2>
 <p>Replay fallback manifests into the configured stores. When a run record or a
 model registry write fails during a run, the record is kept in a local file
-under <code>~/.ubunye/fallback/</code> so the run does not fail. This command replays
-them, skipping records already written, and moves each processed manifest to
+under <code>~/.ubunye/fallback/</code> so the run does not fail. A run record goes there
+whatever the store, and the warning names the command that replays it. This
+command replays them, skipping records already written, and moves each processed manifest to
 <code>~/.ubunye/fallback/synced/</code>. How it works: <a href="../interfaces/#fallback-manifests-and-ubunye-sync">Interfaces</a>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>lineage<span class="w">                    </span><span class="c1"># replay all run record manifests</span>
-<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>lineage<span class="w"> </span>--run-id<span class="w"> </span>abc123<span class="w">    </span><span class="c1"># replay one run</span>
-<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>lineage<span class="w"> </span>--lineage-backend<span class="w"> </span>delta<span class="w"> </span>--lineage-dir<span class="w"> </span>main.ops.ubunye_runs
-<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>registry<span class="w">                   </span><span class="c1"># replay all registry manifests</span>
-<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>registry<span class="w"> </span>--run-id<span class="w"> </span>abc123
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>lineage<span class="w">                    </span><span class="c1"># replay all run record manifests</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>lineage<span class="w"> </span>--run-id<span class="w"> </span>abc123<span class="w">    </span><span class="c1"># replay one run</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>lineage<span class="w"> </span>--lineage-backend<span class="w"> </span>delta<span class="w"> </span>--lineage-dir<span class="w"> </span>main.ops.ubunye_runs
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>registry<span class="w">                   </span><span class="c1"># replay all registry manifests</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>ubunye<span class="w"> </span>sync<span class="w"> </span>registry<span class="w"> </span>--run-id<span class="w"> </span>abc123
 </code></pre></div>
 <table>
 <thead>
@@ -5718,10 +5725,13 @@ them, skipping records already written, and moves each processed manifest to
 <p>Deploy or run a task on a remote platform. Each platform has a guide under
 <a href="../deployment/">Deployment</a>. These commands take <code>--task/-t</code> (repeat it to run
 several tasks in order, except on Databricks) and <code>-m</code> defaults to <code>PROD</code>.</p>
+<p>A problem you can fix (no <code>targets.yaml</code>, no token, a cloud CLI not on <code>PATH</code>, a
+config that does not validate) ends in one <code>[ERROR]</code> message that says what, where
+and what to try, with exit code 1. <code>ubunye export</code> works the same way.</p>
 <h3 id="deploy-databricks"><code>deploy databricks</code><a class="headerlink" href="#deploy-databricks" title="Permanent link">¶</a></h3>
 <p>Deploy a task to Databricks as a scheduled job.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>ubunye<span class="w"> </span>deploy<span class="w"> </span>databricks<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>--target<span class="w"> </span>nonprod
-<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>ubunye<span class="w"> </span>deploy<span class="w"> </span>databricks<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>--target<span class="w"> </span>nonprod<span class="w"> </span>--dry-run
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>ubunye<span class="w"> </span>deploy<span class="w"> </span>databricks<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>--target<span class="w"> </span>nonprod
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>ubunye<span class="w"> </span>deploy<span class="w"> </span>databricks<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-p<span class="w"> </span>ingestion<span class="w"> </span>-t<span class="w"> </span>claim_etl<span class="w"> </span>--target<span class="w"> </span>nonprod<span class="w"> </span>--dry-run
 </code></pre></div>
 <p>Common flags: <code>-d -u -p</code> and <code>-t</code> (one task), all required; <code>-m</code> (default
 <code>PROD</code>); <code>-dt</code>. Plus:</p>
@@ -5746,13 +5756,18 @@ several tasks in order, except on Databricks) and <code>-m</code> defaults to <c
 </tr>
 <tr>
 <td><code>--host</code></td>
-<td></td>
-<td>Databricks host for an ad hoc deploy (skips <code>targets.yaml</code>)</td>
+<td><code>$DATABRICKS_HOST</code></td>
+<td>Databricks host, used only when there is no <code>targets.yaml</code></td>
 </tr>
 <tr>
 <td><code>--token</code></td>
 <td><code>DATABRICKS_TOKEN</code></td>
 <td>Name of the env var that holds the token</td>
+</tr>
+<tr>
+<td><code>--run</code></td>
+<td>false</td>
+<td>Start a run of the job after deploying it, and print its link</td>
 </tr>
 </tbody>
 </table>
@@ -5761,8 +5776,8 @@ several tasks in order, except on Databricks) and <code>-m</code> defaults to <c
 <a href="../databricks-auth/">Databricks authentication</a>.</p>
 <h3 id="deploy-glue"><code>deploy glue</code><a class="headerlink" href="#deploy-glue" title="Permanent link">¶</a></h3>
 <p>Run a task on AWS Glue 5 (Spark 3.5), with the <code>aws</code> CLI. See <a href="../deployment/serverless/">One command to the cloud</a>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>ubunye<span class="w"> </span>deploy<span class="w"> </span>glue<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>shop<span class="w"> </span>-p<span class="w"> </span>orders<span class="w"> </span>-t<span class="w"> </span>clean<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="w">    </span>--bucket<span class="w"> </span>my-bucket<span class="w"> </span>--role<span class="w"> </span>arn:aws:iam::123456789012:role/glue-job<span class="w"> </span>--dry-run
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>ubunye<span class="w"> </span>deploy<span class="w"> </span>glue<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>shop<span class="w"> </span>-p<span class="w"> </span>orders<span class="w"> </span>-t<span class="w"> </span>clean<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="w">    </span>--bucket<span class="w"> </span>my-bucket<span class="w"> </span>--role<span class="w"> </span>arn:aws:iam::123456789012:role/glue-job<span class="w"> </span>--dry-run
 </code></pre></div>
 <p>Common flags <code>-d -u -p -t</code> (required), plus the <a href="#shared-launch-flags">shared launch flags</a> and:</p>
 <table>
@@ -6135,7 +6150,7 @@ the run to finish, so it has no <code>--wait</code> or <code>--record-out</code>
 <h3 id="deploy-dockerfile"><code>deploy dockerfile</code><a class="headerlink" href="#deploy-dockerfile" title="Permanent link">¶</a></h3>
 <p>Write a Dockerfile for a Spark job image on <code>PLATFORM</code> (<code>dataproc</code>,
 <code>emr-serverless</code> or <code>container</code>), and the entry script next to it.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>ubunye<span class="w"> </span>deploy<span class="w"> </span>dockerfile<span class="w"> </span>container<span class="w"> </span>--pipelines<span class="w"> </span>pipelines<span class="w"> </span>--out<span class="w"> </span>build/Dockerfile
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>ubunye<span class="w"> </span>deploy<span class="w"> </span>dockerfile<span class="w"> </span>container<span class="w"> </span>--pipelines<span class="w"> </span>pipelines<span class="w"> </span>--out<span class="w"> </span>build/Dockerfile
 </code></pre></div>
 <table>
 <thead>
@@ -6159,7 +6174,7 @@ the run to finish, so it has no <code>--wait</code> or <code>--record-out</code>
 <tr>
 <td><code>--out</code></td>
 <td></td>
-<td>Write here instead of printing. A folder gets <code>&lt;folder&gt;/Dockerfile</code>; missing folders are made</td>
+<td>Write here instead of printing. A folder, or a path ending in <code>/</code> such as <code>img/</code>, gets <code>&lt;folder&gt;/Dockerfile</code>; missing folders are made</td>
 </tr>
 </tbody>
 </table>
@@ -6167,11 +6182,15 @@ the run to finish, so it has no <code>--wait</code> or <code>--record-out</code>
 <h2 id="ubunye-export"><code>ubunye export</code><a class="headerlink" href="#ubunye-export" title="Permanent link">¶</a></h2>
 <p>Generate orchestration artifacts from a task's <code>config.yaml</code>. Defaults come from
 the config's <code>ORCHESTRATION</code> block (see <a href="../config/orchestration/">Orchestration</a>).</p>
+<p><code>ubunye export</code> defaults to production (<code>--profile prod</code> for <code>airflow</code> and
+<code>databricks</code>, <code>-m PROD</code> for <code>spark-pipeline</code>), while <code>ubunye run</code> defaults to <code>DEV</code>:
+an export is what a scheduler runs, a run is usually a try on your own machine.
+Pass the profile you mean when it matters.</p>
 <h3 id="export-airflow"><code>export airflow</code><a class="headerlink" href="#export-airflow" title="Permanent link">¶</a></h3>
 <p>Generate an Airflow DAG (Airflow 2.4+ and 3) that runs the task with the CLI.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>ubunye<span class="w"> </span><span class="nb">export</span><span class="w"> </span>airflow<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="w">    </span>-c<span class="w"> </span>pipelines/fraud_detection/ingestion/claim_etl/config.yaml<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="w">    </span>-o<span class="w"> </span>dags/claim_etl.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>ubunye<span class="w"> </span><span class="nb">export</span><span class="w"> </span>airflow<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="w">    </span>-c<span class="w"> </span>pipelines/fraud_detection/ingestion/claim_etl/config.yaml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="w">    </span>-o<span class="w"> </span>dags/claim_etl.py
 </code></pre></div>
 <table>
 <thead>
@@ -6230,9 +6249,9 @@ the config's <code>ORCHESTRATION</code> block (see <a href="../config/orchestrat
 </table>
 <h3 id="export-databricks"><code>export databricks</code><a class="headerlink" href="#export-databricks" title="Permanent link">¶</a></h3>
 <p>Generate a Databricks Jobs API spec (<code>job.json</code>) for the task.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>ubunye<span class="w"> </span><span class="nb">export</span><span class="w"> </span>databricks<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="w">    </span>-c<span class="w"> </span>pipelines/fraud_detection/ingestion/claim_etl/config.yaml<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="w">    </span>-o<span class="w"> </span>jobs/claim_etl.json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>ubunye<span class="w"> </span><span class="nb">export</span><span class="w"> </span>databricks<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="w">    </span>-c<span class="w"> </span>pipelines/fraud_detection/ingestion/claim_etl/config.yaml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="w">    </span>-o<span class="w"> </span>jobs/claim_etl.json
 </code></pre></div>
 <table>
 <thead>
@@ -6271,9 +6290,9 @@ the config's <code>ORCHESTRATION</code> block (see <a href="../config/orchestrat
 <h3 id="export-spark-pipeline"><code>export spark-pipeline</code><a class="headerlink" href="#export-spark-pipeline" title="Permanent link">¶</a></h3>
 <p>Write the task as a Spark Declarative Pipeline (Spark 4.1+), to run with
 <code>spark-pipelines</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>ubunye<span class="w"> </span><span class="nb">export</span><span class="w"> </span>spark-pipeline<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="w">    </span>-c<span class="w"> </span>pipelines/fraud_detection/ingestion/claim_etl/config.yaml<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="w">    </span>-o<span class="w"> </span>sdp/claim_etl
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>ubunye<span class="w"> </span><span class="nb">export</span><span class="w"> </span>spark-pipeline<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="w">    </span>-c<span class="w"> </span>pipelines/fraud_detection/ingestion/claim_etl/config.yaml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="w">    </span>-o<span class="w"> </span>sdp/claim_etl
 </code></pre></div>
 <p>Common flags: <code>-m</code> (default <code>PROD</code>), <code>-dt</code>, <code>--var</code>. Plus:</p>
 <table>
@@ -6374,14 +6393,14 @@ the config's <code>ORCHESTRATION</code> block (see <a href="../config/orchestrat
 <p><code>info</code>, <code>promote</code>, <code>demote</code>, <code>rollback</code> and <code>archive</code> also require <code>--version</code> (<code>-v</code>).
 <code>list</code> and <code>compare</code> take <code>--json</code>.</p>
 <h3 id="models-list"><code>models list</code><a class="headerlink" href="#models-list" title="Permanent link">¶</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <h3 id="models-info"><code>models info</code><a class="headerlink" href="#models-info" title="Permanent link">¶</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <h3 id="models-promote"><code>models promote</code><a class="headerlink" href="#models-promote" title="Permanent link">¶</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>promote<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="w">    </span>--to<span class="w"> </span>production<span class="w"> </span>--promoted-by<span class="w"> </span>alice<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>promote<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a><span class="w">    </span>--to<span class="w"> </span>production<span class="w"> </span>--promoted-by<span class="w"> </span>alice<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <p>Target stages: <code>staging</code>, <code>production</code>.</p>
 <p>The version must pass the model's promotion gates first: the <code>promotion_gates</code>
@@ -6390,32 +6409,32 @@ nothing is promoted and the failing gate is named. <code>--force</code> promotes
 prints which gates were skipped, and marks the version (<code>promotion_forced</code>) so
 the skip stays on the record. See <a href="../ml/registry/">Model registry</a>.</p>
 <h3 id="models-demote"><code>models demote</code><a class="headerlink" href="#models-demote" title="Permanent link">¶</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>demote<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a><span class="w">    </span>--to<span class="w"> </span>staging<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>demote<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a><span class="w">    </span>--to<span class="w"> </span>staging<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <p>Target stages: <code>development</code>, <code>staging</code>, <code>archived</code>.</p>
 <p>Demote only moves a version down. <code>staging</code> is allowed only from <code>production</code>;
 <code>production</code> is never a choice. To move a version up, use <code>models promote</code>,
 which checks the promotion gates.</p>
 <h3 id="models-rollback"><code>models rollback</code><a class="headerlink" href="#models-rollback" title="Permanent link">¶</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>rollback<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>rollback<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <p>Archives the current production version and restores <code>--version</code> to production.</p>
 <h3 id="models-archive"><code>models archive</code><a class="headerlink" href="#models-archive" title="Permanent link">¶</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>archive<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.1.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>archive<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-v<span class="w"> </span><span class="m">1</span>.1.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <h3 id="models-compare"><code>models compare</code><a class="headerlink" href="#models-compare" title="Permanent link">¶</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>compare<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a><span class="w">    </span>--versions<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span>--versions<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>compare<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a><span class="w">    </span>--versions<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span>--versions<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
 <hr>
 <h2 id="ubunye-prove"><code>ubunye prove</code><a class="headerlink" href="#ubunye-prove" title="Permanent link">¶</a></h2>
 <p>The proving ground: run one workload on many environments, turn each run record
 into an observation, and compare them. See <a href="../proving-ground/">Proving ground</a>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>ubunye<span class="w"> </span>prove<span class="w"> </span>observe<span class="w"> </span>--workload<span class="w"> </span>c01<span class="w"> </span>--env<span class="w"> </span>pandas-local<span class="w"> </span>-d<span class="w"> </span>.<span class="w"> </span>-u<span class="w"> </span>uc<span class="w"> </span>-p<span class="w"> </span>pkg<span class="w"> </span>-t<span class="w"> </span>task<span class="w"> </span>-o<span class="w"> </span>evidence
-<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>ubunye<span class="w"> </span>prove<span class="w"> </span>observe<span class="w"> </span>--workload<span class="w"> </span>c01<span class="w"> </span>--env<span class="w"> </span>aws-glue<span class="w"> </span>--record<span class="w"> </span>glue.json<span class="w"> </span>-o<span class="w"> </span>evidence
-<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>ubunye<span class="w"> </span>prove<span class="w"> </span>skip<span class="w">    </span>--workload<span class="w"> </span>c01<span class="w"> </span>--env<span class="w"> </span>azure<span class="w"> </span>--status<span class="w"> </span>not_run<span class="w"> </span>--reason<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>-o<span class="w"> </span>evidence
-<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>ubunye<span class="w"> </span>prove<span class="w"> </span>report<span class="w">  </span>evidence<span class="w"> </span>--workload<span class="w"> </span>c01<span class="w"> </span>--reference<span class="w"> </span>spark-local<span class="w"> </span>--expect<span class="w"> </span>aws-glue
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>ubunye<span class="w"> </span>prove<span class="w"> </span>observe<span class="w"> </span>--workload<span class="w"> </span>c01<span class="w"> </span>--env<span class="w"> </span>pandas-local<span class="w"> </span>-d<span class="w"> </span>.<span class="w"> </span>-u<span class="w"> </span>uc<span class="w"> </span>-p<span class="w"> </span>pkg<span class="w"> </span>-t<span class="w"> </span>task<span class="w"> </span>-o<span class="w"> </span>evidence
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>ubunye<span class="w"> </span>prove<span class="w"> </span>observe<span class="w"> </span>--workload<span class="w"> </span>c01<span class="w"> </span>--env<span class="w"> </span>aws-glue<span class="w"> </span>--record<span class="w"> </span>glue.json<span class="w"> </span>-o<span class="w"> </span>evidence
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>ubunye<span class="w"> </span>prove<span class="w"> </span>skip<span class="w">    </span>--workload<span class="w"> </span>c01<span class="w"> </span>--env<span class="w"> </span>azure<span class="w"> </span>--status<span class="w"> </span>not_run<span class="w"> </span>--reason<span class="w"> </span><span class="s2">"..."</span><span class="w"> </span>-o<span class="w"> </span>evidence
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a>ubunye<span class="w"> </span>prove<span class="w"> </span>report<span class="w">  </span>evidence<span class="w"> </span>--workload<span class="w"> </span>c01<span class="w"> </span>--reference<span class="w"> </span>spark-local<span class="w"> </span>--expect<span class="w"> </span>aws-glue
 </code></pre></div>
 <h3 id="prove-observe"><code>prove observe</code><a class="headerlink" href="#prove-observe" title="Permanent link">¶</a></h3>
 <p>Turn a run record into an observation of a workload in an environment. Name the
@@ -6557,8 +6576,8 @@ RUN. <code>--json FILE</code> and <code>--md FILE</code> write the matrix and th
 <p>Serve the engine to agents over MCP (stdio). Its tools: tasks, doctor, plan,
 runs, health, upstream, gate, focus, and <code>run</code> when allowed. See
 <a href="../patterns/mcp/">Agents over MCP</a>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>ubunye<span class="w"> </span>mcp<span class="w"> </span>-d<span class="w"> </span>pipelines
-<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>ubunye<span class="w"> </span>mcp<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>--allow-run
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>ubunye<span class="w"> </span>mcp<span class="w"> </span>-d<span class="w"> </span>pipelines
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>ubunye<span class="w"> </span>mcp<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>--allow-run
 </code></pre></div>
 <table>
 <thead>
@@ -6606,12 +6625,12 @@ runs, health, upstream, gate, focus, and <code>run</code> when allowed. See
 <h2 id="ubunye-plugins"><code>ubunye plugins</code><a class="headerlink" href="#ubunye-plugins" title="Permanent link">¶</a></h2>
 <p>List the readers, writers and transforms discovered through entry points. See
 <a href="../connectors/plugin_guide/">Writing a plugin</a>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>ubunye<span class="w"> </span>plugins
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>ubunye<span class="w"> </span>plugins
 </code></pre></div>
 <hr>
 <h2 id="ubunye-version"><code>ubunye version</code><a class="headerlink" href="#ubunye-version" title="Permanent link">¶</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>ubunye<span class="w"> </span>version
-<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a><span class="c1"># Ubunye Engine v0.9.0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a>ubunye<span class="w"> </span>version
+<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a><span class="c1"># Ubunye Engine v0.9.1</span>
 </code></pre></div>
 <p>The version comes from the installed package metadata.</p>
 <hr>
@@ -6622,7 +6641,10 @@ platforms with no console script (EMR Serverless, Dataproc Serverless, YARN,
 Kubernetes): it runs one task,
 <code>python -m ubunye --task-dir &lt;folder with config.yaml&gt; --mode PROD --dt &lt;dt&gt;</code>,
 attached to the SparkSession spark-submit made. Its only other flags are
-<code>--lineage</code> and <code>--log-level</code>. See <a href="../deployment/anywhere/">Deploy anywhere</a>.</p>
+<code>--lineage</code> and <code>--log-level</code>. <code>--task-dir</code> must be a local folder; a bucket
+URI (<code>s3://</code>, <code>gs://</code>) does not work. To run from a bucket, use
+<code>ubunye deploy glue</code>, <code>dataproc</code> or <code>emr-serverless</code>. See
+<a href="../deployment/anywhere/">Deploy anywhere</a>.</p>
 </div>
 
 
@@ -6646,7 +6668,7 @@ attached to the SparkSession spark-submit made. Its only other flags are
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 11:32:15 UTC">November 10, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 12:38:33 UTC">November 10, 2026</span>
   </span>
 
     

@@ -3997,6 +3997,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ubunye.backends.spark_backend.SparkBackend.environment_problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        environment_problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ubunye.backends.spark_backend.SparkBackend.materialise" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7414,6 +7425,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ubunye.backends.spark_backend.SparkBackend.environment_problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        environment_problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ubunye.backends.spark_backend.SparkBackend.materialise" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8626,8 +8648,8 @@ lineage_dir : str
 profile : str, optional
     Config profile for validation (passed to <code>load_config</code>).
 hooks : iterable of Hook, optional
-    Replace the engine's default hooks entirely. Rarely needed; prefer
-    the <code>ubunye.hooks</code> entry point for always-on hooks.
+    Hooks to add to the engine's own (the <code>ubunye.hooks</code> entry point,
+    <code>CONFIG.monitors</code> and the run record). They never replace them.
 rerun : bool
     Replace a batch (same <code>dt</code> and variables) that a finished run already
     appended. Without it, such a run is refused, since it would append the
@@ -8674,7 +8696,10 @@ lineage_backend
 resume : bool
     Finish a pipeline that stopped half way: a task that already finished this
     batch is skipped (with a warning, and is not in the result); the rest run.
-    Without it, such a task is refused (:class:<code>~ubunye.core.runs.BatchFinished</code>).
+    A task that appends knows it finished; one that only overwrites is known to
+    have finished from its run records, so it is skipped only with <code>lineage=True</code>
+    (its latest run of the batch succeeded). Without <code>resume</code> a finished append
+    is refused (:class:<code>~ubunye.core.runs.BatchFinished</code>).
 package : str, optional
     Old name of <code>pipeline</code>. Still works, with a DeprecationWarning; removed in 1.0.</p>
 <h5 id="ubunye.api.run_pipeline--returns">Returns<a class="headerlink" href="#ubunye.api.run_pipeline--returns" title="Permanent link">¶</a></h5>
@@ -10412,7 +10437,8 @@ registry, orchestrator metadata).</p>
 
         <p>Raise ConfigProfileError when <em>profile</em> names no profile of this config.</p>
 <p>A config with no <code>ENGINE.profiles</code> accepts any mode. <code>run</code>,
-<code>validate</code> and the Python API all go through this one rule.</p>
+<code>validate</code>, <code>plan</code>, <code>doctor</code> and the Python API all go through
+this one rule.</p>
 
 
     </div>
@@ -11196,6 +11222,30 @@ session's (which this backend would reuse, unchanged), else UTC.</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ubunye.backends.spark_backend.SparkBackend.environment_problem" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">environment_problem</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#ubunye.backends.spark_backend.SparkBackend.environment_problem" class="headerlink" title="Permanent link">¶</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">environment_problem</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Why this backend cannot start a session here, or None (<code>ubunye doctor</code>).</p>
+
+
+    </div>
+
+</div>
 
 <div class="doc doc-object doc-function">
 
@@ -12386,8 +12436,7 @@ Any other backend gets it unchanged.</p>
                 <p>The registry backend (ADR 010): a name registered under the
 <code>ubunye.registry_backends</code> entry point group, or a backend object.
 Not given, <code>UBUNYE_REGISTRY_BACKEND</code> decides, else <code>filesystem</code>.
-The filesystem runs the code below exactly as before 0.9; any other
-backend gets this whole API built on its six protocol methods
+Every backend gets this whole API built on its six protocol methods
 (:mod:<code>ubunye.models.lifecycle</code>).</p>
               </div>
             </td>
@@ -12435,34 +12484,6 @@ backend gets this whole API built on its six protocol methods
         <p>Archive a model version.</p>
 
 
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-<th>Name</th>          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-<td><code>Updated</code></td>            <td>
-                  <code><a class="autorefs autorefs-internal" title="ubunye.models.registry.ModelVersion
-
-
-  
-      dataclass
-  " href="#ubunye.models.registry.ModelVersion">ModelVersion</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>class:<code>ModelVersion</code>.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
     </div>
 
 </div>
@@ -12498,7 +12519,7 @@ backend gets this whole API built on its six protocol methods
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Dict mapping metric name → <code>{"a": val_a, "b": val_b, "delta": diff}</code>.</p>
+                <p>Dict mapping metric name to <code>{"a": val_a, "b": val_b, "delta": diff}</code>.</p>
               </div>
             </td>
           </tr>
@@ -12537,65 +12558,6 @@ backend gets this whole API built on its six protocol methods
 <p>Demote only moves a version down: to <code>development</code> or <code>archived</code>, or to
 <code>staging</code> from <code>production</code>. Moving up is a promotion; use
 :meth:<code>promote</code>, which checks the promotion gates.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>to_stage</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="ubunye.models.registry.ModelStage" href="#ubunye.models.registry.ModelStage">ModelStage</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Target stage (<code>development</code>, <code>staging</code> or <code>archived</code>).</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-<th>Name</th>          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-<td><code>Updated</code></td>            <td>
-                  <code><a class="autorefs autorefs-internal" title="ubunye.models.registry.ModelVersion
-
-
-  
-      dataclass
-  " href="#ubunye.models.registry.ModelVersion">ModelVersion</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>class:<code>ModelVersion</code>.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
 
 
 <p><span class="doc-section-title">Raises:</span></p>
@@ -12639,102 +12601,8 @@ backend gets this whole API built on its six protocol methods
     <div class="doc doc-contents ">
 
         <p>Return the artifact path and version metadata for a model.</p>
-<p>Specify either <code>version</code> (exact) or <code>stage</code> (active version in that stage).</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>use_case</code>
-            </td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Use-case grouping.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>model_name</code>
-            </td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Model identifier.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>task_dir</code>
-            </td>
-            <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Task directory containing model.py (passed to caller for loading).</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>version</code>
-            </td>
-            <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Exact version string.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>stage</code>
-            </td>
-            <td>
-                  <code><span title="typing.Optional">Optional</span>[<a class="autorefs autorefs-internal" title="ubunye.models.registry.ModelStage" href="#ubunye.models.registry.ModelStage">ModelStage</a>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Stage to look up active version for.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
+<p>Specify either <code>version</code> (exact) or <code>stage</code> (active version in that stage).
+<code>task_dir</code> is accepted for older callers and not used.</p>
 
 
     <p><span class="doc-section-title">Returns:</span></p>
@@ -12752,7 +12620,7 @@ backend gets this whole API built on its six protocol methods
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>(artifact_path, model_version)</code> — caller calls</p>
+                <p><code>(artifact_path, model_version)</code>. The caller calls</p>
               </div>
             </td>
           </tr>
@@ -12786,7 +12654,7 @@ backend gets this whole API built on its six protocol methods
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="ValueError">ValueError</span></code>
+                  <code><span title="ubunye.core.errors.VersionNotFoundError">VersionNotFoundError</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -12829,7 +12697,7 @@ backend gets this whole API built on its six protocol methods
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="FileNotFoundError">FileNotFoundError</span></code>
+                  <code><span title="ubunye.core.errors.RegistryNotFoundError">RegistryNotFoundError</span></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -12866,117 +12734,6 @@ If promoting to production, the current production version is automatically
 archived.</p>
 
 
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>use_case</code>
-            </td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Use-case grouping.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>model_name</code>
-            </td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Model identifier.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>version</code>
-            </td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Version string to promote.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>to_stage</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="ubunye.models.registry.ModelStage" href="#ubunye.models.registry.ModelStage">ModelStage</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Target :class:<code>ModelStage</code>.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>promoted_by</code>
-            </td>
-            <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Optional username.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>gates</code>
-            </td>
-            <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Optional dict of promotion gate rules (see :class:<code>PromotionGate</code>).</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
 <p><span class="doc-section-title">Raises:</span></p>
     <table>
       <thead>
@@ -12988,11 +12745,21 @@ archived.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="ValueError">ValueError</span></code>
+                  <code><span title="ubunye.core.errors.VersionNotFoundError">VersionNotFoundError</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Version not found, or one or more promotion gates failed.</p>
+                <p>Version not found.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="PromotionBlockedError">PromotionBlockedError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>One or more promotion gates failed.</p>
               </div>
             </td>
           </tr>
@@ -13066,11 +12833,6 @@ archived.</p>
     <div class="doc doc-contents ">
 
         <p>Register a trained model as a new version (stage=development).</p>
-<ol>
-<li>Saves model artifacts to <code>versions/&lt;version&gt;/model/</code>.</li>
-<li>Writes <code>metadata.json</code> and <code>metrics.json</code>.</li>
-<li>Adds a new :class:<code>ModelVersion</code> entry to <code>registry.json</code>.</li>
-</ol>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -13264,70 +13026,7 @@ pass. Given, they replace the model's stored gates.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Roll back production to a specific previous version.</p>
-<ol>
-<li>Archives the current production version.</li>
-<li>Promotes <code>to_version</code> to production.</li>
-</ol>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>to_version</code>
-            </td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The version string to restore to production.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="ubunye.models.registry.ModelVersion
-
-
-  
-      dataclass
-  " href="#ubunye.models.registry.ModelVersion">ModelVersion</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The restored :class:<code>ModelVersion</code> (now in production stage).</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
+        <p>Roll production back to <code>to_version</code>; the current production version is archived.</p>
 
 
     </div>
@@ -13398,6 +13097,8 @@ pass. Given, they replace the model's stored gates.</p>
     <div class="doc doc-contents ">
 
         <p>Convert to the cross-boundary :class:<code>ModelVersionInfo</code> type.</p>
+<p>The model's metadata keeps its JSON types, so it converts back to the
+same :class:<code>ModelVersion</code> (:func:<code>ubunye.models.lifecycle.to_model_version</code>).</p>
 
 
     </div>

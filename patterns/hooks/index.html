@@ -3897,7 +3897,7 @@ wrapped in a hook. Your hook sees the start, the end, and any error that escaped
 <tr>
 <td>Python: <code>ubunye.run_task(...)</code></td>
 <td><code>hooks=[...]</code></td>
-<td>No, today (see the warning)</td>
+<td>Yes, with <code>lineage=True</code></td>
 </tr>
 <tr>
 <td>The CLI: <code>ubunye run ...</code></td>
@@ -3915,19 +3915,9 @@ wrapped in a hook. Your hook sees the start, the end, and any error that escaped
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">hooks</span><span class="o">=</span><span class="p">[</span><span class="n">MyHook</span><span class="p">(),</span> <span class="n">AnotherHook</span><span class="p">()],</span>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">)</span>
 </code></pre></div>
-<p><code>hooks=</code> <strong>replaces</strong> the default set of hooks. Two things follow:</p>
-<ul>
-<li>User monitors from <code>CONFIG.monitors</code> stop running. Add
-  <code>LegacyMonitorsHook(cfg)</code> from <code>ubunye.telemetry.hooks</code> yourself if you need them.</li>
-<li>The run record is not written (next box).</li>
-</ul>
-<div class="admonition warning">
-<p class="admonition-title">No run record with <code>hooks=</code>, today</p>
-<p>The run record is itself written by a hook. When you pass <code>hooks=</code>, it is
-replaced too, so <code>run_task(..., hooks=[...], lineage=True)</code> runs fine but
-writes <strong>no</strong> run record. This is a known bug. Until it is fixed, use the
-package route below when you need both your hook and a run record.</p>
-</div>
+<p><code>hooks=</code> <strong>adds</strong> your hooks to the default set; it never replaces it. The
+<code>CONFIG.monitors</code> hook and the run record (<code>lineage=True</code>) still run. The same
+goes for <code>run_pipeline</code> and <code>notebook</code>.</p>
 <h3 id="from-the-cli-ship-the-hook-as-a-package">From the CLI: ship the hook as a package<a class="headerlink" href="#from-the-cli-ship-the-hook-as-a-package" title="Permanent link">¶</a></h3>
 <p>Register the hook class under the <code>ubunye.hooks</code> entry point group in your
 package (an entry point is a name in <code>pyproject.toml</code> that tells Python where
@@ -4130,7 +4120,7 @@ use it yourself for complex setups:</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 11:32:15 UTC">November 10, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 12:38:33 UTC">November 10, 2026</span>
   </span>
 
     

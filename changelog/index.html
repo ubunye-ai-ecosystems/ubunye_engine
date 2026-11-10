@@ -2747,8 +2747,30 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[Unreleased]">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#091-2026-11-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.9.1] (2026-11-10)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.9.1] (2026-11-10)">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#fixed" class="md-nav__link">
@@ -2762,10 +2784,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed" class="md-nav__link">
+  <a href="#deprecated" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Changed
+        Deprecated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removed
       
     </span>
   </a>
@@ -2923,7 +2956,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#deprecated" class="md-nav__link">
+  <a href="#deprecated_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Deprecated
@@ -3034,7 +3067,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#removed" class="md-nav__link">
+  <a href="#removed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Removed
@@ -4215,8 +4248,30 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[Unreleased]">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#091-2026-11-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.9.1] (2026-11-10)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.9.1] (2026-11-10)">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#fixed" class="md-nav__link">
@@ -4230,10 +4285,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed" class="md-nav__link">
+  <a href="#deprecated" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Changed
+        Deprecated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removed
       
     </span>
   </a>
@@ -4391,7 +4457,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#deprecated" class="md-nav__link">
+  <a href="#deprecated_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Deprecated
@@ -4502,7 +4568,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#removed" class="md-nav__link">
+  <a href="#removed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Removed
@@ -4959,8 +5025,212 @@
 and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <hr>
 <h2 id="unreleased">[Unreleased]<a class="headerlink" href="#unreleased" title="Permanent link">¶</a></h2>
+<h2 id="091-2026-11-10">[0.9.1] (2026-11-10)<a class="headerlink" href="#091-2026-11-10" title="Permanent link">¶</a></h2>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">¶</a></h3>
+<ul>
+<li><strong>One path for the model registry.</strong> <code>ModelRegistry</code> is now a thin front over
+  the lifecycle layer for every backend, the filesystem included. The filesystem
+  no longer keeps its own copy of the rules (version numbers, gates, one
+  production version, rollback, archive). Same API, same files on disk: a store
+  written by 0.9.0 reads and promotes the same (a fixture test pins it).
+  Reading a version's stage no longer downloads its artifact from a remote store.</li>
+<li><code>ModelRegistry.promotion_gates</code> gives <code>{}</code> for a model with no versions on the
+  filesystem too (it raised <code>RegistryNotFoundError</code>), like every other backend.</li>
+<li>Metadata given through the <code>FilesystemRegistryBackend</code> protocol (kept nested
+  under <code>registry_metadata</code> on disk, unchanged) now reads back flat from
+  <code>ModelRegistry</code>, as it already did through the backend. A model whose own
+  <code>metadata()</code> uses a version field's name (<code>promoted_by</code>, <code>lineage_run_id</code>,
+  <code>config_hash</code>, the stage times) or <code>registry_metadata</code> reads back with that
+  key in the field, as on every other backend; no shipped model does.</li>
+<li>
+<p>An unknown stage name given to the filesystem backend raises <code>ValueError</code>; it
+  was written to <code>registry.json</code> as is.</p>
+</li>
+<li>
+<p><strong><code>ubunye deploy databricks</code> defaults to Databricks Runtime 17.3 LTS</strong>
+  (<code>17.3.x-scala2.13</code>, Spark 4.0), the runtime <code>ubunye export databricks</code> already
+  used, for a target in <code>targets.yaml</code> that does not set <code>spark_version</code>. The old
+  default, 13.3 LTS, runs Spark 3.4, older than the engine supports (pyspark 3.5 or
+  later). A target that sets <code>spark_version</code> is unchanged.</p>
+</li>
+<li>
+<p><strong>A first Delta append of a named batch makes no history lookups</strong> (F-100).
+  The two <code>DESCRIBE HISTORY</code> calls around each keyed append, there only to warn
+  that Delta skipped a batch an earlier run had committed, now run only when an
+  earlier run of the batch could have: the run took over a dead run's lease, or a
+  failed run that wrote the batch left a note beside it. Same warning, fewer steps.</p>
+</li>
+<li>
+<p><strong>The docs were reworked for clarity.</strong> Each topic now has one home page, and the
+  others link to it. New pages: Concepts, Run records, Safe reruns, Troubleshooting,
+  Upgrading from 0.8 and Azure. The README is a short front door. The home page has
+  an intro film. Every page uses the same words (use case, pipeline, task, profile,
+  run record), and internal ticket numbers are gone from user pages. Examples that
+  did not run as written (drift detection, RAG, the registry gates, the hooks
+  setup, the Databricks bundle) now run, and their output is real. The site has top
+  tabs, tap to zoom on diagrams, link preview cards, and colours that match the
+  diagrams.</p>
+</li>
+</ul>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">¶</a></h3>
 <ul>
+<li><code>ubunye run</code> on a task whose <code>transformations.py</code> has no Task class prints one
+  <code>[ERROR] Run refused</code> line, not a traceback. <code>ubunye doctor</code> no longer suggests
+  <code>--backend databricks</code> on a laptop (it only attaches to a cluster's session).</li>
+<li>
+<p><strong>Saving a Delta run record from a CLI or pandas run is about twice as fast</strong>
+  (F-116). With no active SparkSession the Delta run record store starts a local
+  one, and Delta read the run record log in 50 tasks on every save. That session,
+  and only that one, now sets <code>spark.databricks.delta.snapshotPartitions=1</code> and
+  turns off the Spark UI and console progress bar. Measured on the dev box (16 cores,
+  8 saves): about 1.35 s to 0.72 s per save. A session the user or the platform
+  started is never changed.</p>
+</li>
+<li>
+<p><strong>Each command's help says its default profile plainly</strong> (F-115). <code>ubunye export</code>
+  defaults to production (<code>--profile prod</code> for <code>airflow</code> and <code>databricks</code>, <code>-m PROD</code>
+  for <code>spark-pipeline</code>) and <code>ubunye run</code> to <code>DEV</code>. The defaults are unchanged; the
+  help of <code>export spark-pipeline</code> and <code>run</code> now says so, as <code>export airflow</code> and
+  <code>export databricks</code> already did, and <code>docs/cli.md</code> says it once for all.</p>
+</li>
+<li>
+<p><strong><code>python -m ubunye</code> documents only what works</strong> (F-114). Its docstring showed
+  <code>spark-submit ... -m ubunye</code> (spark-submit takes a file, not <code>-m</code>) and a
+  <code>--task-dir s3a://...</code> (only a local folder works); <code>docs/deployment/anywhere.md</code>
+  said "path or bucket". Both now show the file path and a local task folder, and
+  point to <code>ubunye deploy glue|dataproc|emr-serverless</code> for running from a bucket.</p>
+</li>
+<li>
+<p><strong>A task the backend cannot run is one <code>[ERROR]</code> line in <code>ubunye run</code></strong> (F-113).
+  A <code>BackendCapabilityError</code> (say, a <code>hive</code> input on <code>--backend pandas</code>) printed a
+  full traceback box. It now ends in <code>[ERROR] Run refused for &lt;task&gt;: ...</code> with the
+  hint and exit code 1, like the other refusals. Nothing ran, as before.</p>
+</li>
+<li>
+<p><strong>Spark with no usable Java fails in one clean message</strong> (F-112). The spark
+  backend now looks for Java (JAVA_HOME, then <code>java</code> on PATH) and its version before
+  it starts a session. No Java, or one older than the installed Spark needs, raises
+  <code>SparkSessionError</code> with the versions that work, and <code>ubunye run</code> prints it as one
+  <code>[ERROR]</code> line instead of pyspark's <code>[JAVA_GATEWAY_EXITED]</code> traceback. A session
+  that is already running, or Spark Connect, is not checked. <code>ubunye doctor</code> and
+  <code>ubunye backends</code> ask the same function, so the spark backend is no longer called
+  usable with no Java. The Java versions are now right everywhere: Spark 4 runs on
+  Java 17 or 21, Spark 3.5 on Java 8, 11 or 17 (the doctor's fix text said 17 or 11).</p>
+</li>
+<li>
+<p><strong><code>ubunye deploy dockerfile --out img/</code> writes <code>img/Dockerfile</code></strong> (F-111). A path
+  ending in <code>/</code> is a folder: it is made when missing. Before, a missing <code>img/</code> gave
+  a file named <code>img</code>.</p>
+</li>
+<li>
+<p><strong>The workflow from <code>ubunye init github-actions</code> works out of the box</strong> (F-110).
+  <code>ubunye deploy databricks --host</code> now reads <code>DATABRICKS_HOST</code>, the secret the
+  workflow sets, so the deploy step needs no committed <code>targets.yaml</code> (a
+  <code>targets.yaml</code>, when there is one, still wins). The manual "Run job" step now
+  starts the job with the new <code>--run</code> flag; before, it deployed again and started
+  nothing. <code>--run</code> starts a run after the deploy and prints its link. The
+  workflow's "Notebook output link" step is gone: the run step prints the link.</p>
+</li>
+<li>
+<p><strong><code>hooks=</code> adds to the engine's hooks, it does not replace them</strong> (F-101).
+  <code>ubunye.run_task(..., hooks=[...])</code>, <code>run_pipeline</code> and <code>notebook</code> dropped the run
+  record (<code>lineage=True</code>) and the <code>CONFIG.monitors</code> hook when given hooks. Your hooks
+  now run with them. <code>Engine(hooks=...)</code> is unchanged.</p>
+</li>
+<li>
+<p><strong>A unity read that names its table with <code>db_name</code> fails <code>ubunye validate</code></strong>
+  (F-102). It passed validation and failed at run time: the reader never read
+  <code>db_name</code>. The message says what to use: <code>table: 'catalog.schema.table'</code>, or
+  <code>catalog</code> + <code>schema</code> + <code>tbl_name</code> (now accepted by validate, as the reader always
+  read it), or <code>sql</code>. <code>ubunye init --template databricks</code> wrote such a read; it now
+  writes <code>table: main.raw_db.&lt;task&gt;_input</code>, and a test checks that every template
+  <code>init</code> writes passes <code>ubunye validate</code>.</p>
+</li>
+<li>
+<p><strong><code>ubunye validate</code> reports a write mode the writer cannot do</strong> (F-103), with
+  the message <code>ubunye plan</code> gives: a <code>jdbc</code> output with <code>mode: merge</code>, a <code>merge</code>
+  with no <code>merge_keys</code>. Only <code>plan</code> and the write itself caught these. One check
+  (<code>write_modes.resolve_for</code>) now serves both. A writer that declares no modes is
+  not held to any, as before.</p>
+</li>
+<li>
+<p><strong><code>secret://</code> in <code>ENGINE.spark_conf</code> is checked and resolved</strong> (F-104). It
+  reached Spark as literal text, and a misspelt provider passed <code>ubunye validate</code>.
+  Validate now checks it (base and profiles), and a Spark backend gets the value,
+  fetched when the backend is built, masked like any secret. A backend without Spark
+  does not fetch it.</p>
+</li>
+<li>
+<p><strong>The pandas backend reads a JSON file holding one array</strong> (F-105), as Spark
+  reads it with <code>multiLine</code>. It read JSON Lines only, so a pretty-printed array
+  failed on its first line. JSON Lines, including an array on each line, reads as
+  before.</p>
+</li>
+<li>
+<p><strong>The C01 proving workload runs on pandas without a Narwhals warning</strong> (F-106).
+  Its counts and sums were cast inside the group-by, which made Narwhals fall back
+  to a slow per-group apply and warn "Found complex group-by expression". The casts
+  now follow the aggregation. Same outputs, same golden digest.</p>
+</li>
+<li>
+<p>Registering with <code>promotion_gates={}</code> clears a model's stored gates on every
+  backend. Before, only the default filesystem path cleared them; MLflow and the
+  others kept the old gates.</p>
+</li>
+<li>
+<p>A rollback keeps who promoted the version on every backend. Before, a
+  filesystem backend named by object, and the deprecated <code>MLflowRegistryBackend</code>,
+  set it to empty.</p>
+</li>
+<li>
+<p><strong><code>ubunye deploy</code> and <code>ubunye export</code> end an expected error in one <code>[ERROR]</code>
+  message</strong> (F-096), exit code 1, the way <code>ubunye run</code> does. No <code>targets.yaml</code>, no
+  token, a cloud CLI not on <code>PATH</code>, a bad task list or a config that does not
+  validate printed a full traceback; <code>deploy k8s</code> and <code>deploy container-apps</code> also
+  printed their whole launcher script. A missing <code>kubectl</code> or <code>az</code> is now found
+  before anything runs, and a failed launcher is named, never printed. A bug still
+  shows its traceback. A config that does not validate now raises <code>ConfigError</code>
+  (still a <code>ValueError</code>).</p>
+</li>
+<li>
+<p><strong><code>--resume</code> skips a task that only overwrites once it finished the batch</strong>
+  (F-098). Only a task with an append output was skipped, though the docs said every
+  finished task is. With <code>--lineage</code> (<code>lineage=True</code>), a task whose latest run record
+  for this batch (same <code>-dt</code> and <code>--var</code>) says <code>success</code> is now skipped with
+  <code>[SKIP]</code>, whatever it writes. Without run records an overwrite task runs again, as
+  the docs now say.</p>
+</li>
+<li>
+<p><strong>The Delta run record store no longer grows one file per save for ever</strong>
+  (F-099). A table it creates is clustered by <code>task_path</code> (liquid clustering)
+  with auto compaction on (<code>delta.autoOptimize.autoCompact</code>), so Delta merges
+  the small files each append leaves: 200 saves leave under 60 files, not 200.
+  An existing table is used as it is; <code>docs/cli.md</code> shows the three statements
+  that turn the same on for it.</p>
+</li>
+<li>
+<p><strong>A run record no store could write is kept, whatever the store</strong> (F-097).
+  When the filesystem store could not write (its folder under a file), the
+  record was lost with a log line, and <code>ubunye sync lineage</code> found nothing. Now
+  every store's failed save goes one way, through the recorder, to
+  <code>~/.ubunye/fallback/&lt;run_id&gt;/lineage.jsonl</code>, and the warning names the
+  <code>ubunye sync lineage</code> command that replays it. The Delta store's own copy of
+  that code is gone; its <code>save</code> raises like any store's.</p>
+</li>
+<li>
+<p><strong>The docs say what 0.9.1 does.</strong> Merging the docs rework dropped some 0.9.1
+  facts and kept older text they made false. Back in place: <code>deploy databricks
+  --run</code> and <code>--host</code> reading <code>DATABRICKS_HOST</code> (the Databricks guide also lost a
+  stray copy of that text in "What success looks like", and no longer says to
+  commit a <code>targets.yaml</code> for the workflow), <code>--resume</code> skipping an overwrite task
+  with <code>--lineage</code>, the Delta run record table's clustering and the three
+  statements for an existing table, the fallback manifest for every store, and
+  <code>python -m ubunye</code> taking only a local <code>--task-dir</code>. Fixed: <code>hooks=</code> and
+  <code>OTelHook</code> no longer said the run record is dropped, <code>secret://</code> in <code>spark_conf</code>
+  no longer said it is not read, <code>validate -m</code> no longer said a config with no
+  profiles fails, <code>registry.auto_version</code> is marked deprecated, and the
+  troubleshooting <code>doctor</code> output is the real 0.9.1 output (Java versions).</p>
+</li>
 <li><strong>The CLI reference shows every command again.</strong> A code span broken across two
   lines put <code>&lt;table&gt;</code> at the start of a line, and Markdown read it as raw HTML:
   everything after "Where run records are stored" (lineage show, runs, models,
@@ -4972,6 +5242,15 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
   <code>dev</code> and <code>prod</code> passed <code>validate</code> and then stopped <code>run</code>. The error now lists the
   profiles and, when only the case differs, says which one you meant. <code>run</code> prints
   the same message instead of a traceback.</li>
+<li><strong><code>ubunye plan</code> and <code>ubunye doctor</code> check <code>-m</code> too.</strong> <code>plan -m XYZ</code> said
+  "Plan OK" on a config whose profiles are <code>DEV</code> and <code>PROD</code>, and <code>doctor</code> passed
+  it. Both now refuse a profile the config does not define, with the message
+  <code>run</code> gives, and accept any name on a config with no profiles.</li>
+<li><strong><code>load_config(profile=...)</code> follows the same rule</strong> (and so <code>run_task</code>,
+  <code>run_pipeline</code> and <code>notebook</code>, which pass <code>profile=</code> to it). It refused any
+  profile on a config with no profiles, which <code>run</code> accepts. It now calls
+  <code>UbunyeConfig.check_profile</code>, the one rule, and its error is the one <code>run</code>
+  prints. It is still a <code>ConfigProfileError</code>.</li>
 <li><strong><code>prove observe</code> before any run</strong> is a clean error (exit 2) that says to run the
   task with <code>--lineage</code> first, not a traceback. An unknown <code>--run-id</code> is too.</li>
 <li><strong>The warning for <code>CONFIG.transform.type</code></strong> no longer says it became an error in
@@ -4980,17 +5259,26 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <li><strong>The config that <code>ubunye init</code> writes</strong> spells <code>{{ task_dir }}</code> in its comment the
   way the config uses it.</li>
 </ul>
-<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">¶</a></h3>
+<h3 id="deprecated">Deprecated<a class="headerlink" href="#deprecated" title="Permanent link">¶</a></h3>
+<p>Nothing in Ubunye, its docs or examples uses these. They still work, warn with a
+<code>DeprecationWarning</code>, and go in 1.0:</p>
 <ul>
-<li><strong>The docs were reworked for clarity.</strong> Each topic now has one home page, and the
-  others link to it. New pages: Concepts, Run records, Safe reruns, Troubleshooting,
-  Upgrading from 0.8 and Azure. The README is a short front door. The home page has
-  an intro film. Every page uses the same words (use case, pipeline, task, profile,
-  run record), and internal ticket numbers are gone from user pages. Examples that
-  did not run as written (drift detection, RAG, the registry gates, the hooks
-  setup, the Databricks bundle) now run, and their output is real. The site has top
-  tabs, tap to zoom on diagrams, link preview cards, and colours that match the
-  diagrams.</li>
+<li><code>registry.auto_version</code> in a <code>model</code> transform. It never did anything: a version
+  is made whenever <code>registry.version</code> is not set. Remove the key.</li>
+<li><code>ubunye.core.planning.plan_problems</code>, <code>ubunye.proving.matrix.render_many</code>,
+  <code>ubunye.plugins.ml.adapters.to_numpy_from_pandas</code> and <code>to_numpy_from_spark</code> (use
+  <code>ensure_Xy_numpy</code>), <code>ubunye.cli.backend_choice.capabilities_or_exit</code>, and
+  <code>ubunye.telemetry.otel.init_tracer</code> (use <code>setup</code>).</li>
+</ul>
+<h3 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">¶</a></h3>
+<ul>
+<li>The private module <code>ubunye._internal.auto_detect</code> (<code>detect_registry_backend</code>,
+  <code>detect_lineage_backend</code>, <code>detect_auth_backend</code>). Nothing called it; the registry
+  backend has been chosen by <code>ubunye.models.backends.choose</code> since 0.9.0 (ADR 010),
+  and the lineage store by <code>ubunye.lineage.stores</code> (ADR 011).</li>
+<li>Dead private code: a second copy of the engine version lookup in <code>ubunye plan</code>
+  (it now reads <code>ubunye.__version__</code>), and two attributes that were set and never
+  read (<code>notebook()</code>'s task object, <code>SklearnModel._last_metrics</code>).</li>
 </ul>
 <h2 id="090-2026-11-10">[0.9.0] (2026-11-10)<a class="headerlink" href="#090-2026-11-10" title="Permanent link">¶</a></h2>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">¶</a></h3>
@@ -5956,7 +6244,7 @@ that points at the run that trained it.</p>
 <li><strong><code>ModelTransform</code> reads its settings as <code>config.yaml</code> writes them</strong>, under <code>params:</code>,
   as well as flat.</li>
 </ul>
-<h3 id="deprecated">Deprecated<a class="headerlink" href="#deprecated" title="Permanent link">¶</a></h3>
+<h3 id="deprecated_1">Deprecated<a class="headerlink" href="#deprecated_1" title="Permanent link">¶</a></h3>
 <ul>
 <li><strong><code>CONFIG.transform.type</code> in a task's config.yaml.</strong> A task always runs its
   <code>transformations.py</code>; any other <code>type</code> (<code>model</code>, or a plugin) was dropped without a
@@ -6595,7 +6883,7 @@ divergence ledger for agents, Dagster and Prefect exporters, and a benchmark sui
   not a toll.</p>
 </li>
 </ul>
-<h3 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">¶</a></h3>
+<h3 id="removed_1">Removed<a class="headerlink" href="#removed_1" title="Permanent link">¶</a></h3>
 <ul>
 <li>
 <p><strong>Telemetry that could only read zero.</strong> The <code>ubunye_rows_total</code> and
@@ -7551,7 +7839,7 @@ divergence ledger for agents, Dagster and Prefect exporters, and a benchmark sui
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 11:32:15 UTC">November 10, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 12:38:33 UTC">November 10, 2026</span>
   </span>
 
     

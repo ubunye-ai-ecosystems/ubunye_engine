@@ -3739,21 +3739,23 @@ a task, the environment variables and secret providers its config needs. It says
 would fail and how to fix it:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ubunye<span class="w"> </span>doctor<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>demo<span class="w"> </span>-p<span class="w"> </span>starter<span class="w"> </span>-t<span class="w"> </span>filter_adults
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>[OK] python: Python 3.12.16 on linux
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>[OK] python: Python 3.13.18 on linux
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>[OK] ubunye-engine: 0.9.0
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>[WARN] java: pyspark is installed but no Java was found (JAVA_HOME or java on PATH)
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>       fix: Install Java 17 (Spark 4) or 11 (Spark 3.5), or run with --backend pandas.
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>       fix: Spark 4 runs on Java 17 or 21; Spark 3.5 on Java 8, 11 or 17. Install one, or run with --backend pandas.
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>[OK] delta-spark: delta-spark 4.4.1 with Spark 4.2.0
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>[OK] backend: databricks: usable, needs Java, distributed
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>[OK] backend: pandas: usable, single machine
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>[OK] backend: spark (default): usable, needs Java, distributed
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>[OK] plugins: 18 load
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>[OK] task filter_adults: environment: every variable it needs is set
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>[FAIL] task filter_adults: secret provider aws-sm: needs boto3
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>       fix: pip install boto3
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>[OK] task filter_adults: config: loads and validates
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>2 to look at; a run would fail.
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>[WARN] backend: spark (default): Spark needs Java, and none was found (JAVA_HOME or java on PATH).
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>[WARN] default backend: a run without --backend uses 'spark', which cannot run here (on Databricks the platform's own backend is used instead)
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>       fix: Pass --backend pandas, or install what 'spark' needs.
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>[OK] plugins: 18 load
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>[OK] task filter_adults: environment: every variable it needs is set
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>[FAIL] task filter_adults: secret provider aws-sm: needs boto3
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>       fix: pip install boto3
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>[OK] task filter_adults: config: loads and validates
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>4 to look at; a run would fail.
 </code></pre></div>
 <p>This machine has no Java, and the task reads a password from AWS Secrets Manager
 without the AWS client installed. It exits <code>1</code> when a run would fail.</p>
@@ -3909,7 +3911,7 @@ PySpark prints this warning for any pandas 3.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 11:32:15 UTC">November 10, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 12:38:33 UTC">November 10, 2026</span>
   </span>
 
     

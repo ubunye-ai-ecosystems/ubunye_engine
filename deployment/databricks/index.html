@@ -4088,11 +4088,11 @@ Databricks job.
 <p>Tell the command which workspace to use. There are two ways:</p>
 <ul>
 <li>a <code>targets.yaml</code> file (below), chosen with <code>--target</code>; or</li>
-<li><code>--host https://...</code> for a one-off deploy.</li>
+<li><code>--host https://...</code> for a one-off deploy. With no <code>--host</code>, the
+  <code>DATABRICKS_HOST</code> environment variable is used.</li>
 </ul>
-<p><code>ubunye deploy databricks</code> does <strong>not</strong> read <code>DATABRICKS_HOST</code>. With
-neither <code>targets.yaml</code> nor <code>--host</code> it stops with
-<code>TargetNotFoundError: No targets.yaml found and no --host flag provided.</code></p>
+<p>A <code>targets.yaml</code>, when there is one, wins. With neither a <code>targets.yaml</code> nor
+a host, it stops with <code>No targets.yaml found and no --host flag provided.</code></p>
 </li>
 </ol>
 <h3 id="create-targetsyaml">Create <code>targets.yaml</code><a class="headerlink" href="#create-targetsyaml" title="Permanent link">¶</a></h3>
@@ -4121,7 +4121,7 @@ shares the same targets. This is the layout
 <a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="nt">token_env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DATABRICKS_TOKEN_PROD</span>
 <a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="nt">workspace_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/Workspace/ubunye</span>
 <a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">    </span><span class="nt">serverless</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                   </span><span class="c1"># run on a job cluster instead</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">    </span><span class="nt">spark_version</span><span class="p">:</span><span class="w"> </span><span class="s">"13.3.x-scala2.12"</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">    </span><span class="nt">spark_version</span><span class="p">:</span><span class="w"> </span><span class="s">"17.3.x-scala2.13"</span>
 <a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">    </span><span class="nt">node_type_id</span><span class="p">:</span><span class="w"> </span><span class="s">"i3.2xlarge"</span>
 <a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">    </span><span class="nt">num_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
 </code></pre></div>
@@ -4199,6 +4199,8 @@ schedule, the job runs only when you start it.</p>
 </code></pre></div>
 <p>Then start the job and look at it:</p>
 <ul>
+<li><strong>From the same command:</strong> add <code>--run</code>. It starts a run once the job is
+  deployed and prints the run's link.</li>
 <li><strong>In the workspace:</strong> open <strong>Jobs &amp; Pipelines</strong> (called <strong>Workflows</strong> in
   older workspaces), search for <code>ubunye-shop-orders-clean-dev</code>, and press
   <strong>Run now</strong>. The job page is also at <code>&lt;host&gt;/#job/&lt;job id&gt;</code>.</li>
@@ -4210,7 +4212,8 @@ schedule, the job runs only when you start it.</p>
 <p>If the token variable is empty the command stops with <code>AuthNotFoundError</code>. A
 token the workspace refuses gives <code>AuthInvalidError</code>. See <a href="../../errors/">Errors</a>.</p>
 <h3 id="one-off-deploy-without-targetsyaml">One-off deploy without <code>targets.yaml</code><a class="headerlink" href="#one-off-deploy-without-targetsyaml" title="Permanent link">¶</a></h3>
-<p>Pass the host directly:</p>
+<p>Pass the host directly, or set <code>DATABRICKS_HOST</code> (<code>--host</code> reads it). The host
+is used only when there is no <code>targets.yaml</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ubunye<span class="w"> </span>deploy<span class="w"> </span>databricks<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>shop<span class="w"> </span>-p<span class="w"> </span>orders<span class="w"> </span>-t<span class="w"> </span>clean<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">    </span>--host<span class="w"> </span><span class="s2">"https://adb-123.azuredatabricks.net"</span><span class="w"> </span>--dry-run
 </code></pre></div>
@@ -4241,15 +4244,17 @@ deploys. The important parts, trimmed:</p>
 <a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="w">          </span><span class="no">ubunye deploy databricks \</span>
 <a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="w">            </span><span class="no">-d pipelines -u shop -p orders -t clean \</span>
 <a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="w">            </span><span class="no">--target nonprod</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="w">      </span><span class="c1"># ... "Run job (manual trigger)": the same command with --run</span>
 </code></pre></div>
 <p>Before it can deploy:</p>
 <ul>
 <li>Add the secrets <code>DATABRICKS_HOST</code> and <code>DATABRICKS_TOKEN</code> to the repository
   (<strong>Settings → Secrets and variables → Actions</strong>).</li>
-<li>Commit a <code>targets.yaml</code> with a <code>nonprod</code> target (change it with
-  <code>--target</code>). The deploy step reads the workspace from there, not from the
-  <code>DATABRICKS_HOST</code> secret; the workflow only uses that secret to decide
-  whether to deploy.</li>
+<li>That is all. With no <code>targets.yaml</code> the deploy reads the workspace from the
+  <code>DATABRICKS_HOST</code> secret. A committed <code>targets.yaml</code> with a <code>nonprod</code> target
+  (change it with <code>--target</code>) wins when there is one.</li>
+<li>To deploy and start the job by hand, run the workflow from the <strong>Actions</strong>
+  tab with <code>run_after_deploy</code> ticked. The run step prints the run's link.</li>
 </ul>
 <p>Run <code>ubunye init github-actions --help</code> for <code>--extras</code>, <code>--target</code>,
 <code>--no-deploy</code> and <code>--output</code>.</p>
@@ -4292,8 +4297,8 @@ deploys. The important parts, trimmed:</p>
 <tr>
 <td><code>spark_version</code></td>
 <td>str</td>
-<td><code>13.3.x-scala2.12</code></td>
-<td>Databricks Runtime version (job cluster only)</td>
+<td><code>17.3.x-scala2.13</code></td>
+<td>Databricks Runtime version (job cluster only); 17.3 LTS, as <code>ubunye export databricks</code></td>
 </tr>
 <tr>
 <td><code>node_type_id</code></td>
@@ -4671,7 +4676,7 @@ cannot drift apart.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 11:32:15 UTC">November 10, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 12:38:33 UTC">November 10, 2026</span>
   </span>
 
     
