@@ -267,6 +267,20 @@ class TestAnIgnoredTransformTypeIsNeverSilent:
         ubunye.run_task(str(_train_task(tmp_path)), backend="pandas")
         assert not [w for w in recwarn if issubclass(w.category, FutureWarning)]
 
+    def test_the_message_is_true_and_says_what_to_do(self, tmp_path):
+        # 0.9.0 still only warns, so the message must not promise an error,
+        # and it must point at the way to train that does run.
+        _train_task(tmp_path, MODEL_BLOCK)
+        args = ["validate", "-d", str(tmp_path), "-u", "uc", "-p", "pkg", "-t", "train"]
+        result = runner.invoke(app, args + ["--json"])
+        assert result.exit_code == 0, result.output
+        (task,) = json.loads(result.stdout)["tasks"]
+        (message,) = task["warnings"]
+        assert "this is an error" not in message
+        assert "still runs" in message
+        assert "ModelTransform" in message
+        assert "docs/config/transform.md" in message
+
     def test_validate_says_so(self, tmp_path):
         _train_task(tmp_path, MODEL_BLOCK)
         args = ["validate", "-d", str(tmp_path), "-u", "uc", "-p", "pkg", "-t", "train"]
