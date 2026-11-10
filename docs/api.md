@@ -1,13 +1,27 @@
 # API Reference
 
-Auto-generated from docstrings via [mkdocstrings](https://mkdocstrings.github.io/).
+Run Ubunye tasks from Python instead of the CLI: in a notebook, a job, or a test.
+This page lists the public classes and functions, generated from their docstrings.
+
+## Which API do I use?
+
+| You want to | Use | It returns |
+|---|---|---|
+| Run one task, end to end | `ubunye.run_task(task_dir, ...)` | `{output name: frame}`: what the task wrote, as the backend's own frames (a pandas DataFrame on pandas, a Spark DataFrame on Spark) |
+| Run several tasks of one pipeline, in order | `ubunye.run_pipeline(usecase_dir, usecase, pipeline, tasks, ...)` | `{task name: {output name: frame}}`, without the tasks `resume=True` skipped |
+| Step through a task in a notebook: read, look, transform, look, write | `ubunye.notebook(task_dir, ...)` | A `NotebookContext`: `read()` gives `{input name: frame}`, `transform()` gives `{output name: frame}`, `write()` writes them, `run()` does all three |
+| Drive the engine yourself from a parsed config | `ubunye.core.runtime.Engine` | `Engine.run(cfg)` gives `{output name: frame}` (`None` with `dry_run=True`) |
+
+Most people want `run_task`. All of them take `mode` (the profile: `DEV`,
+`PROD`, ...; default `DEV`) and `backend` (`"pandas"`, `"spark"`, ...). See
+[Execution backends](backends.md) and [Profiles](config/engine.md).
 
 ---
 
 ## Python API
 
-The public Python API for running Ubunye tasks without the CLI.
-Primary use case: Databricks notebooks and jobs where a SparkSession already exists.
+The main use: Databricks notebooks and jobs, where a SparkSession already exists
+and the engine attaches to it.
 
 ```python
 import ubunye
@@ -15,20 +29,20 @@ import ubunye
 # Run a single task
 outputs = ubunye.run_task(
     task_dir="pipelines/fraud_detection/ingestion/claim_etl",
-    mode="nonprod",
+    mode="PROD",
     dt="202510",
 )
 
 # The same task with no Spark and no Java
 outputs = ubunye.run_task("pipelines/sales/etl/daily", backend="pandas")
 
-# Run multiple tasks sequentially
+# Run multiple tasks in order
 results = ubunye.run_pipeline(
     usecase_dir="pipelines",
     usecase="fraud_detection",
     pipeline="ingestion",
     tasks=["claim_etl", "feature_engineering"],
-    mode="nonprod",
+    mode="PROD",
     dt="202510",
 )
 ```
@@ -193,36 +207,26 @@ how to choose one and write your own.
       show_source: false
       heading_level: 3
 
-### SparkBackend
-
-Creates and manages a new SparkSession. Use for local development, CI, and non-Databricks environments.
+The shipped backends (`spark`, `databricks`, `pandas`): what each is for and
+how each reads and writes is on [Execution backends](backends.md).
 
 ::: ubunye.backends.spark_backend.SparkBackend
     options:
       show_root_heading: true
       show_source: false
-      heading_level: 4
-
-### DatabricksBackend
-
-Reuses an active SparkSession instead of creating one. Use on Databricks where a session already exists.
+      heading_level: 3
 
 ::: ubunye.backends.databricks_backend.DatabricksBackend
     options:
       show_root_heading: true
       show_source: false
-      heading_level: 4
-
-### PandasBackend
-
-Runs a task with pandas and pyarrow: no Spark and no Java. Reads and writes local
-csv, json and parquet exactly as Spark does.
+      heading_level: 3
 
 ::: ubunye.backends.pandas_backend.PandasBackend
     options:
       show_root_heading: true
       show_source: false
-      heading_level: 4
+      heading_level: 3
 
 ---
 

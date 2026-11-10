@@ -1,8 +1,12 @@
 # Error Reference
 
-Ubunye Engine uses a structured exception hierarchy. Every user-facing error
-inherits from `UbunyeError` **and** the stdlib type it replaces, so existing
-`except ValueError` or `except KeyError` catches continue to work.
+Every exception Ubunye raises, for people who catch errors in Python. If you
+have an error message and want the fix, start at
+[Troubleshooting](troubleshooting.md) instead.
+
+Every user-facing error inherits from `UbunyeError` **and** the standard Python
+type it replaces, so existing `except ValueError` or `except KeyError` catches
+keep working.
 
 ---
 
@@ -24,9 +28,9 @@ Narrow catches still work via dual inheritance:
 
 ```python
 except FileNotFoundError:   # catches TaskNotFoundError, RegistryNotFoundError
-except KeyError:            # catches ReaderNotFoundError, WriterNotFoundError, SecretError
+except KeyError:            # catches ReaderNotFoundError, WriterNotFoundError, SecretError, FeatureContractError
 except ValueError:          # catches ConfigError, RegistryError subtypes, ExpectationError
-except RuntimeError:        # catches SparkSessionError, ModelNotFittedError, DeployError, LLMError
+except RuntimeError:        # catches SparkSessionError, ModelNotFittedError, DeployError, LLMError, RunLeaseHeld
 ```
 
 ---
@@ -46,7 +50,8 @@ UbunyeError(Exception)
 │   ├── WriterNotFoundError
 │   ├── TransformNotFoundError
 │   ├── MonitorNotFoundError
-│   └── BackendNotFoundError      no backend under that name, or it failed to load
+│   ├── BackendNotFoundError      no backend under that name, or it failed to load
+│   └── RegistryBackendNotFoundError  no registry backend under that name, or it failed to load
 ├── SourceReadError(UbunyeError, IOError)
 ├── SinkWriteError(UbunyeError, IOError)
 ├── TransformOutputError(UbunyeError, TypeError)
@@ -58,12 +63,17 @@ UbunyeError(Exception)
 ├── SparkSessionError(UbunyeError, RuntimeError)
 ├── ModelLoadError(UbunyeError, ImportError)
 ├── ModelNotFittedError(UbunyeError, RuntimeError)
+├── FeatureContractError(UbunyeError, KeyError)  at predict, the frame lacks a feature the model declared
 ├── RegistryError(UbunyeError, ValueError)
 │   ├── VersionExistsError
 │   ├── VersionNotFoundError
 │   └── PromotionBlockedError
 ├── RegistryNotFoundError(UbunyeError, FileNotFoundError)
 ├── LineageRecordNotFoundError(UbunyeError, FileNotFoundError)
+├── RunLeaseHeld(UbunyeError, RuntimeError)     another live run holds this task and batch
+│   └── BatchFinished                           a finished run already appended this batch; --rerun replaces it
+├── RunLeaseLost(UbunyeError, RuntimeError)     this run's lease was taken over; it stops
+├── UpstreamNotReady(UbunyeError, RuntimeError) a task in CONFIG.requires has not succeeded for this batch
 └── DeployError(UbunyeError, RuntimeError)
     ├── AuthNotFoundError         Databricks credentials are missing
     ├── AuthInvalidError          Databricks credentials are rejected
@@ -73,6 +83,9 @@ UbunyeError(Exception)
 ```
 
 `SecretError` and `LLMError` never carry the secret or the key.
+`RunLeaseHeld`, `BatchFinished` and `RunLeaseLost` are explained in
+[Safe reruns](guides/safe-reruns.md); `FeatureContractError` in
+[ADR 012](architecture/adr-012-model-runs-and-feature-contract.md).
 
 ---
 
@@ -105,8 +118,8 @@ ReaderNotFoundError: Reader plugin 'hve' not found.
 ConfigProfileError: Profile 'staging' not found.
 
   Profile:   staging
-  Available: ['dev', 'prod']
-  Hint: Valid profiles: dev, prod
+  Available: ['DEV', 'PROD']
+  Hint: Valid profiles: DEV, PROD
 ```
 
 **Missing env variable (Jinja)**
@@ -139,4 +152,9 @@ from ubunye.core.errors import (
 # Also available from ubunye.core (all but SecretError, LLMError,
 # LLMBudgetError and ExpectationError, which only ubunye.core.errors has)
 from ubunye.core import TaskNotFoundError
+
+# Elsewhere
+from ubunye.core.runs import RunLeaseHeld, BatchFinished, RunLeaseLost
+from ubunye.lineage.upstream import UpstreamNotReady
+from ubunye.models.backends import RegistryBackendNotFoundError
 ```
