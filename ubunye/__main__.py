@@ -9,16 +9,17 @@ console script, no ``-t`` flags. An engine reachable only through its CLI cannot
 either of them — and you would discover that after wiring up IAM, a bucket and a billing
 account, which is the most expensive possible moment to find out.
 
-So:
+So spark-submit runs this file::
 
     spark-submit --py-files deps.zip \\
-        -m ubunye \\
-        --task-dir s3a://bucket/code/pipelines/sales/etl/daily \\
+        /path/to/site-packages/ubunye/__main__.py \\
+        --task-dir /local/path/pipelines/sales/etl/daily \\
         --mode PROD --dt 2026-07-13
 
-or, equivalently, as the entry point file itself::
-
-    spark-submit /path/to/ubunye/__main__.py --task-dir ... --mode PROD
+and where there is a shell, ``python -m ubunye --task-dir ... --mode PROD`` does the
+same. ``--task-dir`` is a local folder holding ``config.yaml``: a bucket URI does not
+work. To run from a bucket, use ``ubunye deploy glue|dataproc|emr-serverless``, whose
+entry script fetches the task first.
 
 It deliberately does **not** create a SparkSession. ``spark-submit`` has already made
 one, with the platform's master, its executors and its conf; the engine attaches to it.

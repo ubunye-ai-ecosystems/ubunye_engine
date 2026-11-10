@@ -42,6 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`python -m ubunye` documents only what works** (F-114). Its docstring showed
+  `spark-submit ... -m ubunye` (spark-submit takes a file, not `-m`) and a
+  `--task-dir s3a://...` (only a local folder works); `docs/deployment/anywhere.md`
+  said "path or bucket". Both now show the file path and a local task folder, and
+  point to `ubunye deploy glue|dataproc|emr-serverless` for running from a bucket.
+
 - **A task the backend cannot run is one `[ERROR]` line in `ubunye run`** (F-113).
   A `BackendCapabilityError` (say, a `hive` input on `--backend pandas`) printed a
   full traceback box. It now ends in `[ERROR] Run refused for <task>: ...` with the
