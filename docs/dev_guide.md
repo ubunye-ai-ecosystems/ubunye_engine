@@ -1,8 +1,8 @@
 # Developer Guide
 
-Architecture deep-dive and extension patterns for contributors and advanced users.
-
----
+How the engine is built inside, and where to change it. For contributors and for
+anyone extending Ubunye beyond what config can do. To set up, run the tests and get a
+change merged, read [Contributing](contributing.md).
 
 ## Architecture overview
 
@@ -31,6 +31,63 @@ Entry points:
 
 ---
 
+## Engine library layout
+
+The `ubunye/` package, folder by folder. For the layout of *your* project (use cases,
+pipelines, tasks), see [Project Structure](getting_started/structure.md).
+
+```
+ubunye/
+├── api.py          : public Python API (run_task, run_pipeline)
+├── notebook.py     : ubunye.notebook(), step by step runs in a notebook
+├── mcp_server.py   : `ubunye mcp`, the engine as an MCP server for agents
+├── core/           : runtime (Engine), task runner, interfaces (Reader, Writer,
+│                     Transform, Task, Backend), ports, capabilities, expectations,
+│                     planning, write modes, run leases (runs.py), gate, errors.
+│                     Never imports Spark, pandas or pyarrow.
+├── config/         : YAML loader, Jinja resolver, Pydantic schema, variables, config hash
+├── backends/
+│   ├── spark_backend.py      : creates a new SparkSession
+│   ├── databricks_backend.py : reuses the active SparkSession (Databricks)
+│   └── pandas_backend.py     : pandas and pyarrow, no Java
+├── adapters/       : engine specific mechanics behind the core's contracts
+│   ├── spark/      : session setup, writes and claimed appends, Delta and JDBC
+│   │                 batches, Delta read pinning, content hash, held outputs
+│   └── pandas_*.py : pandas reads and writes, partition folders, run record facts;
+│                     plus CSV and JSON parsing that matches Spark's
+├── plugins/
+│   ├── readers/    : hive, jdbc, unity, rest_api, s3, delta, binary
+│   ├── writers/    : s3, jdbc, unity, rest_api, delta, hive (no binary writer)
+│   ├── transforms/ : noop, model_transform
+│   ├── ml/         : BaseModel, SklearnModel, SparkMLModel (internal wrappers)
+│   ├── llm.py      : language model backends (anthropic, openai_compatible,
+│   │                 databricks_serving)
+│   └── secrets.py  : secret:// stores (env, file, databricks, aws-sm, gcp-sm, azure-kv)
+├── llm/            : the language model port a task calls: budget, cost estimate,
+│                     prices, progress, replay
+├── models/         : UbunyeModel contract, loader, registry and its backends
+│                     (filesystem, MLflow), gates, lifecycle, artifact stores
+├── interfaces/     : typing.Protocol contracts for the pluggable seams: deploy,
+│                     registry, run record stores, auth
+├── lineage/        : run records: context, recorder, row hashing, code and machine
+│                     evidence, source versions, stores (filesystem, Delta), health
+│                     and upstream queries, OpenLineage, FOCUS
+├── proving/        : the proving ground: observations, the comparison matrix
+├── cli/            : main plus one module per command group (lineage, models,
+│                     deploy, prove, gate, runs, sync, export, init, ...)
+├── deploy/         : Databricks (bundle, workspace, auth), Glue and Dataproc
+│                     (cloud.py), Kubernetes, Container Apps and EMR Serverless
+│                     (containers.py), the task zip (package.py)
+├── orchestration/  : Airflow, Databricks job and Spark pipeline exporters
+├── telemetry/      : events, MLflow, Prometheus, OpenTelemetry, hooks/
+├── testing/        : conformance suites for people who extend Ubunye (backend,
+│                     run record store, registry)
+└── _internal/      : not public: entry point discovery, auto detection,
+                      metadata helper
+```
+
+---
+
 ## Config loading pipeline
 
 1. **Read raw YAML**: `load_config(path, variables)` in `ubunye/config/loader.py`.
@@ -54,18 +111,26 @@ Key files:
 
 `ubunye.core.runtime.Registry.from_entrypoints()` discovers readers, writers and
 transforms via `importlib.metadata.entry_points`. Other groups are loaded where
-they are used.
+they are used (most through `ubunye/_internal/discovery.py`). Every group below is
+registered in `pyproject.toml`; the shipped plugins use the same groups a third party
+would. How to write one: [Writing a plugin](connectors/plugin_guide.md).
 
 ```text
 # Entry point groups
-ubunye.readers     Reader subclasses
-ubunye.writers     Writer subclasses
-ubunye.transforms  Transform subclasses
-ubunye.backends    Backend subclasses (see Execution backends)
-ubunye.hooks       Hook classes (loaded when UBUNYE_TELEMETRY is set)
-ubunye.monitors    Monitor implementations (CONFIG.monitors)
-ubunye.ml          ML model adapters
-ubunye.secrets     secret:// stores
+ubunye.readers            Reader subclasses
+ubunye.writers            Writer subclasses
+ubunye.transforms         Transform subclasses
+ubunye.backends           Backend subclasses (see Execution backends)
+ubunye.hooks              Hook classes (loaded when UBUNYE_TELEMETRY is set)
+ubunye.monitors           Monitor implementations (CONFIG.monitors)
+ubunye.ml                 ML model adapters
+ubunye.secrets            secret:// stores
+ubunye.llm_backends       language model backends (llm.port("anthropic", ...))
+ubunye.deploy_adapters    deploy targets (databricks)
+ubunye.artifact_stores    model artifact storage schemes (file)
+ubunye.registry_backends  model registries (filesystem, mlflow; ADR 010)
+ubunye.lineage_backends   run record stores (filesystem, delta; ADR 011)
+ubunye.auth_backends      Databricks auth (token, service_principal)
 ```
 
 `registry.readers["hive"]` returns the class registered as `hive`.
@@ -182,14 +247,21 @@ The `Engine` exposes two flags that this helper relies on:
 | `context.py` | `RunContext` and `StepRecord`: run ID, task metadata, timestamps, facts per input and output |
 | `recorder.py` | `LineageRecorder`: `task_start` / `task_end`, run as a hook through `MonitorHook` |
 | `storage.py` | `FileSystemLineageStore`: reads and writes JSON under `.ubunye/lineage/` |
+| `stores.py` | Finds a run record store by name (`ubunye.lineage_backends`) and picks one: the name asked for, then `UBUNYE_LINEAGE_BACKEND`, then `filesystem` ([ADR 011](architecture/adr-011-run-record-stores.md)) |
+| `delta_store.py` | `DeltaLineageBackend`: run records in a Delta table, by table name or path ([ADR 011](architecture/adr-011-run-record-stores.md)) |
+| `health.py` | Job health as a query over run records: last result, last success, failures in a row, runs stuck in `running` ([ADR 013](architecture/adr-013-receipt-queries.md)) |
+| `upstream.py` | Upstream checks (`CONFIG.requires`): do not start until another task succeeded for this batch ([ADR 013](architecture/adr-013-receipt-queries.md)) |
+| `hasher.py` | Hashes of schemas and files |
+| `evidence.py` | The code and machine hashes a run record carries |
 | `content_hash.py` | The content hash (`rows-v1`): every row, any order, the same on Spark and pandas |
 | `source_version.py` | The version of each input source when it is read and when it is hashed |
 | `openlineage.py` | OpenLineage events from run records |
 | `focus.py` | FOCUS cost rows for a run's model calls |
 
 The `LineageRecorder` is wrapped in a `MonitorHook` and called at task start and end.
-On task end it writes the run record to
-`.ubunye/lineage/<usecase>/<package>/<task>/<run_id>.json`. See
+On task end it writes the run record to the chosen store; the filesystem store writes
+`.ubunye/lineage/<usecase>/<package>/<task>/<run_id>.json` (`<package>` is the
+pipeline). See
 [ADR 006](architecture/adr-006-run-record.md).
 
 ---
@@ -210,7 +282,11 @@ class Hook:
 ```
 
 `ubunye/core/hooks.py` defines `Hook` and `HookChain` (multiplexer).
-`ubunye/telemetry/hooks/` ships four built-in hooks (plus `MonitorHook`, which wraps one monitor such as the `LineageRecorder`):
+`ubunye/telemetry/hooks/` ships four hook classes, plus `MonitorHook`, which wraps one
+monitor such as the `LineageRecorder`. Three are telemetry hooks registered under
+`ubunye.hooks` in `pyproject.toml` (`events`, `otel`, `prometheus`). The fourth,
+`LegacyMonitorsHook`, is not registered: the engine always adds it, to run
+`CONFIG.monitors`.
 
 | File | Hook | Wraps |
 |---|---|---|
@@ -255,8 +331,12 @@ Two separate ML systems coexist:
 **`ModelTransform`** (`ubunye/plugins/transforms/model_transform.py`) loads the user's class
 dynamically via `load_model_class()` and calls `train()` or `predict()`.
 
-The `ModelRegistry` (`ubunye/models/registry.py`) stores artifacts and metadata on the
-filesystem. JSON serialization uses `dataclasses.asdict()`.
+The `ModelRegistry` (`ubunye/models/registry.py`) is one API over a pluggable registry
+backend. Backends are found by name in `ubunye.registry_backends` (`filesystem`, the
+default, and `mlflow`), chosen by `--backend` / `backend=`, then
+`UBUNYE_REGISTRY_BACKEND`, then `filesystem`. The filesystem backend stores artifacts
+and metadata on disk, with JSON from `dataclasses.asdict()`. See
+[ADR 010](architecture/adr-010-registry-backends.md).
 
 ---
 
@@ -295,11 +375,8 @@ def test_hive_reader(spark):
     ...
 ```
 
-Run:
-
-```bash
-pytest tests/ -m integration
-```
+How to run each test tier (unit, Spark, types, lint, docs, performance) and what each
+needs: [Contributing, Run the tests](contributing.md#run-the-tests).
 
 ---
 

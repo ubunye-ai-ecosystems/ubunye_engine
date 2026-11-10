@@ -63,8 +63,8 @@ columns cost nothing. A map's null values are written as `null`, as Spark's
 `to_json` writes them; only a struct's null fields are left out. Before this, the
 pandas side dropped null map values and kept the insertion order, so a map
 column could hash differently on the two engines. **Digests of tables with map
-columns change**; digests of tables without maps do not. 0.8 is not released,
-so no published digest moves.
+columns change**; digests of tables without maps do not. The change landed before
+0.8.0 was released, so no published digest moved.
 
 A backend whose frames are neither Spark nor pandas is hashed from its port
 (`collect()` and `schema`), so its `schema` must give these names. The backend
