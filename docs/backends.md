@@ -3,6 +3,8 @@
 A backend is the engine that runs your task. The task folder never names one,
 so the same folder runs on any backend that can do what it asks.
 
+![config.yaml never names a backend: --backend if given, else attach to a Spark session such as a Databricks notebook, else a new Spark session](assets/diagrams/backends.svg)
+
 ## See what you have
 
 ```bash

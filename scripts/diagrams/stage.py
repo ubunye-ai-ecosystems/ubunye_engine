@@ -93,6 +93,15 @@ GLYPHS = {
     "shield": '<path d="M12 2 21 5.5v6c0 5.4-3.8 9.3-9 10.5C6.8 20.8 3 16.9 3 11.5v-6z" fill="#6366f1"/>'
     '<path d="M8 12l3 3 5-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" '
     'stroke-linejoin="round"/>',
+    "lock": '<rect x="4" y="10" width="16" height="12" rx="2.5" fill="#f59e0b"/><path d="M8 10V7a4 4 0 0 1 8 0v3" '
+    'fill="none" stroke="#f59e0b" stroke-width="2.6"/><circle cx="12" cy="16" r="2" fill="#7c2d12"/>',
+    "agent": '<rect x="3" y="6" width="18" height="14" rx="4" fill="#6366f1"/><circle cx="9" cy="13" r="2" '
+    'fill="#fff"/><circle cx="15" cy="13" r="2" fill="#fff"/><path d="M12 2v4" stroke="#6366f1" stroke-width="2"/>'
+    '<circle cx="12" cy="2.5" r="1.8" fill="#6366f1"/>',
+    "bolt": '<path d="M13 2 4 14h7l-2 8 9-12h-7z" fill="#ef4444"/>',
+    "vectors": '<circle cx="6" cy="7" r="2.6" fill="#8b5cf6"/><circle cx="17" cy="5" r="2.6" fill="#8b5cf6"/>'
+    '<circle cx="12" cy="13" r="2.6" fill="#a78bfa"/><circle cx="5" cy="19" r="2.6" fill="#a78bfa"/>'
+    '<circle cx="19" cy="18" r="2.6" fill="#8b5cf6"/>',
     "laptop": '<rect x="4" y="5" width="16" height="11" rx="1.5" fill="none" stroke="#475569" '
     'stroke-width="2"/><path d="M2 19h20" stroke="#475569" stroke-width="2.4" stroke-linecap="round"/>',
 }
@@ -295,6 +304,48 @@ def receipt(x, y, w, h, label, value):
             t(x + 12, y + 20, label, size=13, weight=700, fill=C["tile_muted"]),
             t(x + 12, y + 44, value, size=17, weight=700, font=MONO, fill=C["tile_ink"]),
         ]
+    )
+
+
+def mini_task(x, y, name, w=190, h=92):
+    """A small light-blue task card with tiny .yaml and .py blocks."""
+    bw = (w - 36) / 2
+    return "\n".join(
+        [
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="{C["front"]}" stroke="{C["outline"]}" '
+            'stroke-width="1.5"/>',
+            t(x + 12, y + 24, name, size=15, weight=700, font=MONO, fill=C["card_ink"]),
+            f'<rect x="{x + 12}" y="{y + 38}" width="{bw}" height="40" rx="7" fill="{C["yaml_band"]}"/>',
+            t(
+                x + 12 + bw / 2,
+                y + 63,
+                ".yaml",
+                size=13,
+                weight=700,
+                font=MONO,
+                fill="#fff",
+                anchor="middle",
+            ),
+            f'<rect x="{x + 24 + bw}" y="{y + 38}" width="{bw}" height="40" rx="7" fill="{C["py_band"]}"/>',
+            t(
+                x + 24 + bw * 1.5,
+                y + 63,
+                ".py",
+                size=13,
+                weight=700,
+                font=MONO,
+                fill="#fff",
+                anchor="middle",
+            ),
+        ]
+    )
+
+
+def flow_arrow(x1, y1, x2, y2, colour=None, sw=2.5, dash=False):
+    d = ' stroke-dasharray="8 6"' if dash else ""
+    return (
+        f'<path d="M{x1} {y1}L{x2} {y2}" stroke="{colour or C["outline"]}" stroke-width="{sw}"{d} '
+        'marker-end="url(#head)"/>'
     )
 
 

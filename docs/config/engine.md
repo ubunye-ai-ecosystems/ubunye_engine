@@ -56,6 +56,8 @@ fully qualified table names still work.
 
 ## Profile merge rules
 
+![With -m prod, the prod profile is laid over the base spark_conf: memory 32g and cores 8 from prod, partitions 200 from the base; -m Prod is refused](../assets/diagrams/profiles.svg)
+
 When `-m <name>` (`--mode`) is passed, the engine calls `merged_spark_conf(name)`:
 
 1. Start with the base `ENGINE.spark_conf` dict.

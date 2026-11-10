@@ -7,13 +7,7 @@ chunk, embed, and store documents so an LLM can retrieve relevant context at que
 
 ## Architecture
 
-```
-REST API / S3 (raw docs)
-    → Ubunye ETL task (clean + chunk)
-    → Delta Lake (chunks table)
-    → Embedding task (chunk → vector)
-    → Vector store (Pinecone, Weaviate, pgvector, …)
-```
+![Raw docs from a REST API or S3, a task that cleans and chunks them into a Delta table, a task that embeds the chunks into a vector store, and an LLM that finds the closest chunks](../assets/diagrams/rag.svg)
 
 ---
 
