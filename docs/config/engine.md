@@ -100,11 +100,11 @@ Profile 'DEV' not found.
 
   Profile:   DEV
   Available: ['dev', 'prod']
-  Hint: This config's profiles are: dev, prod. Names match exactly, case included; did you mean 'dev'? Pass -m dev. With no -m, run and validate use DEV.
+  Hint: This config's profiles are: dev, prod. Names match exactly, case included; did you mean 'dev'? Pass -m dev. With no -m, run, validate, plan and doctor use DEV.
 ```
 
 Validate with the profile you will run: `ubunye validate ... -m PROD`. `plan` and
-`doctor` do not check the profile name.
+`doctor` check it the same way.
 
 ---
 

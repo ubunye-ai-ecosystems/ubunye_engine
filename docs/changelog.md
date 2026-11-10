@@ -181,6 +181,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `dev` and `prod` passed `validate` and then stopped `run`. The error now lists the
   profiles and, when only the case differs, says which one you meant. `run` prints
   the same message instead of a traceback.
+- **`ubunye plan` and `ubunye doctor` check `-m` too.** `plan -m XYZ` said
+  "Plan OK" on a config whose profiles are `DEV` and `PROD`, and `doctor` passed
+  it. Both now refuse a profile the config does not define, with the message
+  `run` gives, and accept any name on a config with no profiles.
 - **`prove observe` before any run** is a clean error (exit 2) that says to run the
   task with `--lineage` first, not a traceback. An unknown `--run-id` is too.
 - **The warning for `CONFIG.transform.type`** no longer says it became an error in

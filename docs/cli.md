@@ -60,12 +60,9 @@ Most commands that act on a task share these flags. Where a section below says
 | `--var` | | Extra template variable, `key=value`, repeatable (`run`, `validate`, `plan`, `config`, `doctor`, `test run`, `runs wait-for`, `export spark-pipeline`, `deploy`). See [Jinja](config/jinja.md#cli-injected-variables) |
 | `--json` | | Print one JSON document for scripts and agents. See [Machine output](#machine-output-json) |
 
-Not every command checks `-m` against the profiles the same way:
-
-| Command | What it does with `-m` |
-|---|---|
-| `run`, `test run` (`--profile`), `config`, `validate` | Refuses a name the config does not define. A config with no profiles accepts any name. `run` and `validate` default to `DEV` |
-| `plan`, `doctor` | Do not check it |
+`run`, `test run` (`--profile`), `config`, `validate`, `plan` and `doctor` check
+`-m` one way: a name the config does not define is refused, and a config with no
+profiles accepts any name. They default to `DEV` (`test run` to `test`).
 
 !!! warning "Upper or lower case"
     The examples use `DEV` and `PROD`. `export airflow` and `export databricks`
@@ -247,7 +244,7 @@ It checks:
 - with `--backend`, that the backend can do what each input and output needs;
 - which environment variables the config uses but are not set (a warning).
 
-It does not check `-m` against the profiles; `validate` does.
+It checks `-m` against the profiles the way `run` does.
 
 Common flags: `-d -u -p -t` (required; `-t` in run order), `-dt`, `-dtf`, `-m`
 (default `DEV`), `--var`, `--json`. Plus:
@@ -287,7 +284,7 @@ It checks:
   default that are not set, and whether its config loads and validates.
 
 Common flags, all optional: `-d` (also check tasks under this pipelines folder),
-`-u`, `-p`, `-t`, `-dt`, `-m` (default `DEV`, not checked against the profiles),
+`-u`, `-p`, `-t`, `-dt`, `-m` (default `DEV`, checked as `run` checks it),
 `--var`, `--json`.
 
 Each line is `[OK]`, `[WARN]` or `[FAIL]`, with a fix under anything that is not
