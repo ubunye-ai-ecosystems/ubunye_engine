@@ -210,8 +210,7 @@ class NotebookContext:
             backend=self._backend,
             registry=reg,
             context=self._context,
-            hooks=list(hooks) if hooks is not None else None,
-            extra_hooks=lineage_hooks,
+            extra_hooks=[*(hooks or []), *lineage_hooks],
             manage_backend=False,
         )
 

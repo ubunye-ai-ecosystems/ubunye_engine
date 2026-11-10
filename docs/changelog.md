@@ -91,6 +91,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   starts the job with the new `--run` flag; before, it deployed again and started
   nothing. `--run` starts a run after the deploy and prints its link. The
   workflow's "Notebook output link" step is gone: the run step prints the link.
+- **`hooks=` adds to the engine's hooks, it does not replace them** (F-101).
+  `ubunye.run_task(..., hooks=[...])`, `run_pipeline` and `notebook` dropped the run
+  record (`lineage=True`) and the `CONFIG.monitors` hook when given hooks. Your hooks
+  now run with them. `Engine(hooks=...)` is unchanged.
+
+- **A unity read that names its table with `db_name` fails `ubunye validate`**
+  (F-102). It passed validation and failed at run time: the reader never read
+  `db_name`. The message says what to use: `table: 'catalog.schema.table'`, or
+  `catalog` + `schema` + `tbl_name` (now accepted by validate, as the reader always
+  read it), or `sql`.
+
+- **`ubunye validate` reports a write mode the writer cannot do** (F-103), with
+  the message `ubunye plan` gives: a `jdbc` output with `mode: merge`, a `merge`
+  with no `merge_keys`. Only `plan` and the write itself caught these. One check
+  (`write_modes.resolve_for`) now serves both. A writer that declares no modes is
+  not held to any, as before.
+
+- **`secret://` in `ENGINE.spark_conf` is checked and resolved** (F-104). It
+  reached Spark as literal text, and a misspelt provider passed `ubunye validate`.
+  Validate now checks it (base and profiles), and a Spark backend gets the value,
+  fetched when the backend is built, masked like any secret. A backend without Spark
+  does not fetch it.
+
+- **The pandas backend reads a JSON file holding one array** (F-105), as Spark
+  reads it with `multiLine`. It read JSON Lines only, so a pretty-printed array
+  failed on its first line. JSON Lines, including an array on each line, reads as
+  before.
+
+- **The C01 proving workload runs on pandas without a Narwhals warning** (F-106).
+  Its counts and sums were cast inside the group-by, which made Narwhals fall back
+  to a slow per-group apply and warn "Found complex group-by expression". The casts
+  now follow the aggregation. Same outputs, same golden digest.
 
 - Registering with `promotion_gates={}` clears a model's stored gates on every
   backend. Before, only the default filesystem path cleared them; MLflow and the

@@ -363,6 +363,16 @@ def test_json_multiline_document(spark, pandas_backend, tmp_path):
     assert_same(*_read_both(spark, pandas_backend, "json", path, {"multiLine": "true"}))
 
 
+def test_json_array_file_reads_as_spark_reads_it_with_multiline(spark, pandas_backend, tmp_path):
+    """F-105: pandas reads a JSON array file with no option as Spark does with multiLine."""
+    import json
+
+    rows = [json.loads(line) for line in _nested_lines().splitlines()]
+    path = _file(tmp_path, "doc.json", json.dumps(rows, indent=2).encode())
+    spark_df = spark.read.format("json").option("multiLine", "true").load(path)
+    assert_same(spark_df, pandas_backend.read_frame("json", path))
+
+
 def test_json_records_with_no_fields_are_rows(spark, pandas_backend, tmp_path):
     """F-065: {} is a row with no columns; the pandas reader lost every such row."""
     path = _file(tmp_path, "empty.json", b'{}\n{}\n{"":1,"e":{}}\n')

@@ -36,6 +36,18 @@ The cloud providers log in the way each cloud's own SDK does (a profile, a role,
 workload identity, a managed identity, environment variables). The engine never
 takes a credential itself.
 
+`ENGINE.spark_conf` (and a profile's `spark_conf`) takes references too, for a
+storage key or a token Spark needs:
+
+```yaml
+ENGINE:
+  spark_conf:
+    fs.azure.account.key.myacct.dfs.core.windows.net: "secret://azure-kv/vault/acct-key"
+```
+
+They are fetched when a Spark backend starts, and handed only to Spark. A backend
+without Spark (pandas) does not fetch them.
+
 The whole value must be the reference; a secret is not spliced into a longer
 string. Put a password in its own field (`password:`), not inside a URL.
 

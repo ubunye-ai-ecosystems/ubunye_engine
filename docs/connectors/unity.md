@@ -26,9 +26,8 @@ Alternatively, use a SQL query:
 ```
 
 !!! note "Requirement"
-    A read needs `table` or `sql`. Give the full three-part name in `table`.
-    (`ubunye validate` also accepts `db_name` + `tbl_name` on a read, but the
-    reader does not use them, so such a read fails when it runs.)
+    A read needs `table`, `sql`, or `catalog` + `schema` + `tbl_name`.
+    `db_name` is a Hive key: `ubunye validate` refuses it on a unity read.
 
 ---
 
