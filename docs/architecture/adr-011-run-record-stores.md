@@ -74,3 +74,13 @@ spoke `LineageBackend`.
   store that cannot be read refuses the takeover rather than guess, as an
   unreadable record file does. The filesystem store still reads its files
   directly.
+
+## Addendum (0.9.1): the Delta table stays small (F-099)
+
+One append per save means one small file per save. A table the Delta store
+creates is clustered by `task_path` (liquid clustering) and has
+`delta.autoOptimize.autoCompact = true`, which open-source Delta (3.1 and
+later) and Databricks both honour: Delta merges the small files after a write.
+`delta.autoOptimize.optimizeWrite` is not set: a one-row append writes one file
+anyway, and it would add a shuffle to every save. A table that already exists
+is never altered; `docs/cli.md` shows how to turn the same on for it.

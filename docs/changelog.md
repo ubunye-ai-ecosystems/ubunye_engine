@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Delta run record store no longer grows one file per save for ever**
+  (F-099). A table it creates is clustered by `task_path` (liquid clustering)
+  with auto compaction on (`delta.autoOptimize.autoCompact`), so Delta merges
+  the small files each append leaves: 200 saves leave under 60 files, not 200.
+  An existing table is used as it is; `docs/cli.md` shows the three statements
+  that turn the same on for it.
+
 ## [0.9.0] (2026-11-10)
 
 ### Added

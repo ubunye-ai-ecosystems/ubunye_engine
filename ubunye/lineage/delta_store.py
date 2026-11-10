@@ -15,6 +15,12 @@ is lost, plus a few columns to find it by: ``run_id``, ``task_path``,
 row written last for each run. Appends never conflict, so jobs on different
 clusters can write to one table at once.
 
+Every append writes one small file. So the store creates its table clustered by
+``task_path`` (liquid clustering) with auto compaction on
+(``delta.autoOptimize.autoCompact``): Delta merges the small files after a write,
+and ``OPTIMIZE`` sorts them by task. Open-source Delta (3.1 and later) and
+Databricks both honour these. A table that already exists is used as it is.
+
 It needs a SparkSession with Delta: the active one, or a local one it starts
 (``pip install 'ubunye-engine[delta]'``). When a record cannot be written, it is
 kept in a fallback manifest (``~/.ubunye/fallback/<run_id>/lineage.jsonl``,
@@ -47,6 +53,8 @@ logger = logging.getLogger(__name__)
 
 _DELTA_EXTENSION = "io.delta.sql.DeltaSparkSessionExtension"
 _DELTA_CATALOG = "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+#: Set on a table the store creates, never on one that exists (F-099).
+_PROPERTIES = {"delta.autoOptimize.autoCompact": "true"}
 
 
 def _record_to_dict(record: LineageRecord) -> Dict:
@@ -169,6 +177,7 @@ class DeltaLineageBackend:
         self._use_spark = self._detect_spark()
         self._local_path = Path(table_or_path) if not self._use_spark else None
         self._warned_local = False
+        self._ready = False  # the table is known to exist
         self._worker: Optional[_MetadataWorker] = None
 
     @staticmethod
@@ -246,8 +255,31 @@ class DeltaLineageBackend:
         w = Window.partitionBy("task_path", "run_id").orderBy(F.col("written_at").desc())
         return df.withColumn("_n", F.row_number().over(w)).filter(F.col("_n") == 1).drop("_n")
 
+    def _create(self, spark: Any) -> None:
+        """Create the table, clustered by task_path, with auto compaction (F-099)."""
+        try:
+            from delta.tables import DeltaTable
+        except ImportError:
+            return  # the first append creates a plain table, as before
+        loc = self._table_or_path
+        builder = DeltaTable.createIfNotExists(spark).addColumns(_schema())
+        builder = builder.location(loc) if is_path(loc) else builder.tableName(loc)
+        if hasattr(builder, "clusterBy"):  # delta-spark 3.2 and later
+            builder = builder.clusterBy("task_path")
+        for key, value in _PROPERTIES.items():
+            builder = builder.property(key, value)
+        try:
+            builder.execute()
+        except Exception:
+            if not self._exists(spark):  # not another job creating it at the same time
+                raise
+
     def _append(self, ctx: RunContext) -> None:
         spark = self._session()
+        if not self._ready:
+            if not self._exists(spark):
+                self._create(spark)
+            self._ready = True
         df = spark.createDataFrame([_row(ctx)], schema=_schema())
         writer = df.write.format("delta").mode("append")
         if is_path(self._table_or_path):
