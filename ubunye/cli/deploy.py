@@ -286,7 +286,12 @@ def deploy_dockerfile(
         "pipelines", "--pipelines", help="Folder copied into the image as /app/pipelines."
     ),
     engine: str = typer.Option("ubunye-engine", "--engine", help="pip requirement for the engine."),
-    out: Optional[Path] = typer.Option(None, "--out", help="Write here instead of printing."),
+    out: Optional[Path] = typer.Option(
+        None,
+        "--out",
+        help="Write here instead of printing. A folder gets <folder>/Dockerfile; "
+        "missing folders are made.",
+    ),
 ) -> None:
     """Write a Dockerfile for a Spark job image on PLATFORM, and the entry script next to it."""
     from ubunye.deploy import package as packaging
@@ -297,6 +302,9 @@ def deploy_dockerfile(
     if out is None:
         typer.echo(text)
         return
+    if out.is_dir():
+        out = out / "Dockerfile"
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text, encoding="utf-8")
     entry = out.parent / "ubunye_entry.py"
     entry.write_text(packaging.ENTRY_SCRIPT, encoding="utf-8")

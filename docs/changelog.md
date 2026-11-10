@@ -81,6 +81,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`deploy dockerfile --out` makes its folder, and takes a folder** (F-093). The
+  documented `--out build/Dockerfile` failed with `FileNotFoundError` when `build/`
+  did not exist, and `--out build` failed with `IsADirectoryError`. Missing folders
+  are now made, and a folder gets `<folder>/Dockerfile`.
+
 - **`prove` options with fixed values reject a wrong value cleanly** (F-092).
   `prove skip --status nonsense` and `prove observe --cost-basis bogus` printed a
   raw `ValueError` traceback, and `prove observe --kind bogus` was kept silently.
