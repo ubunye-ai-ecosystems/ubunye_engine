@@ -1,6 +1,8 @@
 # Secrets
 
-A config names a secret; it never holds one.
+This page shows how to give a task a password, token or key without writing it in
+`config.yaml`. A config names a secret; it never holds one. Every password, token
+and key example in these docs uses a `secret://` reference.
 
 ```yaml
 CONFIG:
@@ -39,15 +41,33 @@ takes a credential itself.
 The whole value must be the reference; a secret is not spliced into a longer
 string. Put a password in its own field (`password:`), not inside a URL.
 
+References are read in input and output blocks (any key, at any depth, such as
+`password:` or `auth.token:`). They are **not** read in `ENGINE.spark_conf`: a
+`secret://` value there reaches Spark as plain text. For cloud storage keys, let
+the platform log in (an instance role, workload identity) instead of setting keys
+in `spark_conf`.
+
 ## Checked before a run, fetched during it
 
 `ubunye validate` refuses a reference to a provider that is not installed, with
 the closest name (`secret://aws-smm/...`: did you mean `aws-sm`?). Nothing is
 fetched at validation.
 
-`ubunye doctor -d ... -t TASK` lists each provider a task uses and whether its
-package is installed. It does not read the secrets: the login they need may only
-exist where the task really runs.
+`ubunye doctor` with a task lists each provider the task uses and whether its
+package is installed:
+
+```bash
+ubunye doctor -d pipelines -u fraud -p etl -t claims
+```
+
+```text
+[FAIL] task claims: secret provider aws-sm: needs boto3
+       fix: pip install boto3
+[OK] task claims: secret provider env: installed (the secret itself is read at run time)
+```
+
+It does not read the secrets: the login they need may only exist where the task
+really runs. `-t` needs `-d`, `-u` and `-p` with it.
 
 A secret that cannot be read stops the run with the reference and the provider's
 error, never the value:
@@ -62,54 +82,67 @@ SecretError: Could not read secret secret://aws-sm/prod/shop-db: ClientError: Ac
 ## What is recorded
 
 A resolved secret never reaches the run record, the lineage record, an OpenLineage
-event or `ubunye plan` output: only the `secret://` reference is kept. This is
-checked by experiment E-04 (`tests/experiments/e04_secrets.py`), which puts a marker
-in every place a secret can go and searches everything a run leaves behind.
+event or `ubunye plan` output: only the `secret://` reference is kept. A test puts
+a marker in every place a secret can go and searches everything a run leaves behind.
 
 `--var` is not for secrets: variables are recorded, because the record says what the
-run was given. As a safety net, a variable whose name says it is a secret (`token`,
-`db_password`, `api_key`, `client_secret` and the like) is recorded as `***`, and its
-value is masked wherever it was templated in (a JDBC URL, a REST query). Names about
-a secret rather than holding one (`max_token`, `auth_mode`, `secret_scope`) are kept.
-Pass a secret through `secret://` instead.
+run was given. Pass a secret through `secret://` instead. As a safety net, Ubunye
+masks secrets it can recognise in everything it records, sends or prints:
 
-A password written into a URL (`jdbc:postgresql://user:password@host/db`,
-`;password=...`, `?token=...`) is masked in every recorded location, as Spline learned
-to do after lineage leaked JDBC passwords.
+- a `--var` whose name says it is a secret (`token`, `db_password`, `api_key`,
+  `client_secret` and the like) is recorded as `***`;
+- a password written into a URL (`jdbc:postgresql://user:password@host/db`,
+  `;password=...`, `?token=...`);
+- a failed run's error message.
 
 ### A failed run's error
 
-A failed run's record keeps why it failed (the error's type and message), and
-OpenLineage sends it, `lineage trace` prints it and `ubunye prove` shows it. An error
-message can quote anything, so it is masked before any of them sees it, by one
-function (`ubunye.core.secrets.mask_text`, the same one the REST connector uses for
-its logs and errors). It masks:
+A failed run's record keeps why it failed: the error's type and message. That
+message is masked before it is recorded, sent to OpenLineage or printed, and cut to
+its first 4,096 characters. Details are in "Under the hood" below.
 
-- every secret the run knows of: secret-looking `--var` values, every value a
-  `secret://` reference resolved to in this process, literal secrets in the config
-  (under a secret-looking key, an `Authorization` header, an `auth` block), and the
-  values of environment variables with secret-looking names (a config can template one
-  in with `{{ env.DB_PASSWORD }}`);
-- each of them URL-encoded, in base64 (also inside `user:password`, as Basic auth
-  codes it), and broken across a line or a space;
-- the usual shapes of a secret, known or not: `scheme://user:password@host`, a
-  secret-named parameter in a URL or a JDBC string (`?api_key=`, `&sig=`, `?key=`,
-  `;password=`), and the value of an `Authorization`, `Proxy-Authorization` or
-  `X-Api-Key` header.
-
-The error is kept to its first 4,096 characters, then `... (N more characters)`: a
-5 MB message made a 5 MB record. It is masked before it is cut, so the cut cannot
-leave half a secret showing.
-
-Limits: a value shorter than 4 characters is not masked word for word (it would
-shred the text), so a 3 character password in a message stays. An environment
-variable with a secret-looking name is masked even when it is not one (a path in
-`PASSWORD_STORE_DIR`). The Python API still raises the original exception to your
-code: only what is recorded, sent or printed is masked.
+### The config hash
 
 The config hash is taken over the config as rendered, so a templated secret is part
 of it. The hash cannot be reversed for a long token, but a short password could be
 guessed against it: another reason to use `secret://`, which is hashed as the reference.
+
+??? note "Under the hood: how masking works"
+    **Variables.** A variable whose name says it is a secret is recorded as `***`,
+    and its value is masked wherever it was templated in (a JDBC URL, a REST query).
+    Names about a secret rather than holding one (`max_token`, `auth_mode`,
+    `secret_scope`) are kept.
+
+    **URLs.** A password written into a URL is masked in every recorded location.
+    Lineage tools have leaked JDBC passwords this way before.
+
+    **A failed run's error.** A failed run's record keeps why it failed (the error's
+    type and message), and OpenLineage sends it, `lineage trace` prints it and
+    `ubunye prove` shows it. An error message can quote anything, so it is masked
+    before any of them sees it, by one function (the same one the REST connector
+    uses for its logs and errors). It masks:
+
+    - every secret the run knows of: secret-looking `--var` values, every value a
+      `secret://` reference resolved to in this process, literal secrets in the
+      config (under a secret-looking key, an `Authorization` header, an `auth`
+      block), and the values of environment variables with secret-looking names (a
+      config can template one in with `{{ env.DB_PASSWORD }}`);
+    - each of them URL-encoded, in base64 (also inside `user:password`, as Basic
+      auth codes it), and broken across a line or a space;
+    - the usual shapes of a secret, known or not: `scheme://user:password@host`, a
+      secret-named parameter in a URL or a JDBC string (`?api_key=`, `&sig=`,
+      `?key=`, `;password=`), and the value of an `Authorization`,
+      `Proxy-Authorization` or `X-Api-Key` header.
+
+    The error is kept to its first 4,096 characters, then `... (N more
+    characters)`: a 5 MB message made a 5 MB record. It is masked before it is cut,
+    so the cut cannot leave half a secret showing.
+
+    Limits: a value shorter than 4 characters is not masked word for word (it would
+    shred the text), so a 3 character password in a message stays. An environment
+    variable with a secret-looking name is masked even when it is not one (a path
+    in `PASSWORD_STORE_DIR`). The Python API still raises the original exception to
+    your code: only what is recorded, sent or printed is masked.
 
 ## Writing a provider
 

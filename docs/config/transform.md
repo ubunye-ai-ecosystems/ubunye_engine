@@ -1,6 +1,8 @@
 # Transform
 
-`CONFIG.transform` declares what happens between reading inputs and writing outputs.
+`CONFIG.transform` is the part of `config.yaml` that sits between reading inputs and
+writing outputs. This page is for anyone writing a task: it shows where your code
+goes, how to give it settings, and how to train a model inside a task.
 
 ---
 
@@ -12,16 +14,8 @@ CONFIG:
 ```
 
 A task folder always runs the `Task` subclass in its `transformations.py`. That holds for
-`ubunye run`, `run_task`, `run_pipeline` and notebooks. Leave `transform` as `{}`.
-
-!!! warning "`type:` in a task's config.yaml is not run"
-    Before 0.7.1 a task's config could name a transform plugin (`type: model`, or your
-    own) and the engine dropped it without a word: `transformations.py` ran instead.
-    Since 0.7.1, `ubunye run`, `ubunye plan` and `ubunye validate` warn about it. In
-    0.8.0 it is still a warning, not an error, and the type is still not run. Move
-    the logic into `transformations.py` (see
-    [Training a model](#training-a-model)) and remove the `type` line. `type: noop` is
-    still accepted, and still does nothing.
+`ubunye run`, `run_task`, `run_pipeline` and notebooks. Leave `transform` as `{}`, or
+give it `params` (below).
 
 ---
 
@@ -52,6 +46,10 @@ Put your own settings under `transform.params` and read them from `self.config`,
 whole config as a dict. Jinja variables work here too, so a setting can come from
 `--var` or the data timestamp.
 
+A value that comes from `--var` arrives as text: `--var min_amount=30` gives the
+string `'30'`, not the number 30. Convert it in your code (`int(params["min_amount"])`).
+A number written straight into the YAML (`min_amount: 10`) stays a number.
+
 ```yaml
 CONFIG:
   transform:
@@ -69,8 +67,9 @@ class MyTask(Task):
         return {"orders_out": orders}
 ```
 
-`params` is the only key besides `type`; any other key under `transform` is refused
-by `ubunye validate` with the list of valid fields.
+`params` is the only key besides `type` (see the note at the end of this page); any
+other key under `transform` is refused by `ubunye validate` with the list of valid
+fields.
 
 ---
 
@@ -120,9 +119,10 @@ There, `registry.on_blocked: record` keeps a blocked run going.
 
 ## `ModelTransform` from Python
 
-`ubunye.plugins.transforms.model_transform.ModelTransform` trains or scores a model from a
-settings dict. Call it yourself, for example from a notebook. It takes the settings flat or
-under `params:`.
+`ModelTransform` trains or scores a model from a settings dict. Call it yourself,
+for example from a notebook or from your `Task`. It takes the settings flat or under
+`params:`. The third argument is the run's backend; pass `None` when you call it
+outside a run.
 
 ```python
 from ubunye.plugins.transforms.model_transform import ModelTransform
@@ -134,7 +134,7 @@ ModelTransform().apply(
         "model_class": "model.FraudRiskModel",
         "registry": {"store": ".ubunye/model_store", "use_case": "fraud_detection"},
     },
-    backend,
+    None,  # the backend: None when you call it yourself
 )
 ```
 
@@ -152,11 +152,16 @@ ModelTransform().apply(
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `store` | string | required | Path or URI of the model store |
+| `backend` | string | `null` | Where the registry keeps models. Not set: the `UBUNYE_REGISTRY_BACKEND` environment variable, else `filesystem`. See [Model Registry](../ml/registry.md) |
 | `use_case` | string | `"default"` | Logical grouping for the model |
-| `version` | string | `null` | Explicit version; auto-generated if `null` |
+| `version` | string | `null` | Explicit version; generated for you if `null` |
+| `auto_version` | bool | `true` | Accepted, but has no effect today: a version is generated whenever `version` is `null` |
 | `promote_to` | `development` \| `staging` \| `production` | `null` | Promote after registration |
 | `use_stage` | `development` \| `staging` \| `production` | `"production"` | Stage to load from (predict only) |
 | `promotion_gates` | dict | `null` | Metric thresholds that must pass before promotion |
+| `on_blocked` | `raise` \| `record` | `raise` | What a promotion the gates block does. `raise` fails the run. `record` keeps the run going; the version stays in `development` and the run record says which gate blocked it |
+| `stamp_columns` | bool | `false` | Predict only: add `model_version` and `model_stage` columns to the scored rows |
+| `check_features` | bool | `null` | Predict only: compare the frame with the model's declared features. Not set: warn and call the model. `true`: refuse the frame before the model is called. `false`: no check |
 
 ---
 
@@ -165,3 +170,15 @@ ModelTransform().apply(
 Classes registered under the `ubunye.transforms` entry point run when you build an
 `Engine` yourself and pass it a config; a task folder does not run them. See
 [Writing a Plugin](../connectors/plugin_guide.md).
+
+---
+
+## `type:` in a task's config.yaml is not run
+
+!!! note "A `type:` line only gets a warning"
+    A task's config may name a transform plugin (`transform: {type: model}`, or your
+    own). In 0.9.0 the type is still **not run**: `transformations.py` runs instead.
+    `ubunye validate`, `ubunye plan` and `ubunye run` print a warning about it, and
+    the run carries on. Move the logic into `transformations.py` (see
+    [Training a model](#training-a-model)) and remove the `type` line.
+    `type: noop` is accepted and does nothing.

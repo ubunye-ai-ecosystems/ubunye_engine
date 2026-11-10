@@ -1,7 +1,8 @@
 # Unity Catalog Connector
 
-Reads and writes Databricks Unity Catalog tables using three-part names
-(`catalog.schema.table`). Requires a Databricks cluster with Unity Catalog enabled.
+Reads and writes Databricks Unity Catalog tables, named in three parts
+(`catalog.schema.table`). Use it for tasks that run on Databricks with Unity
+Catalog enabled.
 
 ---
 
@@ -26,9 +27,12 @@ Alternatively, use a SQL query:
 ```
 
 !!! note "Requirement"
-    A read needs `table` or `sql`. Give the full three-part name in `table`.
-    (`ubunye validate` also accepts `db_name` + `tbl_name` on a read, but the
-    reader does not use them, so such a read fails when it runs.)
+    A read needs `table` (the full three-part name) or `sql`.
+
+!!! warning "Known limitation: `db_name` + `tbl_name` on a read"
+    `ubunye validate` accepts `db_name` + `tbl_name` on a `unity` read, but the
+    reader does not use them, so the read fails when the task runs. Use
+    `table: catalog.schema.table` instead, or `sql:`.
 
 ---
 
@@ -66,22 +70,11 @@ Delta unless `file_format` says otherwise.
 `optimize` and `vacuum` need a Delta table. If the engine cannot run them, the
 data is still written and a warning says the maintenance was skipped.
 
-### MERGE (upsert)
+### Write modes
 
-Matched rows are updated on `merge_keys`, unmatched rows inserted. The first run
-creates the table.
-
-```yaml
-    claims_curated:
-      format: unity
-      table: main.fraud.claims_curated
-      mode: merge
-      merge_keys: [policy_id, ds]
-```
-
-### Partition overwrite (backfills)
-
-Replace only the partitions in the incoming DataFrame:
+All six [write modes](../config/io.md#write-modes) work on `unity`; the Inputs &
+Outputs page owns how each behaves. One example, a partition overwrite for a
+backfill, which replaces only the partitions in the incoming data:
 
 ```yaml
     claims_daily:
@@ -92,6 +85,9 @@ Replace only the partitions in the incoming DataFrame:
       # or, as a Delta predicate:
       # replace_where: "ds = '{{ dt }}'"
 ```
+
+A `merge` updates matched rows on `merge_keys` and inserts the rest; the first run
+creates the table. See [`merge`](../config/io.md#merge).
 
 ---
 

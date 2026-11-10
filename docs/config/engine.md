@@ -1,7 +1,8 @@
 # Engine & Profiles
 
-The `ENGINE` section controls Spark configuration and lets you define per-environment
-overrides without duplicating your config.
+The `ENGINE` section holds Spark settings, and **profiles**: named sets of overrides
+for each environment (DEV, PROD), picked with `-m`. This page is for anyone who runs
+one task in more than one place without copying its config.
 
 ---
 
@@ -14,18 +15,21 @@ ENGINE:
     spark.executor.memory: "4g"
 
   profiles:
-    dev:                               # overrides applied with -m dev
+    DEV:                               # overrides applied with -m DEV (the default)
       spark_conf:
         spark.sql.shuffle.partitions: "4"
         spark.executor.memory: "512m"
-    staging:
+    STAGING:
       spark_conf:
         spark.executor.memory: "8g"
-    prod:
+    PROD:
       spark_conf:
         spark.executor.memory: "32g"
         spark.executor.cores: "8"
 ```
+
+The memory and cores keys here take effect only when Ubunye starts Spark itself.
+See [Spark keys fixed at session start](#spark-keys-fixed-at-session-start).
 
 ---
 
@@ -58,7 +62,7 @@ fully qualified table names still work.
 
 ![With -m prod, the prod profile is laid over the base spark_conf: memory 32g and cores 8 from prod, partitions 200 from the base; -m Prod is refused](../assets/diagrams/profiles.svg)
 
-When `-m <name>` (`--mode`) is passed, the engine calls `merged_spark_conf(name)`:
+When `-m <name>` (`--mode`) is passed, the engine builds the Spark settings like this:
 
 1. Start with the base `ENGINE.spark_conf` dict.
 2. Update with the named profile's `spark_conf` (profile values **win** on conflict).
@@ -72,24 +76,40 @@ A profile's `catalog` or `schema_name`, when set, replaces the base value.
 
 `run` picks a profile with `-m` (`--mode`). `validate` takes `-m` or `--profile`
 (the same thing). The name must match a key under `profiles:` exactly, including
-its case.
+its case: `-m prod` does not find a profile named `PROD`.
 
 `-m` defaults to `DEV` (upper case). When a config defines `profiles:` and the
 mode names none of them, the run stops with `ConfigProfileError` and lists the
-valid names. So with profiles named `dev` and `prod`, always pass `-m`. A config
+valid names. Name your profiles `DEV` and `PROD` so the default finds one. A config
 with no `profiles:` ignores the mode and uses the base `spark_conf`.
 
 ```bash
-# Development: small cluster, few shuffle partitions
-ubunye run -d pipelines -u fraud -p etl -t claims -m dev
+# Development: small cluster, few shuffle partitions (-m DEV is the default)
+ubunye run -d pipelines -u fraud -p etl -t claims -m DEV
 
 # Production: full cluster
-ubunye run -d pipelines -u fraud -p etl -t claims -m prod
+ubunye run -d pipelines -u fraud -p etl -t claims -m PROD
 ```
+
+Use the same profile name, in the same case, for `validate` and `run`.
+`ubunye validate` checks the profile only when you pass `-m` or `--profile`.
+Without it, nothing checks the name: a config whose profiles are `dev` and `prod`
+passes `validate` (and `plan`), then `ubunye run` with its default `-m DEV` stops:
+
+```text
+  Profile:   DEV
+  Available: ['dev', 'prod']
+  Hint: Valid profiles: dev, prod
+```
+
+So validate with the profile you will run: `ubunye validate ... -m PROD`.
 
 ---
 
 ## Common Spark settings
+
+These keys can be changed on any Spark session, so they work everywhere, Databricks
+included:
 
 ```yaml
 ENGINE:
@@ -99,31 +119,56 @@ ENGINE:
     spark.sql.adaptive.enabled: "true"
     spark.sql.adaptive.coalescePartitions.enabled: "true"
 
-    # Memory
-    spark.executor.memory: "8g"
-    spark.driver.memory: "4g"
-    spark.executor.memoryOverhead: "1g"
-
     # Delta
     spark.databricks.delta.optimizeWrite.enabled: "true"
     spark.databricks.delta.autoCompact.enabled: "true"
-
-    # Hive
-    spark.sql.catalogImplementation: "hive"
-    spark.sql.warehouse.dir: "/user/hive/warehouse"
 ```
+
+Memory and Hive keys are fixed when Spark starts; see the next section.
 
 !!! note
     All values must be **strings**: Spark's configuration API accepts only strings.
     Use `"true"` not `true`, `"200"` not `200`.
 
-!!! warning "Settings fixed when the JVM starts"
-    Keys such as `spark.sql.extensions`, `spark.jars`, `spark.driver.*` and
-    `spark.sql.catalogImplementation` only take effect when Ubunye creates the
-    Spark session (`ubunye run` with the `spark` backend). On Databricks, or any
-    session the platform started, such a key in `spark_conf` is refused with an
-    error. Set them on the platform (cluster settings, `spark-submit --conf`).
-    A config may not set `spark.master` when the platform already chose one.
+---
+
+## Spark keys fixed at session start
+
+Some Spark keys are read once, when the Spark session starts, and can never be
+changed after. Examples:
+
+- `spark.jars`, `spark.jars.packages` (JDBC drivers, Delta jars)
+- `spark.sql.extensions`, `spark.sql.catalogImplementation`,
+  `spark.sql.warehouse.dir` (Delta, Hive)
+- `spark.driver.*`, `spark.executor.memory`, `spark.executor.memoryOverhead`,
+  `spark.executor.cores` (memory and cores)
+- `spark.master`
+
+Where such a key works depends on who starts the session:
+
+| Who starts Spark | A fixed key in `ENGINE.spark_conf` |
+|---|---|
+| Ubunye (`ubunye run` on the `spark` backend, no session running yet) | applied |
+| The platform (Databricks, EMR, Dataproc, Glue, `spark-submit`, a notebook) | refused with `SparkSessionError`, naming each key |
+
+Where the platform starts Spark, set these keys there instead: the cluster
+settings, a cluster policy, the job's conf, or `spark-submit --conf` / `--jars`.
+The engine refuses them rather than ignoring them, so a task never believes it
+enabled Delta or chose a cluster when it did not. A config may not set
+`spark.master` when the platform already chose one; see
+[Deployment](../deployment.md) for that rule.
+
+A setup where Ubunye starts Spark itself, with Hive:
+
+```yaml
+ENGINE:
+  spark_conf:
+    spark.executor.memory: "8g"
+    spark.driver.memory: "4g"
+    spark.executor.memoryOverhead: "1g"
+    spark.sql.catalogImplementation: "hive"
+    spark.sql.warehouse.dir: "/user/hive/warehouse"
+```
 
 ---
 
