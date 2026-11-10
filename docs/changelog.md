@@ -53,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `catalog` + `schema` + `tbl_name` (now accepted by validate, as the reader always
   read it), or `sql`.
 
+- **`ubunye validate` reports a write mode the writer cannot do** (F-103), with
+  the message `ubunye plan` gives: a `jdbc` output with `mode: merge`, a `merge`
+  with no `merge_keys`. Only `plan` and the write itself caught these. One check
+  (`write_modes.resolve_for`) now serves both. A writer that declares no modes is
+  not held to any, as before.
+
 - Registering with `promotion_gates={}` clears a model's stored gates on every
   backend. Before, only the default filesystem path cleared them; MLflow and the
   others kept the old gates.

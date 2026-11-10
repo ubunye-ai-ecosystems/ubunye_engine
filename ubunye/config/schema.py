@@ -150,6 +150,26 @@ def _registered_formats() -> frozenset:
     return frozenset(_connectors("ubunye.readers")) | frozenset(_connectors("ubunye.writers"))
 
 
+def _write_mode_errors(name: str, writer_cls: Any, cfg: Dict[str, Any]) -> List[str]:
+    """The write mode problem ``ubunye plan`` reports for this output, if any (F-103).
+
+    A writer that declares no modes of its own (only ``Writer``'s default) is not held
+    to any here, as before; plan holds it to the default.
+    """
+    from ubunye.core import write_modes
+    from ubunye.core.errors import UbunyeError
+    from ubunye.core.interfaces import Writer
+
+    declared = write_modes.writer_modes(writer_cls)[0]
+    if declared is None or declared is Writer.SUPPORTED_MODES:
+        return []
+    try:
+        write_modes.resolve_for(writer_cls, cfg)
+    except UbunyeError as exc:
+        return [f"outputs.{name}: {str(exc).splitlines()[0]}"]
+    return []
+
+
 class IOConfig(BaseModel):
     """Input or output connector configuration.
 
@@ -845,14 +865,14 @@ class TaskConfig(BaseModel):
                 # inherits nothing, exactly what the docs promise will work — crash
                 # with AttributeError. Asking is fine; DEMANDING an answer is a new
                 # inheritance requirement smuggled in through a method call.
-                declare = getattr(plugin, "validate_config", None)
-                if not callable(declare):
-                    continue  # declares nothing -> requires nothing. Its choice.
-
                 cfg = io.model_dump(exclude_none=True)
                 cfg.update(io.model_extra or {})
-                for problem in declare(cfg) or []:
+                declare = getattr(plugin, "validate_config", None)
+                # declares nothing -> requires nothing. Its choice.
+                for problem in (declare(cfg) if callable(declare) else None) or []:
                     errors.append(f"{role}.{name}: {problem}")
+                if role == "outputs":
+                    errors += _write_mode_errors(name, plugin, cfg)
 
         if errors:
             raise ValueError("; ".join(errors))

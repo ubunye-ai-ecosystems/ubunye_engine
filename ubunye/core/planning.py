@@ -26,7 +26,6 @@ Built on the September 2026 work; the multi task check and capabilities are new.
 
 from __future__ import annotations
 
-import importlib
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
@@ -90,23 +89,6 @@ def _io_dict(io_cfg: Any) -> Dict[str, Any]:
     cfg: Dict[str, Any] = io_cfg.model_dump(exclude_none=True, mode="json")
     cfg.update(io_cfg.model_extra or {})
     return cfg
-
-
-def _writer_modes(writer_cls: Any) -> Tuple[Any, str]:
-    """What a writer supports, and its default, asked the way the writer declares it."""
-    supported: Any = None
-    default = "append"
-    module_name = getattr(writer_cls, "__module__", None)
-    if module_name:
-        try:
-            module = importlib.import_module(module_name)
-            supported = getattr(module, "SUPPORTED_MODES", None)
-            default = getattr(module, "DEFAULT_MODE", default)
-        except Exception:  # a plugin that will not import is reported elsewhere
-            pass
-    if supported is None:
-        supported = getattr(writer_cls, "SUPPORTED_MODES", write_modes.NATIVE_SAVE_MODES)
-    return supported, default
 
 
 def build_plan(
@@ -265,16 +247,8 @@ def build_plan(
         if writer_cls is None:
             problems.append(f"outputs.{name}: no writer plugin registered for format '{fmt}'")
         else:
-            supported, default = _writer_modes(writer_cls)
             try:
-                resolved = write_modes.resolve(
-                    io_cfg,
-                    connector=fmt,
-                    supported=supported,
-                    default=default,
-                    file_format=(io_cfg.get("file_format") or "").lower() or None,
-                    merge_formats=getattr(writer_cls, "MERGE_FILE_FORMATS", None) or None,
-                )
+                resolved = write_modes.resolve_for(writer_cls, io_cfg)
                 entry["resolved_mode"] = resolved.mode
                 entry["save_mode"] = resolved.save_mode
                 entry["merge_keys"] = list(resolved.merge_keys)
