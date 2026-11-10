@@ -37,8 +37,10 @@ def _record(
     if not (usecase_dir and usecase and package and task):
         raise typer.BadParameter("give --record FILE, or -d -u -p -t for a stored run")
     from ubunye.cli.gate import _from_store
+    from ubunye.lineage import stores
 
-    lineage_dir = usecase_dir / ".ubunye" / "lineage"
+    # The store follows $UBUNYE_LINEAGE_BACKEND (ADR 011); filesystem by default.
+    lineage_dir = stores.location(usecase_dir)
     which = "latest" if run_id == "latest" else run_id
     return _from_store(f"{usecase}/{package}/{task}", lineage_dir, which).to_dict()
 

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Run records can live in a shared store** (ADR 011). The store is a plugin in
+  `ubunye.lineage_backends`, chosen by `--lineage-backend` (on `run`, `test run`,
+  `lineage *`, `gate`, `mcp`, `sync lineage`), `lineage_backend=` (on `run_task`,
+  `run_pipeline`, `notebook`), `LineageRecorder(backend=)`, then the
+  `UBUNYE_LINEAGE_BACKEND` variable, then `filesystem`. With
+  `--lineage-backend delta --lineage-dir main.ops.ubunye_runs`, jobs that share no
+  disk write their receipts to one Delta table and can read each other's. Nothing
+  changes if you set nothing: records stay in `<usecase_dir>/.ubunye/lineage`.
+- **`ubunye.testing.lineage_conformance`**: the tests a run record store must
+  pass (every field read back equal, newest first, limit, status, missing run
+  id, tasks kept apart). The filesystem store passes it in the unit tier, Delta
+  on live Spark.
+- `RunRecordStore` in `ubunye.interfaces`: the four methods a store provides.
+
 ### Fixed
 
 - **The Databricks examples run on serverless again.** Four example configs set
@@ -18,6 +34,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writes behave as before.
 
 ### Changed
+
+- **The Delta lineage store keeps the whole run record.** It used to store a
+  `LineageRecord`, which dropped steps, hashes, timings, expectations and the
+  environment. It now writes the record as JSON plus index columns, only appends,
+  and needs Spark: a record it cannot write goes to the fallback manifest with a
+  warning, never quietly to local files. `DeltaLineageBackend.search()` returns run
+  records; the old search is `search_records()`, and `search(task=, usecase=,
+  pipeline=)` still reaches it with a DeprecationWarning.
+- `LineageRecorder(store=...)` is now `LineageRecorder(backend=...)`; `store=`
+  still works, with a DeprecationWarning (`store="s3"` keeps the stub, as before).
+  A failed record write is now logged instead of silently dropped.
+- `ubunye sync lineage` replays whole run records, the last one kept for each
+  run, into the store named by `--lineage-backend` and `--lineage-dir`.
+- `LineageStore.search()` takes `limit`.
 
 - **The Databricks example notebooks use the notebook API.** They now open a
   context with `ubunye.notebook()` and run `ctx.read()`, `ctx.transform()` and

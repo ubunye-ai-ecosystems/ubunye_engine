@@ -32,7 +32,7 @@ from ubunye.cli.doctor import doctor_command
 from ubunye.cli.export import export_app
 from ubunye.cli.gate import gate_command
 from ubunye.cli.init import init_app
-from ubunye.cli.lineage import lineage_app
+from ubunye.cli.lineage import lineage_app, lineage_backend_option, recorder_or_exit
 from ubunye.cli.models import models_app
 from ubunye.cli.output import emit, fail, json_option
 from ubunye.cli.prove import prove_app
@@ -103,6 +103,7 @@ def mcp_command(
         help="Let `run` call models live (default: replay, no key, no spend).",
     ),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
 ):
     """Serve the engine to agents over MCP (stdio): tasks, doctor, plan, runs, gate, focus."""
     from ubunye.core.errors import UbunyeError
@@ -114,6 +115,7 @@ def mcp_command(
             allow_run=allow_run,
             allow_live_llm=allow_live_llm,
             lineage_dir=lineage_dir,
+            lineage_backend=lineage_backend,
         )
     except UbunyeError as exc:
         typer.secho(f"[ERROR] {exc}", fg=typer.colors.RED, err=True)
@@ -461,8 +463,12 @@ def run(
         False, "--lineage", help="Record lineage for this run (stored as JSON under --lineage-dir)."
     ),
     lineage_dir: str = typer.Option(
-        ".ubunye/lineage", "--lineage-dir", help="Root directory for lineage records."
+        ".ubunye/lineage",
+        "--lineage-dir",
+        help="Where lineage records go: a directory under -d for the filesystem store, "
+        "as given for any other (a Delta table name or path).",
     ),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     backend_kind: Optional[str] = typer.Option(
         None,
         "--backend",
@@ -544,12 +550,7 @@ def run(
     # Build a lineage recorder if --lineage was requested
     lineage_recorder = None
     if lineage:
-        from ubunye.lineage.recorder import LineageRecorder
-
-        lineage_recorder = LineageRecorder(
-            store="filesystem",
-            base_dir=str(usecase_dir / lineage_dir),
-        )
+        lineage_recorder = recorder_or_exit(usecase_dir, lineage_dir, lineage_backend)
 
     backend.start()
     set_catalog_and_schema(

@@ -121,6 +121,7 @@ nav:
           - ADR 007 One Time Zone: architecture/adr-007-one-time-zone.md
           - ADR 008 Rerun Safety: architecture/adr-008-rerun-safety.md
           - ADR 009 Compute Outputs Once: architecture/adr-009-compute-outputs-once.md
+          - ADR 011 Run Record Stores: architecture/adr-011-run-record-stores.md
       - Contributing: contributing.md
 
 markdown_extensions:

@@ -319,7 +319,9 @@ class TestDeltaLineageBackend:
         backend._record_sync(r1)
         backend._record_sync(r2)
 
-        results = backend.search(status="error")
+        # search() is the run record search since ADR 011; the LineageRecord one is
+        # search_records().
+        results = backend.search_records(status="error")
         assert len(results) == 1
         assert results[0].run_id == "run-2"
 
@@ -350,7 +352,8 @@ class TestDeltaLineageBackend:
         backend._record_sync(r1)
         backend._record_sync(r2)
 
-        results = backend.search(usecase="fraud")
+        with pytest.warns(DeprecationWarning, match="search_records"):
+            results = backend.search(usecase="fraud")
         assert len(results) == 1
         assert results[0].usecase == "fraud"
 

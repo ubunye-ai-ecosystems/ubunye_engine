@@ -10,7 +10,7 @@ depend on a concrete backend's internal types.
 
 from ubunye.interfaces.auth import AuthBackend, Credentials
 from ubunye.interfaces.deploy import DeployAdapter, DeployContext, DeployResult
-from ubunye.interfaces.lineage import LineageBackend, LineageRecord
+from ubunye.interfaces.lineage import LineageBackend, LineageRecord, RunRecordStore
 from ubunye.interfaces.registry import ModelVersionInfo, RegistryBackend
 
 __all__ = [
@@ -23,4 +23,5 @@ __all__ = [
     "LineageRecord",
     "ModelVersionInfo",
     "RegistryBackend",
+    "RunRecordStore",
 ]

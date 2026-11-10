@@ -253,7 +253,8 @@ ubunye run \
 | `--mode` | `-m` | no | `DEV` | Run mode (DEV/PROD) |
 | `--deploy-mode` | | no | `client` | Spark deploy mode (cluster/client) |
 | `--lineage` | | no | false | Record lineage for this run |
-| `--lineage-dir` | | no | `.ubunye/lineage` | Root directory for lineage records |
+| `--lineage-dir` | | no | `.ubunye/lineage` | Where lineage records go: a directory under `-d` for the filesystem store, as given for any other |
+| `--lineage-backend` | | no | `$UBUNYE_LINEAGE_BACKEND`, else `filesystem` | Where run records go: `filesystem`, `delta` or an installed plugin. See [Where run records are stored](#where-run-records-are-stored) |
 | `--backend` | | no | platform, else `spark` | Execution backend by name, e.g. `pandas` for a run with no Java. See [Execution backends](backends.md) |
 | `--var` | | no | | Extra template variable, `key=value` (repeatable) |
 | `--rerun` | | no | false | Replace a batch (same `-dt` and `--var`) that a finished run already appended |
@@ -302,6 +303,7 @@ ubunye test run \
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--lineage / --no-lineage` | | no | `lineage` | Record lineage (on by default) |
 | `--lineage-dir` | | no | `.ubunye/lineage` | Lineage directory |
+| `--lineage-backend` | | no | `$UBUNYE_LINEAGE_BACKEND`, else `filesystem` | Where run records go: `filesystem`, `delta` or an installed plugin. See [Where run records are stored](#where-run-records-are-stored) |
 | `--backend` | | no | platform, else `spark` | Execution backend by name, e.g. `pandas` to test with no Java |
 | `--var` | | no | | Extra template variable, `key=value` (repeatable) |
 
@@ -398,6 +400,7 @@ ubunye gate -d pipelines -u shop -p orders -t clean --baseline 1a2b3c4d
 | `--package` | `-p` | | Package name |
 | `--task` | `-t` | | Task name |
 | `--lineage-dir` | | `.ubunye/lineage` | Lineage directory |
+| `--lineage-backend` | | `$UBUNYE_LINEAGE_BACKEND`, else `filesystem` | Where run records are stored (`filesystem`, `delta`, a plugin) |
 | `--allow-data-change` | | false | A changed output warns instead of failing |
 | `--max-slowdown` | | | Fail when slower than the baseline by more than this (`0.5` = 50%) |
 | `--max-seconds` | | | Fail when the candidate took longer than this |
@@ -425,6 +428,7 @@ ubunye mcp -d pipelines --allow-run
 | `--allow-run` | | false | Offer the `run` tool (every other tool only reads) |
 | `--allow-live-llm` | | false | Let `run` call models live (default: replay, no key, no spend) |
 | `--lineage-dir` | | `.ubunye/lineage` | Lineage directory |
+| `--lineage-backend` | | `$UBUNYE_LINEAGE_BACKEND`, else `filesystem` | Where run records are stored (`filesystem`, `delta`, a plugin) |
 
 ---
 
@@ -513,7 +517,37 @@ which records lineage by default).
 
 !!! note
     Lineage sub-commands use `--task` (`-t` singular), not `--task-list`. All of
-    them take `--lineage-dir` (default `.ubunye/lineage`, under `--usecase-dir`).
+    them take `--lineage-dir` (default `.ubunye/lineage`, under `--usecase-dir`)
+    and `--lineage-backend`.
+
+### Where run records are stored
+
+Run records go to a store, chosen by name (ADR 011), in this order:
+`--lineage-backend` (or `lineage_backend=` in the Python API), then the
+`UBUNYE_LINEAGE_BACKEND` environment variable, then `filesystem`.
+
+| Store | `--lineage-dir` is | Needs |
+|---|---|---|
+| `filesystem` (default) | a directory under `--usecase-dir`: `<usecase_dir>/.ubunye/lineage/<usecase>/<package>/<task>/<run_id>.json` | nothing |
+| `delta` | a Delta table name (`main.ops.ubunye_runs`) or path (`s3://bucket/ubunye/runs`), used as given | `pip install 'ubunye-engine[delta]'`, a SparkSession with Delta (the active one, or a local one it starts) |
+| a plugin | whatever that store takes, as given | its package, registered in `ubunye.lineage_backends` |
+
+Jobs that share no disk can share a table:
+
+```bash
+export UBUNYE_LINEAGE_BACKEND=delta
+ubunye run -d pipelines -u shop -p orders -t clean --lineage --lineage-dir main.ops.ubunye_runs
+ubunye lineage list -d pipelines -u shop -p orders -t clean --lineage-dir main.ops.ubunye_runs
+```
+
+The Delta store keeps the whole record as JSON, plus columns to query it by
+(`run_id`, `task_path`, `usecase`, `package`, `task`, `status`, `started_at`,
+`ended_at`, `variables`, `record_version`, `written_at`). It only appends; the
+row written last for a run is the run. If a record cannot be written (no Spark,
+no Delta, no access), it is kept in `~/.ubunye/fallback/<run_id>/lineage.jsonl`
+with a warning; `ubunye sync lineage --lineage-backend delta --lineage-dir
+<table>` replays it. A store of your own passes
+`ubunye.testing.lineage_conformance` (see [Interfaces](interfaces.md)).
 
 ### `lineage show`
 

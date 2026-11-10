@@ -129,6 +129,7 @@ def run_task(
     profile: Optional[str] = None,
     hooks: Optional[Iterable[Hook]] = None,
     rerun: bool = False,
+    lineage_backend: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run a single Ubunye task and return the outputs map.
 
@@ -158,7 +159,9 @@ def run_task(
     lineage : bool
         Record lineage for this run.
     lineage_dir : str
-        Root directory for lineage records.
+        Where lineage records go. For the filesystem store, a directory under the
+        use case directory; for any other store, its location as given (a Delta
+        table name or path).
     profile : str, optional
         Config profile for validation (passed to ``load_config``).
     hooks : iterable of Hook, optional
@@ -168,6 +171,10 @@ def run_task(
         Replace a batch (same ``dt`` and variables) that a finished run already
         appended. Without it, such a run is refused, since it would append the
         batch twice.
+    lineage_backend : str, optional
+        The run record store, by name (ADR 011): ``"filesystem"``, ``"delta"`` or
+        an installed plugin. If *None*: ``$UBUNYE_LINEAGE_BACKEND``, else
+        ``"filesystem"``.
 
     Returns
     -------
@@ -195,11 +202,12 @@ def run_task(
 
     lineage_recorder = None
     if lineage:
+        from ubunye.lineage import stores
         from ubunye.lineage.recorder import LineageRecorder
 
         lineage_recorder = LineageRecorder(
-            store="filesystem",
-            base_dir=str(usecase_dir / lineage_dir),
+            backend=stores.backend_name(lineage_backend),
+            base_dir=stores.location(usecase_dir, lineage_dir, lineage_backend),
         )
 
     run_id = str(uuid.uuid4())
@@ -248,6 +256,7 @@ def run_pipeline(
     profile: Optional[str] = None,
     hooks: Optional[Iterable[Hook]] = None,
     rerun: bool = False,
+    lineage_backend: Optional[str] = None,
     resume: bool = False,
 ) -> Dict[str, Dict[str, Any]]:
     """Run multiple tasks sequentially and return all outputs.
@@ -262,7 +271,8 @@ def run_pipeline(
         Package/pipeline name.
     tasks : List[str]
         Task names to run in order.
-    mode, dt, dtf, spark, backend, variables, lineage, lineage_dir, profile, hooks, rerun
+    mode, dt, dtf, spark, backend, variables, lineage, lineage_dir, profile, hooks, rerun,
+    lineage_backend
         Same as :func:`run_task`. One backend runs every task.
     resume : bool
         Finish a pipeline that stopped half way: a task that already finished this
@@ -292,11 +302,12 @@ def run_pipeline(
 
     lineage_recorder = None
     if lineage:
+        from ubunye.lineage import stores
         from ubunye.lineage.recorder import LineageRecorder
 
         lineage_recorder = LineageRecorder(
-            store="filesystem",
-            base_dir=str(base / lineage_dir),
+            backend=stores.backend_name(lineage_backend),
+            base_dir=stores.location(base, lineage_dir, lineage_backend),
         )
 
     chosen.start()

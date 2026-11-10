@@ -1,4 +1,14 @@
-"""LineageBackend protocol — contract for lineage storage.
+"""Lineage storage contracts.
+
+``RunRecordStore`` is the contract run records are stored through (ADR 011).
+A run record is the full :class:`~ubunye.lineage.context.RunContext` (the
+receipt, ADR 006). Every backend in the ``ubunye.lineage_backends`` entry
+point group provides it, and must give back exactly what it was given.
+
+``LineageBackend`` and ``LineageRecord`` below are the older, flatter
+contract. They are kept so existing code keeps working, but nothing the
+engine runs stores a receipt through them: a ``LineageRecord`` keeps only a
+few fields of a run record.
 
 Schema evolution (Decision 3)
 -----------------------------
@@ -44,7 +54,47 @@ entry-point group.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Dict, List, Optional, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from ubunye.lineage.context import RunContext
+
+
+@runtime_checkable
+class RunRecordStore(Protocol):
+    """Where run records live (ADR 011). Four methods, no base class needed.
+
+    A task is named by its ``task_path``, ``"usecase/package/task"``. Newest
+    first means the record written last comes first. A store is built with one
+    argument, its location (a directory, a table name, a URL), given unchanged.
+    """
+
+    def save(self, ctx: "RunContext") -> None:
+        """Create or replace the record of ``ctx.run_id`` for its task."""
+        ...
+
+    def load(self, task_path: str, run_id: str) -> "RunContext":
+        """One record, every field as saved.
+
+        Raises :class:`ubunye.core.errors.LineageRecordNotFoundError` when the
+        task has no run with that id.
+        """
+        ...
+
+    def list_runs(self, task_path: str, n: int = 20) -> List["RunContext"]:
+        """The ``n`` newest records of one task, newest first."""
+        ...
+
+    def search(
+        self,
+        task_path: Optional[str] = None,
+        status: Optional[str] = None,
+        since: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> List["RunContext"]:
+        """Records newest first, filtered by task (or its first parts), status
+        and ``started_at >= since``, at most ``limit`` of them."""
+        ...
 
 
 @dataclass
