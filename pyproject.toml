@@ -211,7 +211,7 @@ warn_unused_ignores = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "integration: requires a local Spark session and Java 11",
+    "integration: requires a local Spark session and Java (17 or 21 for Spark 4; 8, 11 or 17 for Spark 3.5)",
 ]
 
 [tool.black]

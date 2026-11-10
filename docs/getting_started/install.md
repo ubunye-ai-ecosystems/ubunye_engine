@@ -112,7 +112,7 @@ the environment variables its config needs, and says what would fail and why.
 | Python | 3.10, 3.11, 3.12, 3.13 |
 | Operating system | Linux, Windows, macOS |
 | pandas backend | pandas 2.2 or newer with pyarrow 14 or newer (24 or newer on Windows) |
-| Spark backend | Spark 3.5 with Java 11, Spark 4 with Java 17 or 21 |
+| Spark backend | Spark 3.5 with Java 8, 11 or 17; Spark 4 with Java 17 or 21 |
 
 The oldest versions listed are the ones the package accepts, and CI installs
 exactly those and runs the tests on them.

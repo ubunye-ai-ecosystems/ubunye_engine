@@ -9,6 +9,12 @@ Spark backend implementation for Ubunye.
 
 from __future__ import annotations
 
+import importlib.metadata as md
+import os
+import re
+import shutil
+import subprocess
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence
 
 from ubunye.adapters.spark import frame_io
@@ -63,6 +69,73 @@ def _session_time_zone(session: Any, conf: Dict[str, str]) -> Optional[str]:
         return None
 
 
+#: The Java versions Spark runs on, said the same way by the backend and the doctor.
+JAVA_FOR_SPARK = "Spark 4 runs on Java 17 or 21; Spark 3.5 on Java 8, 11 or 17"
+
+
+def java_major(banner: str) -> Optional[int]:
+    """The Java major version from ``java -version`` output (``1.8`` means 8)."""
+    found = re.search(r'version "(\d+)(?:\.(\d+))?', banner)
+    if not found:
+        return None
+    first = int(found.group(1))
+    if first == 1 and found.group(2):
+        return int(found.group(2))
+    return first
+
+
+def java_suits_spark(spark_version: str, java: int) -> bool:
+    """Spark 4 runs on Java 17 and 21; Spark 3.5 on Java 8, 11 and 17."""
+    if int(spark_version.split(".")[0]) >= 4:
+        return java in (17, 21)
+    return java in (8, 11, 17)
+
+
+def find_java() -> Optional[str]:
+    """The ``java`` Spark would start: under JAVA_HOME, else on PATH."""
+    home = os.environ.get("JAVA_HOME")
+    if home:
+        exe = Path(home) / "bin" / ("java.exe" if os.name == "nt" else "java")
+        if exe.exists():
+            return str(exe)
+    return shutil.which("java")
+
+
+def java_banner(java: str) -> str:
+    """What ``java -version`` prints (to stderr), or why it could not run."""
+    try:
+        done = subprocess.run(
+            [java, "-version"], capture_output=True, text=True, timeout=20, check=False
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"could not run: {exc}"
+    return (done.stderr or done.stdout).strip()
+
+
+def _spark_version() -> Optional[str]:
+    try:
+        return md.version("pyspark")
+    except md.PackageNotFoundError:
+        return None
+
+
+def java_problem() -> Optional[str]:
+    """Why Spark cannot start a JVM here, or None.
+
+    No Java at all, or one older than the installed Spark needs. A Java newer than
+    Spark lists, or one whose version cannot be read, is left for Spark to judge.
+    """
+    java = find_java()
+    if java is None:
+        return "Spark needs Java, and none was found (JAVA_HOME or java on PATH)."
+    spark = _spark_version()
+    major = java_major(java_banner(java))
+    if spark and major is not None and not java_suits_spark(spark, major):
+        if major < (17 if int(spark.split(".")[0]) >= 4 else 8):
+            return f"Java {major} ({java}) is too old for Spark {spark}."
+    return None
+
+
 class SparkBackend(Backend):
     """Creates and manages a SparkSession for a Ubunye run.
 
@@ -111,6 +184,8 @@ class SparkBackend(Backend):
         from pyspark.sql import SparkSession
 
         running = SparkSession.getActiveSession()
+        if running is None:
+            self._check_java()
         builder = SparkSession.builder.appName(self._app_name)
         for k, v in self._conf.items():
             builder = builder.config(k, v)
@@ -123,6 +198,24 @@ class SparkBackend(Backend):
             builder = builder.config(TIME_ZONE_KEY, DEFAULT_TIME_ZONE)
         self._spark = builder.getOrCreate()
         self._owns_session = running is None
+
+    @classmethod
+    def environment_problem(cls) -> Optional[str]:
+        """Why this backend cannot start a session here, or None (`ubunye doctor`)."""
+        return java_problem()
+
+    def _check_java(self) -> None:
+        """Fail in one message, not pyspark's JAVA_GATEWAY_EXITED, when Java is missing."""
+        if "spark.remote" in self._conf or os.environ.get("SPARK_REMOTE"):
+            return  # Spark Connect: the JVM is on the server
+        problem = self.environment_problem()
+        if problem:
+            raise SparkSessionError(
+                problem,
+                context={"Backend": self.name},
+                hint=f"{JAVA_FOR_SPARK}. Install one and set JAVA_HOME, "
+                "or run with --backend pandas.",
+            )
 
     def _check_master_not_hijacked(self) -> None:
         """Refuse to let a config override a master the platform already chose.

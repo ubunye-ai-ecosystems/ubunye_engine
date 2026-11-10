@@ -44,7 +44,7 @@ from ubunye.cli.test_cmd import test_app
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.core import runs
-from ubunye.core.errors import ExpectationError
+from ubunye.core.errors import ExpectationError, SparkSessionError
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task, finished_run
 from ubunye.lineage.upstream import UpstreamNotReady
@@ -555,7 +555,10 @@ def run(
     if lineage:
         lineage_recorder = recorder_or_exit(usecase_dir, lineage_dir, lineage_backend)
 
-    backend.start()
+    try:
+        backend.start()
+    except SparkSessionError as e:  # no Java, a hijacked master: say so, no traceback
+        fail(str(e), as_json=False)
     set_catalog_and_schema(
         backend,
         catalog=first_cfg.resolved_catalog(mode),

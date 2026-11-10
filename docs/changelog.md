@@ -42,6 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Spark with no usable Java fails in one clean message** (F-112). The spark
+  backend now looks for Java (JAVA_HOME, then `java` on PATH) and its version before
+  it starts a session. No Java, or one older than the installed Spark needs, raises
+  `SparkSessionError` with the versions that work, and `ubunye run` prints it as one
+  `[ERROR]` line instead of pyspark's `[JAVA_GATEWAY_EXITED]` traceback. A session
+  that is already running, or Spark Connect, is not checked. `ubunye doctor` and
+  `ubunye backends` ask the same function, so the spark backend is no longer called
+  usable with no Java. The Java versions are now right everywhere: Spark 4 runs on
+  Java 17 or 21, Spark 3.5 on Java 8, 11 or 17 (the doctor's fix text said 17 or 11).
+
 - **`ubunye deploy dockerfile --out img/` writes `img/Dockerfile`** (F-111). A path
   ending in `/` is a folder: it is made when missing. Before, a missing `img/` gave
   a file named `img`.

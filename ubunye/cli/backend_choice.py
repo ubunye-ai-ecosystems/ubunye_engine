@@ -63,8 +63,12 @@ def describe_all() -> List[Dict[str, Any]]:
             rows.append(row)
             continue
         missing = backends.missing_packages(cls)
-        row["loaded"] = not missing
+        # What else it needs here (Spark: a Java), asked the way start() asks it.
+        problem = None if missing else getattr(cls, "environment_problem", lambda: None)()
+        row["loaded"] = not missing and not problem
         row["capabilities"] = cls.CAPABILITIES.describe()
+        if problem:
+            row["error"] = problem
         if missing:
             extra = backends._EXTRAS.get(name)
             fix = (
