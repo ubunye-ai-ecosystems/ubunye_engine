@@ -185,6 +185,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Plan OK" on a config whose profiles are `DEV` and `PROD`, and `doctor` passed
   it. Both now refuse a profile the config does not define, with the message
   `run` gives, and accept any name on a config with no profiles.
+- **`load_config(profile=...)` follows the same rule** (and so `run_task`,
+  `run_pipeline` and `notebook`, which pass `profile=` to it). It refused any
+  profile on a config with no profiles, which `run` accepts. It now calls
+  `UbunyeConfig.check_profile`, the one rule, and its error is the one `run`
+  prints. It is still a `ConfigProfileError`.
 - **`prove observe` before any run** is a clean error (exit 2) that says to run the
   task with `--lineage` first, not a traceback. An unknown `--run-id` is too.
 - **The warning for `CONFIG.transform.type`** no longer says it became an error in

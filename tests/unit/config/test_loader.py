@@ -4,6 +4,7 @@ import pytest
 import yaml
 
 from ubunye.config.loader import ConfigFieldError, ConfigTemplateError, load_config
+from ubunye.core.errors import ConfigProfileError
 
 
 def _write_config(tmp_path, config_dict, task_name="task"):
@@ -129,9 +130,16 @@ class TestConfigLoader:
         assert merged["spark.master"] == "local[*]"
 
     def test_nonexistent_profile_raises(self, tmp_path):
-        task_dir = _write_config(tmp_path, _BASE)
-        with pytest.raises(ValueError, match="prod"):
+        cfg = {**_BASE, "ENGINE": {"profiles": {"dev": {"spark_conf": {}}}}}
+        task_dir = _write_config(tmp_path, cfg)
+        with pytest.raises(ConfigProfileError, match="Profile 'prod' not found"):
             load_config(task_dir, profile="prod")
+
+    def test_a_config_with_no_profiles_accepts_any_profile(self, tmp_path):
+        """The check_profile rule, as run and validate apply it (0.9.1)."""
+        task_dir = _write_config(tmp_path, _BASE)
+        for profile in ("DEV", "prod", "anything"):
+            assert load_config(task_dir, profile=profile).ENGINE.profiles == {}
 
     def test_empty_yaml_raises(self, tmp_path):
         task_dir = tmp_path / "project" / "use_case" / "pipeline" / "task"
