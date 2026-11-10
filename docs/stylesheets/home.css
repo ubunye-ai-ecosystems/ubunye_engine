@@ -1,0 +1,93 @@
+/* Home page hero: the text and promises on the left, the intro film (or, until
+   the film exists, the home diagram) on the right. Stacks on small screens. */
+
+.ue-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
+  align-items: center;
+  margin: 0 0 1.5rem;
+}
+
+@media screen and (min-width: 60em) {
+  .ue-hero {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 2rem;
+  }
+}
+
+.md-typeset .ue-hero h1 {
+  margin: 0 0 0.6rem;
+  font-weight: 700;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset .ue-hero__lead {
+  font-size: 1.05rem;
+  line-height: 1.5;
+  margin: 0 0 1rem;
+}
+
+.md-typeset ul.ue-promises {
+  list-style: none;
+  margin: 0 0 1.2rem;
+  padding: 0;
+}
+
+.md-typeset ul.ue-promises > li.ue-promise {
+  margin: 0 0 0.6rem;
+  padding: 0.1rem 0 0.1rem 0.8rem;
+  border-left: 4px solid var(--ue-promise-colour, var(--ue-teal));
+}
+
+.ue-promise--once {
+  --ue-promise-colour: var(--ue-orange);
+}
+
+.ue-promise--anywhere {
+  --ue-promise-colour: var(--ue-teal);
+}
+
+.ue-promise--same {
+  --ue-promise-colour: var(--ue-purple);
+}
+
+.md-typeset .ue-hero .md-button {
+  margin: 0.3rem 0.4rem 0.3rem 0;
+}
+
+/* The film slot. The <video> shows the diagram as its poster. If the film file
+   is missing, the <source> error handler adds .ue-film--none and the plain
+   diagram image is shown instead, so there is never a dead play button. */
+.md-typeset figure.ue-film {
+  margin: 0;
+  width: 100%;
+  max-width: none;
+}
+
+.ue-film__video,
+.ue-film__still {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 11 / 7;
+  border-radius: 0.6rem;
+  background-color: var(--ue-stage);
+  box-shadow: 0 0.4rem 1.6rem rgba(0, 0, 0, 0.18);
+}
+
+.ue-film__still,
+.ue-film--none .ue-film__video {
+  display: none;
+}
+
+.ue-film--none .ue-film__still {
+  display: block;
+}
+
+/* In the dark theme the page and the diagram share the stage colour; a faint
+   ring keeps the film's edge visible. */
+[data-md-color-scheme="slate"] .ue-film__video,
+[data-md-color-scheme="slate"] .ue-film__still {
+  box-shadow: 0 0 0 1px rgba(243, 244, 246, 0.12), 0 0.4rem 1.6rem rgba(0, 0, 0, 0.4);
+}
