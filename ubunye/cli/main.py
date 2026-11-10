@@ -148,7 +148,7 @@ def config(
     mode: str = typer.Option("DEV", "-m", "--mode"),
     var: Optional[List[str]] = var_option(),
 ):
-    """Show and validate config files."""
+    """Validate config files (render, schema, --mode profile): [OK] or the error."""
     variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
     for task in task_list:
         config_path = _task_path(usecase_dir, usecase, package, task) / "config.yaml"

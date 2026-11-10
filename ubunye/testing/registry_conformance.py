@@ -35,7 +35,12 @@ from typing import Any, Dict
 
 import pytest
 
-from ubunye.core.errors import PromotionBlockedError, VersionExistsError, VersionNotFoundError
+from ubunye.core.errors import (
+    PromotionBlockedError,
+    RegistryError,
+    VersionExistsError,
+    VersionNotFoundError,
+)
 from ubunye.interfaces.registry import ModelVersionInfo, RegistryBackend
 from ubunye.models.base import UbunyeModel
 from ubunye.models.registry import ModelRegistry, ModelStage
@@ -226,6 +231,29 @@ class RegistryConformance:
         mv = registry.demote(USE_CASE, MODEL, version, ModelStage.STAGING)
         assert mv.stage == ModelStage.STAGING
         assert self._stage(registry, version) == "staging"
+
+    def test_demote_cannot_reach_production(self, registry: ModelRegistry) -> None:
+        """Demote moves a version down only, so it cannot skip the promotion gates."""
+        version = self._register(registry, auc=0.5, promotion_gates={"min_auc": 0.8})
+        for stage in (ModelStage.PRODUCTION, ModelStage.STAGING):
+            with pytest.raises(RegistryError):
+                registry.demote(USE_CASE, MODEL, version, stage)
+        assert self._stage(registry, version) == "development"
+
+    def test_the_backend_demote_cannot_reach_production(self, backend: Any) -> None:
+        backend.register(
+            use_case=USE_CASE,
+            model_name=MODEL,
+            version="1.0.0",
+            model=ConformanceModel(),
+            metrics={"auc": 0.5},
+        )
+        with pytest.raises(RegistryError):
+            backend.demote(
+                use_case=USE_CASE, model_name=MODEL, version="1.0.0", to_stage="production"
+            )
+        _, info = backend.get(use_case=USE_CASE, model_name=MODEL, version="1.0.0")
+        assert info.stage == "development"
 
     def test_archive(self, registry: ModelRegistry) -> None:
         version = self._register(registry)

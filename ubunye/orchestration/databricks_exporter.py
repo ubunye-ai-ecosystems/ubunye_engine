@@ -6,6 +6,16 @@ from typing import Any, Mapping
 
 from .base import OrchestratorExporter
 
+#: Databricks Runtime 17.3 LTS (Spark 4.0, Python 3.12). Set ``spark_version`` to change it.
+DEFAULT_SPARK_VERSION = "17.3.x-scala2.13"
+
+
+def default_wheel_path() -> str:
+    """Where CI uploads this engine's wheel: named after the installed version."""
+    from ubunye import __version__
+
+    return f"dbfs:/libs/ubunye_engine-{__version__}-py3-none-any.whl"
+
 
 class DatabricksExporter(OrchestratorExporter):
     """
@@ -21,9 +31,7 @@ class DatabricksExporter(OrchestratorExporter):
         profile = opts.get("profile", "prod")
 
         # Where your wheel lives (uploaded in CI): adjust to your path
-        wheel_dbfs_path = opts.get(
-            "wheel_dbfs_path", "dbfs:/libs/ubunye_engine-0.1.0-py3-none-any.whl"
-        )
+        wheel_dbfs_path = opts.get("wheel_dbfs_path") or default_wheel_path()
 
         # Minimal single-task job cluster (Databricks runtime version can be parameterized)
         job = {
@@ -34,7 +42,7 @@ class DatabricksExporter(OrchestratorExporter):
                     "libraries": [{"whl": wheel_dbfs_path}],
                     # Easiest: run a Bash command that invokes the Ubunye CLI
                     "new_cluster": {
-                        "spark_version": opts.get("spark_version", "13.3.x-scala2.12"),
+                        "spark_version": opts.get("spark_version", DEFAULT_SPARK_VERSION),
                         "node_type_id": opts.get("node_type_id", "i3.xlarge"),
                         "num_workers": int(opts.get("num_workers", 2)),
                         "spark_conf": opts.get("spark_conf", {}),

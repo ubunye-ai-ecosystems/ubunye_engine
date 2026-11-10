@@ -360,3 +360,16 @@ class TestValidateMatchesRun:
         )
         assert result.exit_code == 1
         assert "disagree" in result.output
+
+
+def test_config_help_says_it_validates_not_shows():
+    """`ubunye config` only validates; its help said "Show" (F-094)."""
+    from typer.testing import CliRunner
+
+    from ubunye.cli.main import app
+
+    result = CliRunner().invoke(app, ["config", "--help"], env={"COLUMNS": "200"})
+    assert result.exit_code == 0
+    summary = result.stdout.split("Options")[0]
+    assert "Show" not in summary
+    assert "Validate config files" in summary

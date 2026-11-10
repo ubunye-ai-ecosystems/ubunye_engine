@@ -19,6 +19,7 @@ Every command takes ``--backend`` / ``-b`` to choose the registry backend
 from __future__ import annotations
 
 from dataclasses import asdict
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import typer
@@ -36,6 +37,22 @@ models_app = typer.Typer(
 # ---------------------------------------------------------------------------
 # Shared option factories
 # ---------------------------------------------------------------------------
+
+
+class PromoteTarget(str, Enum):
+    """Stages ``models promote`` moves a version up to."""
+
+    staging = "staging"
+    production = "production"
+
+
+class DemoteTarget(str, Enum):
+    """Stages ``models demote`` moves a version down to. Never production."""
+
+    development = "development"
+    staging = "staging"
+    archived = "archived"
+
 
 _use_case_opt = typer.Option(..., "--use-case", "-u", help="Use-case grouping.")
 _model_opt = typer.Option(..., "--model", "-m", help="Model name.")
@@ -133,7 +150,7 @@ def promote(
     store: str = _store_opt,
     backend: Optional[str] = _backend_opt,
     version: str = _version_opt,
-    to: str = typer.Option(..., "--to", help="Target stage: staging | production."),
+    to: PromoteTarget = typer.Option(..., "--to", help="Target stage: staging | production."),
     promoted_by: Optional[str] = typer.Option(None, "--promoted-by", help="Username."),
     force: bool = typer.Option(
         False,
@@ -147,15 +164,7 @@ def promote(
     The version must pass the promotion gates stored with the model (set by
     the training run's promotion_gates); --force skips them, with a warning.
     """
-    try:
-        target_stage = ModelStage(to)
-    except ValueError:
-        typer.secho(
-            f"[ERROR] Unknown stage '{to}'. Choose: staging, production.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
+    target_stage = ModelStage(to.value)
 
     registry = _open(store, backend)
     try:
@@ -191,18 +200,16 @@ def demote(
     store: str = _store_opt,
     backend: Optional[str] = _backend_opt,
     version: str = _version_opt,
-    to: str = typer.Option(..., "--to", help="Target stage: development | staging | archived."),
+    to: DemoteTarget = typer.Option(
+        ..., "--to", help="Target stage: development | staging | archived."
+    ),
 ):
-    """Demote a model version to a lower lifecycle stage."""
-    try:
-        target_stage = ModelStage(to)
-    except ValueError:
-        typer.secho(
-            f"[ERROR] Unknown stage '{to}'. Choose: development, staging, archived.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
+    """Demote a model version to a lower lifecycle stage.
+
+    Demote never moves a version up: staging is reached from production only.
+    Use promote to move up; it checks the promotion gates.
+    """
+    target_stage = ModelStage(to.value)
 
     registry = _open(store, backend)
     try:

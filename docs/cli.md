@@ -1,8 +1,13 @@
 # CLI Reference
 
 The Ubunye CLI (`ubunye`) is built with [Typer](https://typer.tiangolo.com/).
-All commands accept `--help` for full option details. `python -m ubunye` runs the
-same CLI where there is no console script (a cloud job, for example).
+All commands accept `--help` for full option details.
+
+`python -m ubunye` is not this CLI. It is a small runner for `spark-submit` on
+platforms with no console script (EMR Serverless, Dataproc Serverless, YARN, k8s):
+it runs one task, `python -m ubunye --task-dir <folder with config.yaml> --mode PROD
+--dt <dt>`, attached to the SparkSession spark-submit made. Its only other flags are
+`--lineage` and `--log-level`. See [Deploy anywhere](deployment/anywhere.md).
 
 ---
 
@@ -116,7 +121,7 @@ ubunye init github-actions -d pipelines -u fraud -p ingestion -t task_a -t task_
 | `--extras` | | no | `spark,dev` | pip install extras, comma-separated |
 | `--target` | | no | `nonprod` | Databricks deploy target |
 | `--no-deploy` | | no | false | Leave out the Databricks deploy steps (CI only) |
-| `--output` | `-o` | no | `.github/workflows/<usecase>_<package>.yml` | Output file |
+| `--output` | `-o` | no | `.github/workflows/<usecase>_<pipeline>.yml` | Output file |
 | `--overwrite` | | no | false | Overwrite an existing workflow file |
 
 ---
@@ -135,7 +140,7 @@ ubunye validate \
     -dt 2024-06-01
 ```
 
-Validate all tasks in a package:
+Validate all tasks in a pipeline:
 
 ```bash
 ubunye validate -d pipelines -u fraud_detection -p ingestion --all
@@ -153,7 +158,7 @@ ubunye validate -d pipelines -u fraud_detection -p ingestion -t claim_etl --prof
 | `--usecase` | `-u` | yes | | Use-case name |
 | `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | no | | Task(s) to validate (repeatable) |
-| `--all` | | no | false | Validate all tasks in the package |
+| `--all` | | no | false | Validate all tasks in the pipeline |
 | `--profile` | | no | | Profile to validate against (e.g. dev, prod) |
 | `--mode` | `-m` | no | | Alias for `--profile`, the same word `run` uses. Giving both with different values is an error |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
@@ -248,7 +253,7 @@ ubunye run \
 | `--usecase` | `-u` | yes | | Use-case name |
 | `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | one of `-t` or `--all` | | Task(s) to execute (repeatable) |
-| `--all` | | | false | Run every task in the package |
+| `--all` | | | false | Run every task in the pipeline |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--data-timestamp-format` | `-dtf` | no | | Timestamp format |
 | `--mode` | `-m` | no | `DEV` | Run mode (DEV/PROD) |
@@ -283,7 +288,7 @@ ubunye run \
 
 !!! note
     `run` picks the profile with `-m/--mode` (it has no `--profile`), and `--all`
-    runs every task in the package. The mode must match a profile name exactly.
+    runs every task in the pipeline. The mode must match a profile name exactly.
 
 ---
 
@@ -511,7 +516,7 @@ ubunye config \
 
 ```bash
 ubunye version
-# Ubunye Engine v0.8.0
+# Ubunye Engine v0.9.0
 ```
 
 The version comes from the installed package metadata.
@@ -536,7 +541,7 @@ Run records go to a store, chosen by name (ADR 011), in this order:
 
 | Store | `--lineage-dir` is | Needs |
 |---|---|---|
-| `filesystem` (default) | a directory under `--usecase-dir`: `<usecase_dir>/.ubunye/lineage/<usecase>/<package>/<task>/<run_id>.json` | nothing |
+| `filesystem` (default) | a directory under `--usecase-dir`: `<usecase_dir>/.ubunye/lineage/<usecase>/<pipeline>/<task>/<run_id>.json` | nothing |
 | `delta` | a Delta table name (`main.ops.ubunye_runs`) or path (`s3://bucket/ubunye/runs`), used as given | `pip install 'ubunye-engine[delta]'`, a SparkSession with Delta (the active one, or a local one it starts) |
 | a plugin | whatever that store takes, as given | its package, registered in `ubunye.lineage_backends` |
 
@@ -747,6 +752,10 @@ ubunye models demote \
 
 Target stages: `development`, `staging`, `archived`.
 
+Demote only moves a version down. `staging` is allowed only from `production`;
+`production` is never a choice. To move a version up, use `models promote`,
+which checks the promotion gates.
+
 ### `models rollback`
 
 ```bash
@@ -806,7 +815,7 @@ record with `--record FILE`, or with `-d -u -p -t` and `--run-id` (default
 | `--region` | | no | | Region |
 | `--cost-amount` | | no | | Cost of the run |
 | `--cost-currency` | | no | `USD` | Currency |
-| `--cost-basis` | | no | | `actual`, `provider_estimate`, `ubunye_estimate`, `local` or `unknown` |
+| `--cost-basis` | | no | `local` for `--kind local`, else `unknown` | `actual`, `provider_estimate`, `ubunye_estimate`, `local` or `unknown` |
 | `--cost-source` | | no | | How the figure was obtained |
 | `--run-url` | | no | | Where a reader can check this run |
 
@@ -816,6 +825,9 @@ Record that an environment did not run the workload, and why. Takes
 `--workload`, `--env` and `--reason` (all required), `--status` (`not_run`
 (default), `unsupported` or `failed_to_launch`), `-o/--out` (default
 `evidence`) and `--run-url`.
+
+`--kind`, `--cost-basis` and `--status` take only the values listed. Any other
+value is a usage error (exit 2) that lists the choices.
 
 ### `prove report`
 
@@ -1035,7 +1047,7 @@ ubunye deploy dockerfile container --pipelines pipelines --out build/Dockerfile
 |---|---|---|
 | `--pipelines` | `pipelines` | Folder copied into the image as `/app/pipelines` |
 | `--engine` | `ubunye-engine` | pip requirement for the engine |
-| `--out` | | Write here instead of printing |
+| `--out` | | Write here instead of printing. A folder gets `<folder>/Dockerfile`; missing folders are made |
 
 ---
 
@@ -1058,7 +1070,7 @@ ubunye export airflow \
 |---|---|---|---|---|
 | `--config` | `-c` | yes | | Path to the task's `config.yaml` |
 | `--output` | `-o` | yes | | Where to write the DAG |
-| `--profile` | | no | `prod` | Profile embedded in the bash command |
+| `--profile` | | no | `prod` | Profile embedded in the bash command as `-m`. The default is `prod`, while `ubunye run` defaults to `DEV` |
 | `--usecase-dir` | | no | this folder | The pipelines folder where Airflow runs |
 | `--backend` | | no | | Backend for the run |
 | `--lineage` | | no | false | Record each run (run record) |
@@ -1077,7 +1089,7 @@ ubunye export databricks \
 |---|---|---|---|---|
 | `--config` | `-c` | yes | | Path to the task's `config.yaml` |
 | `--output` | `-o` | yes | | Where to write `job.json` |
-| `--profile` | | no | `prod` | Profile embedded in the job command |
+| `--profile` | | no | `prod` | Profile embedded in the job command as `-m`. The default is `prod`, while `ubunye run` defaults to `DEV` |
 
 ### `export spark-pipeline`
 

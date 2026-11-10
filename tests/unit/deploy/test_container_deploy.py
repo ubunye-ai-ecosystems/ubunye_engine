@@ -253,3 +253,21 @@ def test_a_k8s_job_that_kubectl_cannot_read_fails_fast_and_says_why(monkeypatch,
     assert done.value.code == 1
     assert clock[0] < 60 and len(gets) == 3
     assert "NotFound" in capsys.readouterr().err
+
+
+def test_dockerfile_out_makes_its_missing_folders(tmp_path):
+    """The docs' `--out build/Dockerfile` works when build/ does not exist yet (F-093)."""
+    out = Path(tmp_path) / "build" / "Dockerfile"
+    result = runner.invoke(app, ["deploy", "dockerfile", "container", "--out", str(out)])
+    assert result.exit_code == 0, result.output
+    assert out.read_text(encoding="utf-8").startswith(package.dockerfile("container")[:20])
+    assert (out.parent / "ubunye_entry.py").exists()
+
+
+def test_dockerfile_out_as_a_folder_writes_a_dockerfile_in_it(tmp_path):
+    out = Path(tmp_path) / "build"
+    out.mkdir()
+    result = runner.invoke(app, ["deploy", "dockerfile", "container", "--out", str(out)])
+    assert result.exit_code == 0, result.output
+    assert (out / "Dockerfile").is_file()
+    assert (out / "ubunye_entry.py").read_text(encoding="utf-8") == package.ENTRY_SCRIPT

@@ -81,6 +81,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CLI docs and help say what the commands do** (F-094). `docs/cli.md` said
+  `python -m ubunye` runs the same CLI; it is a separate runner for
+  `spark-submit` (`--task-dir`, `--mode`, `--dt`), and the page now says so. The
+  `version` example shows 0.9.0, the middle level is called a pipeline where the
+  page still said package, and `ubunye config --help` says it validates (it never
+  showed anything).
+
+- **`export databricks` defaults are current** (F-095). With no `wheel_dbfs_path`
+  the job named the wheel `ubunye_engine-0.1.0`; it now names the installed
+  version's wheel. The default job cluster runtime moves from `13.3.x-scala2.12`
+  (Spark 3.4, past end of support, older than the `pyspark>=3.5` the engine
+  needs) to `17.3.x-scala2.13` (Databricks Runtime 17.3 LTS). Set
+  `spark_version` or `wheel_dbfs_path` under `ORCHESTRATION.databricks` to choose
+  your own. `export airflow` and `export databricks` help now says `--profile`
+  defaults to `prod`, unlike `run`, which defaults to `DEV`.
+
+- **`deploy dockerfile --out` makes its folder, and takes a folder** (F-093). The
+  documented `--out build/Dockerfile` failed with `FileNotFoundError` when `build/`
+  did not exist, and `--out build` failed with `IsADirectoryError`. Missing folders
+  are now made, and a folder gets `<folder>/Dockerfile`.
+
+- **`prove` options with fixed values reject a wrong value cleanly** (F-092).
+  `prove skip --status nonsense` and `prove observe --cost-basis bogus` printed a
+  raw `ValueError` traceback, and `prove observe --kind bogus` was kept silently.
+  Each is now a usage error (exit 2) that lists the valid choices.
+
+- **`models demote` can no longer move a version up past its gates** (F-091).
+  `ubunye models demote --to production` put a version in production without
+  checking its promotion gates, and without the `promotion_forced` mark. Demote
+  now only moves a version down: `--to` takes `development`, `staging` or
+  `archived`, and `staging` only from `production`. The library refuses the same
+  moves (`ModelRegistry.demote` and every built in registry backend raise
+  `RegistryError`), and the registry conformance suite checks it for every
+  backend. `models promote --to` now takes only `staging` or `production`, as its
+  help said. A wrong `--to` is a usage error (exit 2) that lists the choices.
+
 - **Rerun safety reads the run record store you chose** (ADR 008, ADR 011). With
   `--lineage-backend delta` (or any store other than the filesystem), a run that
   took over a dead run's lease looked for its record in local files, found none,

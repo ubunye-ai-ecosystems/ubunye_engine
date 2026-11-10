@@ -26,13 +26,17 @@ Databricks workspace and are gated on secrets; treat them as integration probes,
 
 ## CLI surface
 
-`ubunye <cmd> --help` is authoritative — don't hard-code flag tables here. Top-level commands:
-`init {pipeline,github-actions}`, `validate`, `config`, `plan`, `run`, `test run`,
-`deploy {databricks}`, `export {airflow,databricks}`,
-`lineage {show,list,compare,search,trace}`, `models {list,info,promote,demote,rollback,archive,compare}`,
-`sync {lineage,registry}`, `plugins`, `version`. (`sync` replays fallback manifests written
-when a metadata backend was unreachable; it existed for a long time but was missing from
-this list.)
+`ubunye <cmd> --help` is authoritative — don't hard-code flag tables here. Top-level commands
+(checked against `ubunye --help` for 0.9.0):
+`init` (a task) and `init {pipeline,github-actions}`, `validate`, `config` (validates only),
+`plan`, `run`, `test run`, `doctor`, `gate`, `backends`, `plugins`, `mcp`, `version`,
+`deploy {databricks,glue,dataproc,dockerfile,k8s,container-apps,emr-serverless}`,
+`export {airflow,databricks,spark-pipeline}`,
+`lineage {show,list,openlineage,compare,search,trace,focus}`,
+`models {list,info,promote,demote,rollback,archive,compare}`, `runs {health,wait-for}`,
+`prove {observe,skip,report}`, `sync {lineage,registry}` (`sync` replays fallback manifests
+written when a metadata backend was unreachable). `python -m ubunye` is a separate argparse
+runner for spark-submit (`--task-dir --mode --dt --lineage --log-level`), not this CLI.
 
 **Non-obvious CLI gotchas** (every single one has bitten someone):
 
