@@ -60,3 +60,7 @@ move, so a skip is never silent. An append output with `replace_where` is writte
 one `replaceWhere` overwrite on every run (no txn key), so a retry or `--rerun`
 corrects the batch. `--rerun` without `replace_where` appends again, as before, and
 says so. 9 of 9 integration cases pass.
+
+## Note (2026-11-10)
+
+On Spark 3.5 with Delta 3, `saveAsTable` with `replaceWhere` fails on an existing table ("does not support truncate in batch mode"). A replace of a table batch now uses `writeTo(table).overwrite(condition)`, one commit on Spark 3.5 and 4; a new table is still created by `saveAsTable`. Caught by the Spark 3.5 CI job on PR #103.

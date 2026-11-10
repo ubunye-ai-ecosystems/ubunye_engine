@@ -67,6 +67,8 @@ def apply(
     parts = list(partition_by or [])
 
     def _save_as(mode: str, with_opts: Dict[str, Any]) -> None:
+        if _replace_rows_of_table(df, spark, table, file_format, mode, with_opts):
+            return
         writer = df.write.mode(mode).format(file_format)
         if parts:
             writer = writer.partitionBy(*parts)
@@ -120,6 +122,36 @@ def apply(
             return
 
     _save()
+
+
+def _replace_rows_of_table(
+    df: Any,
+    spark: Any,
+    table: Optional[str],
+    file_format: str,
+    mode: str,
+    opts: Dict[str, Any],
+) -> bool:
+    """Replace the rows ``replaceWhere`` selects in an existing Delta table.
+
+    ``saveAsTable`` with ``replaceWhere`` fails on Spark 3.5 + Delta 3 ("does not
+    support truncate in batch mode"); ``writeTo(table).overwrite(condition)`` does
+    the same replace in one commit on Spark 3.5 and 4. A table that does not exist
+    yet is created by ``saveAsTable`` as before. Returns False when not this case.
+    """
+    where = opts.get("replaceWhere")
+    if not (table and where and mode == "overwrite" and str(file_format).lower() == "delta"):
+        return False
+    if not spark.catalog.tableExists(table):
+        return False
+    from pyspark.sql import functions as F
+
+    writer = df.writeTo(table)
+    for key, value in opts.items():
+        if key != "replaceWhere":
+            writer = writer.option(key, str(value))
+    writer.overwrite(F.expr(str(where)))
+    return True
 
 
 def _overwrite_partitions(
