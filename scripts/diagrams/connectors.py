@@ -1,235 +1,116 @@
-"""Draw the connectors diagram (docs/assets/diagrams/connectors-*.svg).
+"""Draw the connectors diagram (docs/assets/diagrams/connectors.svg).
 
-inputs: -> your transform -> outputs:, labelled with the names you write in
-config.yaml. Re-run after a change:
+inputs: -> your transform -> outputs:, each connector shown with its logo and the
+name you write after format: in config.yaml. A small pandas mark means the
+connector also works on the pandas backend.
 
     python scripts/diagrams/connectors.py
 """
 
 from __future__ import annotations
 
-from _svg import MONO, arrow_down, rect, spans, svg, text, write
+from _svg import MONO
+from stage import C, arrow, box, chip_icon, heading, icon, t, tile, write_one
 
-W = 720
-X0, X1 = 20, W - 20
-PAD = 22
+W, H = 1100, 620
 
-# (format, what it reaches, also runs on pandas)
+# (icons, format name, hint, also on pandas)
 READERS = [
-    ("hive", "Hive tables", False),
-    ("jdbc", "Postgres, MySQL, Oracle, SQL Server", False),
-    ("unity", "Databricks Unity Catalog", False),
-    ("delta", "Delta Lake, by path or table", False),
-    ("s3", "S3, ADLS, GCS, local files", True),
-    ("rest_api", "any HTTP API", True),
-    ("binary", "PDFs, images (read only)", False),
+    (["apachehive"], "hive", "Hive tables", False),
+    (["postgresql", "mysql"], "jdbc", "Postgres, MySQL, ...", False),
+    (["databricks"], "unity", "Unity Catalog", False),
+    (["delta"], "delta", "Delta Lake", False),
+    (["s3"], "s3", "S3, ADLS, GCS, files", True),
+    (["json"], "rest_api", "any HTTP API", True),
+    (["file"], "binary", "PDFs, images", False),
 ]
-WRITERS = [r for r in READERS if r[0] != "binary"]
-
-ACCENTS = {
-    "light": {"in": "#0369a1", "out": "#15803d"},
-    "dark": {"in": "#38bdf8", "out": "#4ade80"},
-}
+WRITERS = [r for r in READERS if r[1] != "binary"]
 
 
-def io_panel(y, key, blurb, items, colour, p):
-    rows = (len(items) + 1) // 2
-    h = 96 + rows * 66
-    out = [
-        rect(
-            X0,
-            y,
-            X1 - X0,
-            h,
-            fill=colour,
-            stroke=colour,
-            sw=2,
-            rx=16,
-            extra=f' fill-opacity="{p["tint"]}"',
-        ),
-        text(X0 + PAD, y + 38, key, size=24, weight=700, font=MONO, fill=colour),
-        text(X0 + PAD, y + 66, blurb, size=16, fill=p["muted"]),
-    ]
-    cw = (X1 - X0 - 2 * PAD - 12) / 2
-    for i, (name, what, pandas) in enumerate(items):
-        x = X0 + PAD + (i % 2) * (cw + 12)
-        iy = y + 84 + (i // 2) * 66
+def column(x, y, items):
+    out = []
+    for i, (icons, name, hint, pandas) in enumerate(items):
         out.append(
-            rect(
+            tile(
                 x,
-                iy,
-                cw,
-                56,
-                fill=p["card"],
-                stroke=colour,
-                sw=1.2,
-                rx=10,
-                extra=' stroke-opacity="0.45"',
+                y + i * 64,
+                300,
+                54,
+                icons,
+                name,
+                sub=hint,
+                mark="pandas" if pandas else None,
+                size=18,
             )
         )
-        out.append(text(x + 14, iy + 24, name, size=17, weight=700, font=MONO, fill=p["ink"]))
-        out.append(text(x + 14, iy + 45, what, size=14, fill=p["muted"]))
-        if pandas:
-            out.append(
-                rect(
-                    x + cw - 72,
-                    iy + 9,
-                    60,
-                    22,
-                    fill=p["accent"],
-                    stroke="none",
-                    rx=11,
-                    extra=f' fill-opacity="{p["tint"] * 2}"',
-                )
-            )
-            out.append(
-                text(
-                    x + cw - 42,
-                    iy + 24,
-                    "pandas",
-                    size=12,
-                    weight=700,
-                    fill=p["accent"],
-                    anchor="middle",
-                )
-            )
-    return "\n".join(out), h
+    return "\n".join(out)
 
 
-def build(p) -> str:
+def build() -> str:
     parts = []
 
-    y = 20
-    panel, h = io_panel(
-        y, "inputs:", "Read. The format: key picks the connector.", READERS, p["in"], p
-    )
-    parts.append(panel)
+    parts.append(heading(30, 52, None, "INPUTS", C["ink"]))
+    parts.append(column(30, 76, READERS))
 
-    a = y + h
-    parts.append(arrow_down(W / 2, a + 6, a + 52, p["accent"]))
-    parts.append(spans(W / 2 + 16, a + 34, [('sources["claims"]', p["muted"], 400)], size=15))
+    parts.append(arrow(344, 414, 300, C["outline"]))
 
-    # transform
-    ty = a + 58
-    th = 238
+    # the transform
+    parts.append(heading(426, 52, None, "YOUR TRANSFORM", C["ink"]))
+    ex, ey, ew, eh = 426, 76, 248, 438
+    parts.append(box(ex, ey, ew, eh, rx=28, fill=C["engine"], stroke="#4a4d57"))
+    parts.append(icon("python", ex + ew / 2 - 34, ey + 30, 68))
     parts.append(
-        rect(
-            X0,
-            ty,
-            X1 - X0,
-            th,
-            fill=p["accent"],
-            stroke=p["accent"],
-            sw=2,
-            rx=16,
-            extra=f' fill-opacity="{p["tint"]}"',
-        )
-    )
-    parts.append(
-        text(X0 + PAD, ty + 38, "transform", size=24, weight=700, font=MONO, fill=p["accent"])
-    )
-    parts.append(
-        text(
-            X0 + PAD,
-            ty + 66,
-            "Change the data. Your Python, in transformations.py.",
+        t(
+            ex + ew / 2,
+            ey + 130,
+            "transformations.py",
             size=16,
-            fill=p["muted"],
+            weight=700,
+            font=MONO,
+            anchor="middle",
         )
     )
-    code = [
-        "class ClaimEtl(Task):",
-        "    def transform(self, sources):",
-        '        claims = sources["claims"]',
-        '        return {"clean": claims[claims.amount > 0]}',
-    ]
+    code = ["def transform(", "    self, sources):", "  ...", "  return outputs"]
     parts.append(
-        rect(X0 + PAD, ty + 82, X1 - X0 - 2 * PAD, 100, fill=p["card"], stroke=p["line"], rx=10)
+        f'<rect x="{ex + 20}" y="{ey + 148}" width="{ew - 40}" height="104" rx="10" fill="{C["step"]}"/>'
     )
     for i, line in enumerate(code):
         parts.append(
-            text(
-                X0 + PAD + 14,
-                ty + 106 + i * 21,
+            t(
+                ex + 34,
+                ey + 174 + i * 22,
                 line,
                 size=14,
                 font=MONO,
-                fill=p["ink"],
+                fill=C["muted"],
                 extra=' xml:space="preserve"',
             )
         )
-    parts.append(text(X0 + PAD, ty + 220, "runs on", size=15, fill=p["muted"]))
-    x = X0 + PAD + 66
-    for b in ["spark", "databricks", "pandas"]:
-        w = len(b) * 9.2 + 22
-        parts.append(
-            rect(
-                x,
-                ty + 202,
-                w,
-                26,
-                fill=p["card"],
-                stroke=p["accent"],
-                rx=13,
-                extra=' stroke-opacity="0.6"',
-            )
-        )
-        parts.append(
-            text(
-                x + w / 2,
-                ty + 220,
-                b,
-                size=14,
-                weight=700,
-                font=MONO,
-                fill=p["accent"],
-                anchor="middle",
-            )
-        )
-        x += w + 8
+    parts.append(t(ex + ew / 2, ey + 288, "runs on", size=15, fill=C["muted"], anchor="middle"))
+    for i, (ic, name) in enumerate(
+        [("apachespark", "Spark"), ("databricks", "Databricks"), ("pandas", "pandas")]
+    ):
+        parts.append(tile(ex + 34, ey + 302 + i * 44, ew - 68, 38, [ic], name, size=15))
 
-    a = ty + th
-    parts.append(arrow_down(W / 2, a + 6, a + 52, p["accent"]))
-    parts.append(spans(W / 2 + 16, a + 34, [('{"clean": df}', p["muted"], 400)], size=15))
+    parts.append(arrow(686, 756, 300, C["accent"]))
 
-    oy = a + 58
-    panel, h = io_panel(oy, "outputs:", "Write. Same formats, same key.", WRITERS, p["out"], p)
-    parts.append(panel)
+    parts.append(heading(770, 52, None, "OUTPUTS", C["ink"]))
+    parts.append(column(770, 76, WRITERS))
 
-    ly = oy + h + 34
-    parts.append(
-        rect(
-            X0,
-            ly - 17,
-            60,
-            22,
-            fill=p["accent"],
-            stroke="none",
-            rx=11,
-            extra=f' fill-opacity="{p["tint"] * 2}"',
-        )
-    )
-    parts.append(
-        text(X0 + 30, ly - 2, "pandas", size=12, weight=700, fill=p["accent"], anchor="middle")
-    )
-    parts.append(
-        text(
-            X0 + 72,
-            ly - 1,
-            "also works on the pandas backend (no Java). The rest need Spark.",
-            size=15,
-            fill=p["muted"],
-        )
-    )
-
-    return svg(
-        W,
-        ly + 20,
-        "Inputs are read by the connector named in format:, your transform in transformations.py "
-        "changes the data on Spark, Databricks or pandas, and outputs are written the same way.",
-        "\n".join(parts),
-    )
+    # legend
+    parts.append(chip_icon("pandas", 776, H - 54, 22, pad=5))
+    parts.append(t(812, H - 37, "also works on pandas, no Java", size=15, fill=C["muted"]))
+    parts.append(t(30, H - 37, "format: picks the connector", size=15, fill=C["muted"], font=MONO))
+    return "\n".join(parts)
 
 
 if __name__ == "__main__":
-    write("connectors", build, ACCENTS)
+    write_one(
+        "connectors",
+        W,
+        H,
+        "Inputs: hive, jdbc, unity, delta, s3, rest_api and binary, picked by format: in config.yaml. "
+        "Your transform in transformations.py runs on Spark, Databricks or pandas. Outputs: the same "
+        "connectors except binary. s3 and rest_api also work on pandas.",
+        build(),
+    )

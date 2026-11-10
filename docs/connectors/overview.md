@@ -3,8 +3,7 @@
 Connectors are the I/O layer of Ubunye. Each connector is a **Reader** or **Writer** plugin
 registered under the `ubunye.readers` or `ubunye.writers` entry point group.
 
-![inputs: are read by the connector named in format:, your transform changes the data, outputs: are written the same way](../assets/diagrams/connectors-light.svg#only-light)
-![inputs: are read by the connector named in format:, your transform changes the data, outputs: are written the same way](../assets/diagrams/connectors-dark.svg#only-dark)
+![inputs: are read by the connector named in format:, your transform changes the data, outputs: are written the same way](../assets/diagrams/connectors.svg)
 
 ---
 
