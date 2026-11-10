@@ -2,6 +2,8 @@
 
 **Status:** accepted, 0.7.0
 
+![config.yaml never names a backend: --backend if given, else attach to a Spark session such as a Databricks notebook, else a new Spark session](../assets/diagrams/backends.svg)
+
 ## Context
 
 The same task folder should run on a laptop, on a cluster and on Databricks.

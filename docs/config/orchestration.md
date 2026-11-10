@@ -4,6 +4,8 @@ The `ORCHESTRATION` section provides metadata for exporting your task to an
 orchestration platform. It does **not** affect how `ubunye run` executes the task:
 it is used only by `ubunye export airflow` and `ubunye export databricks`.
 
+![ubunye export turns the ORCHESTRATION block into an Airflow DAG, a Databricks job.json or a Spark Declarative Pipeline](../assets/diagrams/export.svg)
+
 ---
 
 ## Structure

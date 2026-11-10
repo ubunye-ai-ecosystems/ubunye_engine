@@ -5,6 +5,8 @@
 any MCP client can list tasks, plan them, run them and check the result, with the
 same rules a person works under.
 
+![An MCP client talks to ubunye mcp: nine read-only tools always on, run only with --allow-run, tasks by name, paths like ../../etc refused](../assets/diagrams/mcp.svg)
+
 ```bash
 pip install "ubunye-engine[mcp]"
 ubunye mcp -d pipelines                 # read-only tools

@@ -147,6 +147,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `config.yaml` (Config Overview), what expectations do with bad rows
   (Expectations), the run receipt and `ubunye gate` (Gate Pull Requests, ADR 006)
   and the model stages (Model Registry). The README shows the home diagram.
+- **Diagrams for the rest of the key ideas.** Rerun safety (CLI, ADR 008),
+  profiles (Engine and Profiles), how a backend is chosen (Execution Backends,
+  ADR 003), `ubunye export` (Orchestration), agents over MCP, and the RAG and
+  feature store guides, whose text arrows become pictures.
 - **The Databricks example notebooks use the notebook API.** They now open a
   context with `ubunye.notebook()` and run `ctx.read()`, `ctx.transform()` and
   `ctx.write()` in separate cells, so you can see the data between steps. Catalog

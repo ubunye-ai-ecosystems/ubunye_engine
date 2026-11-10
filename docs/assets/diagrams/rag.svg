@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 340" width="1100" height="340" role="img" aria-label="RAG pipeline: raw documents from a REST API or S3, a Ubunye task cleans and chunks them into a Delta chunks table, a second task embeds each chunk into a vector store, and an LLM finds the closest chunks at query time.">
+<desc>Logos: Simple Icons (CC0); marks belong to their owners; OpenTelemetry logo CC BY 4.0, the OpenTelemetry Authors.</desc>
+<defs><marker id="head" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#e6e6e6"/></marker></defs>
+<rect width="1100" height="340" rx="22" fill="#1c1d22"/>
+<text x="126.0" y="60" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#a1a7b3" text-anchor="middle" letter-spacing="1">RAW DOCS</text>
+<rect x="36" y="90" width="180" height="54" rx="10" fill="#ffffff"/>
+<svg x="48" y="103.0" width="28" height="28" viewBox="0 0 24 24"><path d="M12.043 23.968c.479-.004.953-.029 1.426-.094a11.805 11.805 0 003.146-.863 12.404 12.404 0 003.793-2.542 11.977 11.977 0 002.44-3.427 11.794 11.794 0 001.02-3.476c.149-1.16.135-2.346-.045-3.499a11.96 11.96 0 00-.793-2.788 11.197 11.197 0 00-.854-1.617c-1.168-1.837-2.861-3.314-4.81-4.3a12.835 12.835 0 00-2.172-.87h-.005c.119.063.24.132.345.201.12.074.239.146.351.225a8.93 8.93 0 011.559 1.33c1.063 1.145 1.797 2.548 2.218 4.041.284.982.434 1.998.495 3.017.044.743.044 1.491-.047 2.229-.149 1.27-.554 2.51-1.228 3.596a7.475 7.475 0 01-1.903 2.084c-1.244.928-2.877 1.482-4.436 1.114a3.916 3.916 0 01-.748-.258 4.692 4.692 0 01-.779-.45 6.08 6.08 0 01-1.244-1.105 6.507 6.507 0 01-1.049-1.747 7.366 7.366 0 01-.494-2.54c-.03-1.273.225-2.553.854-3.67a6.43 6.43 0 011.663-1.918c.225-.178.464-.333.704-.479l.016-.007a5.121 5.121 0 00-1.441-.12 4.963 4.963 0 00-1.228.24c-.359.12-.704.27-1.019.45a6.146 6.146 0 00-.733.494c-.211.18-.42.36-.615.555-1.123 1.153-1.768 2.682-2.022 4.256-.15.973-.15 1.96-.091 2.95.105 1.395.391 2.787.945 4.062a8.518 8.518 0 001.348 2.173 8.14 8.14 0 003.132 2.23 7.934 7.934 0 002.113.54c.074.015.149.015.209.015zm-2.934-.398a4.102 4.102 0 01-.45-.228 8.5 8.5 0 01-2.038-1.534c-1.094-1.137-1.827-2.566-2.247-4.08a15.184 15.184 0 01-.495-3.172 12.14 12.14 0 01.046-2.082c.135-1.257.495-2.501 1.124-3.58a6.889 6.889 0 011.783-2.053 6.23 6.23 0 011.633-.9 5.363 5.363 0 013.522-.045c.029 0 .029 0 .045.03.015.015.045.015.06.03.045.016.104.045.165.074.239.12.479.271.704.42a6.294 6.294 0 012.097 2.502c.42.914.615 1.934.631 2.938.014 1.079-.18 2.157-.645 3.146a6.42 6.42 0 01-2.638 2.832c.09.03.18.045.271.075.225.044.449.074.688.074 1.468.045 2.892-.66 3.94-1.647.195-.18.375-.375.54-.585.225-.27.435-.54.614-.823.239-.375.435-.75.614-1.154a8.112 8.112 0 00.509-1.664c.196-1.004.211-2.022.149-3.026-.135-2.022-.673-4.045-1.842-5.724a9.054 9.054 0 00-.555-.719 9.868 9.868 0 00-1.063-1.034 8.477 8.477 0 00-1.363-.915 9.927 9.927 0 00-1.692-.598l-.3-.06c-.209-.03-.42-.044-.634-.06a8.453 8.453 0 00-1.015.016c-.704.045-1.412.16-2.112.337C5.799 1.227 2.863 3.566 1.3 6.67A11.834 11.834 0 00.238 9.801a11.81 11.81 0 00-.104 3.775c.12 1.02.374 2.023.778 2.977.227.57.511 1.124.825 1.648 1.094 1.783 2.683 3.236 4.51 4.24.688.39 1.408.69 2.157.944.226.074.45.15.689.21z" fill="#0f172a"/></svg>
+<text x="86" y="122.6" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#111827" text-anchor="start">REST API</text>
+<rect x="36" y="156" width="180" height="54" rx="10" fill="#ffffff"/>
+<svg x="48" y="169.0" width="28" height="28" viewBox="0 0 24 24"><path d="M3 5c0-1.1 4-2 9-2s9 .9 9 2l-2 14c0 1.1-3.1 2-7 2s-7-.9-7-2z" fill="#569A31"/><ellipse cx="12" cy="5" rx="9" ry="2" fill="#7cc35a"/></svg>
+<text x="86" y="188.6" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#111827" text-anchor="start">S3</text>
+<text x="338.0" y="60" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#a1a7b3" text-anchor="middle" letter-spacing="1">UBUNYE TASK</text>
+<rect x="248" y="104" width="180" height="92" rx="12" fill="#cdeefb" stroke="#e6e6e6" stroke-width="1.5"/>
+<text x="260" y="128" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#0f172a" text-anchor="start">documents</text>
+<rect x="260" y="142" width="72.0" height="40" rx="7" fill="#d93434"/>
+<text x="296.0" y="167" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">.yaml</text>
+<rect x="344.0" y="142" width="72.0" height="40" rx="7" fill="#4caf50"/>
+<text x="380.0" y="167" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">.py</text>
+<text x="338.0" y="226" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#f3f4f6" text-anchor="middle">clean + chunk</text>
+<text x="550.0" y="60" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#a1a7b3" text-anchor="middle" letter-spacing="1">DELTA TABLE</text>
+<rect x="460" y="123" width="180" height="54" rx="10" fill="#ffffff"/>
+<svg x="472" y="136.0" width="28" height="28" viewBox="0 0 24 24"><path d="M12 3 22 21H2z" fill="none" stroke="#00ADD4" stroke-width="2.6" stroke-linejoin="round"/><path d="M12 10 16.5 18h-9z" fill="#00ADD4"/></svg>
+<text x="510" y="155.6" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#111827" text-anchor="start">chunks</text>
+<text x="762.0" y="60" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#a1a7b3" text-anchor="middle" letter-spacing="1">UBUNYE TASK</text>
+<rect x="672" y="104" width="180" height="92" rx="12" fill="#cdeefb" stroke="#e6e6e6" stroke-width="1.5"/>
+<text x="684" y="128" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#0f172a" text-anchor="start">embed</text>
+<rect x="684" y="142" width="72.0" height="40" rx="7" fill="#d93434"/>
+<text x="720.0" y="167" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">.yaml</text>
+<rect x="768.0" y="142" width="72.0" height="40" rx="7" fill="#4caf50"/>
+<text x="804.0" y="167" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">.py</text>
+<text x="762.0" y="226" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#f3f4f6" text-anchor="middle">chunk → vector</text>
+<text x="974.0" y="60" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#a1a7b3" text-anchor="middle" letter-spacing="1">VECTOR STORE</text>
+<rect x="884" y="116" width="180" height="68" rx="10" fill="#ffffff"/>
+<svg x="896" y="136.0" width="28" height="28" viewBox="0 0 24 24"><circle cx="6" cy="7" r="2.6" fill="#8b5cf6"/><circle cx="17" cy="5" r="2.6" fill="#8b5cf6"/><circle cx="12" cy="13" r="2.6" fill="#a78bfa"/><circle cx="5" cy="19" r="2.6" fill="#a78bfa"/><circle cx="19" cy="18" r="2.6" fill="#8b5cf6"/></svg>
+<text x="934" y="148.0" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#111827" text-anchor="start">vectors</text>
+<text x="934" y="165.0" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#5b6472" text-anchor="start">pgvector, Pinecone…</text>
+<path d="M220 150L242 150" stroke="#e6e6e6" stroke-width="2.5" marker-end="url(#head)"/>
+<path d="M432 150L454 150" stroke="#e6e6e6" stroke-width="2.5" marker-end="url(#head)"/>
+<path d="M644 150L666 150" stroke="#e6e6e6" stroke-width="2.5" marker-end="url(#head)"/>
+<path d="M856 150L878 150" stroke="#e6e6e6" stroke-width="2.5" marker-end="url(#head)"/>
+<path d="M974 188V284" stroke="#ff5a4f" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#head)"/>
+<rect x="954" y="292" width="40" height="40" rx="8" fill="#ffffff"/><svg x="960" y="298" width="28" height="28" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="4" fill="#6366f1"/><circle cx="9" cy="13" r="2" fill="#fff"/><circle cx="15" cy="13" r="2" fill="#fff"/><path d="M12 2v4" stroke="#6366f1" stroke-width="2"/><circle cx="12" cy="2.5" r="1.8" fill="#6366f1"/></svg>
+<text x="944" y="320" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#a1a7b3" text-anchor="end">an LLM finds the closest chunks</text>
+</svg>

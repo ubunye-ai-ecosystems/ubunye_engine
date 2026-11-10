@@ -2,6 +2,8 @@
 
 **Status:** accepted (hardening programme, 2026-09-29)
 
+![A batch is a task with its dt. Running a finished append again is refused; --rerun replaces it; after a crash the next run takes over; --resume finishes a pipeline](../assets/diagrams/rerun.svg)
+
 ## Context
 
 A pipeline run can stop at any moment: a power cut, a killed job, a failed write. What

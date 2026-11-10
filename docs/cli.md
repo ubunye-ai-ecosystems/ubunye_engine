@@ -261,6 +261,8 @@ ubunye run \
 | `--rerun` | | no | false | Replace a batch (same `-dt` and `--var`) that a finished run already appended |
 | `--resume` | | no | false | Skip tasks that already finished this batch, run the rest |
 
+![A batch is a task with its dt. Running a finished append again is refused; --rerun replaces it; after a crash the next run takes over; --resume finishes a pipeline](assets/diagrams/rerun.svg)
+
 !!! note "Running a batch again"
     A batch is the task with its `-dt` and `--var` values. If the task appends and a
     run already finished that batch, `run` refuses, because the batch would land twice.
