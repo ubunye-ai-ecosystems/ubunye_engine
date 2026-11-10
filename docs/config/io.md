@@ -102,6 +102,11 @@ sql: "SELECT ..."              # inputs only
 # outputs also take catalog + schema + tbl_name instead of table
 ```
 
+A name that comes from a variable goes through `| ident`, which quotes it once
+(a catalog like `aws-x-catalog` needs backticks in SQL):
+`sql: "SELECT * FROM {{ env.TELM_READ_CATALOG | ident }}.raw.trips"`. See
+[SQL names](jinja.md#sql-names-ident).
+
 ### `s3` / `delta`
 
 ```yaml

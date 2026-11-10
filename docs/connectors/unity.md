@@ -30,6 +30,14 @@ Alternatively, use a SQL query:
     A read needs `table`, `sql`, or `catalog` + `schema` + `tbl_name`.
     `db_name` is a Hive key: `ubunye validate` refuses it on a unity read.
 
+!!! note "Names with a hyphen: quote them with `| ident`"
+    Databricks catalogs are often named like `aws-x-catalog`. In SQL that name must
+    be in backticks, or it reads as a subtraction. When the name comes from a job
+    parameter or an environment variable, write
+    `{{ env.TELM_READ_CATALOG | ident }}`: it adds the backticks once, whether the
+    value arrives with them or not, and quotes each part of a
+    `catalog.schema.table`. See [SQL names](../config/jinja.md#sql-names-ident).
+
 ---
 
 ## Write

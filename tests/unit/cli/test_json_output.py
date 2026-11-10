@@ -102,7 +102,7 @@ class TestValidate:
         assert result.exit_code == 0
         assert doc == {
             "ok": True,
-            "tasks": [{"task": "copy", "ok": True, "problems": [], "warnings": []}],
+            "tasks": [{"task": "copy", "ok": True, "problems": [], "warnings": [], "sql": {}}],
         }
 
     def test_a_backend_problem(self, tmp_path):

@@ -152,6 +152,8 @@ def build_plan(
             "format": fmt,
             "file_format": io_cfg.get("file_format"),
             "location": _location(io_cfg),
+            # The SQL as it will run, after templating, on one line.
+            "sql": " ".join(str(io_cfg["sql"]).split()) if io_cfg.get("sql") else None,
             "checked": False,
             "produced_by": None,
         }

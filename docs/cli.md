@@ -87,7 +87,7 @@ ubunye lineage compare -d pipelines -u sales -p etl -t daily --run-id1 A --run-i
 | Command | JSON shape |
 |---|---|
 | `plan` | `{"ok": bool, "tasks": [plan, ...]}`: each plan has `inputs`, `transform`, `outputs`, `problems`, `warnings`, `config_hash` |
-| `validate` | `{"ok": bool, "tasks": [{"task", "ok", "problems"}]}` |
+| `validate` | `{"ok": bool, "tasks": [{"task", "ok", "problems", "warnings", "sql"}]}`: `sql` maps each SQL input to its query after templating |
 | `backends` | `[{"name", "default", "loaded", "capabilities"}]` |
 | `doctor` | `{"ok": bool, "checks": [{"name", "status", "detail", "fix"}]}` |
 | `gate` | `{"ok": bool, "task", "baseline", "candidate", "findings": [{"rule", "status", "detail", "output"}]}` |
@@ -177,7 +177,14 @@ Render Jinja and validate the config schema, before Spark starts. It also checks
 each output's write mode against its writer (a `merge` with no `merge_keys`, a
 `jdbc` output with `mode: merge`), with the message `plan` gives, and each
 `secret://` provider, in `ENGINE.spark_conf` too. Exits `0` on success and
-non-zero if any task fails.
+non-zero if any task fails. For a task that reads with `sql`, it prints the query
+as it will run, after templating, so you can see a
+[`| ident`](config/jinja.md#sql-names-ident) name quoted:
+
+```text
+  [OK]   trips
+         sql trips: SELECT * FROM `aws-x-catalog`.raw.trips
+```
 
 ```bash
 ubunye validate -d pipelines -u fraud_detection -p ingestion -t claim_etl -dt 2024-06-01

@@ -32,6 +32,7 @@ Three words used on these pages, in plain terms:
 | [012](adr-012-model-runs-and-feature-contract.md) | Model runs on the receipt; features checked at predict | 0.9.0 |
 | [013](adr-013-receipt-queries.md) | Job health and upstream checks are receipt queries | 0.9.0 |
 | [014](adr-014-mlflow-registry-aliases.md) | The MLflow registry backend uses the Model Registry: stages are aliases, the rest are tags | 0.9.0 |
+| [017](adr-017-ident-filter.md) | A SQL name from a variable is quoted by one built-in filter, `ident` | 0.9.2 |
 
 ## The rule behind all of them
 

@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`| ident`, a Jinja filter for SQL names** (ADR 017). `{{ env.TELM_READ_CATALOG | ident }}`
+  gives `` `aws-x-catalog` `` whether the value arrives with backticks or without,
+  drops surrounding spaces, and quotes each part of `catalog.schema.table` once.
+  A Databricks catalog with a hyphen no longer needs the config to guess how the
+  job parameter is spelled. An empty name is refused when the config loads.
+  `ubunye validate` (and its `--json`, as `sql`) and `ubunye plan` print each
+  input's SQL after templating. `ubunye doctor` no longer calls a variable
+  required when a filter such as `ident` sits before its `| default(...)`.
+
 ### Fixed
 
 - The `deploy` workflow's config check named a sample pipeline that no longer
