@@ -98,8 +98,10 @@ def test_the_notebook_creates_the_table_and_records_success_and_failure(
 
     assert spark.catalog.tableExists(table)
     rows = spark.sql(
-        f"SELECT run_id, status, record FROM {table} "
-        "QUALIFY row_number() OVER (PARTITION BY run_id ORDER BY written_at DESC) = 1"
+        # A subquery, not QUALIFY: QUALIFY needs Spark 4, and CI also runs Spark 3.5.
+        "SELECT run_id, status, record FROM ("
+        f"SELECT *, row_number() OVER (PARTITION BY run_id ORDER BY written_at DESC) AS n "
+        f"FROM {table}) WHERE n = 1"
     ).collect()
     latest = {r["status"]: json.loads(r["record"]) for r in rows}
     assert set(latest) == {"success", "error"}
