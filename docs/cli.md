@@ -857,8 +857,11 @@ RUN. `--json FILE` and `--md FILE` write the matrix and the table.
 
 Replay fallback manifests against configured backends. When a metadata write
 (lineage or model registry) fails during a run, the record is appended to a
-local JSONL manifest under `~/.ubunye/fallback/` so the run does not fail. This
-command replays them, skipping records already written.
+local JSONL manifest under `~/.ubunye/fallback/` so the run does not fail. A
+run record goes there whatever the store (a lineage folder that cannot be
+written, a Delta table that cannot be reached), and the warning names the
+command that replays it. This command replays them, skipping records already
+written.
 
 ### `sync lineage`
 

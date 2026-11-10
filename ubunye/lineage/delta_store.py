@@ -22,10 +22,10 @@ and ``OPTIMIZE`` sorts them by task. Open-source Delta (3.1 and later) and
 Databricks both honour these. A table that already exists is used as it is.
 
 It needs a SparkSession with Delta: the active one, or a local one it starts
-(``pip install 'ubunye-engine[delta]'``). When a record cannot be written, it is
-kept in a fallback manifest (``~/.ubunye/fallback/<run_id>/lineage.jsonl``,
-Decision 2) and a warning says so; ``ubunye sync lineage --lineage-backend
-delta`` replays it. It never goes quietly to a local file other jobs cannot see.
+(``pip install 'ubunye-engine[delta]'``). A save that fails raises; the recorder
+keeps the record in a fallback manifest (``~/.ubunye/fallback/<run_id>/lineage.jsonl``,
+Decision 2), as for every store, and ``ubunye sync lineage --lineage-backend delta``
+replays it. It never goes quietly to a local file other jobs cannot see.
 
 The older ``LineageRecord`` methods (``record``, ``get_run``, ``search_records``,
 ``compact``) are kept. As before, without an active SparkSession when the
@@ -38,7 +38,6 @@ import json
 import logging
 import time
 import warnings
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
@@ -274,7 +273,12 @@ class DeltaLineageBackend:
             if not self._exists(spark):  # not another job creating it at the same time
                 raise
 
-    def _append(self, ctx: RunContext) -> None:
+    # ------------------------------------------------------------------
+    # RunRecordStore: the run record contract (ADR 011)
+    # ------------------------------------------------------------------
+
+    def save(self, ctx: RunContext) -> None:
+        """Append the record. A failure raises; the recorder keeps the record."""
         spark = self._session()
         if not self._ready:
             if not self._exists(spark):
@@ -286,45 +290,6 @@ class DeltaLineageBackend:
             writer.save(self._table_or_path)
         else:
             writer.saveAsTable(self._table_or_path)
-
-    def _fallback(self, ctx: RunContext, exc: Exception) -> None:
-        """Keep a record that could not be written (Decision 2), and say so."""
-        from ubunye._internal import metadata_worker
-
-        manifest = metadata_worker._FALLBACK_ROOT / ctx.run_id / "lineage.jsonl"
-        doc = ctx.to_dict()
-        doc["_fallback_at"] = datetime.now(timezone.utc).isoformat()
-        doc["_lineage_backend"] = "delta"
-        doc["_location"] = self._table_or_path
-        try:
-            manifest.parent.mkdir(parents=True, exist_ok=True)
-            with manifest.open("a", encoding="utf-8") as fh:
-                fh.write(json.dumps(doc, ensure_ascii=False, default=str) + "\n")
-            kept = f"It was kept in {manifest}"
-        except OSError as io_exc:
-            kept = f"It could not be kept either ({io_exc})"
-        logger.warning(
-            "The run record of %s (run %s) was not written to the Delta lineage store %s: "
-            "%s. %s; replay it with 'ubunye sync lineage --lineage-backend delta "
-            "--lineage-dir %s'.",
-            ctx.task_path,
-            ctx.run_id,
-            self._table_or_path,
-            exc,
-            kept,
-            self._table_or_path,
-        )
-
-    # ------------------------------------------------------------------
-    # RunRecordStore: the run record contract (ADR 011)
-    # ------------------------------------------------------------------
-
-    def save(self, ctx: RunContext) -> None:
-        """Append the record; if that fails, keep it in a fallback manifest and warn."""
-        try:
-            self._append(ctx)
-        except Exception as exc:
-            self._fallback(ctx, exc)
 
     def load(self, task_path: str, run_id: str) -> RunContext:
         """One run of a task, by its run id or the first characters of it."""
@@ -456,7 +421,7 @@ class DeltaLineageBackend:
         if self._use_spark:
             from ubunye.lineage.storage import _record_to_ctx
 
-            self._append(_record_to_ctx(record))
+            self.save(_record_to_ctx(record))
         else:
             self._write_local(record)
 

@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the small files each append leaves: 200 saves leave under 60 files, not 200.
   An existing table is used as it is; `docs/cli.md` shows the three statements
   that turn the same on for it.
+- **A run record no store could write is kept, whatever the store** (F-097).
+  When the filesystem store could not write (its folder under a file), the
+  record was lost with a log line, and `ubunye sync lineage` found nothing. Now
+  every store's failed save goes one way, through the recorder, to
+  `~/.ubunye/fallback/<run_id>/lineage.jsonl`, and the warning names the
+  `ubunye sync lineage` command that replays it. The Delta store's own copy of
+  that code is gone; its `save` raises like any store's.
 
 ### Changed
 

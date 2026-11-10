@@ -171,10 +171,13 @@ from ubunye.interfaces import LineageBackend, LineageRecord
 - `FileSystemLineageStore`, entry point `ubunye.lineage_backends:filesystem`.
   Uses a `run_id` to path index for O(1) lookups and an in-memory
   `RunContext` cache to avoid repeated JSON parsing on search.
+- A store's `save` raises when it cannot write. The recorder then keeps the
+  record in the fallback manifest, with a warning naming the
+  `ubunye sync lineage` command that replays it. This is the same for every
+  store (F-097).
 - `DeltaLineageBackend`, entry point `ubunye.lineage_backends:delta`.
   Stores each run record whole (JSON plus index columns) in a Delta table or
-  path, through the active SparkSession or a local one it starts. A record it
-  cannot write goes to a fallback manifest, with a warning. Its older
+  path, through the active SparkSession or a local one it starts. Its older
   `LineageRecord` methods still use JSON files when no SparkSession existed
   when it was built, and now log that.
 
