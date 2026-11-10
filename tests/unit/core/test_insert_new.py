@@ -195,12 +195,12 @@ MODEL: etl
 VERSION: "1.0.0"
 CONFIG:
   inputs:
-    src: {{format: s3, path: "{tmp_path / 'in.csv'}", file_format: csv}}
+    src: {{format: s3, path: "{(tmp_path / 'in.csv').as_posix()}", file_format: csv}}
   transform: {{}}
   outputs:
     out:
       format: delta
-      path: "{target}"
+      path: "{target.as_posix()}"
       mode: insert_new
       merge_keys: [id]
 """,
