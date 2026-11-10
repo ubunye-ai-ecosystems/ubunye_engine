@@ -95,7 +95,7 @@ def test_a_duck_typed_store_runs_the_whole_lifecycle():
     """No inheritance, no entry point, no disk. Register, promote, load, roll back."""
     duck = DuckStore()
     registry = ModelRegistry("duck-bucket/models")
-    registry._store = duck  # what resolve_store would do for a registered scheme
+    registry._lifecycle.backend._store = duck  # what resolve_store does for a registered scheme
 
     v1 = registry.register(
         use_case="uc",
@@ -122,7 +122,7 @@ def test_object_storage_end_to_end_via_fsspec():
     pytest.importorskip("fsspec")
 
     registry = ModelRegistry("memory://models")
-    assert isinstance(registry._store, FsspecArtifactStore)
+    assert isinstance(registry._lifecycle.backend._store, FsspecArtifactStore)
 
     v1 = registry.register(
         use_case="uc",
