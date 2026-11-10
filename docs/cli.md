@@ -810,7 +810,7 @@ record with `--record FILE`, or with `-d -u -p -t` and `--run-id` (default
 | `--region` | | no | | Region |
 | `--cost-amount` | | no | | Cost of the run |
 | `--cost-currency` | | no | `USD` | Currency |
-| `--cost-basis` | | no | | `actual`, `provider_estimate`, `ubunye_estimate`, `local` or `unknown` |
+| `--cost-basis` | | no | `local` for `--kind local`, else `unknown` | `actual`, `provider_estimate`, `ubunye_estimate`, `local` or `unknown` |
 | `--cost-source` | | no | | How the figure was obtained |
 | `--run-url` | | no | | Where a reader can check this run |
 
@@ -820,6 +820,9 @@ Record that an environment did not run the workload, and why. Takes
 `--workload`, `--env` and `--reason` (all required), `--status` (`not_run`
 (default), `unsupported` or `failed_to_launch`), `-o/--out` (default
 `evidence`) and `--run-url`.
+
+`--kind`, `--cost-basis` and `--status` take only the values listed. Any other
+value is a usage error (exit 2) that lists the choices.
 
 ### `prove report`
 

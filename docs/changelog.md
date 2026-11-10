@@ -81,6 +81,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`prove` options with fixed values reject a wrong value cleanly** (F-092).
+  `prove skip --status nonsense` and `prove observe --cost-basis bogus` printed a
+  raw `ValueError` traceback, and `prove observe --kind bogus` was kept silently.
+  Each is now a usage error (exit 2) that lists the valid choices.
+
 - **`models demote` can no longer move a version up past its gates** (F-091).
   `ubunye models demote --to production` put a version in production without
   checking its promotion gates, and without the `promotion_forced` mark. Demote
