@@ -1,19 +1,56 @@
-# Databricks Authentication (GitHub Actions)
+# Databricks Authentication
 
-How to wire a Databricks workspace to this repo's CI so the
-`databricks bundle` workflows can deploy and run the production examples.
+This page shows how CI signs in to a Databricks workspace. It is for whoever
+wires a GitHub repository to a workspace.
 
-Two auth flows are supported. Pick one per workspace.
+## Which auth does which command use?
+
+| Command | Personal access token | Service principal (OAuth M2M) |
+|---|---|---|
+| `ubunye deploy databricks` (and the workflow `ubunye init github-actions` writes) | **Yes, the only option** | No |
+| `databricks bundle deploy` / `bundle run` (Databricks Asset Bundles) | Yes | Yes, recommended on paid workspaces |
+
+`ubunye deploy databricks` reads a token from `DATABRICKS_TOKEN`, or from the
+variable named by `--token` or by `token_env` in `targets.yaml`. If that
+variable is empty it stops with `AuthNotFoundError`; a token the workspace
+rejects gives `AuthInvalidError`. See [Errors](errors.md). It never uses the
+service principal secrets below. The two ways to deploy are compared on the
+[Databricks deploy page](deployment/databricks.md).
+
+## The words
+
+- **Personal access token (PAT):** a long secret string, like a password, that
+  acts as one user. Anyone holding it can do what that user can do.
+- **Service principal:** a robot user that belongs to the workspace, not to a
+  person. You give it only the rights CI needs.
+- **OAuth M2M (machine to machine):** how a service principal signs in. It
+  uses a client ID and a client secret instead of a token.
+
+## Which repository gets the secrets?
+
+Set the secrets on the GitHub repository whose workflow runs the deploy:
+
+- **Your own pipelines repo**, for your own jobs.
+- **This engine repo** (`ubunye-ai-ecosystems/ubunye_engine`), for its
+  bundle workflows `.github/workflows/*_databricks*.yml`, which deploy
+  `examples/production/*_databricks`.
+- **The examples repo** ([ubunye-examples](https://github.com/ubunye-ai-ecosystems/ubunye-examples)),
+  for its `deploy` workflow.
+
+The steps are the same in each.
+
+## The two flows
+
+Pick one per workspace.
 
 | Flow | When to use | Secrets |
 |---|---|---|
-| **Personal Access Token (PAT)** | Free Edition, single-user workspace, quick experiments | `DATABRICKS_HOST`, `DATABRICKS_TOKEN` |
-| **Service Principal + OAuth** *(recommended for paid workspaces)* | Production, shared workspace, audit-friendly, rotates via UI | `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` |
+| **Personal access token** | Free Edition, a workspace with one user, quick experiments, and always for `ubunye deploy databricks` | `DATABRICKS_HOST`, `DATABRICKS_TOKEN` |
+| **Service principal with OAuth** *(recommended for paid workspaces)* | Production, shared workspaces, audit trails, secrets you rotate in the UI | `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` |
 
-The Databricks CLI auto-detects which flow to use: if `DATABRICKS_CLIENT_ID`
-and `DATABRICKS_CLIENT_SECRET` are both set, it uses OAuth M2M (machine-to-
-machine). Otherwise it falls back to PAT. You don't select a flow in the
-workflow; you select it by which secrets you configure.
+The Databricks CLI picks the flow for you: if `DATABRICKS_CLIENT_ID` and
+`DATABRICKS_CLIENT_SECRET` are both set, it uses OAuth M2M. Otherwise it uses
+the token. You choose a flow by which secrets you set, not in the workflow.
 
 ---
 
@@ -96,21 +133,16 @@ serverless compute, and the executors cannot see the driver's `/tmp`.
 Do **not** also set `DATABRICKS_TOKEN`. If both are present, the CLI
 picks OAuth, but leaving a stale PAT around defeats the point of moving off it.
 
-### `ubunye deploy databricks` needs a token
-
-The flows above are for the `databricks bundle` workflows. The engine's own
-`ubunye deploy databricks` uses a token only: it reads it from
-`DATABRICKS_TOKEN`, or from the variable named by `--token` or by `token_env`
-in `targets.yaml`. If that variable is empty it stops with
-`AuthNotFoundError`; a token the workspace rejects gives `AuthInvalidError`.
-See [Errors](errors.md).
+`ubunye deploy databricks` cannot use these three secrets: it needs a
+token (see [the table at the top](#which-auth-does-which-command-use)).
 
 ---
 
 ## How the workflows consume these secrets
 
-Every Databricks workflow in `.github/workflows/*_databricks*.yml` exports
-the same env block:
+Every Databricks bundle workflow in this engine repo
+(`.github/workflows/*_databricks*.yml`) and the examples repo's `deploy`
+workflow export the same env block:
 
 [% raw %]
 ```yaml
@@ -145,6 +177,8 @@ green.
 ---
 
 ## Verifying the wiring
+
+These steps use the examples repo; the same checks work for any repo.
 
 1. Push a trivial change to the [examples repo](https://github.com/ubunye-ai-ecosystems/ubunye-examples)
    (e.g. edit its README) and merge it.
