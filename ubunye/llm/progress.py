@@ -123,9 +123,19 @@ def _elapsed(seconds: float) -> str:
 
 
 def _spent(budgets: Sequence[Tuple[str, Any]]) -> str:
-    """The spend of each budget that enforces a dollar limit; empty when none does."""
-    money = [(n, b) for n, b in budgets if getattr(b, "max_usd", None) is not None]
+    """The spend of each budget that enforces a money limit; empty when none does."""
+    money = [(n, m) for n, m in ((n, _of(b)) for n, b in budgets) if m]
     if len(money) == 1:
-        ((_, b),) = money
-        return f"${b.spent_usd:.4f} spent of ${b.max_usd:g}"
-    return ", ".join(f"{n} ${b.spent_usd:.4f} of ${b.max_usd:g}" for n, b in money)
+        ((_, (spent, cap)),) = money
+        return f"{spent} spent of {cap}"
+    return ", ".join(f"{n} {spent} of {cap}" for n, (spent, cap) in money)
+
+
+def _of(b: Any) -> Optional[Tuple[str, str]]:
+    """What a budget spent and its money ceiling, in the ceiling's currency (ADR 015)."""
+    cur = getattr(b, "currency", None)
+    if cur is not None and getattr(b, "max_amount", None) is not None:
+        return cur.money(b.spent_usd, 4), f"{cur.code} {b.max_amount:g}"
+    if getattr(b, "max_usd", None) is not None:
+        return f"${b.spent_usd:.4f}", f"${b.max_usd:g}"
+    return None

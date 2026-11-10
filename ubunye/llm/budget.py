@@ -5,6 +5,9 @@ Three limits, any of them optional: ``max_usd`` (dollars), ``max_calls`` and
 per run from ``UBUNYE_LLM_MAX_USD``, ``UBUNYE_LLM_MAX_CALLS`` and
 ``UBUNYE_LLM_MAX_SECONDS``, shared by every port the task makes; a port's own
 ``max_usd=`` / ``max_calls=`` / ``max_seconds=`` add a second, narrower one.
+With a display currency (ADR 015, :mod:`ubunye.llm.currency`),
+``UBUNYE_LLM_MAX_<CODE>`` (``UBUNYE_LLM_MAX_ZAR``) caps the run in that currency,
+converted at the given rate; with ``UBUNYE_LLM_MAX_USD`` set too, both apply.
 
 Before a call, :meth:`Budget.reserve` counts its worst case: the prompt's tokens
 counted high (a token per 3 characters, plus 4 per message) and the whole
@@ -18,10 +21,11 @@ from __future__ import annotations
 
 import math
 import os
+import re
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ubunye.core.errors import LLMBudgetError, LLMError
 from ubunye.llm import currency as fx
@@ -32,6 +36,8 @@ ENV = {
     "max_calls": "UBUNYE_LLM_MAX_CALLS",
     "max_seconds": "UBUNYE_LLM_MAX_SECONDS",
 }
+#: A ceiling in a display currency: UBUNYE_LLM_MAX_ZAR, UBUNYE_LLM_MAX_EUR, ...
+_MAX_IN = re.compile(r"^UBUNYE_LLM_MAX_([A-Z]{3})$")
 
 
 def estimate_input_tokens(request: Any) -> int:
@@ -55,51 +61,72 @@ class Budget:
     refused: int = 0
     #: The display currency (ADR 015); None for US dollars.
     currency: Optional[fx.Currency] = None
+    #: A ceiling in the display currency (``UBUNYE_LLM_MAX_<CODE>``).
+    max_amount: Optional[float] = None
     _reserved: float = 0.0
     _started: float = field(default_factory=lambda: time.monotonic())
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     @property
     def limited(self) -> bool:
-        return any(v is not None for v in (self.max_usd, self.max_calls, self.max_seconds))
+        limits = (self.max_usd, self.max_calls, self.max_seconds, self.max_amount)
+        return any(v is not None for v in limits)
 
     @classmethod
     def from_env(cls) -> "Budget":
         values: Dict[str, Any] = {}
         for name, var in ENV.items():
             raw = os.environ.get(var, "").strip()
-            if not raw:
+            if raw:
+                values[name] = _number(var, raw, int if name == "max_calls" else float)
+        currency = fx.from_env()
+        for var, raw in os.environ.items():
+            code = _MAX_IN.match(var)
+            if not code or code.group(1) == "USD" or not raw.strip():
                 continue
-            try:
-                values[name] = int(raw) if name == "max_calls" else float(raw)
-            except ValueError:
+            if currency is None or currency.code != code.group(1):
+                shown = currency.code if currency else "USD"
                 raise LLMError(
-                    f"{var}={raw!r} is not a number",
-                    hint=f"Set {var} to a number, or unset it for no limit.",
-                ) from None
-        return cls(**values, currency=fx.from_env())
+                    f"{var} is set but the display currency is {shown}, so it would cap nothing",
+                    hint=f"Set {fx.ENV}={code.group(1)} and {fx.fx_var(code.group(1))}=RATE@DATE, "
+                    f"or cap in the display currency (UBUNYE_LLM_MAX_{shown}).",
+                )
+            values["max_amount"] = _number(var, raw.strip(), float)
+        return cls(**values, currency=currency)
+
+    def _money_caps(self) -> List[Tuple[str, float, Optional[fx.Currency]]]:
+        """Each money ceiling: its name, its value in dollars, the currency it is shown in."""
+        caps: List[Tuple[str, float, Optional[fx.Currency]]] = []
+        if self.max_usd is not None:
+            caps.append((f"max_usd={self.max_usd:g}", self.max_usd, None))
+        if self.max_amount is not None and self.currency is not None:
+            name = f"max_{self.currency.code.lower()}={self.max_amount:g}"
+            caps.append((name, self.max_amount / self.currency.per_usd, self.currency))
+        return caps
 
     def reserve(self, *, backend: str, request: Any, price: Optional[prices.Price]) -> float:
         """Count a call's worst case against the limits, or refuse it. Returns the reservation."""
         worst = None
         if price is not None:
             worst = prices.cost(price, estimate_input_tokens(request), request.max_tokens)
+        caps = self._money_caps()
         with self._lock:
             reason = None
             if self.max_seconds is not None and time.monotonic() - self._started > self.max_seconds:
                 reason = f"max_seconds={self.max_seconds:g} has passed"
             elif self.max_calls is not None and self.calls + 1 > self.max_calls:
                 reason = f"max_calls={self.max_calls} reached ({self.calls} calls made)"
-            elif self.max_usd is not None and worst is None:
-                reason = (
-                    f"max_usd={self.max_usd:g} is set but {backend}/{request.model} has no price"
-                )
-            elif self.max_usd is not None and worst is not None:
-                if self.spent_usd + self._reserved + worst > self.max_usd:
-                    reason = (
-                        f"max_usd={self.max_usd:g}: spent ${self.spent_usd:.6f}, "
-                        f"${self._reserved:.6f} in flight, this call could cost ${worst:.6f}"
-                    )
+            elif caps and worst is None:
+                reason = f"{caps[0][0]} is set but {backend}/{request.model} has no price"
+            elif worst is not None:
+                for name, cap, cur in caps:
+                    if self.spent_usd + self._reserved + worst > cap:
+                        reason = (
+                            f"{name}: spent {fx.money(self.spent_usd, cur)}, "
+                            f"{fx.money(self._reserved, cur)} in flight, "
+                            f"this call could cost {fx.money(worst, cur)}"
+                        )
+                        break
             if reason:
                 self.refused += 1
                 raise LLMBudgetError(
@@ -133,6 +160,8 @@ class Budget:
             "refused": self.refused,
         }
         if self.currency is not None:
+            if self.max_amount is not None:
+                out[f"max_{self.currency.code.lower()}"] = self.max_amount
             out["currency"] = self.currency.to_dict()
         return out
 
@@ -144,4 +173,17 @@ def _hint(reason: str) -> str:
             "tokens, or a UBUNYE_LLM_PRICES file. A free local model (Ollama, vLLM): "
             "price=(0, 0)."
         )
-    return "Raise the limit (UBUNYE_LLM_MAX_USD, _MAX_CALLS, _MAX_SECONDS), or send fewer calls."
+    return (
+        "Raise the limit (UBUNYE_LLM_MAX_USD or _MAX_<CURRENCY>, _MAX_CALLS, _MAX_SECONDS), "
+        "or send fewer calls."
+    )
+
+
+def _number(var: str, raw: str, kind: Any) -> Any:
+    try:
+        return kind(raw)
+    except ValueError:
+        raise LLMError(
+            f"{var}={raw!r} is not a number",
+            hint=f"Set {var} to a number, or unset it for no limit.",
+        ) from None

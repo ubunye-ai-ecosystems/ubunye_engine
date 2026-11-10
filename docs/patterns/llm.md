@@ -104,6 +104,7 @@ Set a ceiling and a call that could pass it is refused before it is sent:
 | Variable | Limit |
 | --- | --- |
 | `UBUNYE_LLM_MAX_USD` | Dollars for the whole run |
+| `UBUNYE_LLM_MAX_<CODE>` | The same in your display currency, e.g. `UBUNYE_LLM_MAX_ZAR` (see [Costs in your currency](#costs-in-your-currency)) |
 | `UBUNYE_LLM_MAX_CALLS` | Number of calls |
 | `UBUNYE_LLM_MAX_SECONDS` | Wall clock since the run's first transform started |
 
@@ -168,6 +169,19 @@ date to `llm_budget` (`"currency": {"code": "ZAR", "per_usd": 18.4, "as_of":
 "2026-11-10"}`), so a receipt always says which rate it used. `ubunye lineage
 trace` shows the costs in that currency, at that rate. Old records, with no
 currency, read as dollars.
+
+Cap the run in that currency with `UBUNYE_LLM_MAX_<CODE>`:
+
+```bash
+UBUNYE_LLM_MAX_ZAR=50 ubunye run -d pipelines -u shop -p reviews -t label
+```
+
+Each call's worst case is converted at your rate and checked before it is sent,
+exactly like `UBUNYE_LLM_MAX_USD`. With both set, both apply. A ceiling named after
+a currency that is not the display currency (`UBUNYE_LLM_MAX_EUR` while it is `ZAR`)
+is an error, never silently ignored. The record keeps it as `max_zar`, and the
+progress line shows `ZAR 9.2000 spent of ZAR 50`. A port's own ceiling stays in
+dollars (`llm.port(..., max_usd=)`).
 
 ## See the bill before the run
 

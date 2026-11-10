@@ -12,11 +12,12 @@ import pytest
 from typer.testing import CliRunner
 
 import ubunye
+from ubunye import llm
 from ubunye.cli.main import app
-from ubunye.core.errors import LLMError
+from ubunye.core.errors import LLMBudgetError, LLMError
 from ubunye.lineage.context import RunContext
 from ubunye.lineage.storage import FileSystemLineageStore
-from ubunye.llm import currency
+from ubunye.llm import currency, progress
 from ubunye.llm.budget import Budget
 
 from .test_llm_port import _task
@@ -25,6 +26,7 @@ ENV = (
     "UBUNYE_LLM_CURRENCY",
     "UBUNYE_LLM_FX_ZAR",
     "UBUNYE_LLM_FX_EUR",
+    "UBUNYE_LLM_MAX_ZAR",
     "UBUNYE_LLM_MAX_USD",
     "UBUNYE_LLM_MAX_CALLS",
     "UBUNYE_LLM_MAX_SECONDS",
@@ -140,3 +142,77 @@ def test_an_old_record_without_a_currency_reads_as_dollars():
            "llm_budget": {"max_usd": 1.0, "spent_usd": 0.1}}  # fmt: skip
     record = RunContext.from_dict(old)
     assert currency.from_record(record) is None
+
+
+# --- a ceiling in the display currency -------------------------------------------
+# One call of "hi" with max_tokens=1000 on claude-haiku-4-5 could cost 5 input tokens
+# at $1/M plus 1000 output at $5/M: $0.005005, or ZAR 0.092092 at 18.40.
+
+
+def _haiku(provider):
+    return llm.port("anthropic", model="claude-haiku-4-5", api_key="k", base_url=provider.url)
+
+
+def test_a_ceiling_in_rand_refuses_a_call_that_could_pass_it(provider, monkeypatch):
+    _zar(monkeypatch)
+    monkeypatch.setenv("UBUNYE_LLM_MAX_ZAR", "0.09")
+    with pytest.raises(LLMBudgetError, match="max_zar=0.09") as err:
+        _haiku(provider).complete("hi", max_tokens=1000)
+    assert provider.requests == []
+    assert "this call could cost ZAR 0.092092" in str(err.value)
+
+
+def test_a_call_within_the_rand_ceiling_runs(provider, monkeypatch):
+    _zar(monkeypatch)
+    monkeypatch.setenv("UBUNYE_LLM_MAX_ZAR", "0.1")
+    _haiku(provider).complete("hi", max_tokens=1000)
+    assert len(provider.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "usd, zar, refused_by", [("0.004", "1", "max_usd"), ("1", "0.09", "max_zar")]
+)
+def test_a_dollar_and_a_rand_ceiling_both_apply(provider, monkeypatch, usd, zar, refused_by):
+    _zar(monkeypatch)
+    monkeypatch.setenv("UBUNYE_LLM_MAX_USD", usd)
+    monkeypatch.setenv("UBUNYE_LLM_MAX_ZAR", zar)
+    with pytest.raises(LLMBudgetError, match=refused_by):
+        _haiku(provider).complete("hi", max_tokens=1000)
+
+
+def test_a_rand_ceiling_on_an_unpriced_model_fails_closed(provider, monkeypatch):
+    _zar(monkeypatch)
+    monkeypatch.setenv("UBUNYE_LLM_MAX_ZAR", "50")
+    port = llm.port("anthropic", model="mystery", api_key="k", base_url=provider.url)
+    with pytest.raises(
+        LLMBudgetError, match="max_zar=50 is set but anthropic/mystery has no price"
+    ):
+        port.complete("hi")
+
+
+@pytest.mark.parametrize("currency_code", [None, "EUR"])
+def test_a_ceiling_in_another_currency_is_never_silently_ignored(monkeypatch, currency_code):
+    if currency_code:
+        monkeypatch.setenv("UBUNYE_LLM_CURRENCY", currency_code)
+        monkeypatch.setenv("UBUNYE_LLM_FX_EUR", "0.86@2026-11-09")
+    monkeypatch.setenv("UBUNYE_LLM_MAX_ZAR", "50")
+    with pytest.raises(LLMError, match="UBUNYE_LLM_MAX_ZAR is set but the display currency is"):
+        Budget.from_env()
+
+
+def test_a_rand_ceiling_must_be_a_number(monkeypatch):
+    _zar(monkeypatch)
+    monkeypatch.setenv("UBUNYE_LLM_MAX_ZAR", "lots")
+    with pytest.raises(LLMError, match="UBUNYE_LLM_MAX_ZAR='lots' is not a number"):
+        Budget.from_env()
+
+
+def test_the_summary_and_the_progress_line_show_the_rand_ceiling(monkeypatch):
+    _zar(monkeypatch)
+    monkeypatch.setenv("UBUNYE_LLM_MAX_ZAR", "50")
+    budget = Budget.from_env()
+    assert budget.limited
+    budget.spent_usd = 0.5
+    summary = budget.summary()
+    assert summary["max_zar"] == 50 and summary["max_usd"] is None
+    assert progress._spent([("run", budget)]) == "ZAR 9.2000 spent of ZAR 50"

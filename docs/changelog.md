@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   error. Prices and recorded costs stay in dollars; the run record's `llm_budget`
   adds the currency, rate and date used, and `ubunye lineage trace` shows the
   costs at that rate. Records without a currency read as dollars.
+- **A ceiling in your currency.** `UBUNYE_LLM_MAX_ZAR=50` (the pattern is
+  `UBUNYE_LLM_MAX_<CODE>`) caps a run in the display currency, checked before each
+  call like `UBUNYE_LLM_MAX_USD`, which works as before. With both set, both apply.
+  A ceiling in a currency that is not the display currency is an error.
 
 ## [0.9.1] (2026-11-10)
 

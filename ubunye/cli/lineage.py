@@ -557,9 +557,9 @@ def _print_evidence(ctx: RunContext) -> None:
     if ctx.llm_budget:
         b = ctx.llm_budget
         limits = ", ".join(
-            f"{name}={b[name]:g}"
-            for name in ("max_usd", "max_calls", "max_seconds")
-            if b.get(name) is not None
+            f"{name}={value:g}"
+            for name, value in b.items()
+            if name.startswith("max_") and value is not None
         )
         typer.echo(
             f"    budget{' ' + limits if limits else ''}: spent "
