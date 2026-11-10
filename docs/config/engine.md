@@ -60,7 +60,7 @@ fully qualified table names still work.
 
 ## Profile merge rules
 
-![With -m prod, the prod profile is laid over the base spark_conf: memory 32g and cores 8 from prod, partitions 200 from the base; -m Prod is refused](../assets/diagrams/profiles.svg)
+![With -m PROD, the PROD profile is laid over the base spark_conf: memory 32g and cores 8 from PROD, partitions 200 from the base; -m prod is refused](../assets/diagrams/profiles.svg)
 
 When `-m <name>` (`--mode`) is passed, the engine builds the Spark settings like this:
 
