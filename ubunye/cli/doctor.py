@@ -161,6 +161,14 @@ def environment_checks() -> List[Check]:
     return checks
 
 
+def _suggest(usable: List[str]) -> str:
+    """A backend to suggest off a platform: databricks only attaches to a cluster's
+    session, so it is the last choice on a laptop."""
+    if "pandas" in usable:
+        return "pandas"
+    return next((n for n in usable if n != "databricks"), usable[0])
+
+
 def _backend_checks() -> List[Check]:
     checks: List[Check] = []
     rows = backends_view.describe_all()
@@ -186,7 +194,7 @@ def _backend_checks() -> List[Check]:
                 WARN,
                 f"a run without --backend uses '{default['name']}', which cannot run here "
                 "(on Databricks the platform's own backend is used instead)",
-                f"Pass --backend {usable[0]}, or install what '{default['name']}' needs.",
+                f"Pass --backend {_suggest(usable)}, or install what '{default['name']}' needs.",
             )
         )
     if not usable:

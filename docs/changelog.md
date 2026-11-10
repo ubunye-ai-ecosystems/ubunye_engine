@@ -42,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `ubunye run` on a task whose `transformations.py` has no Task class prints one
+  `[ERROR] Run refused` line, not a traceback. `ubunye doctor` no longer suggests
+  `--backend databricks` on a laptop (it only attaches to a cluster's session).
 - **Saving a Delta run record from a CLI or pandas run is about twice as fast**
   (F-116). With no active SparkSession the Delta run record store starts a local
   one, and Delta read the run record log in 50 tasks on every save. That session,
