@@ -24,8 +24,10 @@ ORCHESTRATION: ...  # optional: metadata for `ubunye export`
 | `CONFIG` | [TaskConfig](io.md) | Yes | none | Inputs, transform, outputs, [expectations](expectations.md) |
 | `ORCHESTRATION` | [OrchestrationConfig](orchestration.md) | No | none | Export metadata for orchestrators |
 
-`CONFIG` holds four keys: `inputs` and `outputs` (both required, at least one
-entry each), `transform` (optional) and `expectations` (optional).
+`CONFIG` holds five keys: `inputs` and `outputs` (both required, at least one
+entry each), `transform` (optional), `expectations` (optional) and `requires`
+(optional: upstream tasks that must have succeeded for this batch first, see
+[Job health and upstream checks](../patterns/job-health.md)).
 
 Set `MODEL` and `VERSION` explicitly in production pipelines where job type or
 version is load-bearing (lineage records, model registry, orchestrator
@@ -86,6 +88,7 @@ values.
 |---|---|
 | [Inputs & Outputs](io.md) | `CONFIG.inputs` and `CONFIG.outputs`: connector format and options |
 | [Expectations](expectations.md) | `CONFIG.expectations`: checks on inputs and outputs |
+| [Upstream checks](../patterns/job-health.md) | `CONFIG.requires`: do not start until an upstream task succeeded for this batch |
 | [Engine & Profiles](engine.md) | `ENGINE`: Spark conf, catalog, schema and profiles |
 | [Transform](transform.md) | `CONFIG.transform`: the task class and its `params` |
 | [Orchestration](orchestration.md) | `ORCHESTRATION`: schedule, retries, tags, platform-specific settings |

@@ -26,6 +26,8 @@ models live (see below).
 | `record` | A full run record: outputs and hashes, code, environment, timings, model calls. |
 | `gate` | A run against a baseline (default: latest against previous), rule by rule. |
 | `focus` | A run's model calls as FOCUS 1.4 cost rows. |
+| `health` | Job health per task: last status, last success, failures in a row, runs likely dead ([Job health](job-health.md)). |
+| `upstream` | Whether a task succeeded for a batch (`variables` such as `dt` or `month`). |
 | `run` | Runs a task and records it. Only with `--allow-run`. |
 
 ## Safe by default

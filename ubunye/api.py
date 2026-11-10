@@ -349,3 +349,61 @@ def run_pipeline(
     finally:
         chosen.stop()
     return results
+
+
+def job_health(
+    usecase_dir: Union[str, Path],
+    *,
+    usecase: Optional[str] = None,
+    package: Optional[str] = None,
+    tasks: Optional[Iterable[str]] = None,
+    max_age: Optional[Union[str, float]] = None,
+    stuck_after: Union[str, float] = "6h",
+    lineage_dir: str = ".ubunye/lineage",
+    lineage_backend: Optional[str] = None,
+) -> List[Any]:
+    """Job health per task, from run records (ADR 013); what ``ubunye runs health`` prints.
+
+    Name the tasks (``tasks=["uc/pkg/task"]``) or a use case (``usecase=``, with
+    ``package=`` to narrow it). Returns one
+    :class:`~ubunye.lineage.health.TaskHealth` per task; ``.healthy`` is False when
+    the task is failing, has a run likely dead (``running`` past ``stuck_after``) or,
+    with ``max_age``, has not succeeded recently enough.
+    """
+    from ubunye.lineage import health, stores
+
+    store = stores.open_for(usecase_dir, lineage_dir, lineage_backend)
+    names = list(tasks or [])
+    if usecase:
+        names += [
+            t for t in health.tasks_for(store, usecase_dir, usecase, package) if t not in names
+        ]
+    if not names:
+        raise ValueError("Say which tasks: tasks=['usecase/package/task'] or usecase='...'.")
+    return health.check(store, names, max_age=max_age, stuck_after=stuck_after)
+
+
+def wait_for_upstream(
+    usecase_dir: Union[str, Path],
+    task: str,
+    *,
+    dt: Optional[str] = None,
+    variables: Optional[Mapping[str, Any]] = None,
+    timeout: Union[str, float] = 0,
+    poll: Union[str, float] = 60,
+    lineage_dir: str = ".ubunye/lineage",
+    lineage_backend: Optional[str] = None,
+) -> Any:
+    """The run of ``task`` that succeeded for this batch, waiting up to ``timeout``.
+
+    The batch is ``dt`` and ``variables``; every one must match. Raises
+    :class:`~ubunye.lineage.upstream.UpstreamNotReady` when there is none in time.
+    What ``ubunye runs wait-for`` does; a task can ask the same in its config with
+    ``CONFIG.requires``.
+    """
+    from ubunye.lineage import stores, upstream
+
+    store = stores.open_for(usecase_dir, lineage_dir, lineage_backend)
+    batch = build_variables(dt=dt, dtf=None, mode=None, extra=variables)
+    req = upstream.Requirement(task=task, wait=timeout, poll=poll)
+    return upstream.wait_for(store, req, batch)

@@ -45,6 +45,22 @@ results = ubunye.run_pipeline(
       show_source: false
       heading_level: 3
 
+### Job health and upstream checks
+
+Queries over run records ([ADR 013](architecture/adr-013-receipt-queries.md)).
+
+::: ubunye.api.job_health
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 4
+
+::: ubunye.api.wait_for_upstream
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 4
+
 ---
 
 ## Notebook API (Interactive)

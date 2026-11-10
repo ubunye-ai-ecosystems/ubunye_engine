@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Job health and upstream checks, from run records** (ADR 013). `ubunye runs
+  health` shows, per task, the last status, when it last succeeded, runs in a row
+  that failed, and runs left `running` past `--stuck-after` (likely dead); it exits
+  1 when a task is failing, stuck, or older than `--max-age`, so it can be a
+  scheduled check. `CONFIG.requires: [{task: uc/pkg/t, variables: [month]}]`
+  refuses to start a task until the upstream succeeded for the same batch, with
+  an optional `wait`; `ubunye runs wait-for` is the same check as a command.
+  Both read only the run record store (any store, ADR 011), so jobs that share
+  no disk can check each other; no platform plugin. Also `ubunye.api.job_health`,
+  `ubunye.api.wait_for_upstream` and the MCP tools `health` and `upstream`. A
+  task with no `requires` runs, and hashes, exactly as before.
 - **Model registry backends are plugins, found by name** (ADR 010). The
   `ubunye.registry_backends` entry points existed but nothing used them, so a
   third party registry could be installed and never reached. Now

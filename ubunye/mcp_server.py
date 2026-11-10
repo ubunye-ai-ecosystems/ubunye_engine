@@ -10,6 +10,8 @@ pipelines folder:
 ``plan``                  What a task will read and write, the bill before the run,
                           and what will stop it. Reads no data.
 ``runs``, ``record``      Recorded runs and a full run record.
+``health``                Job health per task, from run records (ADR 013).
+``upstream``              Whether a task succeeded for a batch (ADR 013).
 ``gate``                  A run against a baseline, rule by rule.
 ``focus``                 A run's model calls as FOCUS 1.4 cost rows.
 ``run``                   Runs a task. Only with ``--allow-run``.
@@ -208,7 +210,45 @@ class _Tools:
         record = self._load(task, run_id)
         return {"rows": focus.rows(record), "left_out": focus.left_out(record)}
 
+    def health(
+        self,
+        tasks: Optional[List[str]] = None,
+        usecase: Optional[str] = None,
+        package: Optional[str] = None,
+        max_age: Optional[str] = None,
+        stuck_after: str = "6h",
+    ) -> Dict[str, Any]:
+        from ubunye.lineage import health as checks
+
+        names = [self._task_name(t) for t in tasks or []]
+        if usecase:
+            if not _NAME.match(usecase) or (package and not _NAME.match(package)):
+                raise ValueError("usecase and package are plain names")
+            found = checks.tasks_for(self._store(), self.root, usecase, package)
+            names += [t for t in found if t not in names]
+        if not names:
+            raise ValueError("say which tasks: tasks=[usecase/package/task] or usecase=...")
+        report = checks.check(self._store(), names, max_age=max_age, stuck_after=stuck_after)
+        return {"ok": all(h.healthy for h in report), "tasks": [h.as_dict() for h in report]}
+
+    def upstream(self, task: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        from ubunye.lineage import upstream as up
+
+        req = up.Requirement(task=self._task_name(task))
+        try:
+            found = up.wait_for(self._store(), req, dict(variables or {}))
+        except up.UpstreamNotReady as exc:
+            return {"ok": False, "task": task, "error": str(exc)}
+        return {"ok": True, "task": task, "run": _summary(found)}
+
     # --- helpers ----------------------------------------------------------------
+
+    def _task_name(self, task: str) -> str:
+        """A task name, checked for shape only: its records may come from another machine."""
+        parts = task.strip("/").split("/")
+        if len(parts) != 3 or not all(_NAME.match(p) and p not in (".", "..") for p in parts):
+            raise ValueError(f"'{task}' is not a task name: use usecase/package/task")
+        return "/".join(parts)
 
     def _store(self) -> Any:
         from ubunye.lineage import stores
@@ -361,6 +401,23 @@ def build_server(
             require_replay,
             max_llm_cost_increase,
         )
+
+    @server.tool(annotations=read_only)
+    def health(
+        tasks: Optional[List[str]] = None,
+        usecase: Optional[str] = None,
+        package: Optional[str] = None,
+        max_age: Optional[str] = None,
+        stuck_after: str = "6h",
+    ) -> Dict[str, Any]:
+        """Job health per task: last status, last success, failures in a row, runs
+        likely dead (still running after stuck_after), and stale (max_age, e.g. 36h)."""
+        return guarded(tools.health)(tasks, usecase, package, max_age, stuck_after)
+
+    @server.tool(annotations=read_only)
+    def upstream(task: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Whether a task has succeeded for a batch (variables such as dt or month)."""
+        return guarded(tools.upstream)(task, variables)
 
     @server.tool(annotations=read_only)
     def focus(task: str, run_id: str = "latest") -> Dict[str, Any]:

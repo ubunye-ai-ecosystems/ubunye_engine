@@ -27,7 +27,7 @@ pytest.importorskip("pyarrow")
 
 from ubunye.mcp_server import build_server  # noqa: E402
 
-READ_ONLY = {"tasks", "doctor", "plan", "runs", "record", "gate", "focus"}
+READ_ONLY = {"tasks", "doctor", "plan", "runs", "record", "gate", "focus", "health", "upstream"}
 EXAMPLE = Path(__file__).resolve().parents[2] / "examples" / "production" / "llm_replay"
 
 TRANSFORM = """\

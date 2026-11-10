@@ -27,6 +27,7 @@ same CLI where there is no console script (a cloud job, for example).
 |---|---|
 | `init` | Scaffold a task (`ubunye init -d ... -u ... -p ... -t ...`) or a CI workflow |
 | `lineage` | Inspect run records |
+| `runs` | Job health and upstream checks from run records; exit 1 when the answer is no ([Job health](patterns/job-health.md)) |
 | `models` | Manage model versions and lifecycle |
 | `prove` | The proving ground: compare one workload's run records across environments |
 | `test` | Run tasks in test mode and report PASS/FAIL |
@@ -661,6 +662,37 @@ A run's model calls as FOCUS 1.4 cost rows, for FinOps tools. `--format` is
 ```bash
 ubunye lineage focus -d pipelines -u fraud_detection -p ingestion -t claim_etl -o cost.csv
 ```
+
+---
+
+## `ubunye runs`
+
+Questions a scheduler asks, answered from run records in the chosen store
+(`--lineage-backend`, `--lineage-dir`, as for `lineage`). Both exit 1 when the
+answer is no. See [Job health and upstream checks](patterns/job-health.md) and
+[ADR 013](architecture/adr-013-receipt-queries.md).
+
+### `runs health`
+
+```bash
+ubunye runs health -d pipelines -u pay [-p monthly] [--max-age 36h] [--stuck-after 6h] [--json]
+ubunye runs health -d pipelines --task pay/monthly/calc --task pay/monthly/send
+```
+
+Per task: state (`ok`, `running`, `failing`, `stuck`, `stale`, `never_run`), last
+status, when it last succeeded, runs in a row that failed, and runs still
+`running` after `--stuck-after` (likely dead). Exit 1 when any task is failing,
+stuck, or older than `--max-age`.
+
+### `runs wait-for`
+
+```bash
+ubunye runs wait-for pay/monthly/calc -d pipelines --var month=2026-10 [--timeout 2h] [--poll 60s] [--json]
+```
+
+Exit 0 once the task has a successful run for this batch (`-dt` and every
+`--var` match), 1 otherwise. `--timeout` (default 0, look once) waits. A task can
+ask the same in its config with `CONFIG.requires`.
 
 ---
 

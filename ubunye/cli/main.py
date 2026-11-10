@@ -10,6 +10,7 @@ Commands:
 - config:   show/validate config
 - plan:     show resolved IO graph
 - lineage:  inspect run lineage records
+- runs:     job health and upstream checks over run records
 - models:   manage model versions and lifecycle
 - test:     run task(s) in test mode with PASS/FAIL reporting
 - version:  show version
@@ -36,6 +37,7 @@ from ubunye.cli.lineage import lineage_app, lineage_backend_option, recorder_or_
 from ubunye.cli.models import models_app
 from ubunye.cli.output import emit, fail, json_option
 from ubunye.cli.prove import prove_app
+from ubunye.cli.runs_cmd import runs_app
 from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
 from ubunye.cli.variables import cli_variables, var_option
@@ -44,6 +46,7 @@ from ubunye.core import runs
 from ubunye.core.errors import ExpectationError
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
+from ubunye.lineage.upstream import UpstreamNotReady
 from ubunye.telemetry.hooks import MonitorHook
 
 app = typer.Typer(add_completion=False, help="Ubunye Engine CLI")
@@ -53,6 +56,7 @@ app.add_typer(init_app)
 app.add_typer(lineage_app)
 app.add_typer(models_app)
 app.add_typer(prove_app)
+app.add_typer(runs_app)
 app.add_typer(sync_app)
 app.add_typer(test_app)
 
@@ -105,7 +109,7 @@ def mcp_command(
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
     lineage_backend: Optional[str] = lineage_backend_option(),
 ):
-    """Serve the engine to agents over MCP (stdio): tasks, doctor, plan, runs, gate, focus."""
+    """Serve the engine to agents over MCP (stdio): tasks, doctor, plan, runs, health, upstream, gate, focus."""
     from ubunye.core.errors import UbunyeError
     from ubunye.mcp_server import build_server
 
@@ -594,6 +598,11 @@ def run(
                     f"[SKIP] {task} already finished this batch (--resume); kept as it is.",
                     fg=typer.colors.YELLOW,
                 )
+            except UpstreamNotReady as e:
+                # CONFIG.requires: an upstream has not succeeded for this batch.
+                # Nothing ran, so a refusal, not a crash.
+                typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
+                raise typer.Exit(code=1)
             except runs.RunLeaseHeld as e:
                 # A refusal, not a crash: nothing ran, so no traceback.
                 typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
