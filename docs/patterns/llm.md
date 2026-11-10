@@ -418,3 +418,11 @@ ubunye lineage focus -d pipelines -u shop -p reviews -t label --format jsonl -o 
     no price are left out, and the command says how many. Name the billing account with
     `UBUNYE_FOCUS_BILLING_ACCOUNT_ID` and `UBUNYE_FOCUS_BILLING_ACCOUNT_NAME`
     (default `unknown`).
+
+    A run with a [display currency](#costs-in-your-currency) is billed in it, at the
+    rate the run recorded (not today's): `BillingCurrency` is, say, `ZAR`, and the
+    cost and unit price columns are in rand. The dollar price stays on each row in
+    the FOCUS columns for a different pricing currency: `PricingCurrency` (`USD`),
+    `PricingCurrencyListUnitPrice`, `PricingCurrencyContractedUnitPrice` and
+    `PricingCurrencyEffectiveCost`. `x_ExchangeRate` and `x_ExchangeRateAsOf` name
+    the rate. Runs in dollars have none of these columns, as before.

@@ -21,6 +21,12 @@ see discounts or credits, and the provider's invoice is the authority. Replayed
 calls are not charges and make no rows; calls with no price are left out and
 counted by :func:`left_out`. ``UBUNYE_FOCUS_BILLING_ACCOUNT_ID`` and
 ``UBUNYE_FOCUS_BILLING_ACCOUNT_NAME`` name the account (default "unknown").
+
+A run with a display currency (ADR 015) is billed in it, at the rate the run
+recorded: ``BillingCurrency`` is that currency and the cost and unit price columns
+are converted. The dollar price stays on each row in FOCUS's own columns for a
+different pricing currency (``PricingCurrency`` "USD" and the ``PricingCurrency*``
+prices and cost), with the rate in ``x_ExchangeRate`` and ``x_ExchangeRateAsOf``.
 """
 
 from __future__ import annotations
@@ -28,6 +34,8 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+
+from ubunye.llm import currency as fx
 
 #: FOCUS 1.4 Cost and Usage columns at feature level Mandatory.
 MANDATORY = (
@@ -65,6 +73,11 @@ OPTIONAL = (
     "ListUnitPrice",
     "ContractedUnitPrice",
     "SkuPriceId",
+    # Only when the run had a display currency: the price in dollars.
+    "PricingCurrency",
+    "PricingCurrencyContractedUnitPrice",
+    "PricingCurrencyEffectiveCost",
+    "PricingCurrencyListUnitPrice",
 )
 
 FOCUS_VERSION = "1.4"
@@ -119,6 +132,8 @@ def rows(record: Any) -> List[Dict[str, Any]]:
     period_start, period_end = _month(start)
     account_id = os.environ.get("UBUNYE_FOCUS_BILLING_ACCOUNT_ID") or "unknown"
     account_name = os.environ.get("UBUNYE_FOCUS_BILLING_ACCOUNT_NAME") or "unknown"
+    cur = fx.from_record(record)
+    rate = cur.per_usd if cur else 1.0
 
     groups: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
     for c in _charges(record):
@@ -145,51 +160,64 @@ def rows(record: Any) -> List[Dict[str, Any]]:
         groups.items(), key=lambda kv: tuple(str(k) for k in kv[0])
     ):
         quantity = g["tokens"] / PER
-        cost = quantity * unit
+        usd = quantity * unit
+        cost, billed_unit = usd * rate, unit * rate
         issuer = provider or "unknown"
-        out.append(
-            {
-                "BilledCost": cost,
-                "BillingAccountId": account_id,
-                "BillingAccountName": account_name,
-                "BillingCurrency": "USD",
-                "BillingPeriodEnd": period_end,
-                "BillingPeriodStart": period_start,
-                "ChargeCategory": "Usage",
-                "ChargeClass": None,
-                "ChargeDescription": (
-                    f"{model} {direction} tokens for Ubunye task {record.task_path}"
-                ),
-                "ChargePeriodEnd": _fmt(end),
-                "ChargePeriodStart": _fmt(start),
-                "ContractedCost": cost,
-                "EffectiveCost": cost,
-                "HostProviderName": provider,
-                "InvoiceIssuerName": issuer,
-                "ListCost": cost,
-                "PricingQuantity": quantity,
-                "PricingUnit": "1000000 Tokens",
-                "ServiceCategory": "AI and Machine Learning",
-                "ServiceName": service or "Language model API",
-                "ServiceProviderName": issuer,
-                "ChargeFrequency": "Usage-Based",
-                "ConsumedQuantity": g["tokens"],
-                "ConsumedUnit": "Tokens",
-                "ListUnitPrice": unit,
-                "ContractedUnitPrice": unit,
-                "SkuPriceId": f"{backend}/{model}/{direction}",
-                "x_UbunyeRunId": record.run_id,
-                "x_UbunyeTaskPath": record.task_path,
-                "x_UbunyeModel": model,
-                "x_UbunyeCallCount": g["calls"],
-                "x_TokenDirection": direction,
-                "x_PricesAsOf": as_of,
-                "x_CostBasis": (
-                    "tokens x list price "
-                    + ("given to the port" if as_of == "given" else "from the engine's table")
-                    + "; the provider's invoice is authoritative"
-                ),
-                "x_FocusVersion": FOCUS_VERSION,
-            }
+        basis = (
+            "tokens x list price "
+            + ("given to the port" if as_of == "given" else "from the engine's table")
+            + (
+                f", converted to {cur.code} at {cur.per_usd:g} per USD as of {cur.as_of}"
+                if cur
+                else ""
+            )
+            + "; the provider's invoice is authoritative"
         )
+        row = {
+            "BilledCost": cost,
+            "BillingAccountId": account_id,
+            "BillingAccountName": account_name,
+            "BillingCurrency": cur.code if cur else "USD",
+            "BillingPeriodEnd": period_end,
+            "BillingPeriodStart": period_start,
+            "ChargeCategory": "Usage",
+            "ChargeClass": None,
+            "ChargeDescription": (f"{model} {direction} tokens for Ubunye task {record.task_path}"),
+            "ChargePeriodEnd": _fmt(end),
+            "ChargePeriodStart": _fmt(start),
+            "ContractedCost": cost,
+            "EffectiveCost": cost,
+            "HostProviderName": provider,
+            "InvoiceIssuerName": issuer,
+            "ListCost": cost,
+            "PricingQuantity": quantity,
+            "PricingUnit": "1000000 Tokens",
+            "ServiceCategory": "AI and Machine Learning",
+            "ServiceName": service or "Language model API",
+            "ServiceProviderName": issuer,
+            "ChargeFrequency": "Usage-Based",
+            "ConsumedQuantity": g["tokens"],
+            "ConsumedUnit": "Tokens",
+            "ListUnitPrice": billed_unit,
+            "ContractedUnitPrice": billed_unit,
+            "SkuPriceId": f"{backend}/{model}/{direction}",
+            "x_UbunyeRunId": record.run_id,
+            "x_UbunyeTaskPath": record.task_path,
+            "x_UbunyeModel": model,
+            "x_UbunyeCallCount": g["calls"],
+            "x_TokenDirection": direction,
+            "x_PricesAsOf": as_of,
+            "x_CostBasis": basis,
+            "x_FocusVersion": FOCUS_VERSION,
+        }
+        if cur is not None:
+            row.update(
+                PricingCurrency="USD",
+                PricingCurrencyContractedUnitPrice=unit,
+                PricingCurrencyEffectiveCost=usd,
+                PricingCurrencyListUnitPrice=unit,
+                x_ExchangeRate=cur.per_usd,
+                x_ExchangeRateAsOf=cur.as_of,
+            )
+        out.append(row)
     return out

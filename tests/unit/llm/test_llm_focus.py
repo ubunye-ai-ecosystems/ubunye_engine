@@ -30,6 +30,7 @@ ZULU = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch):
     for name in ("UBUNYE_LLM_MODE", "UBUNYE_LLM_STORE", "UBUNYE_LLM_MAX_USD",
+                 "UBUNYE_LLM_CURRENCY", "UBUNYE_LLM_FX_ZAR",
                  "UBUNYE_FOCUS_BILLING_ACCOUNT_ID", "UBUNYE_FOCUS_BILLING_ACCOUNT_NAME"):  # fmt: skip
         monkeypatch.delenv(name, raising=False)
 
@@ -123,3 +124,46 @@ def test_the_cli_writes_csv_and_jsonl(record, tmp_path):
     assert written.exit_code == 0, written.output
     lines = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
     assert len(lines) == 2 and lines[0]["ChargeClass"] is None
+
+
+# --- in a display currency (ADR 015) -------------------------------------------------
+
+
+@pytest.fixture
+def rand_record(provider, tmp_path, monkeypatch):
+    monkeypatch.setenv("UBUNYE_LLM_CURRENCY", "ZAR")
+    monkeypatch.setenv("UBUNYE_LLM_FX_ZAR", "18.40@2026-11-10")
+    task = _task(tmp_path, provider.url, model="claude-haiku-4-5-20251001")
+    lineage = tmp_path / "lineage"
+    ubunye.run_task(str(task), backend="pandas", lineage=True, lineage_dir=str(lineage))
+    (rec,) = FileSystemLineageStore(str(lineage)).list_runs("uc/pkg/label")
+    return rec
+
+
+def test_rows_bill_in_the_display_currency_and_keep_the_dollar_price(rand_record, monkeypatch):
+    monkeypatch.setenv("UBUNYE_LLM_FX_ZAR", "99@2027-01-01")  # the run's rate is used, not today's
+    by_direction = {r["x_TokenDirection"]: r for r in focus.rows(rand_record)}
+    inp, out = by_direction["input"], by_direction["output"]
+    assert inp["ListUnitPrice"] == pytest.approx(18.40) and out["ListUnitPrice"] == pytest.approx(
+        92.0
+    )
+    assert inp["PricingCurrencyListUnitPrice"] == 1.0 and out["PricingCurrencyListUnitPrice"] == 5.0
+    for row in (inp, out):
+        assert row["BillingCurrency"] == "ZAR" and row["PricingCurrency"] == "USD"
+        assert row["ListCost"] == pytest.approx(row["PricingQuantity"] * row["ListUnitPrice"])
+        assert row["BilledCost"] == row["EffectiveCost"] == row["ContractedCost"] == row["ListCost"]
+        usd = row["PricingQuantity"] * row["PricingCurrencyListUnitPrice"]
+        assert row["PricingCurrencyEffectiveCost"] == pytest.approx(usd)
+        assert row["BilledCost"] == pytest.approx(usd * 18.40)
+        assert row["PricingCurrencyContractedUnitPrice"] == row["PricingCurrencyListUnitPrice"]
+        assert (row["x_ExchangeRate"], row["x_ExchangeRateAsOf"]) == (18.40, "2026-11-10")
+        assert "converted to ZAR at 18.4 per USD as of 2026-11-10" in row["x_CostBasis"]
+        for column in focus.MANDATORY:
+            assert column in row
+        for x in [c for c in row if c not in focus.MANDATORY and c not in focus.OPTIONAL]:
+            assert x.startswith("x_"), x
+
+
+def test_dollar_rows_have_no_pricing_currency_columns(record):
+    for row in focus.rows(record):
+        assert not [c for c in row if c.startswith("PricingCurrency") or "Exchange" in c]

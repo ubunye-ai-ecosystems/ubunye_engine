@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its date and the dollar estimate. `--json` adds `currency` and `estimated`
   next to `estimated_usd`. A plan problem from a model setting now also says what
   to set.
+- **FOCUS rows in your currency.** `ubunye lineage focus` bills a run with a
+  display currency in that currency (`BillingCurrency` `ZAR`, converted costs and
+  unit prices) at the rate the run recorded, and keeps the dollar price in FOCUS
+  1.4's `PricingCurrency`, `PricingCurrencyListUnitPrice`,
+  `PricingCurrencyContractedUnitPrice` and `PricingCurrencyEffectiveCost`, with
+  `x_ExchangeRate` and `x_ExchangeRateAsOf`. Dollar rows are unchanged.
 
 ## [0.9.1] (2026-11-10)
 
