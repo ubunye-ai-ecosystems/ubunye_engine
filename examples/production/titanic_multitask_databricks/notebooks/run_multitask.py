@@ -14,8 +14,8 @@
 # MAGIC to the local example.
 # MAGIC
 # MAGIC The job installs the engine (`environments` in `databricks.yml`). To run this
-# MAGIC notebook by hand, give it an environment with `ubunye-engine==0.9.2`, or run
-# MAGIC `%pip install "ubunye-engine==0.9.2"` once in a cell above this one.
+# MAGIC notebook by hand, give it an environment with `ubunye-engine==0.9.3`, or run
+# MAGIC `%pip install "ubunye-engine==0.9.3"` once in a cell above this one.
 
 # COMMAND ----------
 

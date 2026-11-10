@@ -19,7 +19,7 @@ needs to change (`workspace` → `main`).
 
 ```
 titanic_survival_by_class (Job)
-├── environment "ubunye": ubunye-engine==0.9.2   # installed by the job, no %pip
+├── environment "ubunye": ubunye-engine==0.9.3   # installed by the job, no %pip
 ├── parameters (read by the engine):
 │   ├── dt: 2026-04-15                          # var.data_timestamp
 │   ├── ubunye_mode: PROD

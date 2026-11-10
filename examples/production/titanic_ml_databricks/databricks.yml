@@ -72,7 +72,7 @@ resources:
           spec:
             environment_version: "3"
             dependencies:
-              - "ubunye-engine[ml]==0.9.2"
+              - "ubunye-engine[ml]==0.9.3"
       tasks:
         - task_key: train
           environment_key: ubunye
@@ -111,7 +111,7 @@ resources:
           spec:
             environment_version: "3"
             dependencies:
-              - "ubunye-engine[ml]==0.9.2"
+              - "ubunye-engine[ml]==0.9.3"
       tasks:
         - task_key: predict
           environment_key: ubunye
