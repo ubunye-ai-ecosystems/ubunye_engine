@@ -77,7 +77,7 @@ targets:
       host: ${DATABRICKS_HOST}
     variables:
       mode: "nonprod"
-      unity_catalog: "aws-db-nonprod-tl-catalog"
+      unity_catalog: "dev_catalog"
 
   prod:
     mode: production
@@ -85,7 +85,7 @@ targets:
       host: ${DATABRICKS_HOST}
     variables:
       mode: "prod"
-      unity_catalog: "aws-db-prod-tl-catalog"
+      unity_catalog: "prod_catalog"
 ```
 
 ### Job definitions (`bundles/*.yaml`)

@@ -330,8 +330,8 @@ files to claim, and no batch id in the table unless the user put one there.
 transaction.** For an append output that sets it, Spark writes the batch into
 `ubunye_stage_<12 hex>` beside the target (named by the task, output and batch
 under a lease, so a retry replaces a staging table a killed run left behind). Then
-one transaction runs `DELETE FROM <table> WHERE <replace_where>` and `INSERT INTO
-<table> (<columns>) SELECT <columns> FROM <stage>`, and commits; the staging table
+one transaction runs `DELETE FROM <table> WHERE <replace_where>` and
+`INSERT INTO <table> (<columns>) SELECT <columns> FROM <stage>`, and commits; the staging table
 is dropped afterwards. A kill before the commit changes nothing in the target; a
 kill after it leaves the batch, which the rerun replaces with the same rows. The SQL
 is plain and portable; identifiers are quoted by Spark's own dialect for the URL.

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The CLI reference shows every command again.** A code span broken across two
+  lines put `<table>` at the start of a line, and Markdown read it as raw HTML:
+  everything after "Where run records are stored" (lineage show, runs, models,
+  prove, sync, deploy, export) showed as plain text. The same fix applies to
+  ADR 008. The example catalog names on the deployment page are now neutral.
+
 ## [0.9.0] (2026-11-10)
 
 ### Added

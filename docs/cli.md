@@ -558,8 +558,8 @@ The Delta store keeps the whole record as JSON, plus columns to query it by
 `ended_at`, `variables`, `record_version`, `written_at`). It only appends; the
 row written last for a run is the run. If a record cannot be written (no Spark,
 no Delta, no access), it is kept in `~/.ubunye/fallback/<run_id>/lineage.jsonl`
-with a warning; `ubunye sync lineage --lineage-backend delta --lineage-dir
-<table>` replays it. A store of your own passes
+with a warning;
+`ubunye sync lineage --lineage-backend delta --lineage-dir <table>` replays it. A store of your own passes
 `ubunye.testing.lineage_conformance` (see [Interfaces](interfaces.md)).
 
 ### `lineage show`
