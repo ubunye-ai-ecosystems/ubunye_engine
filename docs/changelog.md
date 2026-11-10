@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A Delta append of a batch lands once, and a rerun can correct it** (F-071). A
+  run killed or failed after its Delta commit was appended again by the rerun, and
+  `--rerun` appended a finished batch twice. A Delta append (path or table, through
+  the `delta`, `s3`, `hive` or `unity` writer) of a named batch is now Delta's
+  idempotent write, keyed by task, output and batch: a retry commits nothing, and
+  says so if the table did not change. Set `replace_where` on the append (for
+  example `"month = '{{ dt }}'"`) and each run replaces that batch's rows in one
+  commit instead, so a retry or `--rerun` writes the corrected batch. Behaviour
+  change: `replace_where` on an append was ignored before. See ADR 008.
+
 - **The Databricks examples run on serverless again.** Four example configs set
   `spark.sql.sources.partitionOverwriteMode`, which serverless refuses. Since the
   engine stopped ignoring refused keys, the scheduled `jhb_weather` job failed every

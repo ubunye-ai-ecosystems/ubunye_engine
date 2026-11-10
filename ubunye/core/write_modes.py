@@ -74,6 +74,12 @@ class ResolvedWriteMode:
 
     merge_keys: Sequence[str] = ()
 
+    batch_where: Optional[str] = None
+    """For an ``append``: the predicate that selects one batch's rows
+    (``replace_where`` on an append output). A Delta or JDBC append with one replaces
+    those rows in one transaction instead of adding them again (ADR 008, F-071,
+    F-072). Writers that cannot honour it ignore it, as before."""
+
     @property
     def is_merge(self) -> bool:
         return self.mode == "merge"
@@ -170,6 +176,12 @@ def resolve(
     if mode == "overwrite_partitions":
         return _resolve_overwrite_partitions(
             cfg, connector=connector, file_format=file_format, mergeable=mergeable
+        )
+
+    if mode == "append":
+        where = cfg.get("replace_where") or (cfg.get("options") or {}).get("replaceWhere")
+        return ResolvedWriteMode(
+            mode=mode, save_mode=mode, batch_where=str(where) if where else None
         )
 
     return ResolvedWriteMode(mode=mode, save_mode=mode)

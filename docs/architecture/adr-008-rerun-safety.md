@@ -74,10 +74,11 @@ table and information date, and with repairs made from what was actually written
   object storage (a conditional write) is the next step.
 - Appends are taken back on the pandas backend, and on Spark for plain file formats
   on a path Spark resolves to the local file system (F-070). A Spark append to object
-  storage (`s3a://`, `abfss://`, `gs://`, `dbfs:/`), HDFS, a Delta or catalog table,
+  storage (`s3a://`, `abfss://`, `gs://`, `dbfs:/`), HDFS, a non-Delta catalog table,
   or JDBC is named after a crash, not repaired: use `overwrite`,
   `overwrite_partitions`, `merge` or Delta's `replace_where` for batches that must land
-  once (F-071, F-072, F-073).
+  once (F-072, F-073). A Delta append lands once by Delta's own idempotent write (F-071,
+  addendum below).
 - A run of a batch that already **finished** is covered by the addendum below (F-031),
   not by the lease, which is gone once a run ends.
 - It does not make a whole run exactly-once for outputs other than appends: an
@@ -264,3 +265,55 @@ Its crash matrix (7 kill points, flat and partitioned, each followed by another
 batch, a takeover, `--resume` and `--rerun`, with a foreign file and decoy staging
 folders) found no file deleted or doubled that the run did not own, before or after
 the move inside.
+
+## Addendum: a Delta append lands once, and a rerun can correct it (F-071, 2026-11-10)
+
+A Delta append is one commit, so its files cannot be claimed (moving files behind
+Delta's log corrupts the table). On live Spark 4.2 with delta-spark 4.4, a run
+killed after its commit was appended again by the rerun, a run that failed after it
+left its rows for the rerun to add again, and `--rerun` appended a finished batch a
+second time (8 of 9 new integration cases fail on the old code). A production job
+that pays customers bypassed the writer with a hand-written insert-only MERGE for
+this: safe to rerun, but a bad month could never be corrected.
+
+**Decision: Delta's own idempotent write for a plain append; `replace_where` names
+the batch's rows for a correctable one.** Under a run lease with a named batch:
+
+- An append with no `replace_where` carries `txnAppId` (`ubunye/<task>/<output>/<batch
+  key>`) and `txnVersion` 0. Delta skips a write whose app id already committed that
+  version, so a retry of the batch commits nothing (probed: path, new path, catalog
+  table, new catalog table). The run compares the table version before and after;
+  if it did not move, it warns that the batch was already there and how to replace
+  it. That answers F-071's objection that the skip is silent.
+- An append with `replace_where` is written as `overwrite` with `replaceWhere`: one
+  commit replaces the batch's rows, on every run, from the current data. It carries
+  no `txnAppId`: a replace is idempotent by itself, and a key would skip a
+  deliberate correction. Delta refuses rows outside the predicate
+  (`DELTA_REPLACE_WHERE_MISMATCH`), so a wrong predicate fails, never deletes
+  another batch. `replace_where` on an append was ignored before; it is the opt in.
+- `--rerun` of a finished batch: with `replace_where` it replaces (the refusal hint
+  says so); without it the batch is appended again, as before, and the run warns at
+  its start, now naming `replace_where`. A second plain run of a finished batch is
+  still refused, for the hourly-job reason in the F-031 addendum.
+- The lease notes such an output as `idempotent` (`once` or `replaces`). It is not
+  named as unrepaired after a crash or failure, since its rerun does not add it
+  twice; a failed run says which outputs keep its batch and what the rerun does.
+
+**Why the key is the batch, not a version per rerun.** A version Ubunye bumps would
+have to be kept somewhere a cloud job on its own disk can read, and would skip a
+second correction when it is lost. Version 0 per batch needs no state: everything
+that must change a batch goes through `replace_where`.
+
+**Not covered.** A run with no named batch, or with no lease (`UBUNYE_RUN_LEASE=off`),
+appends plainly, as before (`replace_where` still replaces). A config that sets its
+own `txnAppId` or `txnVersion` is left alone. Delta drops a `SetTransaction` after
+`delta.setTransactionRetentionDuration` when a table sets it; a retry after that
+appends again. Non-Delta catalog tables and Spark on object storage stay as they
+were (F-073).
+
+**Proof:** `tests/integration/test_delta_append_reruns.py` (a real kill of a child
+after the commit; a failed run on a path and through the `delta`, `hive` and
+`unity` writers into a catalog table; `--rerun` with `replace_where` on a path and a
+table; a failed run corrected by the next; rows removed by hand reported; a run
+with no batch appends each time). 8 of 9 fail on the old code (the ninth pins
+unchanged behaviour); 9 of 9 pass. Bookkeeping: `tests/unit/core/test_batch_write.py`.

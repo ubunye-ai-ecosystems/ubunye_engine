@@ -66,16 +66,19 @@ def apply(
     opts.update(resolved.options)
     parts = list(partition_by or [])
 
-    def _save() -> None:
-        writer = df.write.mode(resolved.save_mode).format(file_format)
+    def _save_as(mode: str, with_opts: Dict[str, Any]) -> None:
+        writer = df.write.mode(mode).format(file_format)
         if parts:
             writer = writer.partitionBy(*parts)
-        for key, value in opts.items():
+        for key, value in with_opts.items():
             writer = writer.option(key, str(value))
         if table:
             writer.saveAsTable(table)
         else:
             writer.save(path)
+
+    def _save() -> None:
+        _save_as(resolved.save_mode, opts)
 
     if resolved.is_overwrite_partitions:
         _overwrite_partitions(
@@ -89,6 +92,22 @@ def apply(
             save=_save,
         )
         return
+
+    if resolved.save_mode == "append" and str(file_format).lower() == "delta":
+        # A named batch lands once: a Delta idempotent write, or a replace of the
+        # batch's rows when the output sets replace_where (ADR 008, F-071).
+        from ubunye.adapters.spark import delta_batch
+
+        plain = {k: v for k, v in opts.items() if k != "replaceWhere"}
+        if delta_batch.append(
+            spark=spark,
+            table=table,
+            path=path,
+            opts=plain,
+            batch_where=resolved.batch_where,
+            save=_save_as,
+        ):
+            return
 
     if resolved.save_mode == "append" and path and not table:
         # A path append under a run lease: Spark writes into a staging folder of this

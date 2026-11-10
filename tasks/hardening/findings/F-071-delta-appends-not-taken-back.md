@@ -1,6 +1,6 @@
 # F-071: a Delta append is not taken back after a crash, and --rerun appends it again
 
-**Status:** open (documented; not fixed)
+**Status:** fixed on `fix/0.9-delta-jdbc-appends` (2026-11-10)
 **Severity:** major
 **Source:** F-070 review of what ADR 008 still leaves unclaimed (2026-09-30)
 **Promise:** 5 (nothing is lost or doubled silently)
@@ -13,8 +13,9 @@ commit is appended again by the rerun; `--rerun` of a finished batch appends it 
 second time. Both are named in the log and the dead run's record, never repaired.
 
 ## Repro
-Same as F-070's integration cases with `file_format: delta` (or `format: delta`).
-Not yet written as a test.
+`tests/integration/test_delta_append_reruns.py`: 8 of 9 cases fail on the old code
+(the batch twice after a kill, after a failed run through the `delta`, `hive` and
+`unity` writers, and after `--rerun`).
 
 ## Expected
 The batch lands once after a kill and a rerun; `--rerun` replaces it.
@@ -52,4 +53,10 @@ cost of two write options. It was not adopted as a default because:
    a `replaceWhere` for the batch). Needs its own design and a skeptic round.
 
 ## Fix
-None yet. Option 1 is the guidance today.
+Option 2, without the version bookkeeping (ADR 008 addendum F-071). Under a lease
+with a named batch, a Delta append carries `txnAppId` = task, output and batch and
+`txnVersion` 0, so a retry commits nothing; the run warns when the table did not
+move, so a skip is never silent. An append output with `replace_where` is written as
+one `replaceWhere` overwrite on every run (no txn key), so a retry or `--rerun`
+corrects the batch. `--rerun` without `replace_where` appends again, as before, and
+says so. 9 of 9 integration cases pass.

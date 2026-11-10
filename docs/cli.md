@@ -264,10 +264,13 @@ ubunye run \
     run already finished that batch, `run` refuses, because the batch would land twice.
     Pass `--rerun` to replace it: the earlier run's files are removed once the new
     run succeeds. That works for appends to a folder of files on a local or shared
-    disk, on pandas and on Spark. An append Ubunye cannot take back (a Delta, catalog
-    or JDBC table, or a Spark path on object storage such as `s3a://`) is appended
-    again, and the run says so; write such outputs with
-    `mode: overwrite_partitions` and `partitionBy` if they must be rerun. A task that only overwrites,
+    disk, on pandas and on Spark. A Delta append (path or table) with
+    `replace_where` has the batch's rows replaced in one commit; without it, a
+    retry after a crash adds nothing, and `--rerun` appends the batch again. Any
+    other append Ubunye cannot take back (a non-Delta catalog table, JDBC, or a
+    Spark path on object storage such as `s3a://`) is appended again, and the run
+    says so; write such outputs with `mode: overwrite_partitions` and
+    `partitionBy` if they must be rerun. A task that only overwrites,
     and a run with no `-dt` and no `--var`, are never refused. To finish a pipeline
     that stopped half way, run it again with `--resume`: tasks that finished the
     batch are skipped with `[SKIP]`, the rest run.
