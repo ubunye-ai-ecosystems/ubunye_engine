@@ -218,6 +218,8 @@ class RegistryConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     store: str
+    #: The registry backend (ADR 010). Not set: UBUNYE_REGISTRY_BACKEND, else filesystem.
+    backend: Optional[str] = None
     use_case: Optional[str] = "default"
     version: Optional[str] = None
     auto_version: bool = True

@@ -34,6 +34,9 @@ from ubunye.interfaces.registry import ModelVersionInfo
 from ubunye.models.base import UbunyeModel
 from ubunye.models.gates import PromotionGate
 
+#: Where FilesystemRegistryBackend keeps protocol metadata inside a version's metadata.
+_PROTOCOL_METADATA = "registry_metadata"
+
 
 def _engine_version() -> str:
     try:
@@ -92,6 +95,9 @@ class ModelVersion:
             meta["promoted_to_prod"] = self.promoted_to_prod
         if self.archived_at:
             meta["archived_at"] = self.archived_at
+        # Metadata a caller passed through the RegistryBackend protocol (ADR 010).
+        for key, value in ((self.metadata or {}).get(_PROTOCOL_METADATA) or {}).items():
+            meta.setdefault(str(key), str(value))
         return ModelVersionInfo(
             name=name,
             version=self.version,
@@ -136,10 +142,34 @@ class ModelRegistry:
     """Manages model versions and lifecycle transitions.
 
     Args:
-        store_path: Root directory for all model artifacts and registry JSON files.
+        store_path: Where the models live. For the filesystem backend, the root
+            directory (or ``s3://``-style URL) for all artifacts and registry files.
+            Any other backend gets it unchanged.
+        backend: The registry backend (ADR 010): a name registered under the
+            ``ubunye.registry_backends`` entry point group, or a backend object.
+            Not given, ``UBUNYE_REGISTRY_BACKEND`` decides, else ``filesystem``.
+            The filesystem runs the code below exactly as before 0.9; any other
+            backend gets this whole API built on its six protocol methods
+            (:mod:`ubunye.models.lifecycle`).
     """
 
-    def __init__(self, store_path: str):
+    def __init__(self, store_path: str, backend: Any = None):
+        from ubunye.models.backends import DEFAULT_REGISTRY_BACKEND, choose, resolve_registry
+
+        self.store_path = str(store_path)
+        self._on: Optional[Any] = None  # BackendLifecycle, when not the filesystem
+        if backend is None or isinstance(backend, str):
+            self.backend_name = choose(backend)
+            if self.backend_name != DEFAULT_REGISTRY_BACKEND:
+                backend = resolve_registry(self.backend_name, store=self.store_path)
+        else:
+            self.backend_name = type(backend).__name__
+        if backend is not None and not isinstance(backend, str):
+            from ubunye.models.lifecycle import BackendLifecycle
+
+            self._on = BackendLifecycle(backend)
+            return
+
         # The SCHEME of the path picks the storage backend: a plain directory or
         # file:// stays local (exactly the old behaviour), s3://, gs:// and friends
         # go through fsspec, and any scheme registered under the
@@ -147,7 +177,6 @@ class ModelRegistry:
         # registry itself no longer knows what a disk is.
         from ubunye.models.artifact_store import resolve_store
 
-        self.store_path = str(store_path)
         self._store = resolve_store(self.store_path)
 
     # ------------------------------------------------------------------
@@ -191,6 +220,18 @@ class ModelRegistry:
             from ubunye.core.runtime import current_run_id
 
             lineage_run_id = current_run_id()
+
+        if self._on is not None:
+            return self._on.register(
+                use_case,
+                model_name,
+                version,
+                model,
+                metrics,
+                lineage_run_id=lineage_run_id,
+                registered_by=registered_by,
+                promotion_gates=promotion_gates,
+            )
 
         record = self._load_or_create_record(use_case, model_name)
         if promotion_gates is not None:
@@ -269,6 +310,16 @@ class ModelRegistry:
         Returns:
             Updated :class:`ModelVersion`.
         """
+        if self._on is not None:
+            return self._on.promote(
+                use_case,
+                model_name,
+                version,
+                to_stage,
+                promoted_by=promoted_by,
+                gates=gates,
+                force=force,
+            )
         record = self._load_record(use_case, model_name)
         mv = self._get_version_or_raise(record, version)
 
@@ -329,6 +380,8 @@ class ModelRegistry:
         Returns:
             Updated :class:`ModelVersion`.
         """
+        if self._on is not None:
+            return self._on.demote(use_case, model_name, version, to_stage)
         record = self._load_record(use_case, model_name)
         mv = self._get_version_or_raise(record, version)
         mv.stage = to_stage
@@ -352,6 +405,8 @@ class ModelRegistry:
         Returns:
             The restored :class:`ModelVersion` (now in production stage).
         """
+        if self._on is not None:
+            return self._on.rollback(use_case, model_name, to_version)
         record = self._load_record(use_case, model_name)
         self._get_version_or_raise(record, to_version)  # validate exists
 
@@ -402,6 +457,8 @@ class ModelRegistry:
         Raises:
             ValueError: No matching version found.
         """
+        if self._on is not None:
+            return self._on.get_model(use_case, model_name, version=version, stage=stage)
         record = self._load_record(use_case, model_name)
 
         mv: ModelVersion
@@ -434,6 +491,8 @@ class ModelRegistry:
         Raises:
             FileNotFoundError: Model not found in registry.
         """
+        if self._on is not None:
+            return self._on.list_versions(use_case, model_name)
         record = self._load_record(use_case, model_name)
         return sorted(
             record.versions.values(),
@@ -454,20 +513,12 @@ class ModelRegistry:
             Dict mapping metric name → ``{"a": val_a, "b": val_b, "delta": diff}``.
             Only metrics present in at least one version are included.
         """
+        if self._on is not None:
+            return self._on.compare_versions(use_case, model_name, version_a, version_b)
         record = self._load_record(use_case, model_name)
         va = self._get_version_or_raise(record, version_a)
         vb = self._get_version_or_raise(record, version_b)
-
-        all_keys = set(va.metrics) | set(vb.metrics)
-        result: Dict[str, Dict[str, Any]] = {}
-        for key in sorted(all_keys):
-            a_val = va.metrics.get(key)
-            b_val = vb.metrics.get(key)
-            delta: Optional[float] = None
-            if isinstance(a_val, (int, float)) and isinstance(b_val, (int, float)):
-                delta = round(float(b_val) - float(a_val), 6)
-            result[key] = {"a": a_val, "b": b_val, "delta": delta}
-        return result
+        return compare_metrics(va.metrics, vb.metrics)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -481,6 +532,8 @@ class ModelRegistry:
 
     def promotion_gates(self, use_case: str, model_name: str) -> Dict[str, Any]:
         """The gates stored with a model (empty if none were set)."""
+        if self._on is not None:
+            return self._on.promotion_gates(use_case, model_name)
         return dict(self._load_record(use_case, model_name).promotion_gates)
 
     def _load_or_create_record(self, use_case: str, model_name: str) -> ModelRecord:
@@ -576,8 +629,16 @@ class FilesystemRegistryBackend:
     """
 
     def __init__(self, store_path: str) -> None:
-        self._registry = ModelRegistry(store_path)
+        # Named, so UBUNYE_REGISTRY_BACKEND can never send the filesystem elsewhere.
+        self._registry = ModelRegistry(store_path, backend="filesystem")
         self._store_path = store_path
+
+    def promotion_gates(self, use_case: str, model_name: str) -> Dict[str, Any]:
+        """The gates stored with a model (empty if none, or no model yet)."""
+        try:
+            return self._registry.promotion_gates(use_case, model_name)
+        except RegistryNotFoundError:
+            return {}
 
     def flush(self, timeout: Optional[float] = None) -> int:
         """No-op for filesystem backend — writes are synchronous."""
@@ -594,6 +655,11 @@ class FilesystemRegistryBackend:
         metadata: Optional[Dict[str, str]] = None,
         lineage_run_id: Optional[str] = None,
     ) -> ModelVersionInfo:
+        from ubunye.models.lifecycle import GATES_KEY
+
+        meta = dict(metadata or {})
+        # The gates live on the model's record, as ModelRegistry has always kept them.
+        gates_json = meta.pop(GATES_KEY, None)
         mv = self._registry.register(
             use_case=use_case,
             model_name=model_name,
@@ -601,14 +667,19 @@ class FilesystemRegistryBackend:
             model=model,
             metrics=metrics,
             lineage_run_id=lineage_run_id,
+            registered_by=meta.pop("promoted_by", None),
+            promotion_gates=json.loads(gates_json) if gates_json else None,
         )
+        if meta:
+            # Kept, not dropped: it comes back from get() and list_versions().
+            record = self._registry._load_record(use_case, model_name)
+            mv = record.versions[mv.version]
+            mv.metadata = {**(mv.metadata or {}), _PROTOCOL_METADATA: meta}
+            self._registry._save_record(record)
         artifact_path = self._registry._store.join(
             self._registry._version_dir(use_case, model_name, mv.version), "model"
         )
-        info = mv.to_info(name=model_name, artifact_path=artifact_path)
-        if metadata:
-            info.metadata.update(metadata)
-        return info
+        return mv.to_info(name=model_name, artifact_path=artifact_path)
 
     def get(
         self,
@@ -701,6 +772,19 @@ class FilesystemRegistryBackend:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
+
+def compare_metrics(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """Metric name to ``{"a": val_a, "b": val_b, "delta": b - a}`` (delta None if not numbers)."""
+    result: Dict[str, Dict[str, Any]] = {}
+    for key in sorted(set(a) | set(b)):
+        a_val = a.get(key)
+        b_val = b.get(key)
+        delta: Optional[float] = None
+        if isinstance(a_val, (int, float)) and isinstance(b_val, (int, float)):
+            delta = round(float(b_val) - float(a_val), 6)
+        result[key] = {"a": a_val, "b": b_val, "delta": delta}
+    return result
 
 
 def _utcnow() -> str:

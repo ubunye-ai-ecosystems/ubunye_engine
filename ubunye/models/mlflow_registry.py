@@ -74,6 +74,10 @@ class MLflowRegistryBackend:
     def flush(self, timeout: Optional[float] = None) -> int:
         return self._fs.flush(timeout=timeout)
 
+    def promotion_gates(self, use_case: str, model_name: str) -> Dict[str, Any]:
+        """The gates stored with a model, kept by the filesystem it builds on."""
+        return self._fs.promotion_gates(use_case, model_name)
+
     def register(
         self,
         *,

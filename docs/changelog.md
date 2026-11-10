@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Model registry backends are plugins, found by name** (ADR 010). The
+  `ubunye.registry_backends` entry points existed but nothing used them, so a
+  third party registry could be installed and never reached. Now
+  `ubunye models *` takes `--backend` / `-b`, a model transform takes
+  `registry.backend`, and `ModelRegistry(store, backend=...)` and
+  `ubunye.models.resolve_registry()` exist. The order is: the name asked for,
+  else `UBUNYE_REGISTRY_BACKEND`, else `filesystem`. With neither set, nothing
+  changes. A backend implements six methods; rollback, archive, compare,
+  version numbers, stored promotion gates and one production version at a time
+  are done by Ubunye on top of them, for every backend.
+- **`ubunye.testing.registry_conformance`**, the suite a registry backend runs to
+  prove itself. The filesystem and MLflow backends pass it, and so does a third
+  party one installed through a real entry point.
+
 ### Fixed
 
 - **The Databricks examples run on serverless again.** Four example configs set
@@ -24,6 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ctx.write()` in separate cells, so you can see the data between steps. Catalog
   and schema come from the widgets on their own (no `os.environ`), and the
   notebooks install `ubunye-engine==0.8.0`.
+- **The registry backend is no longer picked from the host.** The private
+  `detect_registry_backend()` returned `mlflow` on Databricks; it now follows
+  the ADR 010 order and is deprecated. Set `UBUNYE_REGISTRY_BACKEND=mlflow` to keep MLflow.
+- **`FilesystemRegistryBackend.register` keeps the `metadata` it is given** (it
+  was returned once and dropped), and stores `promotion_gates` with the model.
 
 ## [0.8.0] (2026-09-30)
 
