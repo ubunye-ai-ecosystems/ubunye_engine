@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The `deploy` workflow's config check named a sample pipeline that no longer
+  exists and ended in `|| true`, so it could never fail. It now validates
+  `fraud_detection/risk_scoring` and fails the job when the config is invalid.
+
 ## [0.9.1] (2026-11-10)
 
 ### Changed
