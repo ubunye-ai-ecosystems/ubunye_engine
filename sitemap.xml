@@ -113,6 +113,22 @@
          <lastmod>2026-11-10</lastmod>
     </url>
     <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/architecture/adr-015-run-identity-and-job-settings/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/architecture/adr-016-notebook-as-a-run/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/architecture/adr-017-ident-filter/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/architecture/adr-018-insert-new/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/config/engine/</loc>
          <lastmod>2026-11-10</lastmod>
     </url>
