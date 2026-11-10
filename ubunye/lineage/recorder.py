@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional
 from ubunye.core.secrets import known_secrets, mask_text, redact_variables, scrub, secret_values
 from ubunye.lineage import evidence, stores
 from ubunye.lineage.context import RunContext, StepRecord
-from ubunye.lineage.storage import S3LineageStore
+from ubunye.lineage.storage import S3LineageStore, _engine_version
 
 logger = logging.getLogger(__name__)
 
@@ -50,15 +50,6 @@ def _hash_config(config: dict) -> str:
     from ubunye.config.hashing import config_hash
 
     return config_hash(config)
-
-
-def _engine_version() -> str:
-    try:
-        from importlib.metadata import version
-
-        return version("ubunye-engine")
-    except Exception:
-        return "unknown"
 
 
 def _make_store(store: Optional[str], base_dir: str, backend: Optional[str] = None) -> Any:
