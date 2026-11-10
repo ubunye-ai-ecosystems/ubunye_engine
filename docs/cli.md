@@ -284,7 +284,10 @@ ubunye run \
     `partitionBy` if they must be rerun. A task that only overwrites,
     and a run with no `-dt` and no `--var`, are never refused. To finish a pipeline
     that stopped half way, run it again with `--resume`: tasks that finished the
-    batch are skipped with `[SKIP]`, the rest run.
+    batch are skipped with `[SKIP]`, the rest run. A task that appends always knows
+    it finished. A task that only overwrites is known to have finished from its run
+    records, so with `--lineage` it is skipped when its latest run of the batch
+    succeeded; without `--lineage` it runs again.
 
 !!! note
     `run` picks the profile with `-m/--mode` (it has no `--profile`), and `--all`

@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before anything runs, and a failed launcher is named, never printed. A bug still
   shows its traceback. A config that does not validate now raises `ConfigError`
   (still a `ValueError`).
+- **`--resume` skips a task that only overwrites once it finished the batch**
+  (F-098). Only a task with an append output was skipped, though the docs said every
+  finished task is. With `--lineage` (`lineage=True`), a task whose latest run record
+  for this batch (same `-dt` and `--var`) says `success` is now skipped with
+  `[SKIP]`, whatever it writes. Without run records an overwrite task runs again, as
+  the docs now say.
 
 ## [0.9.0] (2026-11-10)
 

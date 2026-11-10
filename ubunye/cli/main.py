@@ -46,7 +46,7 @@ from ubunye.config import load_config
 from ubunye.core import runs
 from ubunye.core.errors import ExpectationError
 from ubunye.core.runtime import EngineContext, Registry
-from ubunye.core.task_runner import execute_user_task
+from ubunye.core.task_runner import execute_user_task, finished_run
 from ubunye.lineage.upstream import UpstreamNotReady
 from ubunye.telemetry.hooks import MonitorHook
 
@@ -577,6 +577,15 @@ def run(
                 run_records=lineage_recorder.shared_store() if lineage_recorder else None,
                 rerun=rerun,
             )
+            done = finished_run(context) if resume else None
+            if done is not None:
+                # --resume: its latest run of this batch succeeded (the run records say).
+                typer.secho(
+                    f"[SKIP] {task} already finished this batch (run {done.run_id[:8]}, "
+                    "--resume); kept as it is.",
+                    fg=typer.colors.YELLOW,
+                )
+                continue
             try:
                 execute_user_task(backend, task_dir, cfg, context, extra_hooks=extra_hooks)
                 typer.secho(f"[OK] Run complete for {task}", fg=typer.colors.GREEN)

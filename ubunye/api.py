@@ -41,7 +41,7 @@ from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend
 from ubunye.core.runs import BatchFinished
 from ubunye.core.runtime import EngineContext
-from ubunye.core.task_runner import execute_user_task
+from ubunye.core.task_runner import execute_user_task, finished_run
 from ubunye.telemetry.hooks import MonitorHook
 
 logger = logging.getLogger(__name__)
@@ -301,7 +301,10 @@ def run_pipeline(
     resume : bool
         Finish a pipeline that stopped half way: a task that already finished this
         batch is skipped (with a warning, and is not in the result); the rest run.
-        Without it, such a task is refused (:class:`~ubunye.core.runs.BatchFinished`).
+        A task that appends knows it finished; one that only overwrites is known to
+        have finished from its run records, so it is skipped only with ``lineage=True``
+        (its latest run of the batch succeeded). Without ``resume`` a finished append
+        is refused (:class:`~ubunye.core.runs.BatchFinished`).
     package : str, optional
         Old name of ``pipeline``. Still works, with a DeprecationWarning; removed in 1.0.
 
@@ -362,6 +365,12 @@ def run_pipeline(
                 run_records=lineage_recorder.shared_store() if lineage_recorder else None,
                 rerun=rerun,
             )
+            done = finished_run(context) if resume else None
+            if done is not None:
+                logger.warning(
+                    "Skipped %s (resume): run %s finished this batch.", task, done.run_id
+                )
+                continue
             try:
                 results[task] = execute_user_task(
                     chosen,

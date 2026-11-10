@@ -399,3 +399,66 @@ class TestACrashInTheMiddle:
 def test_a_refusal_is_a_lease_refusal():
     # The CLI already turns RunLeaseHeld into one line and exit 1.
     assert issubclass(BatchFinished, RunLeaseHeld)
+
+
+OVERWRITE = "      mode: overwrite\n"
+
+
+class TestResumeReadsTheRunRecords:
+    """--resume skips a task whose latest run of the batch succeeded, appends or not
+    (F-098). Only the run records know that for an overwrite, so it needs --lineage."""
+
+    task = staticmethod(TestThroughTheEngine._pipeline_task)
+
+    def _half_done(self, tmp_path, engine, run):
+        self.task(tmp_path, "t1", OVERWRITE)
+        self.task(tmp_path, "t2", OVERWRITE, fail=True)
+        with pytest.raises(Exception, match="boom"):
+            engine.run_pipeline(str(tmp_path), "uc", "pkg", ["t1", "t2"], **run)
+        self.task(tmp_path, "t1", OVERWRITE, fail=True)  # t1 must not run again
+        self.task(tmp_path, "t2", OVERWRITE)
+
+    def test_a_finished_overwrite_task_is_skipped(self, tmp_path, engine):
+        run = dict(backend="pandas", dt="2024-01-02", lineage=True)
+        self._half_done(tmp_path, engine, run)
+        done = engine.run_pipeline(str(tmp_path), "uc", "pkg", ["t1", "t2"], resume=True, **run)
+        assert list(done) == ["t2"]
+
+    def test_a_task_whose_latest_run_failed_runs_again(self, tmp_path, engine):
+        run = dict(backend="pandas", dt="2024-01-02", lineage=True)
+        self.task(tmp_path, "t1", OVERWRITE)
+        engine.run_pipeline(str(tmp_path), "uc", "pkg", ["t1"], **run)
+        self.task(tmp_path, "t1", OVERWRITE, fail=True)
+        with pytest.raises(Exception, match="boom"):
+            engine.run_pipeline(str(tmp_path), "uc", "pkg", ["t1"], **run)
+        self.task(tmp_path, "t1", OVERWRITE)
+        done = engine.run_pipeline(str(tmp_path), "uc", "pkg", ["t1"], resume=True, **run)
+        assert list(done) == ["t1"]
+
+    def test_another_batch_is_not_skipped(self, tmp_path, engine):
+        self.task(tmp_path, "t1", OVERWRITE)
+        run = dict(backend="pandas", lineage=True)
+        engine.run_pipeline(str(tmp_path), "uc", "pkg", ["t1"], dt="2024-01-02", **run)
+        done = engine.run_pipeline(
+            str(tmp_path), "uc", "pkg", ["t1"], dt="2024-01-03", resume=True, **run
+        )
+        assert list(done) == ["t1"]
+
+    def test_without_run_records_an_overwrite_task_runs_again(self, tmp_path, engine):
+        run = dict(backend="pandas", dt="2024-01-02")
+        self._half_done(tmp_path, engine, run)
+        with pytest.raises(Exception, match="boom"):  # t1 ran again: nothing says it finished
+            engine.run_pipeline(str(tmp_path), "uc", "pkg", ["t1", "t2"], resume=True, **run)
+
+    def test_the_cli_says_skip(self, tmp_path, engine):
+        from typer.testing import CliRunner
+
+        from ubunye.cli.main import app
+
+        self._half_done(tmp_path, engine, dict(backend="pandas", dt="2024-01-02", lineage=True))
+        args = ["run", "-d", str(tmp_path), "-u", "uc", "-p", "pkg", "-t", "t1", "-t", "t2",
+                "--backend", "pandas", "-dt", "2024-01-02", "--lineage", "--resume"]  # fmt: skip
+        result = CliRunner().invoke(app, args)
+        assert result.exit_code == 0, result.output
+        assert "[SKIP] t1 already finished this batch" in result.output
+        assert "[OK] Run complete for t2" in result.output
