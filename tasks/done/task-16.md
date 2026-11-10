@@ -1,3 +1,5 @@
+**Status:** done (2026-11-10): latitude, longitude and relative_humidity_pct now asserted
+
 # task-16: `test_output_column_types` omits `relative_humidity_pct` from schema assertion
 
 **Discovered by:** fire-test of `jhb_weather_databricks` (run 24513411786, 2026-04-16)

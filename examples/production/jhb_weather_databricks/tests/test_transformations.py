@@ -87,3 +87,6 @@ def test_output_column_types(source_df):
     assert schema["temperature_c"] == "double"
     assert schema["precipitation_mm"] == "double"
     assert schema["wind_speed_kmh"] == "double"
+    assert schema["relative_humidity_pct"] == "double"
+    assert schema["latitude"] == "double"
+    assert schema["longitude"] == "double"

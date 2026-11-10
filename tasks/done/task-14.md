@@ -1,3 +1,5 @@
+**Status:** done (2026-11-10): already fixed: pyproject asks for plain typer>=0.15.4
+
 # task-14: `typer[all]` extra not provided by typer 0.24.1
 
 ## Symptom
