@@ -1,228 +1,81 @@
 # Deployment
 
-Deployment means one thing here: something launches your task on a schedule, in
-an environment, with credentials. The task folder itself never changes. This
-page is the map; each environment has its own page with the exact steps.
+This page is the map for running your tasks somewhere other than your laptop.
+It says where you can deploy today, which page has the steps, and the one rule
+every target shares. It is for anyone moving a task off a laptop.
+
+Deployment means one thing here: something launches your task, in an
+environment, with credentials, often on a schedule. The task folder itself
+never changes.
+
+## Which page do I need?
+
+| You want to... | Read |
+|---|---|
+| run a task as a Databricks job | [Databricks](deployment/databricks.md) |
+| sign in to Databricks from CI (token or service principal) | [Databricks authentication](databricks-auth.md) |
+| run a task on AWS Glue, GCP Dataproc, Kubernetes, Azure or EMR with one command | [One command to the cloud](deployment/serverless.md) |
+| run a task on Azure Container Apps | [Azure](deployment/azure.md) |
+| use the companion repo's scripts for AWS or GCP | [AWS](deployment/aws.md), [GCP](deployment/gcp.md) |
+| run on your own Kubernetes cluster | [Kubernetes](deployment/kubernetes.md) |
+| launch with `spark-submit` on any Spark cluster | [Anywhere with spark-submit](deployment/anywhere.md) |
+| check the same task gives the same data everywhere | [Proving ground: latest results](proving-ground/latest.md) |
 
 ## Where you can deploy today
 
+This table is the one place that says what is proven. "Proven" means the
+[proving ground](proving-ground/index.md) ran real workloads there and got the
+same data as local Spark.
+
 | Environment | Command | Status | Page |
 |---|---|---|---|
-| Databricks | `ubunye deploy databricks`, or bundles | Proven end to end in the [proving ground](proving-ground/latest.md), runs in CI | [Databricks](deployment/databricks.md) |
-| AWS Glue 5 | `ubunye deploy glue` | Proven in the proving ground | [One command to the cloud](deployment/serverless.md) |
-| GCP Dataproc Serverless | `ubunye deploy dataproc` | Proven in the proving ground | [One command to the cloud](deployment/serverless.md) |
-| Azure Container Apps | `ubunye deploy container-apps` | Proven in the proving ground | [One command to the cloud](deployment/serverless.md) |
-| Kubernetes | `ubunye deploy k8s` | Proven in the proving ground (kind) | [Kubernetes](deployment/kubernetes.md) |
-| Docker | `ubunye deploy dockerfile` | Working images, the base for Kubernetes and the clouds | [One command to the cloud](deployment/serverless.md) |
-| AWS EMR Serverless | `ubunye deploy emr-serverless` | Tested as a plan only: a free plan AWS account cannot use EMR | [AWS](deployment/aws.md) |
-| Anything with spark-submit | `python -m ubunye` | Supported | [Anywhere](deployment/anywhere.md) |
+| Databricks | `ubunye deploy databricks`, or Databricks Asset Bundles | Proven, and runs in CI | [Databricks](deployment/databricks.md) |
+| AWS Glue 5 | `ubunye deploy glue` | Proven | [One command to the cloud](deployment/serverless.md#aws-glue) |
+| GCP Dataproc Serverless | `ubunye deploy dataproc` | Proven | [One command to the cloud](deployment/serverless.md#gcp-dataproc-serverless) |
+| Azure Container Apps | `ubunye deploy container-apps` | Proven | [Azure](deployment/azure.md) |
+| Kubernetes | `ubunye deploy k8s` | Proven on a local kind cluster | [Kubernetes](deployment/kubernetes.md) |
+| Docker images | `ubunye deploy dockerfile` | Working; the base for Kubernetes, Azure, Dataproc and EMR | [One command to the cloud](deployment/serverless.md) |
+| AWS EMR Serverless | `ubunye deploy emr-serverless` | Planned: tested as a plan only. A free plan AWS account cannot use EMR | [One command to the cloud](deployment/serverless.md#emr-serverless) |
+| AWS EMR Serverless, GCP Dataproc (companion repo scripts) | `platforms/aws/submit.sh`, `platforms/gcp/submit.sh` | Written, not yet run | [AWS](deployment/aws.md), [GCP](deployment/gcp.md) |
+| Classic EMR on EC2 (YARN) | `SPARK_MASTER=yarn` in the companion repo's launcher | Not yet run | [AWS](deployment/aws.md#what-about-emr-on-ec2-or-glue) |
+| Any Spark cluster with `spark-submit` | `python -m ubunye` | Supported | [Anywhere](deployment/anywhere.md) |
+| SageMaker, Vertex AI (serving a promoted model) | none yet | Planned; these serve models, they do not run pipelines | [AWS](deployment/aws.md#what-about-sagemaker), [GCP](deployment/gcp.md#what-about-vertex-ai) |
 
-One rule applies everywhere and is worth learning once: the task never chooses
-its own cluster. Leave `spark.master` out of your config. Whoever launches the
-job owns that decision, and the engine refuses a config that tries to override
-a platform's choice, because a silent single machine run on paid compute is
-worse than an error.
+## The `spark.master` rule
 
----
+One rule applies everywhere: **the task never chooses its own cluster. Leave
+`spark.master` out of your `config.yaml`.**
 
-## The Databricks flow in detail
+`spark.master` is the Spark setting that says where the work runs: one
+machine (`local[*]`), YARN, Kubernetes, and so on. Whoever launches the job
+owns that choice:
 
-Ubunye pipelines run on Databricks via **Databricks Asset Bundles (DABs)** and are deployed through **GitHub Actions**.
-For a single task, `ubunye deploy databricks` creates or updates the job directly (see the
-[CLI reference](cli.md#deploy-databricks)), and `ubunye init github-actions` writes a
-workflow like the one below.
+- Databricks, Glue, EMR Serverless and Dataproc set it themselves.
+- On a laptop, the launcher sets it (the companion repo's `platforms/local/run.sh`
+  sets `local[*]`).
+- With `spark-submit`, the `--master` flag sets it.
 
-!!! note "DABs belong in the usecase repo"
-    Bundle definitions (`bundles/`, `databricks.yml`) are usecase-specific and live in the
-    usecase repository, not in the Ubunye Engine repo. The engine provides the runtime;
-    the usecase repo defines the jobs.
+If your config sets `spark.master` and the platform already chose a different
+one, the engine stops with a `SparkSessionError` that names both values. It
+does this on purpose. Under `spark-submit`, a config that wins this fight makes
+the whole job run inside the driver: it ignores every worker, reports success,
+and bills you for a cluster it never used. An error is better than that.
 
----
+The same goes for other settings fixed when Spark starts, such as
+`spark.sql.extensions`: see [Engine settings](config/engine.md).
 
-## Deployment flow
+## Two ways to build an image
 
-```
-Push code -> GitHub Actions validates -> Merge to main -> GitHub Actions deploys bundle -> Databricks runs on schedule
-```
+Kubernetes, Azure, Dataproc and EMR run your task from a container image.
+Each deploy page says which of these two it uses:
 
-| Stage | Where | What happens |
+| Way | Command | Used by |
 |---|---|---|
-| PR | GitHub Actions | `ubunye validate --all` + `pytest` |
-| Merge to main | GitHub Actions | `databricks bundle deploy --target nonprod` |
-| Production deploy | GitHub Actions (manual) | `databricks bundle deploy --target prod` |
-| Execution | Databricks | Scheduled job runs the pipeline |
+| The engine writes the Dockerfile | `ubunye deploy dockerfile container`, `... dataproc`, `... emr-serverless` | `ubunye deploy k8s`, `container-apps`, `dataproc`, `emr-serverless` |
+| The companion repo's Dockerfiles | `docker build -f platforms/docker/Dockerfile .` (and `Dockerfile.ml` for models) | the [ubunye-examples](https://github.com/ubunye-ai-ecosystems/ubunye-examples) scripts and manifests |
 
----
+## Moved from this page
 
-## Databricks Asset Bundles
-
-Jobs are defined as code in the usecase repo.
-
-### `databricks.yml` (usecase repo root)
-
-Defines bundle name and deployment targets:
-
-```yaml
-bundle:
-  name: "my-usecase-pipelines"
-
-include:
-  - "bundles/*.yaml"
-
-targets:
-  nonprod:
-    mode: development
-    default: true
-    workspace:
-      host: ${DATABRICKS_HOST}
-    variables:
-      mode: "nonprod"
-      unity_catalog: "dev_catalog"
-
-  prod:
-    mode: production
-    workspace:
-      host: ${DATABRICKS_HOST}
-    variables:
-      mode: "prod"
-      unity_catalog: "prod_catalog"
-```
-
-### Job definitions (`bundles/*.yaml`)
-
-Each YAML file in `bundles/` defines a Databricks job:
-
-```yaml
-resources:
-  jobs:
-    monthly_rewards:
-      name: "ubunye-monthly-rewards"
-      schedule:
-        quartz_cron_expression: "0 0 6 1 * ?"
-        timezone_id: "UTC"
-      tasks:
-        - task_key: "run_pipeline"
-          python_wheel_task:
-            package_name: "ubunye_engine"
-            entry_point: "ubunye"
-            parameters: ["run", "-d", "...", "-u", "...", "-p", "...", "-t", "...", "-m", "PROD"]
-```
-
----
-
-## GitHub Actions workflow
-
-The deploy workflow (`.github/workflows/deploy.yml` in the usecase repo) handles CI and CD:
-
-**On pull request:**
-
-- Validates pipeline configs with `ubunye validate`
-- Runs unit tests with `pytest`
-
-**On merge to main:**
-
-- Deploys the Databricks Asset Bundle to nonprod
-
-### Required secrets
-
-Two auth flows are supported; pick one per workspace. See
-[Databricks Authentication](databricks-auth.md) for the full setup.
-
-| Flow | Secrets |
-|---|---|
-| PAT (Free Edition / single-user) | `DATABRICKS_HOST`, `DATABRICKS_TOKEN` |
-| Service principal + OAuth *(recommended, paid workspaces)* | `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` |
-
-The Databricks CLI auto-selects OAuth when `DATABRICKS_CLIENT_ID` and
-`DATABRICKS_CLIENT_SECRET` are both set; otherwise it falls back to PAT.
-
-### Example workflow
-
-```yaml
-name: deploy
-on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-
-jobs:
-  validate:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - run: pip install -e .[dev]
-      - run: ubunye validate -d ./pipelines -u my_usecase -p my_package --all
-      - run: pytest tests/unit/ -v --tb=short -m "not integration"
-
-  deploy-nonprod:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@main
-      - run: databricks bundle deploy --target nonprod
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-```
-
----
-
-## Python API on Databricks
-
-On Databricks, use the Python API instead of the CLI. The API reuses the active SparkSession:
-
-```python
-import ubunye
-
-# Single task
-outputs = ubunye.run_task(
-    task_dir="/Workspace/pipelines/fraud_detection/ingestion/claim_etl",
-    mode="nonprod",
-    dt="202510",
-)
-
-# Multiple tasks
-results = ubunye.run_pipeline(
-    usecase_dir="/Workspace/pipelines",
-    usecase="fraud_detection",
-    pipeline="ingestion",
-    tasks=["claim_etl", "feature_engineering"],
-    mode="nonprod",
-    dt="202510",
-)
-```
-
-The Python API sets descriptive Spark app names (`ubunye:<usecase>.<package>.<task>`) for easy
-identification in the Spark UI and history server.
-
-!!! tip "Why the Python API on Databricks?"
-    The Python API runs in the notebook's own process, attaches to the session
-    Databricks already has running, and hands the output frames back to you.
-    The CLI also uses a running session when there is one (`--backend` not
-    given), but returns nothing you can inspect.
-
----
-
-## Dev notebooks
-
-`ubunye init` generates a dev notebook at `notebooks/<task>_dev.ipynb` for each task.
-The notebook mirrors the production pipeline interactively:
-
-1. **Parameters**: `dbutils.widgets` for `effective_year_month` and `mode`
-2. **Setup**: installs the engine, loads config, creates `DatabricksBackend`
-3. **Extract**: reads all inputs, prints each input's columns (no scan)
-4. **Inspect Sources**: `display()` each input DataFrame
-5. **Transform**: runs the `Task` class from `transformations.py`
-6. **Inspect Outputs**: `display()` each output DataFrame
-7. **Load**: writes outputs (commented out by default)
-8. **Sandbox**: Spark session exposed for free exploration
-
-For the same steps with less code, use `ubunye.notebook()` (see the
-[API reference](api.md#notebook-api-interactive)).
-
-The notebook reads from the same `config.yaml` so there is zero drift between dev and production.
+The Databricks Asset Bundles flow, the GitHub Actions workflow, the Python API
+on Databricks and the dev notebooks now live on the
+[Databricks page](deployment/databricks.md#databricks-asset-bundles).
