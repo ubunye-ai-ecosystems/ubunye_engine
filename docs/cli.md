@@ -1016,7 +1016,7 @@ ubunye plugins
 
 ```bash
 ubunye version
-# Ubunye Engine v0.9.0
+# Ubunye Engine v0.9.1
 ```
 
 The version comes from the installed package metadata.
