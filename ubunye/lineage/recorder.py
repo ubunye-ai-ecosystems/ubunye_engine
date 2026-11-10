@@ -25,14 +25,18 @@ with final status, duration, and per-step hashes at ``task_end``.
 
 from __future__ import annotations
 
+import logging
 import time
+import warnings
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from ubunye.core.secrets import known_secrets, mask_text, redact_variables, scrub, secret_values
 from ubunye.lineage import evidence
 from ubunye.lineage.context import RunContext, StepRecord
-from ubunye.lineage.storage import FileSystemLineageStore, LineageStore, S3LineageStore
+from ubunye.lineage.storage import S3LineageStore
+
+logger = logging.getLogger(__name__)
 
 
 def _utcnow() -> str:
@@ -56,10 +60,22 @@ def _engine_version() -> str:
         return "unknown"
 
 
-def _make_store(store: str, base_dir: str) -> LineageStore:
-    if store == "s3":
-        return S3LineageStore(base_dir)
-    return FileSystemLineageStore(base_dir)
+def _make_store(store: Optional[str], base_dir: str, backend: Optional[str] = None) -> Any:
+    """The run record store (ADR 011): ``backend``, else ``store`` (its old name),
+    else ``$UBUNYE_LINEAGE_BACKEND``, else filesystem. ``base_dir`` is its location."""
+    if backend is None and store is not None:
+        if store == "s3":
+            return S3LineageStore(base_dir)
+        warnings.warn(
+            "LineageRecorder(store=...) is now LineageRecorder(backend=...); "
+            "store= still works and will be removed in a later release.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        backend = store
+    from ubunye.lineage import stores
+
+    return stores.open_store(base_dir, backend)
 
 
 def _fingerprint_into(step: StepRecord, frame: Any, seen: Optional[Dict[Any, Any]] = None) -> None:
@@ -154,12 +170,18 @@ class LineageRecorder:
     Parameters
     ----------
     store:
-        Backend type — ``"filesystem"`` (default) or ``"s3"`` (stub).
+        The old name for ``backend``, kept with a DeprecationWarning (``"s3"``
+        still gives the stub store, without a warning).
     base_dir:
-        Root directory for the ``FileSystemLineageStore``.
+        The store's location, passed to it unchanged: a directory for
+        ``filesystem``, a table name or path for ``delta``.
     sample_fraction:
         Ignored since 0.7.0 and kept so existing configs still load: every row is
         hashed now (the ``rows-v1`` content hash), so there is nothing to sample.
+    backend:
+        The run record store, by name (ADR 011): ``"filesystem"``, ``"delta"`` or
+        any installed ``ubunye.lineage_backends`` plugin. If None,
+        ``$UBUNYE_LINEAGE_BACKEND``, else ``"filesystem"``.
     """
 
     #: The recorder hashes the output frames at task end, so the engine computes
@@ -173,12 +195,13 @@ class LineageRecorder:
 
     def __init__(
         self,
-        store: str = "filesystem",
+        store: Optional[str] = None,
         base_dir: str = ".ubunye/lineage",
         sample_fraction: float = 0.01,
         hash_inputs: bool = True,
+        backend: Optional[str] = None,
     ) -> None:
-        self._store: LineageStore = _make_store(store, base_dir)
+        self._store: Any = _make_store(store, base_dir, backend)
         # Inputs are hashed like outputs (every row). It costs a pass over each
         # input; turn it off for inputs too large to read twice.
         self._hash_inputs = hash_inputs
@@ -192,6 +215,29 @@ class LineageRecorder:
         # Real values of the run's secret-looking variables, to mask wherever they
         # were templated in (a JDBC URL, a REST query).
         self._secret_values: Dict[str, List[str]] = {}
+
+    def shared_store(self) -> Any:
+        """The run record store, unless it is the filesystem one.
+
+        Rerun safety (ADR 008) reads a dead run's status through it; with the
+        filesystem store it reads the record files directly, as before.
+        """
+        from ubunye.lineage.storage import FileSystemLineageStore
+
+        return None if isinstance(self._store, FileSystemLineageStore) else self._store
+
+    def _save(self, ctx: RunContext) -> None:
+        """Save the record; a store that fails never breaks the task, but it is said."""
+        try:
+            self._store.save(ctx)
+        except Exception as exc:
+            logger.warning(
+                "The run record of %s (run %s) was not saved to the %s lineage store: %s",
+                ctx.task_path,
+                ctx.run_id,
+                type(self._store).__name__,
+                exc,
+            )
 
     # ------------------------------------------------------------------
     # Monitor protocol
@@ -245,10 +291,7 @@ class LineageRecorder:
         )
         self._runs[run_id] = ctx
         self._secret_values[run_id] = secret_values(dict(getattr(context, "variables", {}) or {}))
-        try:
-            self._store.save(ctx)
-        except Exception:
-            pass  # Never break the task due to lineage recording failure
+        self._save(ctx)
         if self._openlineage is not None:
             self._openlineage.emit(ctx, "START")
 
@@ -265,6 +308,7 @@ class LineageRecorder:
         timings: Optional[List[Dict[str, Any]]] = None,
         llm_calls: Optional[List[Dict[str, Any]]] = None,
         llm_budget: Optional[Dict[str, Any]] = None,
+        model_runs: Optional[List[Dict[str, Any]]] = None,
         hash_basis: Optional[Dict[str, str]] = None,
         source_versions: Optional[Dict[str, Any]] = None,
         error: Optional[str] = None,
@@ -280,6 +324,9 @@ class LineageRecorder:
         (:mod:`ubunye.lineage.source_version`). A recomputed input's version is
         taken again right after its hash; if it moved, the step says the digest
         is of a later state than the one read (F-046).
+
+        ``model_runs`` is each model the run trained or scored with: the
+        version, the stage and, for training, the gate result (ADR 012).
 
         ``error`` is why a failed run failed (the exception's type and message). It
         is kept in the record, with the values of secret-looking variables masked,
@@ -302,6 +349,8 @@ class LineageRecorder:
         ctx.expectations = list(expectations or [])
         ctx.llm_calls = list(llm_calls or [])
         ctx.llm_budget = dict(llm_budget or {})
+        # Each model a ModelTransform trained or used (ADR 012).
+        ctx.model_runs = list(model_runs or [])
 
         # --- Input StepRecords, hashed like outputs when the frames are given ---
         # Fingerprints taken in this record, by frame: the same frame is hashed once.
@@ -341,10 +390,7 @@ class LineageRecorder:
             if why:
                 ctx.status = status = "interrupted"
                 ctx.error = why
-        try:
-            self._store.save(ctx)
-        except Exception:
-            pass
+        self._save(ctx)
         if self._openlineage is not None:
             self._openlineage.emit(ctx, "COMPLETE" if status == "success" else "FAIL")
 

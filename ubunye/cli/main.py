@@ -1,15 +1,16 @@
 """Ubunye CLI implemented with Typer.
 
 Commands:
-- init:     scaffold a new usecase/package/tasks
+- init:     scaffold a new usecase/pipeline/tasks
 - validate: validate config file(s) before execution
-- run:      run task(s) in a package
+- run:      run task(s) in a pipeline
 - doctor:   check this machine (and optionally tasks) before a run
 - gate:     fail a pull request when a run receipt regresses
 - plugins:  list discovered plugins
 - config:   show/validate config
 - plan:     show resolved IO graph
 - lineage:  inspect run lineage records
+- runs:     job health and upstream checks over run records
 - models:   manage model versions and lifecycle
 - test:     run task(s) in test mode with PASS/FAIL reporting
 - version:  show version
@@ -32,10 +33,12 @@ from ubunye.cli.doctor import doctor_command
 from ubunye.cli.export import export_app
 from ubunye.cli.gate import gate_command
 from ubunye.cli.init import init_app
-from ubunye.cli.lineage import lineage_app
+from ubunye.cli.lineage import lineage_app, lineage_backend_option, recorder_or_exit
 from ubunye.cli.models import models_app
 from ubunye.cli.output import emit, fail, json_option
+from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
 from ubunye.cli.prove import prove_app
+from ubunye.cli.runs_cmd import runs_app
 from ubunye.cli.sync import sync_app
 from ubunye.cli.test_cmd import test_app
 from ubunye.cli.variables import cli_variables, var_option
@@ -44,6 +47,7 @@ from ubunye.core import runs
 from ubunye.core.errors import ExpectationError
 from ubunye.core.runtime import EngineContext, Registry
 from ubunye.core.task_runner import execute_user_task
+from ubunye.lineage.upstream import UpstreamNotReady
 from ubunye.telemetry.hooks import MonitorHook
 
 app = typer.Typer(add_completion=False, help="Ubunye Engine CLI")
@@ -53,6 +57,7 @@ app.add_typer(init_app)
 app.add_typer(lineage_app)
 app.add_typer(models_app)
 app.add_typer(prove_app)
+app.add_typer(runs_app)
 app.add_typer(sync_app)
 app.add_typer(test_app)
 
@@ -85,8 +90,8 @@ def _task_path(usecase_dir: Path, usecase: str, package: str, task: str) -> Path
 
 
 app.command("backends")(backends_command)
-app.command("doctor")(doctor_command)
-app.command("gate")(gate_command)
+app.command("doctor", cls=PipelineCommand)(doctor_command)
+app.command("gate", cls=PipelineCommand)(gate_command)
 
 
 @app.command("mcp")
@@ -103,8 +108,9 @@ def mcp_command(
         help="Let `run` call models live (default: replay, no key, no spend).",
     ),
     lineage_dir: str = typer.Option(".ubunye/lineage", "--lineage-dir"),
+    lineage_backend: Optional[str] = lineage_backend_option(),
 ):
-    """Serve the engine to agents over MCP (stdio): tasks, doctor, plan, runs, gate, focus."""
+    """Serve the engine to agents over MCP (stdio): tasks, doctor, plan, runs, health, upstream, gate, focus."""
     from ubunye.core.errors import UbunyeError
     from ubunye.mcp_server import build_server
 
@@ -114,6 +120,7 @@ def mcp_command(
             allow_run=allow_run,
             allow_live_llm=allow_live_llm,
             lineage_dir=lineage_dir,
+            lineage_backend=lineage_backend,
         )
     except UbunyeError as exc:
         typer.secho(f"[ERROR] {exc}", fg=typer.colors.RED, err=True)
@@ -130,18 +137,18 @@ def plugins():
     typer.echo(f"Transforms:{', '.join(sorted(reg.transforms)) or '-'}")
 
 
-@app.command()
+@app.command(cls=PipelineCommand)
 def config(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(..., "-t", "--task-list"),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
     mode: str = typer.Option("DEV", "-m", "--mode"),
     var: Optional[List[str]] = var_option(),
 ):
-    """Show and validate config files."""
+    """Validate config files (render, schema, --mode profile): [OK] or the error."""
     variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
     for task in task_list:
         config_path = _task_path(usecase_dir, usecase, package, task) / "config.yaml"
@@ -154,15 +161,15 @@ def config(
             raise typer.Exit(code=1)
 
 
-@app.command()
+@app.command(cls=PipelineCommand)
 def validate(
     usecase_dir: Path = typer.Option(
         ..., "-d", "--usecase-dir", help="Root directory of pipelines."
     ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Use case name."),
-    package: str = typer.Option(..., "-p", "--package", help="Pipeline/package name."),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(None, "-t", "--task-list", help="Task(s) to validate."),
-    all_tasks: bool = typer.Option(False, "--all", help="Validate all tasks in the package."),
+    all_tasks: bool = typer.Option(False, "--all", help="Validate all tasks in the pipeline."),
     profile: Optional[str] = typer.Option(
         None, "--profile", help="Profile to validate against (e.g. dev, prod)."
     ),
@@ -309,11 +316,11 @@ def validate(
         typer.secho(f"All {len(tasks_to_check)} task(s) passed validation.", fg=typer.colors.GREEN)
 
 
-@app.command()
+@app.command(cls=PipelineCommand)
 def plan(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir"),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(..., "-t", "--task-list"),
     data_timestamp: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     data_timestamp_format: Optional[str] = typer.Option(None, "-dtf", "--data-timestamp-format"),
@@ -427,22 +434,20 @@ def _print_plan(report: Dict[str, Any]) -> None:
     typer.echo()
 
 
-@app.command()
+@app.command(cls=PipelineCommand)
 def run(
     usecase_dir: Path = typer.Option(
         ..., "-d", "--usecase-dir", help="Specifies the directory path for the use case."
     ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Selects the desired use case."),
-    package: str = typer.Option(
-        ..., "-p", "--package", help="Selects a package from the specified use case."
-    ),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(
-        None, "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."
+        None, "-t", "--task-list", help="Specifies the task(s) to execute from the chosen pipeline."
     ),
     all_tasks: bool = typer.Option(
         False,
         "--all",
-        help="Run every task in the package. `validate` had this for years and `run` "
+        help="Run every task in the pipeline. `validate` had this for years and `run` "
         "did not, so the two commands taught different habits for the same job.",
     ),
     data_timestamp: Optional[str] = typer.Option(
@@ -461,8 +466,12 @@ def run(
         False, "--lineage", help="Record lineage for this run (stored as JSON under --lineage-dir)."
     ),
     lineage_dir: str = typer.Option(
-        ".ubunye/lineage", "--lineage-dir", help="Root directory for lineage records."
+        ".ubunye/lineage",
+        "--lineage-dir",
+        help="Where lineage records go: a directory under -d for the filesystem store, "
+        "as given for any other (a Delta table name or path).",
     ),
+    lineage_backend: Optional[str] = lineage_backend_option(),
     backend_kind: Optional[str] = typer.Option(
         None,
         "--backend",
@@ -484,7 +493,7 @@ def run(
         "finished this batch (-dt and --var), run the rest.",
     ),
 ):
-    """Run one or more tasks within a package sequentially."""
+    """Run one or more tasks within a pipeline sequentially."""
     variables = cli_variables(dt=data_timestamp, dtf=data_timestamp_format, mode=mode, var=var)
 
     # Resolve which tasks to run, the same way `validate` resolves them. The two
@@ -544,12 +553,7 @@ def run(
     # Build a lineage recorder if --lineage was requested
     lineage_recorder = None
     if lineage:
-        from ubunye.lineage.recorder import LineageRecorder
-
-        lineage_recorder = LineageRecorder(
-            store="filesystem",
-            base_dir=str(usecase_dir / lineage_dir),
-        )
+        lineage_recorder = recorder_or_exit(usecase_dir, lineage_dir, lineage_backend)
 
     backend.start()
     set_catalog_and_schema(
@@ -570,6 +574,7 @@ def run(
                 task_name=f"{usecase}/{package}/{task}",
                 variables=variables,
                 lineage_dir=str(usecase_dir / lineage_dir) if lineage else None,
+                run_records=lineage_recorder.shared_store() if lineage_recorder else None,
                 rerun=rerun,
             )
             try:
@@ -592,6 +597,11 @@ def run(
                     f"[SKIP] {task} already finished this batch (--resume); kept as it is.",
                     fg=typer.colors.YELLOW,
                 )
+            except UpstreamNotReady as e:
+                # CONFIG.requires: an upstream has not succeeded for this batch.
+                # Nothing ran, so a refusal, not a crash.
+                typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
+                raise typer.Exit(code=1)
             except runs.RunLeaseHeld as e:
                 # A refusal, not a crash: nothing ran, so no traceback.
                 typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)

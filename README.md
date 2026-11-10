@@ -16,6 +16,10 @@
   <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/discussions">Community</a>
 </p>
 
+<p align="center">
+  <img src="docs/assets/diagrams/home.svg" alt="Write a task once, run it unchanged on pandas, Spark, Databricks or any cloud; every run leaves a record, and ubunye prove checks the rows match" width="100%"/>
+</p>
+
 ---
 
 ## Hey there 👋
@@ -321,7 +325,7 @@ outputs = ubunye.run_task("./pipelines/...", backend="pandas")
 
 # Multiple tasks
 results = ubunye.run_pipeline(
-    usecase_dir="./pipelines", usecase="fraud", package="etl",
+    usecase_dir="./pipelines", usecase="fraud", pipeline="etl",
     tasks=["claim_etl", "features"], mode="DEV",
 )
 ```

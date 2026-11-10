@@ -844,3 +844,81 @@ class TestUnreadableIsNeverAbsent:
         finally:
             monkeypatch.undo()
             lease.release()
+
+
+class _SharedStore:
+    """A run record store that is not the record files (ADR 011): a Delta table, say."""
+
+    def __init__(self, *records, broken: bool = False):
+        self.records = {r.run_id: r for r in records}
+        self.broken = broken
+
+    def load(self, task_path, run_id):
+        from ubunye.core.errors import LineageRecordNotFoundError
+
+        if self.broken:
+            raise ConnectionError("the warehouse is not answering")
+        if run_id not in self.records:
+            raise LineageRecordNotFoundError(f"no run {run_id} of {task_path}")
+        return self.records[run_id]
+
+    def save(self, record):
+        self.records[record.run_id] = record
+
+
+def _stored(status: str):
+    from ubunye.lineage.context import RunContext
+
+    return RunContext(
+        run_id="dead-run",
+        task_path=TASK,
+        usecase="uc",
+        package="pkg",
+        task_name="t",
+        profile="dev",
+        model=None,
+        version=None,
+        config_hash="h",
+        started_at="2026-11-01T00:00:00Z",
+        status=status,
+    )
+
+
+class TestADeadRunRecordedInASharedStore:
+    """Rerun safety reads the dead run's status from the chosen store, not local files."""
+
+    def _claimed(self, tmp_path):
+        out = tmp_path / "out"
+        out.mkdir()
+        (out / "part-dead-run.parquet").write_text("y")
+        note = {
+            "appends": True,
+            "exact": True,
+            "state": "done",
+            "claimed": [str(out / "part-dead-run.parquet")],
+        }
+        _leave_dead_lease(tmp_path, {"dt": "2026-11-01"}, outputs={"events": note})
+        return out
+
+    def test_a_run_the_store_says_succeeded_keeps_its_appends(self, tmp_path):
+        out = self._claimed(tmp_path)
+        store = _SharedStore(_stored("success"))
+        RunLease(tmp_path, TASK, {"dt": "2026-11-01"}, "new", records=store).acquire().release()
+        assert [p.name for p in out.iterdir()] == ["part-dead-run.parquet"]
+
+    def test_a_run_the_store_says_was_running_is_taken_back_and_marked(self, tmp_path):
+        out = self._claimed(tmp_path)
+        store = _SharedStore(_stored("running"))
+        RunLease(
+            tmp_path, TASK, {"dt": "2026-11-01"}, "new-run-9", records=store
+        ).acquire().release()
+        assert list(out.iterdir()) == []
+        assert store.records["dead-run"].status == "interrupted"
+        assert "new-run-" in store.records["dead-run"].error
+
+    def test_a_store_that_cannot_be_read_refuses_rather_than_guess(self, tmp_path):
+        out = self._claimed(tmp_path)
+        store = _SharedStore(broken=True)
+        with pytest.raises(RunLeaseHeld):
+            RunLease(tmp_path, TASK, {"dt": "2026-11-01"}, "new", records=store).acquire()
+        assert [p.name for p in out.iterdir()] == ["part-dead-run.parquet"]

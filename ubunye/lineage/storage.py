@@ -1,6 +1,8 @@
 """Lineage record persistence backends.
 
-``LineageStore`` is the legacy abstract base class.
+``LineageStore`` is the run record contract as a base class
+(:class:`~ubunye.interfaces.lineage.RunRecordStore`, ADR 011); a store does not
+have to inherit it.
 ``FileSystemLineageStore`` persists each run as a ``.json`` file under a
 configurable directory tree and additionally satisfies the
 :class:`~ubunye.interfaces.LineageBackend` protocol.
@@ -124,7 +126,7 @@ def _ctx_to_record(ctx: RunContext) -> LineageRecord:
 
 
 class LineageStore(ABC):
-    """Abstract interface for lineage record storage (legacy API)."""
+    """Where run records live (ADR 011): the full RunContext, saved and read back as is."""
 
     @abstractmethod
     def save(self, ctx: RunContext) -> None:
@@ -144,8 +146,9 @@ class LineageStore(ABC):
         task_path: Optional[str] = None,
         status: Optional[str] = None,
         since: Optional[str] = None,
+        limit: Optional[int] = None,
     ) -> List[RunContext]:
-        """Search across all recorded runs with optional filters."""
+        """Search across all recorded runs with optional filters, newest first."""
 
 
 # ---------------------------------------------------------------------------
@@ -293,6 +296,7 @@ class FileSystemLineageStore(LineageStore):
         task_path: Optional[str] = None,
         status: Optional[str] = None,
         since: Optional[str] = None,
+        limit: Optional[int] = None,
     ) -> List[RunContext]:
         root = self._task_dir_from_path(task_path) if task_path else self.base_dir
         if not root.exists():
@@ -313,6 +317,8 @@ class FileSystemLineageStore(LineageStore):
                 continue
 
             results.append(ctx)
+            if limit is not None and len(results) >= limit:
+                break
 
         return results
 
@@ -441,5 +447,6 @@ class S3LineageStore(LineageStore):
         task_path: Optional[str] = None,
         status: Optional[str] = None,
         since: Optional[str] = None,
+        limit: Optional[int] = None,
     ) -> List[RunContext]:
         raise self._error()

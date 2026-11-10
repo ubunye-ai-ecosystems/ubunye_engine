@@ -148,3 +148,37 @@ def test_a_config_that_uses_dt_exports(tmp_path):
         app, ["export", "airflow", "-c", str(path), "-o", str(tmp_path / "d.py")]
     )
     assert result.exit_code == 0, result.output
+
+
+def test_export_databricks_defaults_follow_the_installed_engine(tmp_path):
+    """The wheel is this engine's version and the runtime a current LTS (F-095)."""
+    import ubunye
+
+    cfg = _write_config(tmp_path, orchestration={"type": "databricks"})
+    out = tmp_path / "job.json"
+    result = runner.invoke(app, ["export", "databricks", "-c", str(cfg), "-o", str(out)])
+    assert result.exit_code == 0, result.stdout
+    task = json.loads(out.read_text(encoding="utf-8"))["tasks"][0]
+    assert task["libraries"] == [
+        {"whl": f"dbfs:/libs/ubunye_engine-{ubunye.__version__}-py3-none-any.whl"}
+    ]
+    assert task["new_cluster"]["spark_version"] == "17.3.x-scala2.13"
+
+
+def test_export_databricks_wheel_can_still_be_given(tmp_path):
+    cfg = _write_config(
+        tmp_path,
+        orchestration={"type": "databricks", "databricks": {"wheel_dbfs_path": "dbfs:/x.whl"}},
+    )
+    out = tmp_path / "job.json"
+    assert (
+        runner.invoke(app, ["export", "databricks", "-c", str(cfg), "-o", str(out)]).exit_code == 0
+    )
+    assert json.loads(out.read_text())["tasks"][0]["libraries"] == [{"whl": "dbfs:/x.whl"}]
+
+
+def test_export_help_says_its_profile_default_differs_from_run():
+    """export defaults to prod while `run` defaults to DEV: the help says both."""
+    for target in ("airflow", "databricks"):
+        result = runner.invoke(app, ["export", target, "--help"], env={"COLUMNS": "200"})
+        assert "prod" in result.stdout and "DEV" in result.stdout

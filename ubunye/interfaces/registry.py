@@ -59,7 +59,7 @@ class RegistryBackend(Protocol):
     """Structural interface for model registries.
 
     Concrete implementations: ``FilesystemRegistryBackend`` (built-in),
-    ``MLflowRegistryBackend`` (Phase 2).
+    ``MLflowModelRegistryBackend`` (``mlflow``, ADR 014).
     """
 
     def register(
@@ -162,7 +162,12 @@ class RegistryBackend(Protocol):
         version: str,
         to_stage: str,
     ) -> ModelVersionInfo:
-        """Demote a version to a lower stage."""
+        """Demote a version to a lower stage.
+
+        Never move a version up: refuse (``RegistryError``) a move to
+        ``production``, or to ``staging`` from below. Call
+        :func:`ubunye.models.lifecycle.check_demote` first.
+        """
         ...
 
     def delete(

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ubunye-engine"
-version = "0.8.0"
+version = "0.9.0"
 description = "Config-first, backend-neutral data and ML pipelines that you can check on a laptop and prove anywhere"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -170,7 +170,7 @@ file = "ubunye.models.artifact_store:LocalArtifactStore"
 
 [project.entry-points."ubunye.registry_backends"]
 filesystem = "ubunye.models.registry:FilesystemRegistryBackend"
-mlflow = "ubunye.models.mlflow_registry:MLflowRegistryBackend"
+mlflow = "ubunye.models.mlflow_registry:MLflowModelRegistryBackend"
 
 [project.entry-points."ubunye.lineage_backends"]
 filesystem = "ubunye.lineage.storage:FileSystemLineageStore"

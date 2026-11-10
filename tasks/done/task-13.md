@@ -1,3 +1,5 @@
+**Status:** done (2026-11-10): workflows moved to actions/setup-java@v5 (Node 24)
+
 # task-13: `actions/setup-java@v4` uses Node.js 20 — will break June 2026
 
 ## Symptom

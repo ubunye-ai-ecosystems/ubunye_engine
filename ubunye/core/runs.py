@@ -26,9 +26,11 @@ shared disk: the files its job wrote into a staging folder named by this run) *c
 each one in the lease before moving it into the output folder. A run that fails removes
 its claimed files; a run that takes over a dead run's lease removes the dead run's. No
 output folder is ever listed to decide what to delete, so another run's files are never
-touched. Appends a backend cannot claim (JDBC, catalog and Delta tables, Spark paths on
-object storage) are never deleted: the run says they may hold the batch, in its log and
-in the dead run's record.
+touched. A Delta append is not claimed but written once (Delta's idempotent write, or a
+replace of the batch's rows with ``replace_where``; :meth:`RunLease.batch_write`).
+Appends a backend cannot claim (JDBC, non-Delta catalog tables, Spark paths on object
+storage) are never deleted: the run says they may hold the batch, in its log and in
+the dead run's record.
 
 **A finished batch.** A run that appends a named batch (``dt`` or a ``--var``) and
 succeeds leaves a note beside the lease: which run finished it, and the files it
@@ -57,6 +59,7 @@ import sys
 import threading
 import time
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -293,8 +296,13 @@ class RunLease:
         variables: Optional[Dict[str, Any]],
         run_id: str,
         lineage_dir: Optional[Path] = None,
+        *,
+        records: Optional[Any] = None,
     ):
         self.task_path = task_path
+        # A run record store other than the record files under lineage_dir (ADR 011):
+        # anything with load(task_path, run_id) and save(record).
+        self.records: Any = records
         self.run_id = run_id
         self.key = batch_key(task_path, variables)
         self.named = names_a_batch(variables)
@@ -310,6 +318,8 @@ class RunLease:
         self.keep = False  # the note could not be written: leave the lease for the next run
         self.recovered: Dict[str, Any] = {}
         self._current_output: Optional[str] = None
+        self.rerun = False
+        self._finished_outputs: frozenset = frozenset()
 
     # --- taking and giving back -------------------------------------------------------
 
@@ -492,6 +502,7 @@ class RunLease:
         """Before anything is written: refuse to append a batch a finished run already
         wrote, or, with ``rerun``, note its claimed files to remove once this run
         succeeds (F-031). The lease is this run's by now."""
+        self.rerun = rerun
         if not appends or not self.named:
             return
         path = self._finished_path()
@@ -507,16 +518,22 @@ class RunLease:
         if not last.get("outputs"):
             return
         outputs = last["outputs"]
+        self._finished_outputs = frozenset(outputs)
         who = f"run {str(last.get('run_id', '?'))[:8]} (finished {last.get('finished_at', '?')})"
         # What --rerun can replace (files the finished run claimed), and the outputs
         # this run appends to that it cannot (written by JDBC, a catalog or Delta table,
         # Spark on object storage, or overwritten whole), where the batch would land
         # again.
         replaces = {n: list(o["claimed"]) for n, o in outputs.items() if o.get("claimed")}
+        # A Delta or JDBC append with replace_where replaces its batch's rows itself.
         again = [
             n
             for n in appends
-            if not ((outputs.get(n) or {}).get("claimed") or (outputs.get(n) or {}).get("staged"))
+            if not (
+                (outputs.get(n) or {}).get("claimed")
+                or (outputs.get(n) or {}).get("staged")
+                or (outputs.get(n) or {}).get("idempotent") == "replaces"
+            )
         ]
         if not rerun:
             if again:
@@ -524,8 +541,9 @@ class RunLease:
                     f"Output(s) {', '.join(again)} cannot be taken back by Ubunye (not "
                     "written as claimed part files on a local or shared disk), so --rerun "
                     "would append the "
-                    "batch to them again. Remove that run's rows first, or write them "
-                    "with mode overwrite_partitions."
+                    "batch to them again. Remove that run's rows first, or set "
+                    "replace_where on a Delta or JDBC append so --rerun replaces the "
+                    "batch's rows, or write them with mode overwrite_partitions."
                 )
             else:
                 hint = "To replace the batch, run again with --rerun (rerun=True in Python)."
@@ -552,8 +570,9 @@ class RunLease:
                 "--rerun: output(s) %s hold the batch written by %s and cannot be taken "
                 "back (JDBC, a catalog or Delta table, Spark on object storage, or an "
                 "overwrite), so this run appends "
-                "the batch to them again. Remove that run's rows first, or write the "
-                "output with mode overwrite_partitions.",
+                "the batch to them again. Remove that run's rows first, or set "
+                "replace_where on a Delta or JDBC append so --rerun replaces the batch's "
+                "rows, or write the output with mode overwrite_partitions.",
                 ", ".join(again),
                 who,
             )
@@ -615,6 +634,9 @@ class RunLease:
                 # Written through a staging folder: every file it added is claimed,
                 # even when there were none (an empty batch).
                 **({"staged": True} if o.get("exact") and o.get("staging") else {}),
+                # Written as one transaction of the batch (a Delta or JDBC append, ADR
+                # 008 addendum F-071): ``replaces`` when it replaces the batch's rows.
+                **({"idempotent": o["idempotent"]} if o.get("idempotent") else {}),
             }
             for n, o in (doc.get("outputs") or {}).items()
         }
@@ -729,6 +751,43 @@ class RunLease:
                 note["exact"], note["staging"] = was
                 raise self._lost()
 
+    def batch_write(self, *, replaces: bool) -> Optional["BatchWrite"]:
+        """Before a writer appends the batch in one transaction its target can make
+        idempotent (a Delta commit, a JDBC transaction): how to write it, and a note
+        in the lease that a rerun of the batch does not add it twice.
+
+        ``replaces``: the output names the batch's rows (``replace_where``), so the
+        write replaces them, every run. Otherwise the write is keyed by
+        :attr:`BatchWrite.app_id` (the task, output and batch) so a retry of the
+        same batch commits nothing, except under ``--rerun`` of a finished batch,
+        which appends it again as before (and says so). None when there is no named
+        batch: every run then appends."""
+        output = self._current_output
+        if not self.named or output is None:
+            return None
+        if replaces:
+            how = "replace"
+        elif self.rerun and output in self._finished_outputs:
+            how = "again"
+        else:
+            how = "once"
+        with self._lock:
+            note = self._doc["outputs"].get(output)
+            if note is None:
+                return None
+            if how != "again":
+                was = note.get("idempotent")
+                note["idempotent"] = "replaces" if how == "replace" else "once"
+                if not self._save():
+                    note["idempotent"] = was
+                    raise self._lost()
+        return BatchWrite(
+            app_id=f"ubunye/{self.task_path}/{output}/{self.key}",
+            version=0,
+            how=how,
+            run_id=self.run_id,
+        )
+
     def landed(self, path: str) -> None:
         """After a claimed file was moved in. A run taken over meanwhile (frozen between
         claim and move) removes it again: the run that took over did not see it.
@@ -803,6 +862,23 @@ class RunLease:
             outputs = copy.deepcopy(self._doc.get("outputs") or {})
         removed, left = self._take_back(outputs)
         kept = _unrepaired(outputs)
+        once = sorted(
+            n
+            for n, o in outputs.items()
+            if o.get("appends") and o.get("idempotent") and o.get("state") == "done"
+        )
+        if once:
+            logger.warning(
+                "Run %s failed after writing %s in one transaction of the batch; a rerun "
+                "of the batch %s.",
+                self.run_id[:8],
+                ", ".join(once),
+                (
+                    "replaces those rows (replace_where)"
+                    if all(outputs[n]["idempotent"] == "replaces" for n in once)
+                    else "does not add it again (outputs with replace_where replace it)"
+                ),
+            )
         if removed:
             logger.warning(
                 "Run %s failed; removed the %d file(s) it had appended, so a rerun "
@@ -1003,6 +1079,8 @@ class RunLease:
     def _record_status(self, run_id: str) -> Optional[str]:
         if not run_id:
             return None
+        if self.records is not None:
+            return self._stored_status(run_id)
         record = self.lineage_dir / self.task_path / f"{run_id}.json"
         try:
             text = _read_text(record)
@@ -1014,8 +1092,23 @@ class RunLease:
         # one replace): the run did not get as far as recording success.
         return _parse(text).get("status") if text else None
 
+    def _stored_status(self, run_id: str) -> Optional[str]:
+        """The dead run's status as the chosen run record store has it."""
+        try:
+            record = self.records.load(self.task_path, run_id)
+        except (FileNotFoundError, KeyError, LookupError):
+            return None  # never recorded: it did not get as far as success
+        except Exception as exc:  # noqa: BLE001 (an unreachable store is not "missing")
+            # It may say "success": taking the run for unfinished would take back
+            # what may be the batch. Refuse, as for an unreadable record file.
+            raise _Unreadable(Path(f"{type(self.records).__name__}:{run_id}"), str(exc)) from None
+        return getattr(record, "status", None) if record is not None else None
+
     def _mark_interrupted(self, run_id: str, unrepaired: List[str]) -> None:
         if not run_id:
+            return
+        if self.records is not None:
+            self._mark_stored_interrupted(run_id, unrepaired)
             return
         record = self.lineage_dir / self.task_path / f"{run_id}.json"
         try:
@@ -1036,6 +1129,26 @@ class RunLease:
             doc["error"] = note
             _write_atomic(record, json.dumps(doc, indent=2, ensure_ascii=False))
 
+    def _mark_stored_interrupted(self, run_id: str, unrepaired: List[str]) -> None:
+        try:
+            record = self.records.load(self.task_path, run_id)
+        except Exception:  # noqa: BLE001 (no record to mark)
+            return
+        if record is None or getattr(record, "status", None) != "running":
+            return
+        note = (
+            f"The run did not finish; run {self.run_id[:8]} took over its lease at "
+            f"{_now()} and removed the files it had appended."
+        )
+        if unrepaired:
+            note += (
+                f" Output(s) {', '.join(unrepaired)} may hold part or all of its batch "
+                "and were not taken back."
+            )
+        record.status = "interrupted"
+        record.error = note
+        self.records.save(record)
+
 
 def _unrepaired(outputs: Dict[str, Any]) -> List[str]:
     """Append outputs a backend could not claim files for, that may hold data.
@@ -1047,11 +1160,30 @@ def _unrepaired(outputs: Dict[str, Any]) -> List[str]:
     a claiming backend may have appended without claiming."""
 
     def repaired(o: Dict[str, Any]) -> bool:
+        if o.get("idempotent"):
+            return True  # one transaction a rerun of the batch does not repeat
         if o.get("unseen") or not o.get("exact"):
             return False
         return bool(o.get("staging") or o.get("claimed"))
 
     return sorted(n for n, o in outputs.items() if o.get("appends") and not repaired(o))
+
+
+@dataclass(frozen=True)
+class BatchWrite:
+    """How a writer appends a named batch in one transaction (see
+    :meth:`RunLease.batch_write`).
+
+    ``how`` is ``"once"`` (write keyed by ``app_id`` and ``version``: Delta's
+    ``txnAppId`` and ``txnVersion``, so a retry of the batch commits nothing),
+    ``"replace"`` (replace the batch's rows, named by ``replace_where``) or
+    ``"again"`` (``--rerun`` of a finished batch with no ``replace_where``: a plain
+    append, as before)."""
+
+    app_id: str
+    version: int
+    how: str
+    run_id: str
 
 
 class _InUse(Exception):
@@ -1157,6 +1289,16 @@ def claim_all(paths: List[str]) -> None:
         lease.claim_all(paths)
 
 
+def batch_write(*, replaces: bool) -> Optional[BatchWrite]:
+    """Called by a writer before it appends a named batch in one transaction its
+    target can make idempotent (Delta, JDBC). None when no lease is held or the run
+    names no batch: append as before."""
+    lease = _CURRENT.get()
+    if lease is None:
+        return None
+    return lease.batch_write(replaces=replaces)
+
+
 def staging(folder: str) -> None:
     """Called by a backend before it writes an append into a staging folder of its own,
     whose files it then claims and moves into the output (Spark path appends)."""
@@ -1182,9 +1324,12 @@ class held:
         *,
         appends: Optional[List[str]] = None,
         rerun: bool = False,
+        records: Optional[Any] = None,
     ):
         self.lease = (
-            RunLease(root, task_path, variables, run_id, lineage_dir) if enabled() else None
+            RunLease(root, task_path, variables, run_id, lineage_dir, records=records)
+            if enabled()
+            else None
         )
         self.appends = list(appends or [])
         self.rerun = rerun

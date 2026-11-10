@@ -129,6 +129,7 @@ class NotebookContext:
         profile: Optional[str] = None,
         auto_env: bool = True,
         hooks: Optional[Iterable[Hook]] = None,
+        lineage_backend: Optional[str] = None,
     ) -> None:
         self._task_path = Path(task_dir).resolve()
         self._mode = mode
@@ -199,7 +200,7 @@ class NotebookContext:
         # --- Phase E: build engine ---
         run_id = str(uuid.uuid4())
         self._usecase_dir, task_identity = _task_identity(self._task_path)
-        lineage_hooks = self._build_lineage_hooks(lineage, lineage_dir)
+        lineage_hooks = self._build_lineage_hooks(lineage, lineage_dir, lineage_backend)
         self._context = EngineContext(
             run_id=run_id,
             profile=mode,
@@ -316,15 +317,18 @@ class NotebookContext:
             self._original_env[key] = os.environ.get(key)
             os.environ[key] = val
 
-    def _build_lineage_hooks(self, lineage: bool, lineage_dir: str) -> list:
+    def _build_lineage_hooks(
+        self, lineage: bool, lineage_dir: str, lineage_backend: Optional[str] = None
+    ) -> list:
         if not lineage:
             return []
+        from ubunye.lineage import stores
         from ubunye.lineage.recorder import LineageRecorder
         from ubunye.telemetry.hooks import MonitorHook
 
         recorder = LineageRecorder(
-            store="filesystem",
-            base_dir=str(self._usecase_dir / lineage_dir),
+            backend=stores.backend_name(lineage_backend),
+            base_dir=stores.location(self._usecase_dir, lineage_dir, lineage_backend),
         )
         return [MonitorHook(recorder)]
 
@@ -346,6 +350,7 @@ def notebook(
     profile: Optional[str] = None,
     auto_env: bool = True,
     hooks: Optional[Iterable[Hook]] = None,
+    lineage_backend: Optional[str] = None,
 ) -> NotebookContext:
     """Create an interactive notebook context for step-by-step task execution.
 
@@ -355,6 +360,7 @@ def notebook(
 
     ``backend`` picks the engine as in :func:`ubunye.run_task`: a registered
     name (``"pandas"``) or an instance; by default the notebook's session.
+    ``lineage_backend`` picks the run record store as in :func:`ubunye.run_task`.
     """
     return NotebookContext(
         task_dir,
@@ -372,4 +378,5 @@ def notebook(
         profile=profile,
         auto_env=auto_env,
         hooks=hooks,
+        lineage_backend=lineage_backend,
     )

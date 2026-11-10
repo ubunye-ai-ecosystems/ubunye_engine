@@ -1,3 +1,5 @@
+**Status:** done (2026-11-10): workflows moved to actions/setup-java@v5 (Node 24)
+
 # task-12 — `actions/setup-java@v4` uses deprecated Node.js 20 runtime
 
 **Discovered by:** fire-test of `titanic_local` (run 24513418103, 2026-04-16)

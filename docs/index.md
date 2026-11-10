@@ -11,7 +11,7 @@ records by the [proving ground](proving-ground/index.md)
 
 Define your pipeline in YAML. Write a Python class. Run it.
 
-![Ubunye Engine deployment overview](assets/ubunye_deployment.png)
+![Write a task once, run it unchanged on your laptop, your cloud or Databricks; every run leaves a record, and ubunye prove checks the rows match](assets/diagrams/home.svg)
 
 ---
 

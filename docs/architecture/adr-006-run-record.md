@@ -2,6 +2,8 @@
 
 **Status:** accepted, 0.7.0
 
+![Every run leaves a receipt with a hash of every row; ubunye gate compares two receipts](../assets/diagrams/run-record.svg)
+
 ## Context
 
 `--lineage` leaves a record of every run: what was read, what was written, and
@@ -132,6 +134,7 @@ transform, an input or the machine could each have moved. Version 2
 | `inputs[*].hash_basis`, `outputs[*].hash_basis` | `materialised`: the digest is of the rows that were written (a held Spark output, a pandas frame); `recomputed`: the frame was computed again for the hash (a Spark input, or an output that could not be held). ADR 009 |
 | `inputs[*].hash_reused_from`, `outputs[*].hash_reused_from` | set when the same frame was already hashed for another step of the run, which it names (`output:<name>`); `hash_seconds` is then 0 |
 | `expectations` | every `CONFIG.expectations` rule checked, passed or not; kept when the run fails |
+| `model_runs` | (0.9) each model a `ModelTransform` trained or used: version, stage, and for training the gate result; kept when the run fails. ADR 012 |
 
 `ubunye lineage compare` reports each of these as changed or unchanged, and
 names the packages whose versions moved. `ubunye lineage trace` prints them.

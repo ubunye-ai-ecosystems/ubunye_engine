@@ -10,15 +10,34 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import typer
+
+from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
+from ubunye.proving.evidence import COST_BASES, STATUSES
 
 prove_app = typer.Typer(
     name="prove",
     help="The proving ground: compare one workload's run records across environments.",
     no_args_is_help=True,
 )
+
+
+# The values these options take; the statuses and bases come from the evidence module.
+_KINDS = ("local", "cloud", "managed")
+_SKIP_STATUSES = tuple(s for s in STATUSES if s != "executed")
+
+
+def _one_of(choices: Sequence[str], allow_empty: bool = False) -> Callable[[str], str]:
+    """An option callback: a value outside ``choices`` is a usage error (exit 2)."""
+
+    def check(value: str) -> str:
+        if (allow_empty and value == "") or value in choices:
+            return value
+        raise typer.BadParameter(f"{value!r} is not one of: {', '.join(choices)}.")
+
+    return check
 
 
 def _record(
@@ -37,13 +56,15 @@ def _record(
     if not (usecase_dir and usecase and package and task):
         raise typer.BadParameter("give --record FILE, or -d -u -p -t for a stored run")
     from ubunye.cli.gate import _from_store
+    from ubunye.lineage import stores
 
-    lineage_dir = usecase_dir / ".ubunye" / "lineage"
+    # The store follows $UBUNYE_LINEAGE_BACKEND (ADR 011); filesystem by default.
+    lineage_dir = stores.location(usecase_dir)
     which = "latest" if run_id == "latest" else run_id
     return _from_store(f"{usecase}/{package}/{task}", lineage_dir, which).to_dict()
 
 
-@prove_app.command("observe")
+@prove_app.command("observe", cls=PipelineCommand)
 def observe(
     workload: str = typer.Option(
         ..., "--workload", help="The workload's id, e.g. c01-portable-etl."
@@ -53,7 +74,7 @@ def observe(
     record: Optional[Path] = typer.Option(None, "--record", help="A run record JSON file."),
     usecase_dir: Optional[Path] = typer.Option(None, "-d", "--usecase-dir"),
     usecase: Optional[str] = typer.Option(None, "-u", "--usecase"),
-    package: Optional[str] = typer.Option(None, "-p", "--package"),
+    package: Optional[str] = pipeline_option(None),
     task: Optional[List[str]] = typer.Option(
         None,
         "-t",
@@ -61,7 +82,9 @@ def observe(
         help="A task. Give several (-t a -t b) to observe each as <workload>-<task>.",
     ),
     run_id: str = typer.Option("latest", "--run-id", help="A stored run's id, or 'latest'."),
-    kind: str = typer.Option("local", "--kind", help="local, cloud or managed."),
+    kind: str = typer.Option(
+        "local", "--kind", help="local, cloud or managed.", callback=_one_of(_KINDS)
+    ),
     provider: str = typer.Option("", "--provider", help="aws, gcp, azure, databricks, ..."),
     runtime: str = typer.Option(
         "", "--runtime", help="e.g. 'Glue 5.0', 'Dataproc Serverless 2.2'."
@@ -70,7 +93,11 @@ def observe(
     cost_amount: Optional[float] = typer.Option(None, "--cost-amount"),
     cost_currency: str = typer.Option("USD", "--cost-currency"),
     cost_basis: str = typer.Option(
-        "", "--cost-basis", help="actual, provider_estimate, ubunye_estimate, local, unknown."
+        "",
+        "--cost-basis",
+        help="actual, provider_estimate, ubunye_estimate, local, unknown. "
+        "Default: local for --kind local, else unknown.",
+        callback=_one_of(COST_BASES, allow_empty=True),
     ),
     cost_source: str = typer.Option("", "--cost-source", help="How the figure was obtained."),
     run_url: str = typer.Option("", "--run-url", help="Where a reader can check this run."),
@@ -157,7 +184,10 @@ def skip(
     workload: str = typer.Option(..., "--workload"),
     env: str = typer.Option(..., "--env"),
     status: str = typer.Option(
-        "not_run", "--status", help="not_run, unsupported or failed_to_launch."
+        "not_run",
+        "--status",
+        help="not_run, unsupported or failed_to_launch.",
+        callback=_one_of(_SKIP_STATUSES),
     ),
     reason: str = typer.Option(..., "--reason", help="Why there is no run: said in the report."),
     out: Path = typer.Option(Path("evidence"), "-o", "--out"),

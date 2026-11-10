@@ -7,11 +7,7 @@ demotion, rollback, and gated releases) without coupling to any specific ML libr
 
 ## Lifecycle stages
 
-```
-development → staging → production
-      ↓            ↓         ↓
-                       archived
-```
+![A version moves development, staging, production by promote through gates; demote moves it back; promoting to production archives the old one; rollback brings an archived one back](../assets/diagrams/model-registry.svg)
 
 | Stage | Meaning |
 |---|---|
@@ -65,7 +61,8 @@ Output:
 ```
 
 Add `--json` to `list` (and to `compare`) for one JSON document, for scripts and
-agents.
+agents. Every `models` command takes `--backend` / `-b` (see
+[Choosing a backend](#choosing-a-backend)).
 
 ### Show version details
 
@@ -106,6 +103,11 @@ ubunye models demote \
     --to staging \
     --store .ubunye/model_store
 ```
+
+`--to` takes `development`, `staging` or `archived`. Demote only moves a version
+down: `staging` only from `production`, and never to `production`. Moving up is
+a promotion, so it goes through `promote` and its gates. The Python API
+(`ModelRegistry.demote`) refuses the same moves with a `RegistryError`.
 
 ### Rollback
 
@@ -247,6 +249,136 @@ diff = registry.compare_versions("fraud_detection", "FraudRiskModel", "1.2.0", "
 
 ---
 
+## Choosing a backend
+
+Where models live is a plugin: a **registry backend** (ADR 010). Two ship with
+Ubunye:
+
+| Name | What it does |
+|---|---|
+| `filesystem` | The default. A folder, or an `s3://`, `gs://` or `abfss://` URL. No cloud service needed. |
+| `mlflow` | The MLflow Model Registry. Each version is a registered model version; stages are aliases. See [MLflow Model Registry](#mlflow-model-registry). |
+
+The backend is chosen in one order:
+
+1. the name you ask for: `--backend` / `-b` on every `ubunye models` command,
+   `registry.backend` in a model transform, or `backend=` in Python;
+2. else the `UBUNYE_REGISTRY_BACKEND` environment variable;
+3. else `filesystem`.
+
+The host never decides: running on Databricks does not switch you to MLflow.
+`--store` (or `registry.store`) is handed to the backend as it is.
+
+```bash
+ubunye models list -u fraud_detection -m FraudRiskModel -s .ubunye/model_store -b filesystem
+```
+
+```yaml
+transform:
+  type: model
+  params:
+    action: train
+    model_class: "model.FraudRiskModel"
+    registry:
+      store: ".ubunye/model_store"
+      backend: filesystem      # optional
+      use_case: fraud_detection
+```
+
+```python
+from ubunye.models import ModelRegistry, resolve_registry
+
+registry = ModelRegistry(".ubunye/model_store", backend="filesystem")
+backend = resolve_registry("filesystem", store=".ubunye/model_store")  # the raw backend
+```
+
+`ubunye.models.backends.available()` lists the installed names. Asking for one that is not installed fails with that list.
+
+### MLflow Model Registry
+
+`--backend mlflow` keeps models in the MLflow Model Registry (ADR 014).
+
+- **Where MLflow is** is MLflow's business: `MLFLOW_TRACKING_URI` and
+  `MLFLOW_REGISTRY_URI`, read the way MLflow reads them.
+- **`--store`** is the MLflow experiment that holds one run per version. The run
+  carries the saved model as its `model` artifact. Use a workspace path on
+  Databricks, for example `/Shared/ubunye/models`.
+- **The model** is the registered model `{use_case}.{model_name}`. Set
+  `UBUNYE_MLFLOW_MODEL_NAME` to change it, for example
+  `main.ml.{use_case}_{model_name}` for a three part Unity Catalog name.
+- **A version** is a registered model version. The Ubunye version string, the
+  stage, the metrics, the metadata, the promotion gates and the lineage run id
+  are version tags (`ubunye.version`, `ubunye.stage`, `ubunye.metric.<name>`,
+  `ubunye.meta.<key>`).
+- **Stages** `staging` and `production` are also MLflow aliases, so
+  `models:/fraud_detection.FraudRiskModel@production` loads the production
+  version from any MLflow client. `development` and `archived` are tags only:
+  many versions can be in them at once, and an alias points at one.
+
+If the experiment does not exist, Ubunye creates it, and MLflow picks where its
+artifacts go (`./mlruns` for a local SQLite store). Create the experiment
+yourself to choose another place.
+
+The MLflow stage API is never used. It is deprecated, and Unity Catalog has
+none, so the same backend works there.
+
+```bash
+export MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+ubunye models promote -u fraud_detection -m FraudRiskModel -s ubunye-models \
+  -b mlflow --version 1.0.1 --to production
+```
+
+The class used to be `MLflowRegistryBackend`: a folder registry that also
+logged a best effort MLflow run. It still works when you build it in Python,
+and warns that it is deprecated. Models it stored stay in their folder; read
+them with `--backend filesystem`.
+
+### Writing a backend
+
+A backend is a class with six methods, the
+[`RegistryBackend`](../interfaces.md) protocol: `register`, `get`,
+`list_versions`, `promote`, `demote` and `delete`. Its constructor takes the
+store string. Register it in your package:
+
+```toml
+[project.entry-points."ubunye.registry_backends"]
+myreg = "my_package.registry:MyRegistryBackend"
+```
+
+`pip install` your package and `--backend myreg` works. No edit to Ubunye.
+
+Keep it small. Ubunye does the rest on top of those six methods, for every
+backend: version numbers when none is given, refusing a duplicate version,
+promotion gates (stored as the `promotion_gates` metadata key and checked
+before `promote` is called), one production version at a time, rollback,
+archive and compare. Your backend must:
+
+- persist the `metadata` and `lineage_run_id` it is given and return them in
+  `ModelVersionInfo.metadata`;
+- report stages with the public names (`development`, `staging`, `production`,
+  `archived`), whatever it calls them inside;
+- raise `VersionNotFoundError` for a version or stage it does not have;
+- refuse a `demote` that moves a version up: call
+  `ubunye.models.lifecycle.check_demote(version, current_stage, to_stage)` first;
+- return `list_versions` newest first;
+- return from `get` an artifact path that `YourModel.load()` can read.
+
+Prove it with the conformance suite:
+
+```python
+import pytest
+
+from ubunye.testing.registry_conformance import RegistryConformance
+
+
+class TestMyRegistry(RegistryConformance):
+    @pytest.fixture
+    def backend(self, tmp_path):
+        return MyRegistryBackend(str(tmp_path / "store"))
+```
+
+---
+
 ## Auto-versioning
 
 When `register()` is given `version=None`, the registry bumps the **patch**
@@ -284,3 +416,55 @@ ubunye lineage show -d pipelines -u fraud -p ml -t train --run-id abc123...
 ```
 
 This lets you trace exactly which data, config hash, and code produced each model version.
+
+### The run record names the model (0.9)
+
+The link also goes the other way. When a `ModelTransform` trains or scores, the run
+record gets a `model_runs` entry (ADR 012):
+
+- **train:** the model, the version registered, the stage it reached (or
+  `development`), and the gate result: `passed`, `blocked` with the gate, metric,
+  value and threshold that blocked it, `no gates`, or none when no promotion was asked.
+- **predict:** the model, the version and the stage it was loaded from.
+
+```bash
+ubunye lineage trace -d pipelines -u fraud -p ml -t train
+#   MODELS
+#     train FraudRiskModel 1.3.0 -> staging (gates passed)
+```
+
+`ubunye lineage show` prints the same entries as JSON.
+
+### Registry settings for a model transform
+
+| Key | Default | What it does |
+|---|---|---|
+| `on_blocked` | `raise` | A promotion the gates block fails the run. `record` keeps the run going; the version stays in `development` and the record says which gate blocked it. |
+| `stamp_columns` | `false` | Predict: add `model_version` and `model_stage` columns to the scored rows (pandas and Spark). Refuses to overwrite a column of that name. |
+| `check_features` | not set | Predict: compare the frame with the version's declared `features`. Not set: warn, record, and call the model. `true`: refuse the frame with `FeatureContractError`. `false`: no check. |
+
+```yaml
+transform:
+  params:
+    action: predict
+    model_class: model.FraudRiskModel
+    registry:
+      store: .ubunye/model_store
+      use_case: fraud_detection
+      use_stage: production
+      stamp_columns: true
+      check_features: true
+```
+
+`ubunye run` always runs the task's `transformations.py`, so call the transform from it:
+
+```python
+from ubunye.core.interfaces import Task
+from ubunye.plugins.transforms.model_transform import ModelTransform
+
+
+class Score(Task):
+    def transform(self, sources):
+        params = self.config["CONFIG"]["transform"]["params"]
+        return {"scored": ModelTransform().apply(sources, params, None)["predictions"]}
+```

@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional
 
 import typer
 
+from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
+
 deploy_app = typer.Typer(
     name="deploy",
     help="Deploy task(s): Databricks, Glue, Dataproc, Kubernetes, Container Apps, EMR Serverless.",
@@ -20,7 +22,7 @@ deploy_app = typer.Typer(
 )
 
 
-@deploy_app.command("databricks")
+@deploy_app.command("databricks", cls=PipelineCommand)
 def deploy_databricks(
     usecase_dir: Path = typer.Option(
         ...,
@@ -31,7 +33,7 @@ def deploy_databricks(
         help="Root directory of pipelines.",
     ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Usecase name."),
-    package: str = typer.Option(..., "-p", "--package", help="Pipeline/package name."),
+    package: str = pipeline_option(),
     task: str = typer.Option(..., "-t", "--task", help="Task name."),
     target: str = typer.Option("dev", "--target", help="Deploy target (dev, prod, etc.)."),
     mode: str = typer.Option("PROD", "-m", "--mode", help="Config profile/mode for the job."),
@@ -181,11 +183,11 @@ _OUT_HELP = (
 )
 
 
-@deploy_app.command("glue")
+@deploy_app.command("glue", cls=PipelineCommand)
 def deploy_glue(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", exists=True, file_okay=False),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     bucket: str = typer.Option(..., "--bucket", help="S3 bucket for the task, script and wheel."),
     role: str = typer.Option(..., "--role", help="IAM role ARN the Glue job runs as."),
@@ -230,11 +232,11 @@ def deploy_glue(
     _finish(plan, dry_run, record_out, len(task))
 
 
-@deploy_app.command("dataproc")
+@deploy_app.command("dataproc", cls=PipelineCommand)
 def deploy_dataproc(
     usecase_dir: Path = typer.Option(..., "-d", "--usecase-dir", exists=True, file_okay=False),
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     project: str = typer.Option(..., "--project"),
     region: str = typer.Option(..., "--region"),
@@ -284,7 +286,12 @@ def deploy_dockerfile(
         "pipelines", "--pipelines", help="Folder copied into the image as /app/pipelines."
     ),
     engine: str = typer.Option("ubunye-engine", "--engine", help="pip requirement for the engine."),
-    out: Optional[Path] = typer.Option(None, "--out", help="Write here instead of printing."),
+    out: Optional[Path] = typer.Option(
+        None,
+        "--out",
+        help="Write here instead of printing. A folder gets <folder>/Dockerfile; "
+        "missing folders are made.",
+    ),
 ) -> None:
     """Write a Dockerfile for a Spark job image on PLATFORM, and the entry script next to it."""
     from ubunye.deploy import package as packaging
@@ -295,6 +302,9 @@ def deploy_dockerfile(
     if out is None:
         typer.echo(text)
         return
+    if out.is_dir():
+        out = out / "Dockerfile"
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text, encoding="utf-8")
     entry = out.parent / "ubunye_entry.py"
     entry.write_text(packaging.ENTRY_SCRIPT, encoding="utf-8")
@@ -304,10 +314,10 @@ def deploy_dockerfile(
 # --- container jobs (B5b): Kubernetes, Azure Container Apps, EMR Serverless ---------------
 
 
-@deploy_app.command("k8s")
+@deploy_app.command("k8s", cls=PipelineCommand)
 def deploy_k8s(
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     image: str = typer.Option(
         ..., "--image", help="Image from `deploy dockerfile container` (pipelines baked in)."
@@ -347,10 +357,10 @@ def deploy_k8s(
     _finish(plan, dry_run, record_out, len(task))
 
 
-@deploy_app.command("container-apps")
+@deploy_app.command("container-apps", cls=PipelineCommand)
 def deploy_container_apps(
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     image: str = typer.Option(
         ..., "--image", help="Image from `deploy dockerfile container` (pipelines baked in)."
@@ -398,10 +408,10 @@ def deploy_container_apps(
     _finish(plan, dry_run, record_out, len(task))
 
 
-@deploy_app.command("emr-serverless")
+@deploy_app.command("emr-serverless", cls=PipelineCommand)
 def deploy_emr_serverless(
     usecase: str = typer.Option(..., "-u", "--usecase"),
-    package: str = typer.Option(..., "-p", "--package"),
+    package: str = pipeline_option(),
     task: List[str] = typer.Option(..., "-t", "--task", help=_TASK_HELP),
     application_id: str = typer.Option(
         ...,

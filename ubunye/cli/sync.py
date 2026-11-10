@@ -71,6 +71,14 @@ def _archive_manifest(manifest_path: Path) -> None:
 @sync_app.command("lineage")
 def sync_lineage(
     run_id: Optional[str] = typer.Option(None, "--run-id", help="Replay only this run's manifest."),
+    lineage_dir: str = typer.Option(
+        ".ubunye/lineage", "--lineage-dir", help="The store's location, as given."
+    ),
+    lineage_backend: Optional[str] = typer.Option(
+        None,
+        "--lineage-backend",
+        help="The store to replay into. Default: $UBUNYE_LINEAGE_BACKEND, else filesystem.",
+    ),
 ) -> None:
     """Replay lineage fallback manifests."""
     manifests = _find_manifests("lineage", run_id)
@@ -78,11 +86,17 @@ def sync_lineage(
         typer.secho("No lineage fallback manifests found.", fg=typer.colors.YELLOW)
         raise typer.Exit()
 
-    from ubunye._internal.discovery import get_lineage_backend
+    from ubunye.core.errors import PluginNotFoundError
     from ubunye.interfaces.lineage import LineageRecord
+    from ubunye.lineage import stores
+    from ubunye.lineage.context import RunContext
+    from ubunye.lineage.storage import FileSystemLineageStore, _record_to_ctx
 
-    backend_cls = get_lineage_backend("filesystem")
-    store = backend_cls()
+    try:
+        store = stores.open_store(lineage_dir, lineage_backend)
+    except PluginNotFoundError as exc:
+        typer.secho(f"[ERROR] {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
 
     total = 0
     replayed = 0
@@ -92,7 +106,24 @@ def sync_lineage(
     for manifest in manifests:
         records = _load_manifest(manifest)
         total += len(records)
+        # Whole run records (ADR 011): a run is saved twice (running, finished),
+        # so the last one kept for each run is the one replayed.
+        whole: dict = {}
         for rec in records:
+            if "task_path" in rec:
+                key = f"{rec['task_path']}:{rec.get('run_id', '')}"
+                if key in whole:
+                    deduped += 1
+                whole[key] = {k: v for k, v in rec.items() if not k.startswith("_")}
+        for doc in whole.values():
+            try:
+                store.save(RunContext.from_dict(doc))
+                replayed += 1
+            except Exception as exc:
+                typer.secho(f"  Failed to replay record: {exc}", fg=typer.colors.RED)
+        for rec in records:
+            if "task_path" in rec:
+                continue
             key = _dedup_key(rec)
             if key in seen_keys:
                 deduped += 1
@@ -114,7 +145,10 @@ def sync_lineage(
                     error=rec.get("error"),
                     metadata={k: str(v) for k, v in rec.get("metadata", {}).items()},
                 )
-                store._record_sync(lr)
+                if isinstance(store, FileSystemLineageStore):  # keeps extra metadata
+                    store._record_sync(lr)
+                else:
+                    store.save(_record_to_ctx(lr))
                 replayed += 1
             except Exception as exc:
                 typer.secho(f"  Failed to replay record: {exc}", fg=typer.colors.RED)

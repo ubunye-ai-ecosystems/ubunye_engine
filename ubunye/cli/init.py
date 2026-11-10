@@ -15,6 +15,7 @@ from typing import List, Optional
 import typer
 
 from ubunye.cli import scaffold
+from ubunye.cli.pipeline_flag import PipelineCommand, PipelineGroup, pipeline_option
 
 init_app = typer.Typer(
     name="init",
@@ -182,14 +183,14 @@ def _scaffold(
             typer.echo(line)
 
 
-@init_app.callback(invoke_without_command=True)
+@init_app.callback(invoke_without_command=True, cls=PipelineGroup)
 def init(
     ctx: typer.Context,
     usecase_dir: Optional[Path] = typer.Option(
         None, "-d", "--usecase-dir", help="Root directory of pipelines."
     ),
     usecase: Optional[str] = typer.Option(None, "-u", "--usecase", help="Use case name."),
-    package: Optional[str] = typer.Option(None, "-p", "--package", help="Pipeline/package name."),
+    package: Optional[str] = pipeline_option(None),
     task_list: Optional[List[str]] = typer.Option(
         None, "-t", "--task-list", help="Task(s) to scaffold (repeatable)."
     ),
@@ -202,7 +203,7 @@ def init(
     given = {
         "--usecase-dir": usecase_dir,
         "--usecase": usecase,
-        "--package": package,
+        "--pipeline": package,
         "--task-list": task_list,
     }
     if not any(given.values()):
@@ -218,17 +219,15 @@ def init(
     _scaffold(usecase_dir, usecase, package, task_list, template, overwrite)
 
 
-@init_app.command("pipeline")
+@init_app.command("pipeline", cls=PipelineCommand)
 def init_pipeline(
     usecase_dir: Path = typer.Option(
         ..., "-d", "--usecase-dir", help="Specifies the directory path for the use case."
     ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Selects the desired use case."),
-    package: str = typer.Option(
-        ..., "-p", "--package", help="Selects a package from the specified use case."
-    ),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(
-        ..., "-t", "--task-list", help="Specifies the task(s) to execute from the chosen package."
+        ..., "-t", "--task-list", help="Specifies the task(s) to execute from the chosen pipeline."
     ),
     template: str = typer.Option("local", "--template", help=_TEMPLATE_HELP),
     overwrite: bool = typer.Option(False, help="Overwrite existing files"),
@@ -425,13 +424,13 @@ def _build_workflow(
     return "\n".join(lines)
 
 
-@init_app.command("github-actions")
+@init_app.command("github-actions", cls=PipelineCommand)
 def init_github_actions(
     usecase_dir: Path = typer.Option(
         ..., "-d", "--usecase-dir", help="Root directory of pipelines."
     ),
     usecase: str = typer.Option(..., "-u", "--usecase", help="Usecase name."),
-    package: str = typer.Option(..., "-p", "--package", help="Pipeline/package name."),
+    package: str = pipeline_option(),
     task_list: List[str] = typer.Option(
         ..., "-t", "--task-list", help="Task(s) to include in the deploy steps."
     ),
@@ -448,7 +447,7 @@ def init_github_actions(
         None,
         "-o",
         "--output",
-        help="Output file path (default: .github/workflows/<usecase>_<package>.yml).",
+        help="Output file path (default: .github/workflows/<usecase>_<pipeline>.yml).",
     ),
     overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing workflow file."),
 ):

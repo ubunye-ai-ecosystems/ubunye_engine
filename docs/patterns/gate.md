@@ -4,6 +4,8 @@
 regresses. In CI the baseline is the task run on the pull request's base, the
 candidate the same task on its head.
 
+![Every run leaves a receipt with a hash of every row; ubunye gate compares two receipts](../assets/diagrams/run-record.svg)
+
 ```bash
 ubunye gate -d pipelines -u shop -p orders -t clean                     # previous run vs latest
 ubunye gate --baseline base.json --candidate head.json                  # two exported records
@@ -12,6 +14,18 @@ ubunye gate ... --max-slowdown 0.5 --max-row-change 0.1 --summary "$GITHUB_STEP_
 
 `--baseline` and `--candidate` take a run record file (`ubunye lineage show
 --json` writes one), a run id (or its first characters), `previous` or `latest`.
+
+Stored runs are read from the run record store: files under
+`<usecase_dir>/.ubunye/lineage` by default, or a shared one named with
+`--lineage-backend` (or `UBUNYE_LINEAGE_BACKEND`) and `--lineage-dir`, such as
+a Delta table every job writes to:
+
+```bash
+ubunye gate -d pipelines -u shop -p orders -t clean \
+  --lineage-backend delta --lineage-dir main.ops.ubunye_runs
+```
+
+See [Where run records are stored](../cli.md#where-run-records-are-stored).
 
 ## What fails the gate
 

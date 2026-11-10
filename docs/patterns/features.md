@@ -7,13 +7,7 @@ to a Delta table (or Unity Catalog) that training and scoring jobs share.
 
 ## Architecture
 
-```
-Raw events (Hive / S3)
-    → Feature ETL task (aggregation, encoding)
-    → Delta feature table (point-in-time correct)
-    → Training job reads features
-    → Scoring job reads latest features
-```
+![Raw events from Hive or S3, a task that aggregates and encodes them into a point-in-time Delta feature table, read by a training task and a scoring task](../assets/diagrams/features.svg)
 
 ---
 

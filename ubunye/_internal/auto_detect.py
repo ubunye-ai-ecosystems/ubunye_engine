@@ -16,37 +16,25 @@ log = logging.getLogger(__name__)
 
 
 def detect_registry_backend() -> str:
-    """Choose a registry backend. An explicit choice always wins.
+    """Deprecated: use :func:`ubunye.models.backends.choose`.
 
-    - ``UBUNYE_REGISTRY_BACKEND`` set → that, whatever it says
-    - Databricks runtime with MLflow available → ``"mlflow"``
-    - Otherwise → ``"filesystem"``
-
-    The env var is new, and it matters. This function used to sniff the host
-    (``DATABRICKS_RUNTIME_VERSION``) and pick a backend on your behalf **with no way to
-    say otherwise**. The same pipeline, unchanged, registered models to MLflow on
-    Databricks and to a directory anywhere else — and nothing told you which. Two runs of
-    the same code would disagree about where the model went, and you would find out when
-    something tried to load it.
-
-    Sniffing the host is still the *fallback*, because on Databricks MLflow really is
-    already there and really is the natural registry. But it is now a default you can
-    override, and it says out loud what it picked, rather than a decision made behind
-    your back.
+    Since 0.9 the registry backend is chosen in one order everywhere (ADR 010):
+    the name asked for, else ``UBUNYE_REGISTRY_BACKEND``, else ``filesystem``.
+    This function used to pick ``mlflow`` on its own when it saw Databricks; it no
+    longer sniffs the host, so the same pipeline means the same registry anywhere.
+    Nothing in Ubunye called it; it stays one release for anyone who did.
     """
-    explicit = os.environ.get("UBUNYE_REGISTRY_BACKEND")
-    if explicit:
-        return explicit.strip().lower()
+    import warnings
 
-    if _on_databricks() and _has_package("mlflow"):
-        log.info(
-            "registry backend: 'mlflow' (auto-detected — DATABRICKS_RUNTIME_VERSION is "
-            "set and mlflow is installed). Set UBUNYE_REGISTRY_BACKEND to override."
-        )
-        return "mlflow"
+    from ubunye.models.backends import choose
 
-    log.info("registry backend: 'filesystem' (default). Set UBUNYE_REGISTRY_BACKEND to override.")
-    return "filesystem"
+    warnings.warn(
+        "detect_registry_backend() is deprecated; use ubunye.models.backends.choose(). "
+        "It no longer picks 'mlflow' on Databricks: set UBUNYE_REGISTRY_BACKEND=mlflow.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return choose()
 
 
 def detect_lineage_backend() -> str:

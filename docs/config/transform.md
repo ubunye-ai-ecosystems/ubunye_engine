@@ -111,6 +111,11 @@ class TrainFraudModel(Task):
 A gate that fails raises `PromotionBlockedError`, which fails the run. The version stays
 registered in `development`. Catch the error if the run should still succeed.
 
+To have the run record name the model, its version, stage and gate result, train
+with `ModelTransform` from `transformations.py` instead (see
+[Model Registry: the run record names the model](../ml/registry.md#the-run-record-names-the-model-09)).
+There, `registry.on_blocked: record` keeps a blocked run going.
+
 ---
 
 ## `ModelTransform` from Python

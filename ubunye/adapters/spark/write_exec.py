@@ -66,16 +66,21 @@ def apply(
     opts.update(resolved.options)
     parts = list(partition_by or [])
 
-    def _save() -> None:
-        writer = df.write.mode(resolved.save_mode).format(file_format)
+    def _save_as(mode: str, with_opts: Dict[str, Any]) -> None:
+        if _replace_rows_of_table(df, spark, table, file_format, mode, with_opts):
+            return
+        writer = df.write.mode(mode).format(file_format)
         if parts:
             writer = writer.partitionBy(*parts)
-        for key, value in opts.items():
+        for key, value in with_opts.items():
             writer = writer.option(key, str(value))
         if table:
             writer.saveAsTable(table)
         else:
             writer.save(path)
+
+    def _save() -> None:
+        _save_as(resolved.save_mode, opts)
 
     if resolved.is_overwrite_partitions:
         _overwrite_partitions(
@@ -90,6 +95,22 @@ def apply(
         )
         return
 
+    if resolved.save_mode == "append" and str(file_format).lower() == "delta":
+        # A named batch lands once: a Delta idempotent write, or a replace of the
+        # batch's rows when the output sets replace_where (ADR 008, F-071).
+        from ubunye.adapters.spark import delta_batch
+
+        plain = {k: v for k, v in opts.items() if k != "replaceWhere"}
+        if delta_batch.append(
+            spark=spark,
+            table=table,
+            path=path,
+            opts=plain,
+            batch_where=resolved.batch_where,
+            save=_save_as,
+        ):
+            return
+
     if resolved.save_mode == "append" and path and not table:
         # A path append under a run lease: Spark writes into a staging folder of this
         # run, and each file is claimed before it is moved in (ADR 008).
@@ -101,6 +122,40 @@ def apply(
             return
 
     _save()
+
+
+def _replace_rows_of_table(
+    df: Any,
+    spark: Any,
+    table: Optional[str],
+    file_format: str,
+    mode: str,
+    opts: Dict[str, Any],
+) -> bool:
+    """Replace the rows ``replaceWhere`` selects in an existing Delta table.
+
+    ``saveAsTable`` with ``replaceWhere`` fails on Spark 3.5 + Delta 3 ("does not
+    support truncate in batch mode"); ``writeTo(table).overwrite(condition)`` does
+    the same replace in one commit on Spark 3.5 and 4. A table that does not exist
+    yet is created by ``saveAsTable`` as before. Returns False when not this case.
+    """
+    where = opts.get("replaceWhere")
+    if not (table and where and mode == "overwrite" and str(file_format).lower() == "delta"):
+        return False
+    try:
+        exists = spark.catalog.tableExists(table) is True
+    except Exception:  # noqa: BLE001 (a catalog that cannot answer: the old write)
+        exists = False
+    if not exists:
+        return False
+    from pyspark.sql import functions as F
+
+    writer = df.writeTo(table)
+    for key, value in opts.items():
+        if key != "replaceWhere":
+            writer = writer.option(key, str(value))
+    writer.overwrite(F.expr(str(where)))
+    return True
 
 
 def _overwrite_partitions(

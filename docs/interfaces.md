@@ -114,9 +114,41 @@ from ubunye.interfaces import RegistryBackend, ModelVersionInfo
 
 ---
 
+### RunRecordStore
+
+Where run records (the whole `RunContext`, the receipt) are stored. Every store
+in `ubunye.lineage_backends` provides it, and is chosen by name: `--lineage-backend`,
+then `UBUNYE_LINEAGE_BACKEND`, then `filesystem` (ADR 011). No base class needed.
+
+```python
+from ubunye.interfaces import RunRecordStore
+```
+
+::: ubunye.interfaces.lineage.RunRecordStore
+    options:
+      show_root_heading: false
+      show_source: false
+      heading_level: 4
+
+Prove a store keeps the contract with the shipped suite:
+
+```python
+import pytest
+
+from ubunye.testing.lineage_conformance import LineageStoreConformance
+
+
+class TestMyStore(LineageStoreConformance):
+    @pytest.fixture
+    def store(self, tmp_path):
+        return MyStore(str(tmp_path / "runs"))
+```
+
 ### LineageBackend
 
-Run provenance: record, search, compact.
+The older lineage contract: record, search, compact, over a flat
+`LineageRecord`. Kept for code that uses it; no run record is stored through it,
+since a `LineageRecord` keeps only a few fields of one.
 
 ```python
 from ubunye.interfaces import LineageBackend, LineageRecord
@@ -140,8 +172,11 @@ from ubunye.interfaces import LineageBackend, LineageRecord
   Uses a `run_id` to path index for O(1) lookups and an in-memory
   `RunContext` cache to avoid repeated JSON parsing on search.
 - `DeltaLineageBackend`, entry point `ubunye.lineage_backends:delta`.
-  Writes to a Delta table via Spark SQL on Databricks; falls back to
-  JSONL files locally.
+  Stores each run record whole (JSON plus index columns) in a Delta table or
+  path, through the active SparkSession or a local one it starts. A record it
+  cannot write goes to a fallback manifest, with a warning. Its older
+  `LineageRecord` methods still use JSON files when no SparkSession existed
+  when it was built, and now log that.
 
 ---
 
@@ -202,7 +237,8 @@ environment:
 | Registry | `UBUNYE_REGISTRY_BACKEND` set | that name |
 | Registry | `DATABRICKS_RUNTIME_VERSION` + `mlflow` importable | `"mlflow"` |
 | Registry | Otherwise | `"filesystem"` |
-| Lineage | `UBUNYE_LINEAGE_TABLE` env var set | `"delta"` |
+| Lineage | `--lineage-backend` / `lineage_backend=` | that name |
+| Lineage | `UBUNYE_LINEAGE_BACKEND` set | that name |
 | Lineage | Otherwise | `"filesystem"` |
 | Auth | `DATABRICKS_CLIENT_ID` + `DATABRICKS_CLIENT_SECRET` | `"service_principal"` |
 | Auth | `DATABRICKS_TOKEN` | `"token"` |
@@ -247,11 +283,12 @@ archived to `~/.ubunye/fallback/synced/`.
     ```
 
 3. Install the package (`pip install -e .`).
-4. The engine discovers it automatically:
+4. The engine discovers it automatically. A lineage backend is then used with
+   `--lineage-backend my_backend` (or `UBUNYE_LINEAGE_BACKEND=my_backend`), and
+   built with one argument, `--lineage-dir` as given:
 
     ```python
-    from ubunye._internal.discovery import get_lineage_backend
+    from ubunye.lineage import stores
 
-    cls = get_lineage_backend("my_backend")
-    store = cls()
+    store = stores.open_store("my-location", "my_backend")
     ```

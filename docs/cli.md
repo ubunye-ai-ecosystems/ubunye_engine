@@ -1,8 +1,13 @@
 # CLI Reference
 
 The Ubunye CLI (`ubunye`) is built with [Typer](https://typer.tiangolo.com/).
-All commands accept `--help` for full option details. `python -m ubunye` runs the
-same CLI where there is no console script (a cloud job, for example).
+All commands accept `--help` for full option details.
+
+`python -m ubunye` is not this CLI. It is a small runner for `spark-submit` on
+platforms with no console script (EMR Serverless, Dataproc Serverless, YARN, k8s):
+it runs one task, `python -m ubunye --task-dir <folder with config.yaml> --mode PROD
+--dt <dt>`, attached to the SparkSession spark-submit made. Its only other flags are
+`--lineage` and `--log-level`. See [Deploy anywhere](deployment/anywhere.md).
 
 ---
 
@@ -27,6 +32,7 @@ same CLI where there is no console script (a cloud job, for example).
 |---|---|
 | `init` | Scaffold a task (`ubunye init -d ... -u ... -p ... -t ...`) or a CI workflow |
 | `lineage` | Inspect run records |
+| `runs` | Job health and upstream checks from run records; exit 1 when the answer is no ([Job health](patterns/job-health.md)) |
 | `models` | Manage model versions and lifecycle |
 | `prove` | The proving ground: compare one workload's run records across environments |
 | `test` | Run tasks in test mode and report PASS/FAIL |
@@ -44,7 +50,7 @@ Most commands share a set of path and variable flags:
 |---|---|---|
 | `--usecase-dir` | `-d` | Root pipelines directory |
 | `--usecase` | `-u` | Use-case name |
-| `--package` | `-p` | Package / pipeline name |
+| `--pipeline` | `-p` | Pipeline name (`--package` is its old name; it still works with a warning until 1.0) |
 | `--task-list` | `-t` | Task name(s), repeatable |
 | `--data-timestamp` | `-dt` | Data timestamp, injected as `{{ dt }}` in Jinja |
 | `--data-timestamp-format` | `-dtf` | Timestamp format, injected as `{{ dtf }}` |
@@ -86,7 +92,7 @@ command with a subcommand name.
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to scaffold (repeatable) |
 | `--template` | | no | `local` | `local` or `databricks` |
 | `--overwrite / --no-overwrite` | | no | `no-overwrite` | Overwrite existing files |
@@ -110,12 +116,12 @@ ubunye init github-actions -d pipelines -u fraud -p ingestion -t task_a -t task_
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to include in the deploy steps (repeatable) |
 | `--extras` | | no | `spark,dev` | pip install extras, comma-separated |
 | `--target` | | no | `nonprod` | Databricks deploy target |
 | `--no-deploy` | | no | false | Leave out the Databricks deploy steps (CI only) |
-| `--output` | `-o` | no | `.github/workflows/<usecase>_<package>.yml` | Output file |
+| `--output` | `-o` | no | `.github/workflows/<usecase>_<pipeline>.yml` | Output file |
 | `--overwrite` | | no | false | Overwrite an existing workflow file |
 
 ---
@@ -134,7 +140,7 @@ ubunye validate \
     -dt 2024-06-01
 ```
 
-Validate all tasks in a package:
+Validate all tasks in a pipeline:
 
 ```bash
 ubunye validate -d pipelines -u fraud_detection -p ingestion --all
@@ -150,9 +156,9 @@ ubunye validate -d pipelines -u fraud_detection -p ingestion -t claim_etl --prof
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | no | | Task(s) to validate (repeatable) |
-| `--all` | | no | false | Validate all tasks in the package |
+| `--all` | | no | false | Validate all tasks in the pipeline |
 | `--profile` | | no | | Profile to validate against (e.g. dev, prod) |
 | `--mode` | `-m` | no | | Alias for `--profile`, the same word `run` uses. Giving both with different values is an error |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
@@ -210,7 +216,7 @@ It checks:
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to plan, in run order (repeatable) |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--data-timestamp-format` | `-dtf` | no | | Timestamp format |
@@ -245,36 +251,44 @@ ubunye run \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root pipelines directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | one of `-t` or `--all` | | Task(s) to execute (repeatable) |
-| `--all` | | | false | Run every task in the package |
+| `--all` | | | false | Run every task in the pipeline |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--data-timestamp-format` | `-dtf` | no | | Timestamp format |
 | `--mode` | `-m` | no | `DEV` | Run mode (DEV/PROD) |
 | `--deploy-mode` | | no | `client` | Spark deploy mode (cluster/client) |
 | `--lineage` | | no | false | Record lineage for this run |
-| `--lineage-dir` | | no | `.ubunye/lineage` | Root directory for lineage records |
+| `--lineage-dir` | | no | `.ubunye/lineage` | Where lineage records go: a directory under `-d` for the filesystem store, as given for any other |
+| `--lineage-backend` | | no | `$UBUNYE_LINEAGE_BACKEND`, else `filesystem` | Where run records go: `filesystem`, `delta` or an installed plugin. See [Where run records are stored](#where-run-records-are-stored) |
 | `--backend` | | no | platform, else `spark` | Execution backend by name, e.g. `pandas` for a run with no Java. See [Execution backends](backends.md) |
 | `--var` | | no | | Extra template variable, `key=value` (repeatable) |
 | `--rerun` | | no | false | Replace a batch (same `-dt` and `--var`) that a finished run already appended |
 | `--resume` | | no | false | Skip tasks that already finished this batch, run the rest |
+
+![A batch is a task with its dt. Running a finished append again is refused; --rerun replaces it; after a crash the next run takes over; --resume finishes a pipeline](assets/diagrams/rerun.svg)
 
 !!! note "Running a batch again"
     A batch is the task with its `-dt` and `--var` values. If the task appends and a
     run already finished that batch, `run` refuses, because the batch would land twice.
     Pass `--rerun` to replace it: the earlier run's files are removed once the new
     run succeeds. That works for appends to a folder of files on a local or shared
-    disk, on pandas and on Spark. An append Ubunye cannot take back (a Delta, catalog
-    or JDBC table, or a Spark path on object storage such as `s3a://`) is appended
-    again, and the run says so; write such outputs with
-    `mode: overwrite_partitions` and `partitionBy` if they must be rerun. A task that only overwrites,
+    disk, on pandas and on Spark. A Delta append (path or table) with
+    `replace_where` has the batch's rows replaced in one commit; without it, a
+    retry after a crash adds nothing, and `--rerun` appends the batch again. A JDBC
+    append with `replace_where` is staged and moved in by one transaction that
+    replaces the batch's rows. Any
+    other append Ubunye cannot take back (a non-Delta catalog table, JDBC, or a
+    Spark path on object storage such as `s3a://`) is appended again, and the run
+    says so; write such outputs with `mode: overwrite_partitions` and
+    `partitionBy` if they must be rerun. A task that only overwrites,
     and a run with no `-dt` and no `--var`, are never refused. To finish a pipeline
     that stopped half way, run it again with `--resume`: tasks that finished the
     batch are skipped with `[SKIP]`, the rest run.
 
 !!! note
     `run` picks the profile with `-m/--mode` (it has no `--profile`), and `--all`
-    runs every task in the package. The mode must match a profile name exactly.
+    runs every task in the pipeline. The mode must match a profile name exactly.
 
 ---
 
@@ -296,12 +310,13 @@ ubunye test run \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to test (repeatable) |
 | `--profile` | | no | `test` | Config profile to use |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--lineage / --no-lineage` | | no | `lineage` | Record lineage (on by default) |
 | `--lineage-dir` | | no | `.ubunye/lineage` | Lineage directory |
+| `--lineage-backend` | | no | `$UBUNYE_LINEAGE_BACKEND`, else `filesystem` | Where run records go: `filesystem`, `delta` or an installed plugin. See [Where run records are stored](#where-run-records-are-stored) |
 | `--backend` | | no | platform, else `spark` | Execution backend by name, e.g. `pandas` to test with no Java |
 | `--var` | | no | | Extra template variable, `key=value` (repeatable) |
 
@@ -349,7 +364,7 @@ It checks:
 |---|---|---|---|
 | `--usecase-dir` | `-d` | | Also check tasks under this pipelines folder |
 | `--usecase` | `-u` | | Use-case name |
-| `--package` | `-p` | | Package name |
+| `--pipeline` | `-p` | | Pipeline name |
 | `--task-list` | `-t` | | Task(s) to check (repeatable) |
 | `--data-timestamp` | `-dt` | | Data timestamp |
 | `--mode` | `-m` | `DEV` | Run mode |
@@ -395,9 +410,10 @@ ubunye gate -d pipelines -u shop -p orders -t clean --baseline 1a2b3c4d
 | `--candidate` | | `latest` | A run record file, a run id, or `latest` |
 | `--usecase-dir` | `-d` | | Root pipelines directory |
 | `--usecase` | `-u` | | Use-case name |
-| `--package` | `-p` | | Package name |
+| `--pipeline` | `-p` | | Pipeline name |
 | `--task` | `-t` | | Task name |
 | `--lineage-dir` | | `.ubunye/lineage` | Lineage directory |
+| `--lineage-backend` | | `$UBUNYE_LINEAGE_BACKEND`, else `filesystem` | Where run records are stored (`filesystem`, `delta`, a plugin) |
 | `--allow-data-change` | | false | A changed output warns instead of failing |
 | `--max-slowdown` | | | Fail when slower than the baseline by more than this (`0.5` = 50%) |
 | `--max-seconds` | | | Fail when the candidate took longer than this |
@@ -425,6 +441,7 @@ ubunye mcp -d pipelines --allow-run
 | `--allow-run` | | false | Offer the `run` tool (every other tool only reads) |
 | `--allow-live-llm` | | false | Let `run` call models live (default: replay, no key, no spend) |
 | `--lineage-dir` | | `.ubunye/lineage` | Lineage directory |
+| `--lineage-backend` | | `$UBUNYE_LINEAGE_BACKEND`, else `filesystem` | Where run records are stored (`filesystem`, `delta`, a plugin) |
 
 ---
 
@@ -486,7 +503,7 @@ ubunye config \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task-list` | `-t` | yes | | Task(s) to check (repeatable) |
 | `--data-timestamp` | `-dt` | no | | Data timestamp |
 | `--data-timestamp-format` | `-dtf` | no | | Timestamp format |
@@ -499,7 +516,7 @@ ubunye config \
 
 ```bash
 ubunye version
-# Ubunye Engine v0.8.0
+# Ubunye Engine v0.9.0
 ```
 
 The version comes from the installed package metadata.
@@ -513,7 +530,37 @@ which records lineage by default).
 
 !!! note
     Lineage sub-commands use `--task` (`-t` singular), not `--task-list`. All of
-    them take `--lineage-dir` (default `.ubunye/lineage`, under `--usecase-dir`).
+    them take `--lineage-dir` (default `.ubunye/lineage`, under `--usecase-dir`)
+    and `--lineage-backend`.
+
+### Where run records are stored
+
+Run records go to a store, chosen by name (ADR 011), in this order:
+`--lineage-backend` (or `lineage_backend=` in the Python API), then the
+`UBUNYE_LINEAGE_BACKEND` environment variable, then `filesystem`.
+
+| Store | `--lineage-dir` is | Needs |
+|---|---|---|
+| `filesystem` (default) | a directory under `--usecase-dir`: `<usecase_dir>/.ubunye/lineage/<usecase>/<pipeline>/<task>/<run_id>.json` | nothing |
+| `delta` | a Delta table name (`main.ops.ubunye_runs`) or path (`s3://bucket/ubunye/runs`), used as given | `pip install 'ubunye-engine[delta]'`, a SparkSession with Delta (the active one, or a local one it starts) |
+| a plugin | whatever that store takes, as given | its package, registered in `ubunye.lineage_backends` |
+
+Jobs that share no disk can share a table:
+
+```bash
+export UBUNYE_LINEAGE_BACKEND=delta
+ubunye run -d pipelines -u shop -p orders -t clean --lineage --lineage-dir main.ops.ubunye_runs
+ubunye lineage list -d pipelines -u shop -p orders -t clean --lineage-dir main.ops.ubunye_runs
+```
+
+The Delta store keeps the whole record as JSON, plus columns to query it by
+(`run_id`, `task_path`, `usecase`, `package`, `task`, `status`, `started_at`,
+`ended_at`, `variables`, `record_version`, `written_at`). It only appends; the
+row written last for a run is the run. If a record cannot be written (no Spark,
+no Delta, no access), it is kept in `~/.ubunye/fallback/<run_id>/lineage.jsonl`
+with a warning; `ubunye sync lineage --lineage-backend delta --lineage-dir
+<table>` replays it. A store of your own passes
+`ubunye.testing.lineage_conformance` (see [Interfaces](interfaces.md)).
 
 ### `lineage show`
 
@@ -625,6 +672,37 @@ ubunye lineage focus -d pipelines -u fraud_detection -p ingestion -t claim_etl -
 
 ---
 
+## `ubunye runs`
+
+Questions a scheduler asks, answered from run records in the chosen store
+(`--lineage-backend`, `--lineage-dir`, as for `lineage`). Both exit 1 when the
+answer is no. See [Job health and upstream checks](patterns/job-health.md) and
+[ADR 013](architecture/adr-013-receipt-queries.md).
+
+### `runs health`
+
+```bash
+ubunye runs health -d pipelines -u pay [-p monthly] [--max-age 36h] [--stuck-after 6h] [--json]
+ubunye runs health -d pipelines --task pay/monthly/calc --task pay/monthly/send
+```
+
+Per task: state (`ok`, `running`, `failing`, `stuck`, `stale`, `never_run`), last
+status, when it last succeeded, runs in a row that failed, and runs still
+`running` after `--stuck-after` (likely dead). Exit 1 when any task is failing,
+stuck, or older than `--max-age`.
+
+### `runs wait-for`
+
+```bash
+ubunye runs wait-for pay/monthly/calc -d pipelines --var month=2026-10 [--timeout 2h] [--poll 60s] [--json]
+```
+
+Exit 0 once the task has a successful run for this batch (`-dt` and every
+`--var` match), 1 otherwise. `--timeout` (default 0, look once) waits. A task can
+ask the same in its config with `CONFIG.requires`.
+
+---
+
 ## `ubunye models`
 
 Manage ML model versions and lifecycle.
@@ -673,6 +751,10 @@ ubunye models demote \
 ```
 
 Target stages: `development`, `staging`, `archived`.
+
+Demote only moves a version down. `staging` is allowed only from `production`;
+`production` is never a choice. To move a version up, use `models promote`,
+which checks the promotion gates.
 
 ### `models rollback`
 
@@ -725,7 +807,7 @@ record with `--record FILE`, or with `-d -u -p -t` and `--run-id` (default
 | `--env` | | yes | | The environment's name, e.g. `spark-local` |
 | `--out` | `-o` | no | `evidence` | The evidence folder |
 | `--record` | | no | | A run record JSON file |
-| `--usecase-dir`, `--usecase`, `--package`, `--task` | `-d`, `-u`, `-p`, `-t` | no | | Find the record in the lineage store |
+| `--usecase-dir`, `--usecase`, `--pipeline`, `--task` | `-d`, `-u`, `-p`, `-t` | no | | Find the record in the lineage store |
 | `--run-id` | | no | `latest` | A stored run's id, or `latest` |
 | `--kind` | | no | `local` | `local`, `cloud` or `managed` |
 | `--provider` | | no | | `aws`, `gcp`, `azure`, `databricks`, ... |
@@ -733,7 +815,7 @@ record with `--record FILE`, or with `-d -u -p -t` and `--run-id` (default
 | `--region` | | no | | Region |
 | `--cost-amount` | | no | | Cost of the run |
 | `--cost-currency` | | no | `USD` | Currency |
-| `--cost-basis` | | no | | `actual`, `provider_estimate`, `ubunye_estimate`, `local` or `unknown` |
+| `--cost-basis` | | no | `local` for `--kind local`, else `unknown` | `actual`, `provider_estimate`, `ubunye_estimate`, `local` or `unknown` |
 | `--cost-source` | | no | | How the figure was obtained |
 | `--run-url` | | no | | Where a reader can check this run |
 
@@ -743,6 +825,9 @@ Record that an environment did not run the workload, and why. Takes
 `--workload`, `--env` and `--reason` (all required), `--status` (`not_run`
 (default), `unsupported` or `failed_to_launch`), `-o/--out` (default
 `evidence`) and `--run-url`.
+
+`--kind`, `--cost-basis` and `--status` take only the values listed. Any other
+value is a usage error (exit 2) that lists the choices.
 
 ### `prove report`
 
@@ -812,7 +897,7 @@ ubunye deploy databricks \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root pipelines directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task to deploy |
 | `--target` | | no | `dev` | Deploy target from `targets.yaml` |
 | `--mode` | `-m` | no | `PROD` | Config profile for the job |
@@ -838,7 +923,7 @@ ubunye deploy glue -d pipelines -u shop -p orders -t clean \
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root pipelines directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order, in one launch |
 | `--bucket` | | yes | | S3 bucket for the task, script and wheel |
 | `--role` | | yes | | IAM role ARN the Glue job runs as |
@@ -860,7 +945,7 @@ Run a task on GCP Dataproc Serverless, in a container image, with `gcloud`. See
 |---|---|---|---|---|
 | `--usecase-dir` | `-d` | yes | | Root pipelines directory |
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order |
 | `--project` | | yes | | GCP project |
 | `--region` | | yes | | GCP region |
@@ -881,7 +966,7 @@ is no `-d`. See [One command to the cloud](deployment/serverless.md).
 | Flag | Short | Required | Default | Description |
 |---|---|---|---|---|
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order |
 | `--image` | | yes | | Image from `deploy dockerfile container` |
 | `--namespace` | `-n` | no | `default` | Kubernetes namespace |
@@ -900,7 +985,7 @@ image holds the pipelines. See [One command to the cloud](deployment/serverless.
 | Flag | Short | Required | Default | Description |
 |---|---|---|---|---|
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order |
 | `--image` | | yes | | Image from `deploy dockerfile container` |
 | `--resource-group` | `-g` | yes | | Azure resource group |
@@ -923,7 +1008,7 @@ the run to finish, so it has no `--wait` or `--record-out`. See
 | Flag | Short | Required | Default | Description |
 |---|---|---|---|---|
 | `--usecase` | `-u` | yes | | Use-case name |
-| `--package` | `-p` | yes | | Package name |
+| `--pipeline` | `-p` | yes | | Pipeline name |
 | `--task` | `-t` | yes | | Task name; repeat to run several in order |
 | `--application-id` | | yes | | An application whose image is from `deploy dockerfile emr-serverless` |
 | `--role` | | yes | | Job execution role ARN |
@@ -962,7 +1047,7 @@ ubunye deploy dockerfile container --pipelines pipelines --out build/Dockerfile
 |---|---|---|
 | `--pipelines` | `pipelines` | Folder copied into the image as `/app/pipelines` |
 | `--engine` | `ubunye-engine` | pip requirement for the engine |
-| `--out` | | Write here instead of printing |
+| `--out` | | Write here instead of printing. A folder gets `<folder>/Dockerfile`; missing folders are made |
 
 ---
 
@@ -985,7 +1070,7 @@ ubunye export airflow \
 |---|---|---|---|---|
 | `--config` | `-c` | yes | | Path to the task's `config.yaml` |
 | `--output` | `-o` | yes | | Where to write the DAG |
-| `--profile` | | no | `prod` | Profile embedded in the bash command |
+| `--profile` | | no | `prod` | Profile embedded in the bash command as `-m`. The default is `prod`, while `ubunye run` defaults to `DEV` |
 | `--usecase-dir` | | no | this folder | The pipelines folder where Airflow runs |
 | `--backend` | | no | | Backend for the run |
 | `--lineage` | | no | false | Record each run (run record) |
@@ -1004,7 +1089,7 @@ ubunye export databricks \
 |---|---|---|---|---|
 | `--config` | `-c` | yes | | Path to the task's `config.yaml` |
 | `--output` | `-o` | yes | | Where to write `job.json` |
-| `--profile` | | no | `prod` | Profile embedded in the job command |
+| `--profile` | | no | `prod` | Profile embedded in the job command as `-m`. The default is `prod`, while `ubunye run` defaults to `DEV` |
 
 ### `export spark-pipeline`
 

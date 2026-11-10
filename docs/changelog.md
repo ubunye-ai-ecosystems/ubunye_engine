@@ -9,7 +9,137 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] (2026-11-10)
+
+### Added
+
+- **Job health and upstream checks, from run records** (ADR 013). `ubunye runs
+  health` shows, per task, the last status, when it last succeeded, runs in a row
+  that failed, and runs left `running` past `--stuck-after` (likely dead); it exits
+  1 when a task is failing, stuck, or older than `--max-age`, so it can be a
+  scheduled check. `CONFIG.requires: [{task: uc/pkg/t, variables: [month]}]`
+  refuses to start a task until the upstream succeeded for the same batch, with
+  an optional `wait`; `ubunye runs wait-for` is the same check as a command.
+  Both read only the run record store (any store, ADR 011), so jobs that share
+  no disk can check each other; no platform plugin. Also `ubunye.api.job_health`,
+  `ubunye.api.wait_for_upstream` and the MCP tools `health` and `upstream`. A
+  task with no `requires` runs, and hashes, exactly as before.
+- **The run record names the model** (ADR 012). A `ModelTransform` train puts the
+  model, the version it registered, the stage it reached and the gate result on
+  the record (`model_runs`): `passed`, or `blocked` with the gate, metric, value
+  and threshold. A predict puts the version and stage it used. A blocked
+  promotion still fails the run, and the failed run's record now says why;
+  `registry.on_blocked: record` keeps the run going instead. `ubunye lineage
+  trace` prints a MODELS section; `lineage show` includes the entries. The lineage
+  conformance suite checks every store keeps them.
+- **Scored rows can name their model.** `registry.stamp_columns: true` adds
+  `model_version` and `model_stage` columns to a `ModelTransform` predict, the
+  same on pandas and Spark. Off by default.
+- **Features are checked at predict** (ADR 012). A frame without a feature the
+  model version declares is logged and recorded before the model is called, and
+  a model that then fails gets a note naming the missing columns.
+  `registry.check_features: true` refuses the frame with `FeatureContractError`;
+  `false` skips the check. A model that declares no features works as before.
+
+- **Model registry backends are plugins, found by name** (ADR 010). The
+  `ubunye.registry_backends` entry points existed but nothing used them, so a
+  third party registry could be installed and never reached. Now
+  `ubunye models *` takes `--backend` / `-b`, a model transform takes
+  `registry.backend`, and `ModelRegistry(store, backend=...)` and
+  `ubunye.models.resolve_registry()` exist. The order is: the name asked for,
+  else `UBUNYE_REGISTRY_BACKEND`, else `filesystem`. With neither set, nothing
+  changes. A backend implements six methods; rollback, archive, compare,
+  version numbers, stored promotion gates and one production version at a time
+  are done by Ubunye on top of them, for every backend.
+- **`--backend mlflow` now uses the MLflow Model Registry** (ADR 014). Before,
+  the `mlflow` backend kept models in a folder and only logged a best effort
+  MLflow run. Now each version is a registered model version
+  (`{use_case}.{model_name}`, or the `UBUNYE_MLFLOW_MODEL_NAME` template), the
+  saved model is the version's artifact, and the stage, metrics, metadata,
+  gates and lineage run id are version tags. `staging` and `production` are
+  MLflow aliases, so `models:/<name>@production` works. The MLflow stage API is
+  never called, so the backend fits Unity Catalog. MLflow is found through
+  `MLFLOW_TRACKING_URI` / `MLFLOW_REGISTRY_URI`; `--store` names the experiment.
+  The old class, `MLflowRegistryBackend`, still works from Python and warns that
+  it is deprecated.
+- **`ubunye.testing.registry_conformance`**, the suite a registry backend runs to
+  prove itself. The filesystem and MLflow backends pass it, and so does a third
+  party one installed through a real entry point.
+- **Run records can live in a shared store** (ADR 011). The store is a plugin in
+  `ubunye.lineage_backends`, chosen by `--lineage-backend` (on `run`, `test run`,
+  `lineage *`, `gate`, `mcp`, `sync lineage`), `lineage_backend=` (on `run_task`,
+  `run_pipeline`, `notebook`), `LineageRecorder(backend=)`, then the
+  `UBUNYE_LINEAGE_BACKEND` variable, then `filesystem`. With
+  `--lineage-backend delta --lineage-dir main.ops.ubunye_runs`, jobs that share no
+  disk write their receipts to one Delta table and can read each other's. Nothing
+  changes if you set nothing: records stay in `<usecase_dir>/.ubunye/lineage`.
+- **`ubunye.testing.lineage_conformance`**: the tests a run record store must
+  pass (every field read back equal, newest first, limit, status, missing run
+  id, tasks kept apart). The filesystem store passes it in the unit tier, Delta
+  on live Spark.
+- `RunRecordStore` in `ubunye.interfaces`: the four methods a store provides.
+
 ### Fixed
+
+- **CLI docs and help say what the commands do** (F-094). `docs/cli.md` said
+  `python -m ubunye` runs the same CLI; it is a separate runner for
+  `spark-submit` (`--task-dir`, `--mode`, `--dt`), and the page now says so. The
+  `version` example shows 0.9.0, the middle level is called a pipeline where the
+  page still said package, and `ubunye config --help` says it validates (it never
+  showed anything).
+
+- **`export databricks` defaults are current** (F-095). With no `wheel_dbfs_path`
+  the job named the wheel `ubunye_engine-0.1.0`; it now names the installed
+  version's wheel. The default job cluster runtime moves from `13.3.x-scala2.12`
+  (Spark 3.4, past end of support, older than the `pyspark>=3.5` the engine
+  needs) to `17.3.x-scala2.13` (Databricks Runtime 17.3 LTS). Set
+  `spark_version` or `wheel_dbfs_path` under `ORCHESTRATION.databricks` to choose
+  your own. `export airflow` and `export databricks` help now says `--profile`
+  defaults to `prod`, unlike `run`, which defaults to `DEV`.
+
+- **`deploy dockerfile --out` makes its folder, and takes a folder** (F-093). The
+  documented `--out build/Dockerfile` failed with `FileNotFoundError` when `build/`
+  did not exist, and `--out build` failed with `IsADirectoryError`. Missing folders
+  are now made, and a folder gets `<folder>/Dockerfile`.
+
+- **`prove` options with fixed values reject a wrong value cleanly** (F-092).
+  `prove skip --status nonsense` and `prove observe --cost-basis bogus` printed a
+  raw `ValueError` traceback, and `prove observe --kind bogus` was kept silently.
+  Each is now a usage error (exit 2) that lists the valid choices.
+
+- **`models demote` can no longer move a version up past its gates** (F-091).
+  `ubunye models demote --to production` put a version in production without
+  checking its promotion gates, and without the `promotion_forced` mark. Demote
+  now only moves a version down: `--to` takes `development`, `staging` or
+  `archived`, and `staging` only from `production`. The library refuses the same
+  moves (`ModelRegistry.demote` and every built in registry backend raise
+  `RegistryError`), and the registry conformance suite checks it for every
+  backend. `models promote --to` now takes only `staging` or `production`, as its
+  help said. A wrong `--to` is a usage error (exit 2) that lists the choices.
+
+- **Rerun safety reads the run record store you chose** (ADR 008, ADR 011). With
+  `--lineage-backend delta` (or any store other than the filesystem), a run that
+  took over a dead run's lease looked for its record in local files, found none,
+  and could take back the appends of a run that had in fact recorded success. It
+  now reads and marks the record through the chosen store, and refuses if the
+  store cannot be read.
+
+- **A Delta append of a batch lands once, and a rerun can correct it** (F-071). A
+  run killed or failed after its Delta commit was appended again by the rerun, and
+  `--rerun` appended a finished batch twice. A Delta append (path or table, through
+  the `delta`, `s3`, `hive` or `unity` writer) of a named batch is now Delta's
+  idempotent write, keyed by task, output and batch: a retry commits nothing, and
+  says so if the table did not change. Set `replace_where` on the append (for
+  example `"month = '{{ dt }}'"`) and each run replaces that batch's rows in one
+  commit instead, so a retry or `--rerun` writes the corrected batch. Behaviour
+  change: `replace_where` on an append was ignored before. See ADR 008. On Spark 3.5 the replace of a table batch uses
+  `writeTo(table).overwrite(...)`, since `saveAsTable` cannot replace rows there.
+- **A JDBC append with `replace_where` lands its batch once** (F-072). Spark's JDBC
+  writer commits each partition on its own, so a failed run left part or all of the
+  batch and the rerun inserted it again. With `replace_where` the batch is written
+  to a staging table, then one database transaction deletes the batch's rows and
+  inserts the staged ones; the staging table is dropped. A JDBC append without it
+  is unchanged.
 
 - **The Databricks examples run on serverless again.** Four example configs set
   `spark.sql.sources.partitionOverwriteMode`, which serverless refuses. Since the
@@ -19,11 +149,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`-p/--pipeline` replaces `--package`.** The middle level of use case,
+  pipeline, task is called a pipeline everywhere now. Every CLI command that took
+  `-p/--package` takes `-p/--pipeline` ("Pipeline name."). `--package` still works
+  until 1.0: it is hidden from `--help` and prints one warning to stderr. Giving
+  both is an error. In Python, `run_pipeline()` and `job_health()` take
+  `pipeline=`; `package=` still works with a DeprecationWarning, and both is a
+  TypeError. The positional order of `run_pipeline()` is unchanged. The MCP
+  `health` tool takes `pipeline` and still accepts `package`. Run records keep
+  their `package` field.
+- **The Delta lineage store keeps the whole run record.** It used to store a
+  `LineageRecord`, which dropped steps, hashes, timings, expectations and the
+  environment. It now writes the record as JSON plus index columns, only appends,
+  and needs Spark: a record it cannot write goes to the fallback manifest with a
+  warning, never quietly to local files. `DeltaLineageBackend.search()` returns run
+  records; the old search is `search_records()`, and `search(task=, usecase=,
+  pipeline=)` still reaches it with a DeprecationWarning.
+- `LineageRecorder(store=...)` is now `LineageRecorder(backend=...)`; `store=`
+  still works, with a DeprecationWarning (`store="s3"` keeps the stub, as before).
+  A failed record write is now logged instead of silently dropped.
+- `ubunye sync lineage` replays whole run records, the last one kept for each
+  run, into the store named by `--lineage-backend` and `--lineage-dir`.
+- `LineageStore.search()` takes `limit`.
+- **Clearer docs diagrams.** Project Structure zooms from a use case into a
+  pipeline (its tasks run in order) and into a task (`config.yaml` and
+  `transformations.py`), and colour-matches the folder path to the `-u`, `-p` and
+  `-t` flags. The home page shows a task written once, run unchanged on a laptop,
+  a cloud or Databricks, each run leaving a record that `ubunye prove` compares.
+  Connectors shows `inputs:`, your transform and `outputs:` with the names you
+  write in YAML, and which also work on pandas. They keep the look of the
+  original slides (dark stage, stacked cards, logos) and are drawn as SVG by the
+  scripts in `scripts/diagrams/`.
+- **More diagrams, and one on the README.** New pictures for the parts of
+  `config.yaml` (Config Overview), what expectations do with bad rows
+  (Expectations), the run receipt and `ubunye gate` (Gate Pull Requests, ADR 006)
+  and the model stages (Model Registry). The README shows the home diagram.
+- **Diagrams for the rest of the key ideas.** Rerun safety (CLI, ADR 008),
+  profiles (Engine and Profiles), how a backend is chosen (Execution Backends,
+  ADR 003), `ubunye export` (Orchestration), agents over MCP, and the RAG and
+  feature store guides, whose text arrows become pictures.
 - **The Databricks example notebooks use the notebook API.** They now open a
   context with `ubunye.notebook()` and run `ctx.read()`, `ctx.transform()` and
   `ctx.write()` in separate cells, so you can see the data between steps. Catalog
   and schema come from the widgets on their own (no `os.environ`), and the
   notebooks install `ubunye-engine==0.8.0`.
+- **The registry backend is no longer picked from the host.** The private
+  `detect_registry_backend()` returned `mlflow` on Databricks; it now follows
+  the ADR 010 order and is deprecated. Set `UBUNYE_REGISTRY_BACKEND=mlflow` to keep MLflow.
+- **`FilesystemRegistryBackend.register` keeps the `metadata` it is given** (it
+  was returned once and dropped), and stores `promotion_gates` with the model.
 
 ## [0.8.0] (2026-09-30)
 

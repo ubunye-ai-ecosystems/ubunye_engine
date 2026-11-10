@@ -70,6 +70,9 @@ class EngineContext:
     #: Where run records are kept, when recorded: a dead run's record is marked
     #: ``interrupted`` there by the run that takes over its lease (ADR 008).
     lineage_dir: Optional[str] = None
+    #: The run record store, when it is not the filesystem one under ``lineage_dir``
+    #: (ADR 011). Rerun safety reads and marks a dead run's record through it.
+    run_records: Optional[Any] = None
     #: Replace a batch a finished run already appended, rather than refuse (F-031).
     rerun: bool = False
 
@@ -285,6 +288,7 @@ class Engine:
         self._timings = []
         state["timings"] = self._timings
         state["llm_calls"] = []
+        state["model_runs"] = []
         held: List[Any] = []
         try:
             with chain.task(ctx, cfg, state):
@@ -300,11 +304,13 @@ class Engine:
                     # change its inputs in place.
                     measured = self._inspect_inputs(cfg, sources, state)
                     from ubunye import llm
+                    from ubunye.models import receipt
 
                     budget = llm.budget.Budget.from_env()
                     try:
-                        with llm.recording(
-                            state["llm_calls"], task_dir=ctx.task_dir, budget=budget
+                        with (
+                            llm.recording(state["llm_calls"], task_dir=ctx.task_dir, budget=budget),
+                            receipt.recording(state["model_runs"]),
                         ):
                             outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
                     finally:

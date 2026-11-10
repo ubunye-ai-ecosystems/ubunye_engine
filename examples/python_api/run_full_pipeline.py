@@ -34,7 +34,7 @@ if not Path("data/raw_events.parquet").exists():
 results = ubunye.run_pipeline(
     usecase_dir=str(HERE / "pipelines"),
     usecase="demo",
-    package="etl",
+    pipeline="etl",
     tasks=["clean_data", "aggregate"],
     mode="DEV",
     dt="data/raw_events.parquet",

@@ -125,6 +125,45 @@ def ignored_transform_message(transform: Any) -> Optional[str]:
     )
 
 
+def upstream_store(task_dir: Path, context: EngineContext) -> Any:
+    """The run record store an upstream check reads (ADR 011, ADR 013).
+
+    The store this run records into when it was given one; else the filesystem
+    store under the use case folder (``--lineage-dir``, or ``.ubunye/lineage``).
+    """
+    from ubunye.lineage import stores
+    from ubunye.lineage.storage import FileSystemLineageStore
+    from ubunye.lineage.upstream import UpstreamNotReady
+
+    shared = getattr(context, "run_records", None)
+    if shared is not None:
+        return shared
+    if context.lineage_dir:
+        return FileSystemLineageStore(context.lineage_dir)
+    resolved = Path(task_dir).resolve()
+    root = resolved.parents[2] if len(resolved.parents) > 2 else resolved.parent
+    name = stores.backend_name()
+    if name != stores.DEFAULT_BACKEND:
+        raise UpstreamNotReady(
+            f"CONFIG.requires reads run records from the '{name}' store "
+            f"(${stores.ENV_VAR}), but this run was not told where that store is.",
+            context={"Task": context.task_name or str(task_dir)},
+            hint="Run with --lineage --lineage-backend <name> --lineage-dir <location> "
+            "(run_task(lineage=True, lineage_backend=..., lineage_dir=...)), the same "
+            "store the upstream task writes to.",
+        )
+    return stores.open_store(str(root / stores.DEFAULT_DIR), name)
+
+
+def _check_upstream(task_dir: Path, context: EngineContext, requires: Any) -> None:
+    from ubunye.lineage import upstream
+
+    store = upstream_store(task_dir, context)
+    found = upstream.check(store, requires, dict(context.variables or {}), task=context.task_name)
+    for r in found:
+        logger.info("Upstream %s succeeded for this batch (run %s).", r.task_path, r.run_id)
+
+
 def execute_user_task(
     backend: Backend,
     task_dir: Path,
@@ -174,6 +213,13 @@ def execute_user_task(
         # wrapper below, so the run record and `ubunye plan` agree.
         context = dataclasses.replace(context, config_hash=config_hash(cfg_dict))
 
+    # CONFIG.requires: refuse to start (or wait) until each upstream task has
+    # succeeded for this batch, read from the run record store (ADR 013). A task
+    # with no requires does nothing here.
+    requires = cfg_dict["CONFIG"].get("requires")
+    if requires:
+        _check_upstream(task_dir, context, requires)
+
     # The task_dir must be on sys.path *before* loading transformations.py,
     # not only during engine.run. Otherwise a top-level ``from model import
     # MyModel`` (adjacent helper modules) raises ModuleNotFoundError at
@@ -218,6 +264,7 @@ def execute_user_task(
             lineage_dir,
             appends=runs.append_outputs(cfg_dict["CONFIG"].get("outputs")),
             rerun=context.rerun,
+            records=getattr(context, "run_records", None),
         ):
             result = engine.run(cfg_dict)
 

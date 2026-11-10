@@ -1,9 +1,11 @@
 # Project Structure
 
-A typical Ubunye project lays out pipelines by **use-case → package (pipeline) → task**,
-mirroring how `ubunye init` and `ubunye run` address tasks.
+A Ubunye project has three levels of folders: a **use case** holds **pipelines**, and a
+pipeline holds **tasks** that run in order. A task is one folder with a `config.yaml` (what
+to read and write) and a `transformations.py` (how to change the data). The folder path and
+the `ubunye run` flags name the same task.
 
-![Use-case → pipeline → task folder hierarchy](../assets/ubunye_usecases.png)
+![A use case holds pipelines, a pipeline runs its tasks in order, a task is config.yaml plus transformations.py](../assets/diagrams/project-structure.svg)
 
 ---
 
@@ -13,7 +15,7 @@ mirroring how `ubunye init` and `ubunye run` address tasks.
 my_project/
 ├── pipelines/                     ← root task directory (-d flag)
 │   ├── fraud_detection/           ← use-case (-u flag)
-│   │   └── ingestion/             ← package, the pipeline (-p flag)
+│   │   └── ingestion/             ← pipeline (-p flag)
 │   │       └── claim_etl/         ← task (-t flag)
 │   │           ├── config.yaml
 │   │           ├── transformations.py

@@ -26,7 +26,7 @@ outputs = ubunye.run_task("pipelines/sales/etl/daily", backend="pandas")
 results = ubunye.run_pipeline(
     usecase_dir="pipelines",
     usecase="fraud_detection",
-    package="ingestion",
+    pipeline="ingestion",
     tasks=["claim_etl", "feature_engineering"],
     mode="nonprod",
     dt="202510",
@@ -44,6 +44,22 @@ results = ubunye.run_pipeline(
       show_root_heading: true
       show_source: false
       heading_level: 3
+
+### Job health and upstream checks
+
+Queries over run records ([ADR 013](architecture/adr-013-receipt-queries.md)).
+
+::: ubunye.api.job_health
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 4
+
+::: ubunye.api.wait_for_upstream
+    options:
+      show_root_heading: true
+      show_source: false
+      heading_level: 4
 
 ---
 
