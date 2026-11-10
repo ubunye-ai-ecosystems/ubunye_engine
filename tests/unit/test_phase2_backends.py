@@ -239,7 +239,7 @@ class TestMLflowRegistryBackend:
         from ubunye._internal.discovery import get_registry_backend
 
         cls = get_registry_backend("mlflow")
-        assert cls.__name__ == "MLflowRegistryBackend"
+        assert cls.__name__ == "MLflowModelRegistryBackend"
 
     def test_metadata_round_trip(self, tmp_path):
         from ubunye.models.mlflow_registry import MLflowRegistryBackend

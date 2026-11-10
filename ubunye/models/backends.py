@@ -5,7 +5,7 @@ Every registry backend, the shipped ones included, registers in the
 
     [project.entry-points."ubunye.registry_backends"]
     filesystem = "ubunye.models.registry:FilesystemRegistryBackend"
-    mlflow = "ubunye.models.mlflow_registry:MLflowRegistryBackend"
+    mlflow = "ubunye.models.mlflow_registry:MLflowModelRegistryBackend"
 
 so a third party registry plugs in the same way, with no edit to Ubunye.
 

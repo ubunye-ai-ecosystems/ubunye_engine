@@ -256,7 +256,7 @@ Ubunye:
 | Name | What it does |
 |---|---|
 | `filesystem` | The default. A folder, or an `s3://`, `gs://` or `abfss://` URL. No cloud service needed. |
-| `mlflow` | The filesystem registry, plus a best effort MLflow run for each register and promote. |
+| `mlflow` | The MLflow Model Registry. Each version is a registered model version; stages are aliases. See [MLflow Model Registry](#mlflow-model-registry). |
 
 The backend is chosen in one order:
 
@@ -269,7 +269,7 @@ The host never decides: running on Databricks does not switch you to MLflow.
 `--store` (or `registry.store`) is handed to the backend as it is.
 
 ```bash
-ubunye models list -u fraud_detection -m FraudRiskModel -s .ubunye/model_store -b mlflow
+ubunye models list -u fraud_detection -m FraudRiskModel -s .ubunye/model_store -b filesystem
 ```
 
 ```yaml
@@ -280,18 +280,57 @@ transform:
     model_class: "model.FraudRiskModel"
     registry:
       store: ".ubunye/model_store"
-      backend: mlflow          # optional
+      backend: filesystem      # optional
       use_case: fraud_detection
 ```
 
 ```python
 from ubunye.models import ModelRegistry, resolve_registry
 
-registry = ModelRegistry(".ubunye/model_store", backend="mlflow")
-backend = resolve_registry("mlflow", store=".ubunye/model_store")  # the raw backend
+registry = ModelRegistry(".ubunye/model_store", backend="filesystem")
+backend = resolve_registry("filesystem", store=".ubunye/model_store")  # the raw backend
 ```
 
 `ubunye.models.backends.available()` lists the installed names. Asking for one that is not installed fails with that list.
+
+### MLflow Model Registry
+
+`--backend mlflow` keeps models in the MLflow Model Registry (ADR 014).
+
+- **Where MLflow is** is MLflow's business: `MLFLOW_TRACKING_URI` and
+  `MLFLOW_REGISTRY_URI`, read the way MLflow reads them.
+- **`--store`** is the MLflow experiment that holds one run per version. The run
+  carries the saved model as its `model` artifact. Use a workspace path on
+  Databricks, for example `/Shared/ubunye/models`.
+- **The model** is the registered model `{use_case}.{model_name}`. Set
+  `UBUNYE_MLFLOW_MODEL_NAME` to change it, for example
+  `main.ml.{use_case}_{model_name}` for a three part Unity Catalog name.
+- **A version** is a registered model version. The Ubunye version string, the
+  stage, the metrics, the metadata, the promotion gates and the lineage run id
+  are version tags (`ubunye.version`, `ubunye.stage`, `ubunye.metric.<name>`,
+  `ubunye.meta.<key>`).
+- **Stages** `staging` and `production` are also MLflow aliases, so
+  `models:/fraud_detection.FraudRiskModel@production` loads the production
+  version from any MLflow client. `development` and `archived` are tags only:
+  many versions can be in them at once, and an alias points at one.
+
+If the experiment does not exist, Ubunye creates it, and MLflow picks where its
+artifacts go (`./mlruns` for a local SQLite store). Create the experiment
+yourself to choose another place.
+
+The MLflow stage API is never used. It is deprecated, and Unity Catalog has
+none, so the same backend works there.
+
+```bash
+export MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+ubunye models promote -u fraud_detection -m FraudRiskModel -s ubunye-models \
+  -b mlflow --version 1.0.1 --to production
+```
+
+The class used to be `MLflowRegistryBackend`: a folder registry that also
+logged a best effort MLflow run. It still works when you build it in Python,
+and warns that it is deprecated. Models it stored stay in their folder; read
+them with `--backend filesystem`.
 
 ### Writing a backend
 
