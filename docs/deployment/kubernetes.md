@@ -1,6 +1,14 @@
 # Deploying on Kubernetes
 
-This page shows how to run pipelines on a Kubernetes cluster.
+This page shows how to run pipelines on a Kubernetes cluster. It is for anyone
+with a cluster and `kubectl` pointed at it.
+
+There are two ways. Each builds its image differently:
+
+| Way | Image built with | Status |
+|---|---|---|
+| `ubunye deploy k8s` (the engine's command) | `ubunye deploy dockerfile container` | Proven on kind (a small Kubernetes that runs inside Docker) |
+| The companion repo's manifests (this page) | the companion repo's `platforms/docker/Dockerfile` | Run in that repo's CI on a throwaway cluster |
 
 The shortest way is the engine's own command: `ubunye deploy dockerfile
 container` writes an image's Dockerfile, and `ubunye deploy k8s` runs a task as
@@ -21,6 +29,8 @@ carries Spark, Delta, the JDBC driver and the engine. Your task folders are
 copied in unchanged. Nothing in any pipeline knows it is inside a container.
 
 ## 1. Build the image
+
+This path uses the companion repo's Dockerfiles, not `ubunye deploy dockerfile`.
 
 ```bash
 docker build -f platforms/docker/Dockerfile -t ubunye-portable:latest .
@@ -74,5 +84,8 @@ path or an `s3://` style location, which it supports directly since 0.5.0.
 
 **One pod or many.** The manifests run Spark in local mode inside one pod,
 which is the honest shape for most scheduled jobs. To fan out across executor
-pods instead, set `SPARK_MASTER` to your cluster's API address and give the
-job a service account that may create pods. The task folders do not change.
+pods instead, set `SPARK_MASTER` to your cluster's API address
+(`k8s://https://kubernetes.default.svc`), give the job a service account that
+may create pods, and set `spark.kubernetes.container.image`. The task folders
+do not change: the launcher owns the master, as
+[the `spark.master` rule](../deployment.md#the-sparkmaster-rule) says.
