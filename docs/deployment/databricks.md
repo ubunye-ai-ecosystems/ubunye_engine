@@ -127,7 +127,8 @@ schedule and runs when you start it.
 
 ## Ad-hoc deploy (no targets.yaml)
 
-For quick one-off deploys, pass the host directly:
+For quick one-off deploys, pass the host directly, or set `DATABRICKS_HOST`
+(`--host` reads it). The host is used only when there is no `targets.yaml`:
 
 ```bash
 ubunye deploy databricks \
@@ -135,6 +136,9 @@ ubunye deploy databricks \
     --host "https://adb-123.azuredatabricks.net" \
     --dry-run
 ```
+
+Add `--run` to start a run of the job once it is deployed. The command prints the
+run's link.
 
 ---
 

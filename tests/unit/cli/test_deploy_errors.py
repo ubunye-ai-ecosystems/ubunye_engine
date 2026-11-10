@@ -55,7 +55,8 @@ def _no_cli(monkeypatch):
     monkeypatch.setattr(cloud.shutil, "which", lambda name: None)
 
 
-def test_databricks_without_targets_yaml_says_what_to_create(tmp_path):
+def test_databricks_without_targets_yaml_says_what_to_create(tmp_path, monkeypatch):
+    monkeypatch.delenv("DATABRICKS_HOST", raising=False)  # --host reads it (F-110)
     d = _pipelines(tmp_path)
     args = ["deploy", "databricks", "-d", str(d), "-u", "uc", "-p", "pkg", "-t", "t"]
     _clean_error(runner.invoke(app, args), "No targets.yaml found", "Hint:")

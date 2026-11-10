@@ -42,6 +42,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The workflow from `ubunye init github-actions` works out of the box** (F-110).
+  `ubunye deploy databricks --host` now reads `DATABRICKS_HOST`, the secret the
+  workflow sets, so the deploy step needs no committed `targets.yaml` (a
+  `targets.yaml`, when there is one, still wins). The manual "Run job" step now
+  starts the job with the new `--run` flag; before, it deployed again and started
+  nothing. `--run` starts a run after the deploy and prints its link. The
+  workflow's "Notebook output link" step is gone: the run step prints the link.
+
 - Registering with `promotion_gates={}` clears a model's stored gates on every
   backend. Before, only the default filesystem path cleared them; MLflow and the
   others kept the old gates.
