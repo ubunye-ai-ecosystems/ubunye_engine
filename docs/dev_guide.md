@@ -88,6 +88,10 @@ ubunye/
 
 ---
 
+The package ships its type information (`ubunye/py.typed`), so your type checker
+sees Ubunye's types. mypy checks the engine on every pull request (the
+"Types (mypy)" CI job).
+
 ## Config loading pipeline
 
 1. **Read raw YAML**: `load_config(path, variables)` in `ubunye/config/loader.py`.

@@ -56,38 +56,24 @@
   margin: 0.3rem 0.4rem 0.3rem 0;
 }
 
-/* The film slot. The <video> shows the diagram as its poster. If the film file
-   is missing, the <source> error handler adds .ue-film--none and the plain
-   diagram image is shown instead, so there is never a dead play button. */
+/* Intro film: 16:9, the stage colour behind it while it loads. */
 .md-typeset figure.ue-film {
   margin: 0;
   width: 100%;
   max-width: none;
 }
 
-.ue-film__video,
-.ue-film__still {
+.ue-film__video {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 11 / 7;
+  aspect-ratio: 16 / 9;
   border-radius: 0.6rem;
   background-color: var(--ue-stage);
-  box-shadow: 0 0.4rem 1.6rem rgba(0, 0, 0, 0.18);
 }
 
-.ue-film__still,
-.ue-film--none .ue-film__video {
-  display: none;
-}
-
-.ue-film--none .ue-film__still {
-  display: block;
-}
-
-/* In the dark theme the page and the diagram share the stage colour; a faint
+/* In the dark theme the page and the film share the stage colour; a faint
    ring keeps the film's edge visible. */
-[data-md-color-scheme="slate"] .ue-film__video,
-[data-md-color-scheme="slate"] .ue-film__still {
+[data-md-color-scheme="slate"] .ue-film__video {
   box-shadow: 0 0 0 1px rgba(243, 244, 246, 0.12), 0 0.4rem 1.6rem rgba(0, 0, 0, 0.4);
 }

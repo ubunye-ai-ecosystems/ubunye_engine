@@ -26,10 +26,9 @@ hide:
 </div>
 
 <figure class="ue-film">
-  <video class="ue-film__video" controls preload="metadata" playsinline poster="assets/diagrams/home.svg" aria-label="Ubunye intro film">
-    <source src="assets/video/ubunye-intro.mp4" type="video/mp4" onerror="this.closest('figure').classList.add('ue-film--none')">
+  <video class="ue-film__video" controls preload="metadata" playsinline poster="assets/video/ubunye-intro-poster.jpg" aria-label="Ubunye Engine intro film, 64 seconds: write a task once, run it on pandas, Spark and the clouds, and prove the rows are the same">
+    <source src="assets/video/ubunye-intro.mp4" type="video/mp4">
   </video>
-  <img class="ue-film__still" src="assets/diagrams/home.svg" alt="Write a task once, run it unchanged on your laptop, your cloud or Databricks; every run leaves a record, and ubunye prove checks the rows match">
 </figure>
 
 </div>

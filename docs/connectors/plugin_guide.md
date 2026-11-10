@@ -227,6 +227,10 @@ class MySparkReader(Reader):
 
 ## Testing your plugin
 
+Ubunye's own tests prove that the plugin system works with a connector the engine
+has never seen: `tests/unit/config/test_third_party_connector.py` registers one from
+outside and uses it. It makes a good model for your own test.
+
 Write Spark-free unit tests using mock DataFrames:
 
 ```python

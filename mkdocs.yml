@@ -1,5 +1,5 @@
 site_name: Ubunye Engine
-site_description: Config-first, Spark-native framework for ETL + ML pipelines powering intelligent systems
+site_description: Config-first framework for data and ML pipelines. Write a task once, run it on pandas, Spark or Databricks, and prove every run gives the same rows.
 site_url: https://ubunye-ai-ecosystems.github.io/ubunye_engine
 repo_url: https://github.com/ubunye-ai-ecosystems/ubunye_engine
 repo_name: ubunye-ai-ecosystems/ubunye_engine

@@ -130,3 +130,6 @@ papers/*.pdf
 SECURITY-REMOVAL.md
 mlflow.db
 mlruns/
+
+# Material social cards build cache
+.cache/

@@ -73,6 +73,11 @@ as a bill), and a link to the run.
 | `r1-food-prices-clean`, `r1-food-prices-monitor` | a real two step pipeline (WFP food prices in Africa): a folder of CSV files with a declared schema, units turned into a price per kg, expectations, a monthly table and alerts; the second step reads what the first wrote | `examples/real-world/food_prices_africa` (committed sample); both steps in one launch per environment, each compared on its own; PASS on the same seven environments, digests `f61e0f0544f5` and `021cc19ca2b6` ([latest](latest.md)) |
 | `r2-olist-clean`, `r2-olist-orders_fact`, `r2-olist-monthly` | a three step pipeline over nine joined tables (Olist e-commerce): input contracts on raw CSV files, quarantine, reconcile (rows and money sums) and a warning, a CSV with a byte order mark and one with text over several lines | `examples/real-world/olist_ecommerce` (committed synthetic sample); all three steps in one launch per environment; PASS on the same seven environments, digests `6affe2f5382c`, `6dcf270328d8` and `a0bd206029ca` ([latest](latest.md)) |
 
+## What is not proven yet
+
+Hadoop/YARN and EMR Serverless have no proving run yet, so the docs do not claim
+them. Neither is claimed until a run says so.
+
 ## What it has found
 
 Each problem the proving ground found was fixed in the engine:
