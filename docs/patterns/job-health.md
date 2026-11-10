@@ -1,19 +1,26 @@
 # Job health and upstream checks
 
-Every run leaves a run record. Two everyday questions are answered from those
-records, on any platform, with no scheduler plugin ([ADR 013](../architecture/adr-013-receipt-queries.md)):
+For anyone who runs scheduled tasks and needs to know they are healthy, and that
+one task never starts before the task it depends on has finished.
+
+- **The problem:** a job fails quietly for days, or a payment run goes out before
+  the calculation it needs has succeeded.
+- **When to use it:** any task that runs on a schedule, and any task that must
+  wait for another.
+- **The one command:** `ubunye runs health -d pipelines -u pay --max-age 36h`
+
+Both answers come from the [run records](../guides/run-records.md) your runs
+leave, on any platform, with no scheduler plugin:
 
 - **Is the job healthy?** `ubunye runs health`
 - **Has the upstream finished this batch?** `CONFIG.requires`, or `ubunye runs wait-for`
 
-Record your runs (`ubunye run --lineage`). For jobs that share no disk, point
-them all at one shared store ([where run records are stored](../cli.md#where-run-records-are-stored)),
-for example a Delta table:
+A **batch** is one run's slice of data, named by its variables (`-dt` and every
+`--var`, such as `month=2026-10`).
 
-```bash
-export UBUNYE_LINEAGE_BACKEND=delta
-ubunye run ... --lineage --lineage-dir main.ops.ubunye_runs
-```
+Record your runs with `ubunye run --lineage`. Jobs that share no disk must all
+write to one shared store; see
+[Where run records are stored](../cli.md#where-run-records-are-stored).
 
 ## Job health
 
@@ -35,7 +42,7 @@ row did not succeed, and runs still `running` after `--stuck-after` (default
 failing, has a stuck run, or (with `--max-age`) has not succeeded recently
 enough. Schedule it and alert on the exit code. `--json` gives one document.
 
-Name tasks with `-u` (and `-p`) or `--task uc/pkg/task` (repeatable). With `-u`
+Name tasks with `-u` (and `-p`) or `--task usecase/pipeline/task` (repeatable). With `-u`
 the tasks are the folders under `-d` and the tasks with records in the store.
 
 From Python: `ubunye.api.job_health("pipelines", usecase="pay", max_age="36h")`.
@@ -83,8 +90,7 @@ succeeded for this batch first, and it has not: its latest run of this batch is 
 Add `wait: 2h` (and `poll: 5m`, default 60s) to wait for the upstream instead of
 refusing at once. A task with no `requires` runs exactly as before.
 
-The check reads the store the run records into (`--lineage-backend`,
-`--lineage-dir`), or the filesystem store under `-d`.
+The check reads the same run record store the run writes to.
 
 ## A check before any job
 
@@ -99,3 +105,5 @@ ubunye runs wait-for pay/monthly/calc -d pipelines --var month=2026-10 --timeout
 It exits 0 once the task has succeeded for that batch (`-dt` and every `--var`),
 and 1 when the time is up. From Python: `ubunye.api.wait_for_upstream(...)`.
 Agents: the MCP tool `upstream`.
+
+Why it works this way: [ADR 013](../architecture/adr-013-receipt-queries.md).

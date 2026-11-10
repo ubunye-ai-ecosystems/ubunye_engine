@@ -1,7 +1,22 @@
 # Model Registry
 
-The Ubunye model registry manages the full ML lifecycle (versioning, promotion,
-demotion, rollback, and gated releases) without coupling to any specific ML library.
+For anyone who trains models with Ubunye and needs to keep versions, move them
+from test to live, and roll back. The registry works with any ML library.
+
+- **The problem:** you train a new model every week. You need to know which
+  version is live, which data made it, and you need a safe way to swap it.
+- **When to use it:** as soon as a model leaves your laptop.
+- **The one command:** `ubunye models list --use-case fraud_detection --model FraudRiskModel --store .ubunye/model_store`
+
+!!! info "How a task uses the registry"
+    A task always runs its `transformations.py`. You train and register a model
+    there, in Python: see [Transform: Training a model](../config/transform.md#training-a-model),
+    the page that owns that topic.
+    Naming `type: model` under `transform:` in `config.yaml` does **not** run a
+    model: `ubunye run` warns (`FutureWarning`) and still runs `transformations.py`.
+    The `transform.params` block (with its `registry:` settings) is read only when
+    your `transformations.py` hands it to `ModelTransform`, as shown in
+    [Registry settings for a model transform](#registry-settings-for-a-model-transform).
 
 ---
 
@@ -74,7 +89,7 @@ ubunye models info \
     --store .ubunye/model_store
 ```
 
-Returns full JSON including timestamps, metrics, metadata, lineage run ID.
+Prints the version as JSON: timestamps, metrics, metadata and the id of the run that registered it.
 
 ### Promote
 
@@ -159,37 +174,34 @@ Output:
 
 ## Promotion gates
 
-Gates block promotion unless all thresholds are satisfied.
+A gate is a rule a version must pass before it moves up (to `staging` or
+`production`). If any gate fails, the version does not move.
 
 ### Gate types
 
-| Key pattern | Description |
+| Key pattern | Passes when |
 |---|---|
-| `min_<metric>` | Metric value must be `>=` threshold |
-| `max_<metric>` | Metric value must be `<=` threshold |
-| `require_drift_check` | `metadata["drift_check_passed"]` must be `True` |
+| `min_<metric>` | The metric is `>=` the threshold |
+| `max_<metric>` | The metric is `<=` the threshold |
+| `require_drift_check` | `metadata()["drift_check_passed"]` is `True` (see [Drift Detection](../patterns/drift.md)) |
 
-### Example
+`<metric>` is a name your model's `train()` returns. The model on
+[Model Contract](model_contract.md) returns `auc` and `f1`, so its gates are
+`min_auc` and `min_f1`.
 
-```python
-registry.promote(
-    "fraud_detection",
-    "FraudRiskModel",
-    mv.version,
-    ModelStage.STAGING,
-    gates={"min_auc": 0.85, "min_f1": 0.80, "max_loss": 0.20, "require_drift_check": True},
-)
-```
+!!! warning "Three rules that surprise people"
+    - **A missing metric blocks.** A gate on a metric the model never returned
+      (say `max_loss` when `train()` returns only `auc` and `f1`) fails every time,
+      with `Metric 'loss' not found in model metrics.`
+    - **Stored gates cover every version of the model.** Gates you pass to
+      `register(..., promotion_gates=...)` are stored with the model, not with that
+      one version. The newest stored set is checked for every later promotion of
+      any version, including older ones, and including `ubunye models promote`.
+      Registering 1.0.1 with gates also blocks 1.0.0 if 1.0.0 fails them.
+    - **`gates=` on one `promote()` call replaces the stored gates** for that one
+      promotion only.
 
-When a gate fails, `promote` raises `PromotionBlockedError` naming each failing gate with
-its actual value and threshold, and does **not** promote. The version remains in
-`development`. Gates passed to `register(..., promotion_gates=...)` are stored with the
-model and checked again by every later promotion, including `ubunye models promote`.
-
-### CLI promote with gates
-
-`ubunye models promote` has no flag for gates. It checks the gates stored with
-the model, which you set when you register it:
+### Store gates with the model
 
 ```python
 mv = registry.register(
@@ -198,23 +210,42 @@ mv = registry.register(
 )
 ```
 
-`gates=` on `registry.promote()` checks these gates instead of the stored ones,
-for that one promotion:
+`ubunye models promote` has no flag for gates. It checks the stored ones.
+
+### Gates for one promotion
 
 ```python
-from ubunye.models.registry import ModelRegistry, ModelStage
+from ubunye.models import ModelRegistry, ModelStage
 
 registry = ModelRegistry(".ubunye/model_store")
-gates = {"min_auc": 0.85, "min_f1": 0.80}
 mv = registry.promote(
     use_case="fraud_detection",
     model_name="FraudRiskModel",
     version="1.3.0",
-    to_stage=ModelStage.PRODUCTION,
-    gates=gates,
+    to_stage=ModelStage.STAGING,
+    gates={"min_auc": 0.85, "min_f1": 0.80, "require_drift_check": True},
     promoted_by="alice",
 )
 ```
+
+### When a gate fails
+
+`promote` raises `PromotionBlockedError` (a kind of `ValueError`, importable from
+`ubunye.core.errors`). It names each failing gate with its actual value and
+threshold. The version stays where it was. The CLI prints the same message as an
+`[ERROR]` and exits 1:
+
+```
+Promotion blocked — 1 gate(s) failed:
+  - require_drift_check: Drift check: not found or failed in metadata.
+
+  Version:      1.0.1
+  Target stage: staging
+  Hint: Fix the failing gates or adjust thresholds in promotion_gates config.
+```
+
+`ubunye models promote --force` skips the gates, prints a warning and records on
+the version that it was forced.
 
 ---
 
@@ -251,8 +282,7 @@ diff = registry.compare_versions("fraud_detection", "FraudRiskModel", "1.2.0", "
 
 ## Choosing a backend
 
-Where models live is a plugin: a **registry backend** (ADR 010). Two ship with
-Ubunye:
+Where models live is a plugin: a **registry backend**. Two ship with Ubunye:
 
 | Name | What it does |
 |---|---|
@@ -274,8 +304,8 @@ ubunye models list -u fraud_detection -m FraudRiskModel -s .ubunye/model_store -
 ```
 
 ```yaml
+# config.yaml: read by ModelTransform, called from your transformations.py
 transform:
-  type: model
   params:
     action: train
     model_class: "model.FraudRiskModel"
@@ -294,9 +324,11 @@ backend = resolve_registry("filesystem", store=".ubunye/model_store")  # the raw
 
 `ubunye.models.backends.available()` lists the installed names. Asking for one that is not installed fails with that list.
 
+Why it works this way: [ADR 010](../architecture/adr-010-registry-backends.md).
+
 ### MLflow Model Registry
 
-`--backend mlflow` keeps models in the MLflow Model Registry (ADR 014).
+`--backend mlflow` keeps models in the MLflow Model Registry.
 
 - **Where MLflow is** is MLflow's business: `MLFLOW_TRACKING_URI` and
   `MLFLOW_REGISTRY_URI`, read the way MLflow reads them.
@@ -332,6 +364,8 @@ The class used to be `MLflowRegistryBackend`: a folder registry that also
 logged a best effort MLflow run. It still works when you build it in Python,
 and warns that it is deprecated. Models it stored stay in their folder; read
 them with `--backend filesystem`.
+
+Why it works this way: [ADR 014](../architecture/adr-014-mlflow-registry-aliases.md).
 
 ### Writing a backend
 
@@ -420,7 +454,7 @@ This lets you trace exactly which data, config hash, and code produced each mode
 ### The run record names the model (0.9)
 
 The link also goes the other way. When a `ModelTransform` trains or scores, the run
-record gets a `model_runs` entry (ADR 012):
+record gets a `model_runs` entry:
 
 - **train:** the model, the version registered, the stage it reached (or
   `development`), and the gate result: `passed`, `blocked` with the gate, metric,
@@ -433,7 +467,8 @@ ubunye lineage trace -d pipelines -u fraud -p ml -t train
 #     train FraudRiskModel 1.3.0 -> staging (gates passed)
 ```
 
-`ubunye lineage show` prints the same entries as JSON.
+`ubunye lineage show` prints the same entries as JSON. Why it works this way:
+[ADR 012](../architecture/adr-012-model-runs-and-feature-contract.md).
 
 ### Registry settings for a model transform
 
@@ -456,7 +491,8 @@ transform:
       check_features: true
 ```
 
-`ubunye run` always runs the task's `transformations.py`, so call the transform from it:
+`ubunye run` always runs the task's `transformations.py` (see the box at the top
+of this page), so call the transform from it:
 
 ```python
 from ubunye.core.interfaces import Task
