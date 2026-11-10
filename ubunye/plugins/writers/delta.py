@@ -7,15 +7,16 @@ is that writer.
 
 Use this connector when the sink *is* a Delta table. Use ``s3`` with
 ``file_format: delta`` when you think of the sink as a path that happens to hold
-Delta files — they are equivalent, and both support all six write modes.
+Delta files — they are equivalent, and both support all seven write modes.
 
 Config keys:
   - path: "s3a://bucket/delta/claims/"     # path form
   - table: "main.fraud.claims"             # or table form (or db_name + tbl_name)
-  - mode: append|overwrite|errorifexists|ignore|merge|overwrite_partitions
+  - mode: append|overwrite|errorifexists|ignore|merge|insert_new|
+          overwrite_partitions
           (default: append)
   - partitionBy: ["dt"]                    # optional
-  - merge_keys: ["id", "dt"]               # required for mode: merge
+  - merge_keys: ["id", "dt"]               # required for merge / insert_new
   - replace_where: "dt = '2026-01-01'"     # optional predicate for
                                            # mode: overwrite_partitions
   - options:                               # Spark writer options

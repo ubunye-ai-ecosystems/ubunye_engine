@@ -139,6 +139,7 @@ nav:
           - ADR 013 Receipt Queries: architecture/adr-013-receipt-queries.md
           - ADR 014 MLflow Registry Aliases: architecture/adr-014-mlflow-registry-aliases.md
           - ADR 017 Quoted SQL Names: architecture/adr-017-ident-filter.md
+          - ADR 018 Insert New Rows: architecture/adr-018-insert-new.md
       - Contributing: contributing.md
 
 markdown_extensions:

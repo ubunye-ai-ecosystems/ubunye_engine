@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ubunye validate` (and its `--json`, as `sql`) and `ubunye plan` print each
   input's SQL after templating. `ubunye doctor` no longer calls a variable
   required when a filter such as `ident` sits before its `| default(...)`.
+- **Write mode `insert_new`** (ADR 018), with required `merge_keys`: only rows whose
+  keys are not in the target are inserted; existing rows never change, so the first
+  write of a key wins and a rerun adds nothing. On Spark it is a Delta `MERGE` with
+  only `WHEN NOT MATCHED THEN INSERT *` (null-safe keys), on a table or a path, on
+  `delta`, `unity`, and `s3` / `hive` with `file_format: delta`. The first run creates
+  the target; a path holding non-Delta files is refused, not written over. `validate`
+  and `plan` check it; pandas, `jdbc` and `rest_api` refuse it with a clear message.
 
 ### Fixed
 
