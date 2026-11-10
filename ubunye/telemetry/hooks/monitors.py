@@ -26,6 +26,7 @@ EVIDENCE = (
     "timings",
     "llm_calls",
     "llm_budget",
+    "model_runs",
     "hash_basis",
     "source_versions",
 )

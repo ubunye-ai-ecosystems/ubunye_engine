@@ -523,6 +523,12 @@ def _print_evidence(ctx: RunContext) -> None:
             )
             if e.get("detail"):
                 typer.echo(f"               {e['detail']}")
+    if ctx.model_runs:
+        typer.echo()
+        typer.secho("  MODELS", fg=typer.colors.CYAN)
+        for m in ctx.model_runs:
+            line, warn = _model_line(m)
+            typer.secho(f"    {line}", fg=typer.colors.YELLOW if warn else None)
     if ctx.llm_calls:
         typer.echo()
         typer.secho("  MODEL CALLS", fg=typer.colors.CYAN)
@@ -558,6 +564,30 @@ def _print_evidence(ctx: RunContext) -> None:
             f"{b.get('calls', 0)} calls, {b.get('refused', 0)} refused"
         )
     typer.echo()
+
+
+def _model_line(m: Dict[str, Any]) -> tuple:
+    """One line for a model the run trained or used (ADR 012), and whether to warn."""
+    name = m.get("model") or "?"
+    version = m.get("version") or "(not registered)"
+    if m.get("action") == "predict":
+        where = m.get("stage") or m.get("model_path") or "-"
+        line = f"predict {name} {m.get('version') or '-'} ({where})"
+        missing = (m.get("features") or {}).get("missing") or []
+        if missing:
+            return f"{line}, missing features: {', '.join(missing)}", True
+        return line, False
+    result = m.get("gate_result")
+    if result == "blocked":
+        why = ", ".join(
+            f"{b['gate']} {b['actual']} vs {b['threshold']}" for b in m.get("blocked_by") or []
+        )
+        line = f"train {name} {version} -> {m.get('promote_to')} BLOCKED"
+        return (f"{line} ({why})" if why else line), True
+    if m.get("promote_to"):
+        gates = "gates passed" if result == "passed" else "no gates"
+        return f"train {name} {version} -> {m.get('stage')} ({gates})", False
+    return f"train {name} {version} ({m.get('stage') or 'not registered'})", False
 
 
 # ---------------------------------------------------------------------------

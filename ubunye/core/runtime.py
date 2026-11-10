@@ -288,6 +288,7 @@ class Engine:
         self._timings = []
         state["timings"] = self._timings
         state["llm_calls"] = []
+        state["model_runs"] = []
         held: List[Any] = []
         try:
             with chain.task(ctx, cfg, state):
@@ -303,11 +304,13 @@ class Engine:
                     # change its inputs in place.
                     measured = self._inspect_inputs(cfg, sources, state)
                     from ubunye import llm
+                    from ubunye.models import receipt
 
                     budget = llm.budget.Budget.from_env()
                     try:
-                        with llm.recording(
-                            state["llm_calls"], task_dir=ctx.task_dir, budget=budget
+                        with (
+                            llm.recording(state["llm_calls"], task_dir=ctx.task_dir, budget=budget),
+                            receipt.recording(state["model_runs"]),
                         ):
                             outputs_map = self._apply_transforms(ctx, chain, sources, transforms)
                     finally:

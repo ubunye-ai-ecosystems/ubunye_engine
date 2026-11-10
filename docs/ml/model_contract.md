@@ -147,6 +147,15 @@ The `metadata()` dict must contain at minimum:
 
 Additional keys are stored but not validated.
 
+`features` is also the model's input contract at predict (ADR 012). A
+`ModelTransform` predict compares the frame's columns with it before calling the
+model. Extra columns are fine. By default a missing column is a warning on the
+log and the run record; with `registry.check_features: true` the frame is
+refused with `FeatureContractError`, which names the missing columns, the model
+and the version. If your `predict()` builds some declared features itself, leave
+the check at its default or set `check_features: false`. A model that declares no
+features is not checked. Only names are checked: dtypes are not stored.
+
 ---
 
 ## Testing your model (Spark-free)
