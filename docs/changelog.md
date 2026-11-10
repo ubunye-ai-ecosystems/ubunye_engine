@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`ubunye deploy dockerfile --out img/` writes `img/Dockerfile`** (F-111). A path
+  ending in `/` is a folder: it is made when missing. Before, a missing `img/` gave
+  a file named `img`.
+
 - **The workflow from `ubunye init github-actions` works out of the box** (F-110).
   `ubunye deploy databricks --host` now reads `DATABRICKS_HOST`, the secret the
   workflow sets, so the deploy step needs no committed `targets.yaml` (a

@@ -8,6 +8,7 @@ Usage
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -295,11 +296,11 @@ def deploy_dockerfile(
         "pipelines", "--pipelines", help="Folder copied into the image as /app/pipelines."
     ),
     engine: str = typer.Option("ubunye-engine", "--engine", help="pip requirement for the engine."),
-    out: Optional[Path] = typer.Option(
+    out: Optional[str] = typer.Option(
         None,
         "--out",
-        help="Write here instead of printing. A folder gets <folder>/Dockerfile; "
-        "missing folders are made.",
+        help="Write here instead of printing. A folder (or a path ending in /) gets "
+        "<folder>/Dockerfile; missing folders are made.",
     ),
 ) -> None:
     """Write a Dockerfile for a Spark job image on PLATFORM, and the entry script next to it."""
@@ -311,13 +312,14 @@ def deploy_dockerfile(
     if out is None:
         typer.echo(text)
         return
-    if out.is_dir():
-        out = out / "Dockerfile"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text, encoding="utf-8")
-    entry = out.parent / "ubunye_entry.py"
+    path = Path(out)
+    if out.endswith(("/", os.sep)) or path.is_dir():
+        path = path / "Dockerfile"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    entry = path.parent / "ubunye_entry.py"
     entry.write_text(packaging.ENTRY_SCRIPT, encoding="utf-8")
-    typer.secho(f"[OK] wrote {out} and {entry}", fg=typer.colors.GREEN)
+    typer.secho(f"[OK] wrote {path} and {entry}", fg=typer.colors.GREEN)
 
 
 # --- container jobs (B5b): Kubernetes, Azure Container Apps, EMR Serverless ---------------

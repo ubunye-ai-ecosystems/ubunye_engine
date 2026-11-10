@@ -1075,7 +1075,7 @@ ubunye deploy dockerfile container --pipelines pipelines --out build/Dockerfile
 |---|---|---|
 | `--pipelines` | `pipelines` | Folder copied into the image as `/app/pipelines` |
 | `--engine` | `ubunye-engine` | pip requirement for the engine |
-| `--out` | | Write here instead of printing. A folder gets `<folder>/Dockerfile`; missing folders are made |
+| `--out` | | Write here instead of printing. A folder, or a path ending in `/` such as `img/`, gets `<folder>/Dockerfile`; missing folders are made |
 
 ---
 
