@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exists and ended in `|| true`, so it could never fail. It now validates
   `fraud_detection/risk_scoring` and fails the job when the config is invalid.
 
+### Changed
+
+- **The home page plays the narrated intro film** from YouTube, in privacy mode
+  (`youtube-nocookie.com`, nothing is loaded until you press play). The silent
+  placeholder video and its poster are gone from the repo.
+
 ## [0.9.1] (2026-11-10)
 
 ### Changed
