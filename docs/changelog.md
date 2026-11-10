@@ -125,7 +125,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ubunye sync lineage` replays whole run records, the last one kept for each
   run, into the store named by `--lineage-backend` and `--lineage-dir`.
 - `LineageStore.search()` takes `limit`.
-
+- **Clearer docs diagrams.** Project Structure zooms from a use case into a
+  pipeline (its tasks run in order) and into a task (`config.yaml` and
+  `transformations.py`), and colour-matches the folder path to the `-u`, `-p` and
+  `-t` flags. The home page shows a task written once, run unchanged on a laptop,
+  a cloud or Databricks, each run leaving a record that `ubunye prove` compares.
+  Connectors shows `inputs:`, your transform and `outputs:` with the names you
+  write in YAML, and which also work on pandas. All three have light and dark
+  versions, drawn by the scripts in `scripts/diagrams/`.
 - **The Databricks example notebooks use the notebook API.** They now open a
   context with `ubunye.notebook()` and run `ctx.read()`, `ctx.transform()` and
   `ctx.write()` in separate cells, so you can see the data between steps. Catalog

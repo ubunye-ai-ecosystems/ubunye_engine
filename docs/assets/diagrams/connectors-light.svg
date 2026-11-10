@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1082" width="720" height="1082" role="img" aria-label="Inputs are read by the connector named in format:, your transform in transformations.py changes the data on Spark, Databricks or pandas, and outputs are written the same way.">
+<rect x="20" y="20" width="680" height="360" rx="16" fill="#0369a1" stroke="#0369a1" stroke-width="2" fill-opacity="0.07"/>
+<text x="42" y="58" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#0369a1" text-anchor="start">inputs:</text>
+<text x="42" y="86" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#5b6472" text-anchor="start">Read. The format: key picks the connector.</text>
+<rect x="42.0" y="104" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="56.0" y="128" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">hive</text>
+<text x="56.0" y="149" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">Hive tables</text>
+<rect x="366.0" y="104" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="380.0" y="128" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">jdbc</text>
+<text x="380.0" y="149" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">Postgres, MySQL, Oracle, SQL Server</text>
+<rect x="42.0" y="170" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="56.0" y="194" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">unity</text>
+<text x="56.0" y="215" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">Databricks Unity Catalog</text>
+<rect x="366.0" y="170" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="380.0" y="194" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">delta</text>
+<text x="380.0" y="215" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">Delta Lake, by path or table</text>
+<rect x="42.0" y="236" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="56.0" y="260" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">s3</text>
+<text x="56.0" y="281" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">S3, ADLS, GCS, local files</text>
+<rect x="282.0" y="245" width="60" height="22" rx="11" fill="#3f51b5" stroke="none" stroke-width="1.5" fill-opacity="0.14"/>
+<text x="312.0" y="260" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#3f51b5" text-anchor="middle">pandas</text>
+<rect x="366.0" y="236" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="380.0" y="260" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">rest_api</text>
+<text x="380.0" y="281" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">any HTTP API</text>
+<rect x="606.0" y="245" width="60" height="22" rx="11" fill="#3f51b5" stroke="none" stroke-width="1.5" fill-opacity="0.14"/>
+<text x="636.0" y="260" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#3f51b5" text-anchor="middle">pandas</text>
+<rect x="42.0" y="302" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#0369a1" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="56.0" y="326" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">binary</text>
+<text x="56.0" y="347" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">PDFs, images (read only)</text>
+<line x1="360.0" y1="386" x2="360.0" y2="422" stroke="#3f51b5" stroke-width="2.5"/><polygon points="360.0,432 353.0,420 367.0,420" fill="#3f51b5"/>
+<text x="376.0" y="414" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#5b6472" font-weight="400">sources["claims"]</tspan></text>
+<rect x="20" y="438" width="680" height="238" rx="16" fill="#3f51b5" stroke="#3f51b5" stroke-width="2" fill-opacity="0.07"/>
+<text x="42" y="476" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#3f51b5" text-anchor="start">transform</text>
+<text x="42" y="504" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#5b6472" text-anchor="start">Change the data. Your Python, in transformations.py.</text>
+<rect x="42" y="520" width="636" height="100" rx="10" fill="#ffffff" stroke="#c5cad3" stroke-width="1.5"/>
+<text x="56" y="544" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#1f2937" text-anchor="start" xml:space="preserve">class ClaimEtl(Task):</text>
+<text x="56" y="565" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#1f2937" text-anchor="start" xml:space="preserve">    def transform(self, sources):</text>
+<text x="56" y="586" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#1f2937" text-anchor="start" xml:space="preserve">        claims = sources["claims"]</text>
+<text x="56" y="607" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#1f2937" text-anchor="start" xml:space="preserve">        return {"clean": claims[claims.amount &gt; 0]}</text>
+<text x="42" y="658" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#5b6472" text-anchor="start">runs on</text>
+<rect x="108" y="640" width="68.0" height="26" rx="13" fill="#ffffff" stroke="#3f51b5" stroke-width="1.5" stroke-opacity="0.6"/>
+<text x="142.0" y="658" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="700" fill="#3f51b5" text-anchor="middle">spark</text>
+<rect x="184.0" y="640" width="114.0" height="26" rx="13" fill="#ffffff" stroke="#3f51b5" stroke-width="1.5" stroke-opacity="0.6"/>
+<text x="241.0" y="658" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="700" fill="#3f51b5" text-anchor="middle">databricks</text>
+<rect x="306.0" y="640" width="77.19999999999999" height="26" rx="13" fill="#ffffff" stroke="#3f51b5" stroke-width="1.5" stroke-opacity="0.6"/>
+<text x="344.6" y="658" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="700" fill="#3f51b5" text-anchor="middle">pandas</text>
+<line x1="360.0" y1="682" x2="360.0" y2="718" stroke="#3f51b5" stroke-width="2.5"/><polygon points="360.0,728 353.0,716 367.0,716" fill="#3f51b5"/>
+<text x="376.0" y="710" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#5b6472" font-weight="400">{"clean": df}</tspan></text>
+<rect x="20" y="734" width="680" height="294" rx="16" fill="#15803d" stroke="#15803d" stroke-width="2" fill-opacity="0.07"/>
+<text x="42" y="772" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="24" font-weight="700" fill="#15803d" text-anchor="start">outputs:</text>
+<text x="42" y="800" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="400" fill="#5b6472" text-anchor="start">Write. Same formats, same key.</text>
+<rect x="42.0" y="818" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#15803d" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="56.0" y="842" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">hive</text>
+<text x="56.0" y="863" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">Hive tables</text>
+<rect x="366.0" y="818" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#15803d" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="380.0" y="842" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">jdbc</text>
+<text x="380.0" y="863" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">Postgres, MySQL, Oracle, SQL Server</text>
+<rect x="42.0" y="884" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#15803d" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="56.0" y="908" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">unity</text>
+<text x="56.0" y="929" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">Databricks Unity Catalog</text>
+<rect x="366.0" y="884" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#15803d" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="380.0" y="908" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">delta</text>
+<text x="380.0" y="929" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">Delta Lake, by path or table</text>
+<rect x="42.0" y="950" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#15803d" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="56.0" y="974" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">s3</text>
+<text x="56.0" y="995" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">S3, ADLS, GCS, local files</text>
+<rect x="282.0" y="959" width="60" height="22" rx="11" fill="#3f51b5" stroke="none" stroke-width="1.5" fill-opacity="0.14"/>
+<text x="312.0" y="974" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#3f51b5" text-anchor="middle">pandas</text>
+<rect x="366.0" y="950" width="312.0" height="56" rx="10" fill="#ffffff" stroke="#15803d" stroke-width="1.2" stroke-opacity="0.45"/>
+<text x="380.0" y="974" font-family="'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="17" font-weight="700" fill="#1f2937" text-anchor="start">rest_api</text>
+<text x="380.0" y="995" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#5b6472" text-anchor="start">any HTTP API</text>
+<rect x="606.0" y="959" width="60" height="22" rx="11" fill="#3f51b5" stroke="none" stroke-width="1.5" fill-opacity="0.14"/>
+<text x="636.0" y="974" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#3f51b5" text-anchor="middle">pandas</text>
+<rect x="20" y="1045" width="60" height="22" rx="11" fill="#3f51b5" stroke="none" stroke-width="1.5" fill-opacity="0.14"/>
+<text x="50" y="1060" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#3f51b5" text-anchor="middle">pandas</text>
+<text x="92" y="1061" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#5b6472" text-anchor="start">also works on the pandas backend (no Java). The rest need Spark.</text>
+</svg>
