@@ -104,6 +104,18 @@ class EngineConfig(BaseModel):
     catalog: Optional[str] = None
     schema_name: Optional[str] = None
 
+    @model_validator(mode="after")
+    def _check_secret_references(self) -> "EngineConfig":
+        """``secret://`` in spark_conf names an installed provider (F-104). Nothing is fetched."""
+        from ubunye.core import secrets
+
+        errors = secrets.problems(self.spark_conf, "ENGINE.spark_conf")
+        for name, profile in self.profiles.items():
+            errors += secrets.problems(profile.spark_conf, f"ENGINE.profiles.{name}.spark_conf")
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
+
 
 # ---------------------------------------------------------------------------
 # CONFIG sub-models
@@ -148,6 +160,26 @@ OUTPUT_IO_KEYS = frozenset({"mode", "merge_keys", "replace_where"})
 def _registered_formats() -> frozenset:
     """Every connector name the plugin system can actually load."""
     return frozenset(_connectors("ubunye.readers")) | frozenset(_connectors("ubunye.writers"))
+
+
+def _write_mode_errors(name: str, writer_cls: Any, cfg: Dict[str, Any]) -> List[str]:
+    """The write mode problem ``ubunye plan`` reports for this output, if any (F-103).
+
+    A writer that declares no modes of its own (only ``Writer``'s default) is not held
+    to any here, as before; plan holds it to the default.
+    """
+    from ubunye.core import write_modes
+    from ubunye.core.errors import UbunyeError
+    from ubunye.core.interfaces import Writer
+
+    declared = write_modes.writer_modes(writer_cls)[0]
+    if declared is None or declared is Writer.SUPPORTED_MODES:
+        return []
+    try:
+        write_modes.resolve_for(writer_cls, cfg)
+    except UbunyeError as exc:
+        return [f"outputs.{name}: {str(exc).splitlines()[0]}"]
+    return []
 
 
 class IOConfig(BaseModel):
@@ -230,6 +262,7 @@ class RegistryConfig(BaseModel):
     backend: Optional[str] = None
     use_case: Optional[str] = "default"
     version: Optional[str] = None
+    #: Deprecated, does nothing: a version is made whenever ``version`` is not set.
     auto_version: bool = True
     promote_to: Optional[Literal["development", "staging", "production"]] = None
     use_stage: Literal["development", "staging", "production"] = "production"
@@ -844,14 +877,14 @@ class TaskConfig(BaseModel):
                 # inherits nothing, exactly what the docs promise will work — crash
                 # with AttributeError. Asking is fine; DEMANDING an answer is a new
                 # inheritance requirement smuggled in through a method call.
-                declare = getattr(plugin, "validate_config", None)
-                if not callable(declare):
-                    continue  # declares nothing -> requires nothing. Its choice.
-
                 cfg = io.model_dump(exclude_none=True)
                 cfg.update(io.model_extra or {})
-                for problem in declare(cfg) or []:
+                declare = getattr(plugin, "validate_config", None)
+                # declares nothing -> requires nothing. Its choice.
+                for problem in (declare(cfg) if callable(declare) else None) or []:
                     errors.append(f"{role}.{name}: {problem}")
+                if role == "outputs":
+                    errors += _write_mode_errors(name, plugin, cfg)
 
         if errors:
             raise ValueError("; ".join(errors))
@@ -976,7 +1009,8 @@ class UbunyeConfig(BaseModel):
         """Raise ConfigProfileError when *profile* names no profile of this config.
 
         A config with no ``ENGINE.profiles`` accepts any mode. ``run``,
-        ``validate`` and the Python API all go through this one rule.
+        ``validate``, ``plan``, ``doctor`` and the Python API all go through
+        this one rule.
         """
         profiles = self.ENGINE.profiles
         if not profile or not profiles or profile in profiles:
@@ -991,7 +1025,7 @@ class UbunyeConfig(BaseModel):
         near = [name for name in available if name.casefold() == profile.casefold()]
         if near:
             hint += f"; did you mean '{near[0]}'? Pass -m {near[0]}"
-        hint += ". With no -m, run and validate use DEV."
+        hint += ". With no -m, run, validate, plan and doctor use DEV."
         raise ConfigProfileError(
             f"Profile '{profile}' not found.",
             context={"Profile": profile, "Available": available},

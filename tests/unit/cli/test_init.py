@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
 import yaml
 from typer.testing import CliRunner
 
+from ubunye.cli import scaffold
 from ubunye.cli.main import app
 
 runner = CliRunner()
@@ -79,6 +81,16 @@ class TestInitPipeline:
         cfg = yaml.safe_load((tmp_path / "d" / "e" / "t" / "config.yaml").read_text())
         assert cfg["MODEL"] == "etl"
         assert "CONFIG" in cfg
+
+
+@pytest.mark.parametrize("template", scaffold.TEMPLATES)
+def test_every_template_init_writes_passes_validate(tmp_path, template):
+    """The databricks template wrote a unity read with db_name, which validate refuses."""
+    args = ["-d", str(tmp_path), "-u", "d", "-p", "e", "-t", "t"]
+    result = runner.invoke(app, ["init", *args, "--template", template])
+    assert result.exit_code == 0, result.output
+    result = runner.invoke(app, ["validate", *args])
+    assert result.exit_code == 0, result.output
 
 
 # ── init github-actions ──────────────────────────────────────────────
@@ -463,3 +475,59 @@ class TestInitGithubActions:
             ],
         )
         assert "Next steps" not in result.output
+
+
+# ── the generated workflow runs against the real CLI (F-110) ─────────
+
+_TASK_CONFIG = """\
+CONFIG:
+  inputs:
+    src: {format: hive, db_name: default, tbl_name: sample}
+  outputs:
+    out: {format: delta, path: /tmp/out, mode: overwrite}
+"""
+
+
+def test_workflow_deploy_and_run_steps_work_with_the_env_it_sets(tmp_path, monkeypatch):
+    """Each `ubunye deploy` step parses, deploys to the host in the workflow's env
+    (no targets.yaml needed), and only the run step starts the job."""
+    import shlex
+    from unittest.mock import MagicMock
+
+    from ubunye.deploy.databricks import auth
+
+    monkeypatch.chdir(tmp_path)
+    task = tmp_path / "pipelines" / "fraud" / "ingestion" / "claim_etl"
+    task.mkdir(parents=True)
+    (task / "config.yaml").write_text(_TASK_CONFIG, encoding="utf-8")
+    (task / "transformations.py").write_text("pass\n", encoding="utf-8")
+    args = ["-d", "pipelines", "-u", "fraud", "-p", "ingestion", "-t", "claim_etl"]
+    runner.invoke(app, ["init", "github-actions", *args, "-o", "wf.yml"])
+    job = yaml.safe_load((tmp_path / "wf.yml").read_text())["jobs"]["test-and-deploy"]
+
+    env = {"DATABRICKS_HOST": "https://adb-1.azuredatabricks.net", "DATABRICKS_TOKEN": "t"}
+    assert set(env) <= set(job["env"])
+    steps = {s["name"]: s["run"] for s in job["steps"] if "ubunye deploy" in s.get("run", "")}
+    assert set(steps) == {"Deploy to Databricks", "Run job (manual trigger)"}
+
+    calls = []
+
+    def fake_auth(target):
+        client = MagicMock()
+        client.jobs.list.return_value = []
+        client.jobs.create.return_value.job_id = 42
+        client.jobs.run_now.return_value.run_id = 7
+        calls.append((target.host, client))
+        return client
+
+    monkeypatch.setattr(auth, "resolve_auth", fake_auth)
+    started = {}
+    for name, command in steps.items():
+        argv = shlex.split(command.replace("\\\n", " "))
+        assert argv[0] == "ubunye"
+        calls.clear()
+        result = runner.invoke(app, argv[1:], env=env)
+        assert result.exit_code == 0, (name, result.output, result.exception)
+        assert calls and all(host == env["DATABRICKS_HOST"] for host, _ in calls)
+        started[name] = any(c.jobs.run_now.called for _, c in calls)
+    assert started == {"Deploy to Databricks": False, "Run job (manual trigger)": True}

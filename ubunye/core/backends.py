@@ -26,6 +26,8 @@ from __future__ import annotations
 import importlib.metadata as md
 from typing import Any, Dict, List, Optional, Type
 
+from ubunye.core import secrets
+from ubunye.core.capabilities import SPARK
 from ubunye.core.errors import BackendNotFoundError
 from ubunye.core.interfaces import Backend
 
@@ -99,6 +101,18 @@ def missing_packages(cls: Type[Backend]) -> List[str]:
     return [p for p in cls.REQUIRES_PACKAGES if not _installed(p)]
 
 
+def spark_conf_for(cls: Any, conf: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """``ENGINE.spark_conf`` as a backend gets it: ``secret://`` values resolved for Spark.
+
+    Resolved like any connector setting (``core/secrets``), so each value is masked in
+    logs and run records. A backend without Spark only reads the time zone key, so it
+    is not made to fetch secrets it never uses (F-104).
+    """
+    conf = dict(conf or {})
+    caps = getattr(cls, "CAPABILITIES", None)
+    return secrets.resolve(conf) if SPARK in getattr(caps, "features", ()) else conf
+
+
 def create(name: str, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]] = None) -> Any:
     """Build the backend registered as ``name``, if what it needs is installed.
 
@@ -120,7 +134,7 @@ def create(name: str, *, app_name: str = "ubunye", conf: Optional[Dict[str, Any]
                 else f"pip install {' '.join(missing)}"
             ),
         )
-    return cls.create(app_name=app_name, conf=dict(conf or {}))
+    return cls.create(app_name=app_name, conf=spark_conf_for(cls, conf))
 
 
 def _platform_backend(*, app_name: str, conf: Dict[str, Any]) -> Optional[Any]:
@@ -134,7 +148,7 @@ def _platform_backend(*, app_name: str, conf: Dict[str, Any]) -> Optional[Any]:
             continue
         if cls.from_platform is Backend.from_platform:
             continue  # this backend never attaches to a platform session
-        backend = cls.from_platform(app_name=app_name, conf=conf)
+        backend = cls.from_platform(app_name=app_name, conf=spark_conf_for(cls, conf))
         if backend is not None:
             return backend
     return None

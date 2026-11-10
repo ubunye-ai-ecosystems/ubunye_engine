@@ -45,9 +45,11 @@ The stages `development`, `staging`, `production`, `archived` are the public
 contract. A backend may call them something else inside and maps them at its
 edge.
 
-`ModelRegistry` stays the public class. On `filesystem` it runs the same code as
-before, byte for byte on disk. On any other backend it delegates to the
-lifecycle layer.
+`ModelRegistry` stays the public class. It delegates to the lifecycle layer on
+every backend, `filesystem` included, so the rules live in one place. (Until
+0.9.1 the filesystem kept its own copy of them, and the two drifted.) The
+filesystem store keeps the same files and format on disk; a store written by
+0.9.0 is pinned by a test (`tests/fixtures/registry_0_9_0`).
 
 `ubunye.testing.registry_conformance.RegistryConformance` is the suite a
 backend runs to prove itself. The filesystem, MLflow and a test-only third
@@ -64,6 +66,7 @@ party backend (installed through a real entry point) all run it.
   change backend without editing code.
 - `_internal.auto_detect.detect_registry_backend` follows the new order and is
   deprecated. It no longer returns `mlflow` because of `DATABRICKS_RUNTIME_VERSION`.
+  Nothing called it; the private module was removed in 0.9.1.
 - Gates and "one production version" are checked by core with a read before a
   write, not atomically. Two promotions racing on one model can both pass. The
   filesystem registry had the same gap.

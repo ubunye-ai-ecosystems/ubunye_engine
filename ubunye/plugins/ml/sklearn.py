@@ -5,7 +5,7 @@ Scikit-learn model wrapper implementing BaseModel.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import joblib
 
@@ -21,7 +21,6 @@ class SklearnModel(BaseModel):
     ) -> None:
         super().__init__(schema=schema, **kwargs)
         self.estimator = estimator
-        self._last_metrics: Dict[str, float] = {}
 
     # ---- core hooks ----
     def _fit_core(self, X: Any, y: Optional[Any]) -> None:

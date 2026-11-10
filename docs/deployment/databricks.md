@@ -55,11 +55,11 @@ ubunye deploy databricks -d pipelines -u shop -p orders -t clean --target dev
 3. Tell the command which workspace to use. There are two ways:
 
     - a `targets.yaml` file (below), chosen with `--target`; or
-    - `--host https://...` for a one-off deploy.
+    - `--host https://...` for a one-off deploy. With no `--host`, the
+      `DATABRICKS_HOST` environment variable is used.
 
-    `ubunye deploy databricks` does **not** read `DATABRICKS_HOST`. With
-    neither `targets.yaml` nor `--host` it stops with
-    `TargetNotFoundError: No targets.yaml found and no --host flag provided.`
+    A `targets.yaml`, when there is one, wins. With neither a `targets.yaml` nor
+    a host, it stops with `No targets.yaml found and no --host flag provided.`
 
 ### Create `targets.yaml`
 
@@ -92,7 +92,7 @@ targets:
     token_env: DATABRICKS_TOKEN_PROD
     workspace_path: /Workspace/ubunye
     serverless: false                   # run on a job cluster instead
-    spark_version: "13.3.x-scala2.12"
+    spark_version: "17.3.x-scala2.13"
     node_type_id: "i3.2xlarge"
     num_workers: 4
 ```
@@ -193,6 +193,8 @@ The command prints one line:
 
 Then start the job and look at it:
 
+- **From the same command:** add `--run`. It starts a run once the job is
+  deployed and prints the run's link.
 - **In the workspace:** open **Jobs & Pipelines** (called **Workflows** in
   older workspaces), search for `ubunye-shop-orders-clean-dev`, and press
   **Run now**. The job page is also at `<host>/#job/<job id>`.
@@ -206,7 +208,8 @@ token the workspace refuses gives `AuthInvalidError`. See [Errors](../errors.md)
 
 ### One-off deploy without `targets.yaml`
 
-Pass the host directly:
+Pass the host directly, or set `DATABRICKS_HOST` (`--host` reads it). The host
+is used only when there is no `targets.yaml`:
 
 ```bash
 ubunye deploy databricks -d pipelines -u shop -p orders -t clean \
@@ -247,16 +250,18 @@ jobs:
           ubunye deploy databricks \
             -d pipelines -u shop -p orders -t clean \
             --target nonprod
+      # ... "Run job (manual trigger)": the same command with --run
 ```
 
 Before it can deploy:
 
 - Add the secrets `DATABRICKS_HOST` and `DATABRICKS_TOKEN` to the repository
   (**Settings → Secrets and variables → Actions**).
-- Commit a `targets.yaml` with a `nonprod` target (change it with
-  `--target`). The deploy step reads the workspace from there, not from the
-  `DATABRICKS_HOST` secret; the workflow only uses that secret to decide
-  whether to deploy.
+- That is all. With no `targets.yaml` the deploy reads the workspace from the
+  `DATABRICKS_HOST` secret. A committed `targets.yaml` with a `nonprod` target
+  (change it with `--target`) wins when there is one.
+- To deploy and start the job by hand, run the workflow from the **Actions**
+  tab with `run_after_deploy` ticked. The run step prints the run's link.
 
 Run `ubunye init github-actions --help` for `--extras`, `--target`,
 `--no-deploy` and `--output`.
@@ -271,7 +276,7 @@ Run `ubunye init github-actions --help` for `--extras`, `--target`,
 | `token_env` | str | `DATABRICKS_TOKEN` | Environment variable holding the PAT |
 | `workspace_path` | str | `/Workspace/ubunye` | Root path for uploaded files |
 | `serverless` | bool | `true` | Run on serverless compute; `false` builds a job cluster from the fields below |
-| `spark_version` | str | `13.3.x-scala2.12` | Databricks Runtime version (job cluster only) |
+| `spark_version` | str | `17.3.x-scala2.13` | Databricks Runtime version (job cluster only); 17.3 LTS, as `ubunye export databricks` |
 | `node_type_id` | str | `i3.xlarge` | Instance type (job cluster only) |
 | `num_workers` | int | none, sent as `0` | Number of workers, 0 = single node (job cluster only) |
 | `spark_conf` | dict | `{}` | Spark configuration overrides (job cluster only) |

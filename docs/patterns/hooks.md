@@ -71,7 +71,7 @@ There are two ways in. Pick by how you run the task.
 
 | You run the task with | Use | Run record written? |
 |---|---|---|
-| Python: `ubunye.run_task(...)` | `hooks=[...]` | No, today (see the warning) |
+| Python: `ubunye.run_task(...)` | `hooks=[...]` | Yes, with `lineage=True` |
 | The CLI: `ubunye run ...` | A package that registers the hook, plus `UBUNYE_TELEMETRY=1` | Yes, with `--lineage` |
 
 ### From Python: `run_task(hooks=[...])`
@@ -86,17 +86,9 @@ outputs = run_task(
 )
 ```
 
-`hooks=` **replaces** the default set of hooks. Two things follow:
-
-- User monitors from `CONFIG.monitors` stop running. Add
-  `LegacyMonitorsHook(cfg)` from `ubunye.telemetry.hooks` yourself if you need them.
-- The run record is not written (next box).
-
-!!! warning "No run record with `hooks=`, today"
-    The run record is itself written by a hook. When you pass `hooks=`, it is
-    replaced too, so `run_task(..., hooks=[...], lineage=True)` runs fine but
-    writes **no** run record. This is a known bug. Until it is fixed, use the
-    package route below when you need both your hook and a run record.
+`hooks=` **adds** your hooks to the default set; it never replaces it. The
+`CONFIG.monitors` hook and the run record (`lineage=True`) still run. The same
+goes for `run_pipeline` and `notebook`.
 
 ### From the CLI: ship the hook as a package
 

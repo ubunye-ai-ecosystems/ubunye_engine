@@ -100,61 +100,6 @@ class TestEntryPointDiscovery:
 
 
 # =====================================================================
-# Auto-detect
-# =====================================================================
-
-
-class TestAutoDetect:
-    def test_registry_defaults_to_filesystem(self):
-        from ubunye._internal.auto_detect import detect_registry_backend
-
-        with pytest.warns(DeprecationWarning):
-            assert detect_registry_backend() == "filesystem"
-
-    def test_lineage_defaults_to_filesystem(self):
-        from ubunye._internal.auto_detect import detect_lineage_backend
-
-        assert detect_lineage_backend() == "filesystem"
-
-    def test_lineage_delta_when_env_set(self, monkeypatch):
-        from ubunye._internal.auto_detect import detect_lineage_backend
-
-        monkeypatch.setenv("UBUNYE_LINEAGE_TABLE", "ubunye.metadata.lineage")
-        assert detect_lineage_backend() == "delta"
-
-    def test_auth_token_when_env_set(self, monkeypatch):
-        from ubunye._internal.auto_detect import detect_auth_backend
-
-        monkeypatch.setenv("DATABRICKS_TOKEN", "dapi123")
-        assert detect_auth_backend() == "token"
-
-    def test_auth_sp_when_client_creds_set(self, monkeypatch):
-        from ubunye._internal.auto_detect import detect_auth_backend
-
-        monkeypatch.setenv("DATABRICKS_CLIENT_ID", "id")
-        monkeypatch.setenv("DATABRICKS_CLIENT_SECRET", "secret")
-        assert detect_auth_backend() == "service_principal"
-
-    def test_auth_sp_takes_priority_over_token(self, monkeypatch):
-        from ubunye._internal.auto_detect import detect_auth_backend
-
-        monkeypatch.setenv("DATABRICKS_TOKEN", "dapi123")
-        monkeypatch.setenv("DATABRICKS_CLIENT_ID", "id")
-        monkeypatch.setenv("DATABRICKS_CLIENT_SECRET", "secret")
-        assert detect_auth_backend() == "service_principal"
-
-    def test_auth_raises_when_no_creds(self, monkeypatch):
-        from ubunye._internal.auto_detect import detect_auth_backend
-        from ubunye.core.errors import AuthNotFoundError
-
-        monkeypatch.delenv("DATABRICKS_TOKEN", raising=False)
-        monkeypatch.delenv("DATABRICKS_CLIENT_ID", raising=False)
-        monkeypatch.delenv("DATABRICKS_CLIENT_SECRET", raising=False)
-        with pytest.raises(AuthNotFoundError):
-            detect_auth_backend()
-
-
-# =====================================================================
 # LineageBackend conformance (filesystem)
 # =====================================================================
 

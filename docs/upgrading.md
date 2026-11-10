@@ -106,7 +106,7 @@ These still work in 0.9 and warn with a `DeprecationWarning`.
 | `LineageRecorder(store="filesystem")` | `LineageRecorder(backend="filesystem")` |
 | `DeltaLineageBackend.search(task=, usecase=, pipeline=)` returning `LineageRecord`s | `search()` now returns run records; the old search is `search_records()` |
 | `MLflowRegistryBackend` | the `mlflow` registry backend: `ModelRegistry(store, backend="mlflow")` |
-| `detect_registry_backend()` | `ubunye.models.resolve_registry()`, or set `UBUNYE_REGISTRY_BACKEND` |
+| `detect_registry_backend()` (removed in 0.9.1: it was private, and nothing called it) | `ubunye.models.resolve_registry()`, or set `UBUNYE_REGISTRY_BACKEND` |
 
 The Delta run record store now keeps the whole run record (steps, hashes, timings,
 expectations, environment), only appends, and needs Spark. A record it cannot write goes

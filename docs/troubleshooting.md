@@ -15,21 +15,23 @@ ubunye doctor -d pipelines -u demo -p starter -t filter_adults
 ```
 
 ```
-[OK] python: Python 3.12.16 on linux
+[OK] python: Python 3.13.18 on linux
 [OK] ubunye-engine: 0.9.0
 [WARN] java: pyspark is installed but no Java was found (JAVA_HOME or java on PATH)
-       fix: Install Java 17 (Spark 4) or 11 (Spark 3.5), or run with --backend pandas.
+       fix: Spark 4 runs on Java 17 or 21; Spark 3.5 on Java 8, 11 or 17. Install one, or run with --backend pandas.
 [OK] delta-spark: delta-spark 4.4.1 with Spark 4.2.0
 [OK] backend: databricks: usable, needs Java, distributed
 [OK] backend: pandas: usable, single machine
-[OK] backend: spark (default): usable, needs Java, distributed
+[WARN] backend: spark (default): Spark needs Java, and none was found (JAVA_HOME or java on PATH).
+[WARN] default backend: a run without --backend uses 'spark', which cannot run here (on Databricks the platform's own backend is used instead)
+       fix: Pass --backend pandas, or install what 'spark' needs.
 [OK] plugins: 18 load
 [OK] task filter_adults: environment: every variable it needs is set
 [FAIL] task filter_adults: secret provider aws-sm: needs boto3
        fix: pip install boto3
 [OK] task filter_adults: config: loads and validates
 
-2 to look at; a run would fail.
+4 to look at; a run would fail.
 ```
 
 This machine has no Java, and the task reads a password from AWS Secrets Manager

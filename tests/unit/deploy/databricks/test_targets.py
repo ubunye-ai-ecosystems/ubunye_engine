@@ -20,6 +20,16 @@ class TestDatabricksTargetConfig:
         assert cfg.serverless is True
         assert cfg.num_workers is None
 
+    def test_the_default_runtime_is_the_one_export_databricks_uses(self):
+        """13.3 LTS (Spark 3.4) is older than the engine's pyspark>=3.5."""
+        from ubunye.orchestration.databricks_exporter import DEFAULT_SPARK_VERSION
+
+        cfg = DatabricksTargetConfig(host="https://x.net")
+        assert cfg.spark_version == DEFAULT_SPARK_VERSION == "17.3.x-scala2.13"
+        assert DatabricksTargetConfig(
+            host="https://x.net", spark_version="15.4.x"
+        ).spark_version == ("15.4.x")
+
     def test_forbids_extra_fields(self):
         with pytest.raises(Exception, match="extra"):
             DatabricksTargetConfig(host="https://x.net", bogus="val")

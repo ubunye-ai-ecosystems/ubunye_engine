@@ -127,9 +127,11 @@ rerun of a day replaces that day. Write modes: [Inputs and outputs](../config/io
 
 - Skips each task that already finished this batch, with `[SKIP]`, and runs the
   rest.
-- Today it skips only tasks that have an append output. A task whose outputs all
-  overwrite runs again, even if it finished the batch. That is safe (it replaces
-  its output), but it does the work twice.
+- A task that appends is known to have finished from its output. A task that
+  only overwrites is known to have finished only from its run records: with
+  `--lineage` it is skipped when its latest run of the batch succeeded; without
+  `--lineage` it runs again. That is safe (it replaces its output), but it does
+  the work twice.
 - Why not skip by default: in an hourly pipeline (same `dt`, one task appends,
   the next overwrites) a silent skip dropped the first task's new rows and exited 0.
 

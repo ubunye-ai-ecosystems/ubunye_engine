@@ -215,6 +215,16 @@ class RegistryConformance:
         registry.promote(USE_CASE, MODEL, version, ModelStage.PRODUCTION, force=True)
         assert self._stage(registry, version) == "production"
 
+    def test_gates_given_empty_clear_the_stored_ones(self, registry: ModelRegistry) -> None:
+        self._register(registry, auc=0.5, promotion_gates={"min_auc": 0.8})
+        later = self._register(registry, auc=0.5, promotion_gates={})
+        assert registry.promotion_gates(USE_CASE, MODEL) == {}
+        registry.promote(USE_CASE, MODEL, later, ModelStage.PRODUCTION)
+        assert self._stage(registry, later) == "production"
+
+    def test_a_model_with_no_versions_has_no_gates(self, registry: ModelRegistry) -> None:
+        assert registry.promotion_gates(USE_CASE, "NoSuchModel") == {}
+
     def test_only_one_version_is_in_production(self, registry: ModelRegistry) -> None:
         first = self._register(registry)
         second = self._register(registry)
@@ -271,6 +281,17 @@ class RegistryConformance:
         assert mv.version == first and mv.stage == ModelStage.PRODUCTION
         assert self._stage(registry, first) == "production"
         assert self._stage(registry, second) == "archived"
+
+    def test_rollback_keeps_who_promoted_the_version(self, registry: ModelRegistry) -> None:
+        first = self._register(registry)
+        second = self._register(registry)
+        mv = registry.promote(USE_CASE, MODEL, first, ModelStage.PRODUCTION, promoted_by="ann")
+        if mv.promoted_by != "ann":
+            pytest.skip("This backend does not record who promoted a version.")
+        registry.promote(USE_CASE, MODEL, second, ModelStage.PRODUCTION, promoted_by="bo")
+        assert registry.rollback(USE_CASE, MODEL, first).promoted_by == "ann"
+        _, mv = registry.get_model(USE_CASE, MODEL, version=first)
+        assert mv.promoted_by == "ann"
 
     def test_compare_gives_the_metric_deltas(self, registry: ModelRegistry) -> None:
         a = self._register(registry, auc=0.8)

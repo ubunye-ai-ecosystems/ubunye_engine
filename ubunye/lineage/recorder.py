@@ -25,6 +25,7 @@ with final status, duration, and per-step hashes at ``task_end``.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import warnings
@@ -32,9 +33,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from ubunye.core.secrets import known_secrets, mask_text, redact_variables, scrub, secret_values
-from ubunye.lineage import evidence
+from ubunye.lineage import evidence, stores
 from ubunye.lineage.context import RunContext, StepRecord
-from ubunye.lineage.storage import S3LineageStore
+from ubunye.lineage.storage import S3LineageStore, _engine_version
 
 logger = logging.getLogger(__name__)
 
@@ -51,15 +52,6 @@ def _hash_config(config: dict) -> str:
     return config_hash(config)
 
 
-def _engine_version() -> str:
-    try:
-        from importlib.metadata import version
-
-        return version("ubunye-engine")
-    except Exception:
-        return "unknown"
-
-
 def _make_store(store: Optional[str], base_dir: str, backend: Optional[str] = None) -> Any:
     """The run record store (ADR 011): ``backend``, else ``store`` (its old name),
     else ``$UBUNYE_LINEAGE_BACKEND``, else filesystem. ``base_dir`` is its location."""
@@ -73,8 +65,6 @@ def _make_store(store: Optional[str], base_dir: str, backend: Optional[str] = No
             stacklevel=3,
         )
         backend = store
-    from ubunye.lineage import stores
-
     return stores.open_store(base_dir, backend)
 
 
@@ -202,6 +192,7 @@ class LineageRecorder:
         backend: Optional[str] = None,
     ) -> None:
         self._store: Any = _make_store(store, base_dir, backend)
+        self._where = (stores.backend_name(backend or store), base_dir)
         # Inputs are hashed like outputs (every row). It costs a pass over each
         # input; turn it off for inputs too large to read twice.
         self._hash_inputs = hash_inputs
@@ -227,17 +218,44 @@ class LineageRecorder:
         return None if isinstance(self._store, FileSystemLineageStore) else self._store
 
     def _save(self, ctx: RunContext) -> None:
-        """Save the record; a store that fails never breaks the task, but it is said."""
+        """Save the record. A store that fails never breaks the task: the record is
+        kept in a fallback manifest, ``~/.ubunye/fallback/<run_id>/lineage.jsonl``,
+        for ``ubunye sync lineage`` to replay, and a warning says so (F-097)."""
         try:
             self._store.save(ctx)
         except Exception as exc:
-            logger.warning(
-                "The run record of %s (run %s) was not saved to the %s lineage store: %s",
-                ctx.task_path,
-                ctx.run_id,
-                type(self._store).__name__,
-                exc,
+            self._keep(ctx, exc)
+
+    def _keep(self, ctx: RunContext, exc: Exception) -> None:
+        from ubunye._internal import metadata_worker
+
+        backend, where = self._where
+        manifest = metadata_worker._FALLBACK_ROOT / ctx.run_id / "lineage.jsonl"
+        doc = {
+            **ctx.to_dict(),
+            "_fallback_at": _utcnow(),
+            "_lineage_backend": backend,
+            "_location": where,
+        }
+        try:
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            with manifest.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(doc, ensure_ascii=False, default=str) + "\n")
+            kept = (
+                f"It was kept in {manifest}; replay it with 'ubunye sync lineage "
+                f"--lineage-backend {backend} --lineage-dir {where}'"
             )
+        except OSError as io_exc:
+            kept = f"It could not be kept either ({io_exc})"
+        logger.warning(
+            "The run record of %s (run %s) was not saved to the %s lineage store %s: %s. %s.",
+            ctx.task_path,
+            ctx.run_id,
+            backend,
+            where,
+            exc,
+            kept,
+        )
 
     # ------------------------------------------------------------------
     # Monitor protocol

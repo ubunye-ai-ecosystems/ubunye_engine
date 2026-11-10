@@ -213,14 +213,3 @@ def test_the_config_schema_accepts_a_registry_backend():
         registry={"store": "s", "backend": "mlflow"},
     )
     assert params.registry is not None and params.registry.backend == "mlflow"
-
-
-# -- the old private auto detect follows the same order -----------------------------
-
-
-def test_detect_registry_backend_no_longer_sniffs_the_host(monkeypatch):
-    from ubunye._internal.auto_detect import detect_registry_backend
-
-    monkeypatch.setenv("DATABRICKS_RUNTIME_VERSION", "15.4")
-    with pytest.warns(DeprecationWarning):
-        assert detect_registry_backend() == "filesystem"

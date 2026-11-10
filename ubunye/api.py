@@ -41,7 +41,7 @@ from ubunye.core.hooks import Hook
 from ubunye.core.interfaces import Backend
 from ubunye.core.runs import BatchFinished
 from ubunye.core.runtime import EngineContext
-from ubunye.core.task_runner import execute_user_task
+from ubunye.core.task_runner import execute_user_task, finished_run
 from ubunye.telemetry.hooks import MonitorHook
 
 logger = logging.getLogger(__name__)
@@ -126,15 +126,19 @@ def _detect_backend(
     if spark is not None:
         # Attaching to a given session is the Databricks backend's own constructor.
         attach: Any = backends.load_class("databricks")
-        return attach(spark=spark, conf=spark_conf or {})
+        return attach(spark=spark, conf=backends.spark_conf_for(attach, spark_conf))
     return backends.resolve(None, app_name=app_name, conf=spark_conf or {})
 
 
-def _build_extra_hooks(lineage_recorder: Optional[Any]) -> List[Hook]:
-    """Wrap the optional lineage recorder as a hook, if present."""
-    if lineage_recorder is None:
-        return []
-    return [MonitorHook(lineage_recorder)]
+def _build_extra_hooks(
+    lineage_recorder: Optional[Any], hooks: Optional[Iterable[Hook]] = None
+) -> List[Hook]:
+    """The caller's hooks, then the lineage recorder as a hook, if present.
+
+    Both are added to the engine's default hooks, never in place of them (F-101).
+    """
+    extra = list(hooks or [])
+    return extra + [MonitorHook(lineage_recorder)] if lineage_recorder else extra
 
 
 def run_task(
@@ -187,8 +191,8 @@ def run_task(
     profile : str, optional
         Config profile for validation (passed to ``load_config``).
     hooks : iterable of Hook, optional
-        Replace the engine's default hooks entirely. Rarely needed; prefer
-        the ``ubunye.hooks`` entry point for always-on hooks.
+        Hooks to add to the engine's own (the ``ubunye.hooks`` entry point,
+        ``CONFIG.monitors`` and the run record). They never replace them.
     rerun : bool
         Replace a batch (same ``dt`` and variables) that a finished run already
         appended. Without it, such a run is refused, since it would append the
@@ -255,8 +259,7 @@ def run_task(
             task_path,
             cfg,
             context,
-            hooks=hooks,
-            extra_hooks=_build_extra_hooks(lineage_recorder),
+            extra_hooks=_build_extra_hooks(lineage_recorder, hooks),
         )
     finally:
         backend.stop()
@@ -301,7 +304,10 @@ def run_pipeline(
     resume : bool
         Finish a pipeline that stopped half way: a task that already finished this
         batch is skipped (with a warning, and is not in the result); the rest run.
-        Without it, such a task is refused (:class:`~ubunye.core.runs.BatchFinished`).
+        A task that appends knows it finished; one that only overwrites is known to
+        have finished from its run records, so it is skipped only with ``lineage=True``
+        (its latest run of the batch succeeded). Without ``resume`` a finished append
+        is refused (:class:`~ubunye.core.runs.BatchFinished`).
     package : str, optional
         Old name of ``pipeline``. Still works, with a DeprecationWarning; removed in 1.0.
 
@@ -346,7 +352,7 @@ def run_pipeline(
         catalog=first_cfg.resolved_catalog(mode),
         schema=first_cfg.resolved_schema(mode),
     )
-    extra_hooks = _build_extra_hooks(lineage_recorder)
+    extra_hooks = _build_extra_hooks(lineage_recorder, hooks)
     results: Dict[str, Dict[str, Any]] = {}
     try:
         for task in tasks:
@@ -362,13 +368,18 @@ def run_pipeline(
                 run_records=lineage_recorder.shared_store() if lineage_recorder else None,
                 rerun=rerun,
             )
+            done = finished_run(context) if resume else None
+            if done is not None:
+                logger.warning(
+                    "Skipped %s (resume): run %s finished this batch.", task, done.run_id
+                )
+                continue
             try:
                 results[task] = execute_user_task(
                     chosen,
                     task_path,
                     cfg,
                     context,
-                    hooks=hooks,
                     extra_hooks=extra_hooks,
                 )
             except BatchFinished as exc:

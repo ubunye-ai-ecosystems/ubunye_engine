@@ -9,8 +9,183 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] (2026-11-10)
+
+### Changed
+
+- **One path for the model registry.** `ModelRegistry` is now a thin front over
+  the lifecycle layer for every backend, the filesystem included. The filesystem
+  no longer keeps its own copy of the rules (version numbers, gates, one
+  production version, rollback, archive). Same API, same files on disk: a store
+  written by 0.9.0 reads and promotes the same (a fixture test pins it).
+  Reading a version's stage no longer downloads its artifact from a remote store.
+- `ModelRegistry.promotion_gates` gives `{}` for a model with no versions on the
+  filesystem too (it raised `RegistryNotFoundError`), like every other backend.
+- Metadata given through the `FilesystemRegistryBackend` protocol (kept nested
+  under `registry_metadata` on disk, unchanged) now reads back flat from
+  `ModelRegistry`, as it already did through the backend. A model whose own
+  `metadata()` uses a version field's name (`promoted_by`, `lineage_run_id`,
+  `config_hash`, the stage times) or `registry_metadata` reads back with that
+  key in the field, as on every other backend; no shipped model does.
+- An unknown stage name given to the filesystem backend raises `ValueError`; it
+  was written to `registry.json` as is.
+
+- **`ubunye deploy databricks` defaults to Databricks Runtime 17.3 LTS**
+  (`17.3.x-scala2.13`, Spark 4.0), the runtime `ubunye export databricks` already
+  used, for a target in `targets.yaml` that does not set `spark_version`. The old
+  default, 13.3 LTS, runs Spark 3.4, older than the engine supports (pyspark 3.5 or
+  later). A target that sets `spark_version` is unchanged.
+
+- **A first Delta append of a named batch makes no history lookups** (F-100).
+  The two `DESCRIBE HISTORY` calls around each keyed append, there only to warn
+  that Delta skipped a batch an earlier run had committed, now run only when an
+  earlier run of the batch could have: the run took over a dead run's lease, or a
+  failed run that wrote the batch left a note beside it. Same warning, fewer steps.
+
+- **The docs were reworked for clarity.** Each topic now has one home page, and the
+  others link to it. New pages: Concepts, Run records, Safe reruns, Troubleshooting,
+  Upgrading from 0.8 and Azure. The README is a short front door. The home page has
+  an intro film. Every page uses the same words (use case, pipeline, task, profile,
+  run record), and internal ticket numbers are gone from user pages. Examples that
+  did not run as written (drift detection, RAG, the registry gates, the hooks
+  setup, the Databricks bundle) now run, and their output is real. The site has top
+  tabs, tap to zoom on diagrams, link preview cards, and colours that match the
+  diagrams.
+
 ### Fixed
 
+- `ubunye run` on a task whose `transformations.py` has no Task class prints one
+  `[ERROR] Run refused` line, not a traceback. `ubunye doctor` no longer suggests
+  `--backend databricks` on a laptop (it only attaches to a cluster's session).
+- **Saving a Delta run record from a CLI or pandas run is about twice as fast**
+  (F-116). With no active SparkSession the Delta run record store starts a local
+  one, and Delta read the run record log in 50 tasks on every save. That session,
+  and only that one, now sets `spark.databricks.delta.snapshotPartitions=1` and
+  turns off the Spark UI and console progress bar. Measured on the dev box (16 cores,
+  8 saves): about 1.35 s to 0.72 s per save. A session the user or the platform
+  started is never changed.
+
+- **Each command's help says its default profile plainly** (F-115). `ubunye export`
+  defaults to production (`--profile prod` for `airflow` and `databricks`, `-m PROD`
+  for `spark-pipeline`) and `ubunye run` to `DEV`. The defaults are unchanged; the
+  help of `export spark-pipeline` and `run` now says so, as `export airflow` and
+  `export databricks` already did, and `docs/cli.md` says it once for all.
+
+- **`python -m ubunye` documents only what works** (F-114). Its docstring showed
+  `spark-submit ... -m ubunye` (spark-submit takes a file, not `-m`) and a
+  `--task-dir s3a://...` (only a local folder works); `docs/deployment/anywhere.md`
+  said "path or bucket". Both now show the file path and a local task folder, and
+  point to `ubunye deploy glue|dataproc|emr-serverless` for running from a bucket.
+
+- **A task the backend cannot run is one `[ERROR]` line in `ubunye run`** (F-113).
+  A `BackendCapabilityError` (say, a `hive` input on `--backend pandas`) printed a
+  full traceback box. It now ends in `[ERROR] Run refused for <task>: ...` with the
+  hint and exit code 1, like the other refusals. Nothing ran, as before.
+
+- **Spark with no usable Java fails in one clean message** (F-112). The spark
+  backend now looks for Java (JAVA_HOME, then `java` on PATH) and its version before
+  it starts a session. No Java, or one older than the installed Spark needs, raises
+  `SparkSessionError` with the versions that work, and `ubunye run` prints it as one
+  `[ERROR]` line instead of pyspark's `[JAVA_GATEWAY_EXITED]` traceback. A session
+  that is already running, or Spark Connect, is not checked. `ubunye doctor` and
+  `ubunye backends` ask the same function, so the spark backend is no longer called
+  usable with no Java. The Java versions are now right everywhere: Spark 4 runs on
+  Java 17 or 21, Spark 3.5 on Java 8, 11 or 17 (the doctor's fix text said 17 or 11).
+
+- **`ubunye deploy dockerfile --out img/` writes `img/Dockerfile`** (F-111). A path
+  ending in `/` is a folder: it is made when missing. Before, a missing `img/` gave
+  a file named `img`.
+
+- **The workflow from `ubunye init github-actions` works out of the box** (F-110).
+  `ubunye deploy databricks --host` now reads `DATABRICKS_HOST`, the secret the
+  workflow sets, so the deploy step needs no committed `targets.yaml` (a
+  `targets.yaml`, when there is one, still wins). The manual "Run job" step now
+  starts the job with the new `--run` flag; before, it deployed again and started
+  nothing. `--run` starts a run after the deploy and prints its link. The
+  workflow's "Notebook output link" step is gone: the run step prints the link.
+- **`hooks=` adds to the engine's hooks, it does not replace them** (F-101).
+  `ubunye.run_task(..., hooks=[...])`, `run_pipeline` and `notebook` dropped the run
+  record (`lineage=True`) and the `CONFIG.monitors` hook when given hooks. Your hooks
+  now run with them. `Engine(hooks=...)` is unchanged.
+
+- **A unity read that names its table with `db_name` fails `ubunye validate`**
+  (F-102). It passed validation and failed at run time: the reader never read
+  `db_name`. The message says what to use: `table: 'catalog.schema.table'`, or
+  `catalog` + `schema` + `tbl_name` (now accepted by validate, as the reader always
+  read it), or `sql`. `ubunye init --template databricks` wrote such a read; it now
+  writes `table: main.raw_db.<task>_input`, and a test checks that every template
+  `init` writes passes `ubunye validate`.
+
+- **`ubunye validate` reports a write mode the writer cannot do** (F-103), with
+  the message `ubunye plan` gives: a `jdbc` output with `mode: merge`, a `merge`
+  with no `merge_keys`. Only `plan` and the write itself caught these. One check
+  (`write_modes.resolve_for`) now serves both. A writer that declares no modes is
+  not held to any, as before.
+
+- **`secret://` in `ENGINE.spark_conf` is checked and resolved** (F-104). It
+  reached Spark as literal text, and a misspelt provider passed `ubunye validate`.
+  Validate now checks it (base and profiles), and a Spark backend gets the value,
+  fetched when the backend is built, masked like any secret. A backend without Spark
+  does not fetch it.
+
+- **The pandas backend reads a JSON file holding one array** (F-105), as Spark
+  reads it with `multiLine`. It read JSON Lines only, so a pretty-printed array
+  failed on its first line. JSON Lines, including an array on each line, reads as
+  before.
+
+- **The C01 proving workload runs on pandas without a Narwhals warning** (F-106).
+  Its counts and sums were cast inside the group-by, which made Narwhals fall back
+  to a slow per-group apply and warn "Found complex group-by expression". The casts
+  now follow the aggregation. Same outputs, same golden digest.
+
+- Registering with `promotion_gates={}` clears a model's stored gates on every
+  backend. Before, only the default filesystem path cleared them; MLflow and the
+  others kept the old gates.
+- A rollback keeps who promoted the version on every backend. Before, a
+  filesystem backend named by object, and the deprecated `MLflowRegistryBackend`,
+  set it to empty.
+
+- **`ubunye deploy` and `ubunye export` end an expected error in one `[ERROR]`
+  message** (F-096), exit code 1, the way `ubunye run` does. No `targets.yaml`, no
+  token, a cloud CLI not on `PATH`, a bad task list or a config that does not
+  validate printed a full traceback; `deploy k8s` and `deploy container-apps` also
+  printed their whole launcher script. A missing `kubectl` or `az` is now found
+  before anything runs, and a failed launcher is named, never printed. A bug still
+  shows its traceback. A config that does not validate now raises `ConfigError`
+  (still a `ValueError`).
+- **`--resume` skips a task that only overwrites once it finished the batch**
+  (F-098). Only a task with an append output was skipped, though the docs said every
+  finished task is. With `--lineage` (`lineage=True`), a task whose latest run record
+  for this batch (same `-dt` and `--var`) says `success` is now skipped with
+  `[SKIP]`, whatever it writes. Without run records an overwrite task runs again, as
+  the docs now say.
+
+- **The Delta run record store no longer grows one file per save for ever**
+  (F-099). A table it creates is clustered by `task_path` (liquid clustering)
+  with auto compaction on (`delta.autoOptimize.autoCompact`), so Delta merges
+  the small files each append leaves: 200 saves leave under 60 files, not 200.
+  An existing table is used as it is; `docs/cli.md` shows the three statements
+  that turn the same on for it.
+- **A run record no store could write is kept, whatever the store** (F-097).
+  When the filesystem store could not write (its folder under a file), the
+  record was lost with a log line, and `ubunye sync lineage` found nothing. Now
+  every store's failed save goes one way, through the recorder, to
+  `~/.ubunye/fallback/<run_id>/lineage.jsonl`, and the warning names the
+  `ubunye sync lineage` command that replays it. The Delta store's own copy of
+  that code is gone; its `save` raises like any store's.
+
+- **The docs say what 0.9.1 does.** Merging the docs rework dropped some 0.9.1
+  facts and kept older text they made false. Back in place: `deploy databricks
+  --run` and `--host` reading `DATABRICKS_HOST` (the Databricks guide also lost a
+  stray copy of that text in "What success looks like", and no longer says to
+  commit a `targets.yaml` for the workflow), `--resume` skipping an overwrite task
+  with `--lineage`, the Delta run record table's clustering and the three
+  statements for an existing table, the fallback manifest for every store, and
+  `python -m ubunye` taking only a local `--task-dir`. Fixed: `hooks=` and
+  `OTelHook` no longer said the run record is dropped, `secret://` in `spark_conf`
+  no longer said it is not read, `validate -m` no longer said a config with no
+  profiles fails, `registry.auto_version` is marked deprecated, and the
+  troubleshooting `doctor` output is the real 0.9.1 output (Java versions).
 - **The CLI reference shows every command again.** A code span broken across two
   lines put `<table>` at the start of a line, and Markdown read it as raw HTML:
   everything after "Where run records are stored" (lineage show, runs, models,
@@ -22,6 +197,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `dev` and `prod` passed `validate` and then stopped `run`. The error now lists the
   profiles and, when only the case differs, says which one you meant. `run` prints
   the same message instead of a traceback.
+- **`ubunye plan` and `ubunye doctor` check `-m` too.** `plan -m XYZ` said
+  "Plan OK" on a config whose profiles are `DEV` and `PROD`, and `doctor` passed
+  it. Both now refuse a profile the config does not define, with the message
+  `run` gives, and accept any name on a config with no profiles.
+- **`load_config(profile=...)` follows the same rule** (and so `run_task`,
+  `run_pipeline` and `notebook`, which pass `profile=` to it). It refused any
+  profile on a config with no profiles, which `run` accepts. It now calls
+  `UbunyeConfig.check_profile`, the one rule, and its error is the one `run`
+  prints. It is still a `ConfigProfileError`.
 - **`prove observe` before any run** is a clean error (exit 2) that says to run the
   task with `--lineage` first, not a traceback. An unknown `--run-id` is too.
 - **The warning for `CONFIG.transform.type`** no longer says it became an error in
@@ -30,17 +214,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The config that `ubunye init` writes** spells `{{ task_dir }}` in its comment the
   way the config uses it.
 
-### Changed
+### Deprecated
 
-- **The docs were reworked for clarity.** Each topic now has one home page, and the
-  others link to it. New pages: Concepts, Run records, Safe reruns, Troubleshooting,
-  Upgrading from 0.8 and Azure. The README is a short front door. The home page has
-  an intro film. Every page uses the same words (use case, pipeline, task, profile,
-  run record), and internal ticket numbers are gone from user pages. Examples that
-  did not run as written (drift detection, RAG, the registry gates, the hooks
-  setup, the Databricks bundle) now run, and their output is real. The site has top
-  tabs, tap to zoom on diagrams, link preview cards, and colours that match the
-  diagrams.
+Nothing in Ubunye, its docs or examples uses these. They still work, warn with a
+`DeprecationWarning`, and go in 1.0:
+
+- `registry.auto_version` in a `model` transform. It never did anything: a version
+  is made whenever `registry.version` is not set. Remove the key.
+- `ubunye.core.planning.plan_problems`, `ubunye.proving.matrix.render_many`,
+  `ubunye.plugins.ml.adapters.to_numpy_from_pandas` and `to_numpy_from_spark` (use
+  `ensure_Xy_numpy`), `ubunye.cli.backend_choice.capabilities_or_exit`, and
+  `ubunye.telemetry.otel.init_tracer` (use `setup`).
+
+### Removed
+
+- The private module `ubunye._internal.auto_detect` (`detect_registry_backend`,
+  `detect_lineage_backend`, `detect_auth_backend`). Nothing called it; the registry
+  backend has been chosen by `ubunye.models.backends.choose` since 0.9.0 (ADR 010),
+  and the lineage store by `ubunye.lineage.stores` (ADR 011).
+- Dead private code: a second copy of the engine version lookup in `ubunye plan`
+  (it now reads `ubunye.__version__`), and two attributes that were set and never
+  read (`notebook()`'s task object, `SklearnModel._last_metrics`).
+
 
 ## [0.9.0] (2026-11-10)
 

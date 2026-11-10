@@ -396,24 +396,59 @@ def test_delta_tells_a_table_from_a_path():
         assert is_path(p)
 
 
-def test_a_delta_record_that_cannot_be_written_is_kept_and_said(tmp_path, monkeypatch, caplog):
+@pytest.fixture
+def fallback_root(tmp_path, monkeypatch):
+    from ubunye.cli import sync
+
+    root = tmp_path / "fallback"
+    monkeypatch.setattr("ubunye._internal.metadata_worker._FALLBACK_ROOT", root)
+    monkeypatch.setattr(sync, "_FALLBACK_ROOT", root)
+    monkeypatch.setattr(sync, "_SYNCED_ROOT", root / "synced")
+    return root
+
+
+def _kept(root: Path, run_id: str = "run-1") -> List[dict]:
+    lines = (root / run_id / "lineage.jsonl").read_text(encoding="utf-8").splitlines()
+    return [json.loads(line) for line in lines]
+
+
+def test_a_filesystem_record_that_cannot_be_written_is_kept_and_replayed(
+    tmp_path, monkeypatch, fallback_root, caplog
+):
+    # F-097: the lineage folder lies under a file. Before, only a log line said so.
+    from typer.testing import CliRunner
+
+    from ubunye.cli.main import app
+    from ubunye.lineage.recorder import LineageRecorder
+
+    monkeypatch.delenv(stores.ENV_VAR, raising=False)
+    blocked = tmp_path / "pipelines" / ".ubunye"
+    blocked.parent.mkdir()
+    blocked.write_text("a file, not a folder", encoding="utf-8")
+    with caplog.at_level("WARNING", logger="ubunye.lineage.recorder"):
+        _run_recorder(LineageRecorder(base_dir=str(blocked / "lineage")))
+    assert [d["status"] for d in _kept(fallback_root)] == ["running", "success"]
+    assert "ubunye sync lineage --lineage-backend filesystem --lineage-dir" in caplog.text
+
+    good = tmp_path / "lineage"
+    res = CliRunner().invoke(app, ["sync", "lineage", "--lineage-dir", str(good)])
+    assert res.exit_code == 0, res.output
+    assert FileSystemLineageStore(str(good)).load("shop/orders/clean", "run-1").status == "success"
+
+
+def test_a_delta_record_that_cannot_be_written_is_kept_and_said(monkeypatch, fallback_root, caplog):
     from ubunye.lineage import delta_store
+    from ubunye.lineage.recorder import LineageRecorder
 
-    monkeypatch.setattr("ubunye._internal.metadata_worker._FALLBACK_ROOT", tmp_path / "fb")
-    store = delta_store.DeltaLineageBackend("main.ops.runs")
-
-    def no_spark(ctx):
+    def no_spark(self, ctx):
         raise ImportError("no pyspark here")
 
-    monkeypatch.setattr(store, "_append", no_spark)
-    record = full_record()
-    with caplog.at_level("WARNING", logger="ubunye.lineage.delta_store"):
-        store.save(record)
-    manifest = tmp_path / "fb" / record.run_id / "lineage.jsonl"
-    (line,) = manifest.read_text(encoding="utf-8").splitlines()
-    doc = json.loads(line)
-    assert RunContext.from_dict(doc).to_dict() == record.to_dict()
-    assert doc["_lineage_backend"] == "delta" and doc["_location"] == "main.ops.runs"
-    assert "was not written to the Delta lineage store main.ops.runs" in caplog.text
-    assert "ubunye sync lineage --lineage-backend delta" in caplog.text
+    monkeypatch.setattr(delta_store.DeltaLineageBackend, "save", no_spark)
+    with caplog.at_level("WARNING", logger="ubunye.lineage.recorder"):
+        _run_recorder(LineageRecorder(base_dir="main.ops.runs", backend="delta"))
+    running, finished = _kept(fallback_root)
+    assert finished["status"] == "success" and running["status"] == "running"
+    assert finished["_lineage_backend"] == "delta" and finished["_location"] == "main.ops.runs"
+    assert "was not saved to the delta lineage store main.ops.runs" in caplog.text
+    assert "ubunye sync lineage --lineage-backend delta --lineage-dir main.ops.runs" in caplog.text
     assert not (Path.cwd() / "main.ops.runs").exists()

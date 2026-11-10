@@ -69,7 +69,14 @@ def test_a_connector_the_engine_has_never_heard_of_is_accepted(iceberg_installed
     cfg = schema.TaskConfig(
         inputs={"src": {"format": "iceberg", "table": "lake.db.events"}},
         transform={},
-        outputs={"dst": {"format": "iceberg", "table": "lake.db.curated", "mode": "merge"}},
+        outputs={
+            "dst": {
+                "format": "iceberg",
+                "table": "lake.db.curated",
+                "mode": "merge",
+                "merge_keys": ["id"],
+            }
+        },
     )
     assert cfg.inputs["src"].format == "iceberg"
 

@@ -56,6 +56,7 @@ class DatabricksDeployAdapter:
         target: Dict[str, Any],
         *,
         dry_run: bool = False,
+        run: bool = False,
     ) -> DeployResult:
         from ubunye.deploy.databricks.auth import resolve_auth
         from ubunye.deploy.databricks.bundle import build_job_spec, deploy_job
@@ -132,12 +133,17 @@ class DatabricksDeployAdapter:
         )
 
         job_url = self.get_job_url(str(result["job_id"]), target)
+        metadata: Dict[str, str] = {}
+        if run:
+            run_id = client.jobs.run_now(job_id=result["job_id"]).run_id
+            metadata["run_url"] = f"{job_url}/run/{run_id}"
         return DeployResult(
             job_name=result["job_name"],
             job_id=result["job_id"],
             job_spec=result["job_spec"],
             workspace_path=workspace_task_path,
             job_url=job_url,
+            metadata=metadata,
         )
 
     def validate_target(self, target: Dict[str, Any]) -> None:
@@ -165,11 +171,12 @@ def deploy_task(
     targets_path: Optional[Union[str, Path]] = None,
     host: Optional[str] = None,
     token: Optional[str] = None,
+    run: bool = False,
 ) -> Dict[str, Any]:
-    """Deploy a single task to Databricks.
+    """Deploy a single task to Databricks; ``run=True`` also starts a run of the job.
 
     Returns a dict with job metadata: ``job_name``, ``job_id`` (None if
-    dry-run), ``job_spec``, and ``workspace_path``.
+    dry-run), ``job_spec``, ``workspace_path``, and ``run_url`` when a run started.
 
     This is the backward-compatible entry point.  Internally it
     resolves the target, constructs a :class:`DeployContext`, and
@@ -211,6 +218,7 @@ def deploy_task(
         ctx,
         target_cfg.model_dump() if hasattr(target_cfg, "model_dump") else {},
         dry_run=dry_run,
+        run=run,
     )
 
     result: Dict[str, Any] = {
@@ -221,4 +229,6 @@ def deploy_task(
     }
     if dry_run and deploy_result.metadata.get("notebook_source"):
         result["notebook_source"] = deploy_result.metadata["notebook_source"]
+    if deploy_result.metadata.get("run_url"):
+        result["run_url"] = deploy_result.metadata["run_url"]
     return result

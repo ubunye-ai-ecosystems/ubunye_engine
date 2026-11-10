@@ -27,12 +27,8 @@ Alternatively, use a SQL query:
 ```
 
 !!! note "Requirement"
-    A read needs `table` (the full three-part name) or `sql`.
-
-!!! warning "Known limitation: `db_name` + `tbl_name` on a read"
-    `ubunye validate` accepts `db_name` + `tbl_name` on a `unity` read, but the
-    reader does not use them, so the read fails when the task runs. Use
-    `table: catalog.schema.table` instead, or `sql:`.
+    A read needs `table`, `sql`, or `catalog` + `schema` + `tbl_name`.
+    `db_name` is a Hive key: `ubunye validate` refuses it on a unity read.
 
 ---
 

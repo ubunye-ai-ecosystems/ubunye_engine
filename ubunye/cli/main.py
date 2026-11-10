@@ -44,9 +44,15 @@ from ubunye.cli.test_cmd import test_app
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.core import runs
-from ubunye.core.errors import ConfigProfileError, ExpectationError
+from ubunye.core.errors import (
+    BackendCapabilityError,
+    ConfigProfileError,
+    ExpectationError,
+    SparkSessionError,
+    TaskClassMissingError,
+)
 from ubunye.core.runtime import EngineContext, Registry
-from ubunye.core.task_runner import execute_user_task
+from ubunye.core.task_runner import execute_user_task, finished_run
 from ubunye.lineage.upstream import UpstreamNotReady
 from ubunye.telemetry.hooks import MonitorHook
 
@@ -351,6 +357,7 @@ def plan(
         name = f"{usecase}/{package}/{task}"
         try:
             cfg = load_config(str(task_dir), variables)
+            cfg.check_profile(mode)
         except (ValueError, FileNotFoundError) as exc:
             if as_json:
                 fail(str(exc), as_json=True, task=name)
@@ -457,7 +464,13 @@ def run(
     data_timestamp_format: Optional[str] = typer.Option(
         None, "-dtf", "--data-timestamp-format", help="Specifies the format for the data timestamp."
     ),
-    mode: str = typer.Option("DEV", "-m", "--mode", help="Selects the run mode (DEV/PROD)."),
+    mode: str = typer.Option(
+        "DEV",
+        "-m",
+        "--mode",
+        help="Selects the run mode (DEV/PROD). Default DEV; `ubunye export` defaults to "
+        "production.",
+    ),
     deploy_mode: str = typer.Option(
         "client",
         "--deploy-mode",
@@ -563,7 +576,10 @@ def run(
     if lineage:
         lineage_recorder = recorder_or_exit(usecase_dir, lineage_dir, lineage_backend)
 
-    backend.start()
+    try:
+        backend.start()
+    except SparkSessionError as e:  # no Java, a hijacked master: say so, no traceback
+        fail(str(e), as_json=False)
     set_catalog_and_schema(
         backend,
         catalog=first_cfg.resolved_catalog(mode),
@@ -585,6 +601,15 @@ def run(
                 run_records=lineage_recorder.shared_store() if lineage_recorder else None,
                 rerun=rerun,
             )
+            done = finished_run(context) if resume else None
+            if done is not None:
+                # --resume: its latest run of this batch succeeded (the run records say).
+                typer.secho(
+                    f"[SKIP] {task} already finished this batch (run {done.run_id[:8]}, "
+                    "--resume); kept as it is.",
+                    fg=typer.colors.YELLOW,
+                )
+                continue
             try:
                 execute_user_task(backend, task_dir, cfg, context, extra_hooks=extra_hooks)
                 typer.secho(f"[OK] Run complete for {task}", fg=typer.colors.GREEN)
@@ -610,10 +635,9 @@ def run(
                 # Nothing ran, so a refusal, not a crash.
                 typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
                 raise typer.Exit(code=1)
-            except runs.RunLeaseHeld as e:
+            except (runs.RunLeaseHeld, BackendCapabilityError, TaskClassMissingError) as e:
                 # A refusal, not a crash: nothing ran, so no traceback.
-                typer.secho(f"[ERROR] Run refused for {task}: {e}", fg=typer.colors.RED, err=True)
-                raise typer.Exit(code=1)
+                fail(f"Run refused for {task}: {e}", as_json=False)
             except ExpectationError as e:
                 if not e.results:
                     # Not a verdict on the data (no rule results): narwhals missing,

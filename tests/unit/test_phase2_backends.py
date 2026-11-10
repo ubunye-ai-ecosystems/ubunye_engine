@@ -84,14 +84,6 @@ class TestServicePrincipalAuthBackend:
         cls = get_auth_backend("service_principal")
         assert cls.__name__ == "ServicePrincipalAuthBackend"
 
-    def test_auto_detect_prefers_sp_over_token(self, monkeypatch):
-        from ubunye._internal.auto_detect import detect_auth_backend
-
-        monkeypatch.setenv("DATABRICKS_TOKEN", "dapi123")
-        monkeypatch.setenv("DATABRICKS_CLIENT_ID", "id")
-        monkeypatch.setenv("DATABRICKS_CLIENT_SECRET", "secret")
-        assert detect_auth_backend() == "service_principal"
-
     def test_credentials_metadata_carries_env_var_names(self, monkeypatch):
         from ubunye.deploy.databricks.auth import ServicePrincipalAuthBackend
 

@@ -26,7 +26,6 @@ Built on the September 2026 work; the multi task check and capabilities are new.
 
 from __future__ import annotations
 
-import importlib
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
@@ -90,32 +89,6 @@ def _io_dict(io_cfg: Any) -> Dict[str, Any]:
     cfg: Dict[str, Any] = io_cfg.model_dump(exclude_none=True, mode="json")
     cfg.update(io_cfg.model_extra or {})
     return cfg
-
-
-def _writer_modes(writer_cls: Any) -> Tuple[Any, str]:
-    """What a writer supports, and its default, asked the way the writer declares it."""
-    supported: Any = None
-    default = "append"
-    module_name = getattr(writer_cls, "__module__", None)
-    if module_name:
-        try:
-            module = importlib.import_module(module_name)
-            supported = getattr(module, "SUPPORTED_MODES", None)
-            default = getattr(module, "DEFAULT_MODE", default)
-        except Exception:  # a plugin that will not import is reported elsewhere
-            pass
-    if supported is None:
-        supported = getattr(writer_cls, "SUPPORTED_MODES", write_modes.NATIVE_SAVE_MODES)
-    return supported, default
-
-
-def _engine_version() -> str:
-    try:
-        from importlib.metadata import version
-
-        return version("ubunye-engine")
-    except Exception:
-        return "unknown"
 
 
 def build_plan(
@@ -274,16 +247,8 @@ def build_plan(
         if writer_cls is None:
             problems.append(f"outputs.{name}: no writer plugin registered for format '{fmt}'")
         else:
-            supported, default = _writer_modes(writer_cls)
             try:
-                resolved = write_modes.resolve(
-                    io_cfg,
-                    connector=fmt,
-                    supported=supported,
-                    default=default,
-                    file_format=(io_cfg.get("file_format") or "").lower() or None,
-                    merge_formats=getattr(writer_cls, "MERGE_FILE_FORMATS", None) or None,
-                )
+                resolved = write_modes.resolve_for(writer_cls, io_cfg)
                 entry["resolved_mode"] = resolved.mode
                 entry["save_mode"] = resolved.save_mode
                 entry["merge_keys"] = list(resolved.merge_keys)
@@ -299,9 +264,11 @@ def build_plan(
 
     # A secret-looking variable's value, templated into a URL, path or message, is
     # masked everywhere in the report (it is printed, and served over `ubunye mcp`).
+    from ubunye import __version__
+
     report = {
         "task": task_name,
-        "engine_version": _engine_version(),
+        "engine_version": __version__,
         "backend": backend,
         "model": getattr(cfg.MODEL, "value", str(cfg.MODEL)),
         "config_version": cfg.VERSION,
@@ -351,5 +318,12 @@ def build_plans(
 
 
 def plan_problems(plans: Sequence[Dict[str, Any]]) -> Set[str]:
-    """Tasks whose plan has at least one problem."""
+    """Tasks whose plan has at least one problem. Deprecated: unused."""
+    import warnings
+
+    warnings.warn(
+        "plan_problems() is deprecated and will be removed in 1.0; read each plan's 'problems' list.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return {p["task"] for p in plans if p["problems"]}

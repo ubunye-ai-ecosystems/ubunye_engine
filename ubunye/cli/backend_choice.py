@@ -35,7 +35,14 @@ def class_or_exit(name: str) -> Any:
 
 
 def capabilities_or_exit(name: str) -> Any:
-    """A backend's declared capabilities, without starting it."""
+    """A backend's declared capabilities, without starting it. Deprecated: unused."""
+    import warnings
+
+    warnings.warn(
+        "capabilities_or_exit() is deprecated and will be removed in 1.0; use class_or_exit(name).CAPABILITIES.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return class_or_exit(name).CAPABILITIES
 
 
@@ -56,8 +63,12 @@ def describe_all() -> List[Dict[str, Any]]:
             rows.append(row)
             continue
         missing = backends.missing_packages(cls)
-        row["loaded"] = not missing
+        # What else it needs here (Spark: a Java), asked the way start() asks it.
+        problem = None if missing else getattr(cls, "environment_problem", lambda: None)()
+        row["loaded"] = not missing and not problem
         row["capabilities"] = cls.CAPABILITIES.describe()
+        if problem:
+            row["error"] = problem
         if missing:
             extra = backends._EXTRAS.get(name)
             fix = (

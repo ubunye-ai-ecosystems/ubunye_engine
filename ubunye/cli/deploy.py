@@ -8,15 +8,18 @@ Usage
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import typer
 
+from ubunye.cli.output import CleanErrors
 from ubunye.cli.pipeline_flag import PipelineCommand, pipeline_option
 
 deploy_app = typer.Typer(
     name="deploy",
+    cls=CleanErrors,
     help="Deploy task(s): Databricks, Glue, Dataproc, Kubernetes, Container Apps, EMR Serverless.",
     add_completion=False,
 )
@@ -42,15 +45,19 @@ def deploy_databricks(
     ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print job spec without deploying."),
     host: Optional[str] = typer.Option(
-        None, "--host", help="Databricks host for ad-hoc deploy (skips targets.yaml)."
+        None,
+        "--host",
+        envvar="DATABRICKS_HOST",
+        help="Databricks host for a deploy without targets.yaml (used only when there is none).",
     ),
     token: Optional[str] = typer.Option(
         None,
         "--token",
         help="Env var name holding the Databricks token (default: DATABRICKS_TOKEN).",
     ),
+    run: bool = typer.Option(False, "--run", help="Start a run of the job after deploying it."),
 ) -> None:
-    """Deploy a task to Databricks as a scheduled job."""
+    """Deploy a task to Databricks as a scheduled job, and start it with --run."""
     from ubunye.deploy.databricks import deploy_task
 
     task_dir = usecase_dir / usecase / package / task
@@ -63,6 +70,7 @@ def deploy_databricks(
         dry_run=dry_run,
         host=host,
         token=token,
+        run=run,
     )
 
     if dry_run:
@@ -78,6 +86,8 @@ def deploy_databricks(
             f"(id={result['job_id']}, target={target})",
             fg=typer.colors.GREEN,
         )
+    if result.get("run_url"):
+        typer.secho(f"[OK] Run started: {result['run_url']}", fg=typer.colors.GREEN)
 
 
 # --- serverless Spark services (B5): Glue, Dataproc Serverless ----------------------
@@ -286,11 +296,11 @@ def deploy_dockerfile(
         "pipelines", "--pipelines", help="Folder copied into the image as /app/pipelines."
     ),
     engine: str = typer.Option("ubunye-engine", "--engine", help="pip requirement for the engine."),
-    out: Optional[Path] = typer.Option(
+    out: Optional[str] = typer.Option(
         None,
         "--out",
-        help="Write here instead of printing. A folder gets <folder>/Dockerfile; "
-        "missing folders are made.",
+        help="Write here instead of printing. A folder (or a path ending in /) gets "
+        "<folder>/Dockerfile; missing folders are made.",
     ),
 ) -> None:
     """Write a Dockerfile for a Spark job image on PLATFORM, and the entry script next to it."""
@@ -302,13 +312,14 @@ def deploy_dockerfile(
     if out is None:
         typer.echo(text)
         return
-    if out.is_dir():
-        out = out / "Dockerfile"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text, encoding="utf-8")
-    entry = out.parent / "ubunye_entry.py"
+    path = Path(out)
+    if out.endswith(("/", os.sep)) or path.is_dir():
+        path = path / "Dockerfile"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    entry = path.parent / "ubunye_entry.py"
     entry.write_text(packaging.ENTRY_SCRIPT, encoding="utf-8")
-    typer.secho(f"[OK] wrote {out} and {entry}", fg=typer.colors.GREEN)
+    typer.secho(f"[OK] wrote {path} and {entry}", fg=typer.colors.GREEN)
 
 
 # --- container jobs (B5b): Kubernetes, Azure Container Apps, EMR Serverless ---------------

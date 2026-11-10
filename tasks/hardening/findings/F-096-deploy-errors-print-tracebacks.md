@@ -1,6 +1,6 @@
 # F-096: deploy errors print a full Rich traceback instead of a clean message
 
-**Status:** open (target 0.9.1)
+**Status:** fixed (0.9.1)
 **Severity:** minor (the cause is in the traceback, but buried)
 **Source:** review (full CLI test run before 0.9.0)
 **Promise:** none

@@ -8,8 +8,7 @@ CONFIG:
   inputs:
     tx_data:
       format: unity
-      db_name: raw_db
-      tbl_name: feature_eng_1_input
+      table: main.raw_db.feature_eng_1_input
   transform: {}
   outputs:
     output_features:

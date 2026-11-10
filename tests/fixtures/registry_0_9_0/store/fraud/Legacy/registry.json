@@ -1,0 +1,29 @@
+{
+  "model_name": "Legacy",
+  "use_case": "fraud",
+  "versions": {
+    "0.1.0": {
+      "version": "0.1.0",
+      "stage": "development",
+      "registered_at": "2026-11-10T10:04:52.142716+00:00",
+      "promoted_to_staging": null,
+      "promoted_to_prod": null,
+      "archived_at": null,
+      "metrics": {
+        "auc": 0.81
+      },
+      "metadata": {
+        "library": "fixture",
+        "library_version": "1",
+        "drift_check_passed": true,
+        "registry_metadata": {
+          "owner": "team-a"
+        }
+      },
+      "lineage_run_id": null,
+      "config_hash": null,
+      "promoted_by": null
+    }
+  },
+  "promotion_gates": {}
+}

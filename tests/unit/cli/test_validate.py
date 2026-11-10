@@ -435,3 +435,36 @@ class TestValidateChecksTheProfileLikeRun:
         for flag in (["-m", "dev"], ["--profile", "prod"]):
             result = runner.invoke(app, ["validate", *args, *flag])
             assert result.exit_code == 0, (flag, result.output)
+
+    def test_plan_checks_the_profile_like_run(self, tmp_path):
+        args = self._task(tmp_path, self.PROFILES)
+        for flag in (["-m", "XYZ"], []):
+            result = runner.invoke(app, ["plan", *args, *flag])
+            assert result.exit_code == 1, (flag, result.output)
+            assert "not found" in result.output
+            assert "Plan OK" not in result.output
+        result = runner.invoke(app, ["plan", *args, "-m", "dev"])
+        assert "Profile" not in result.output, result.output
+
+    def test_plan_accepts_any_mode_with_no_profiles(self, tmp_path):
+        args = self._task(tmp_path)
+        result = runner.invoke(app, ["plan", *args, "-m", "XYZ"])
+        assert "Profile" not in result.output, result.output
+
+    def _doctor_config_check(self, args, flag):
+        import json
+
+        result = runner.invoke(app, ["doctor", *args, *flag, "--json"])
+        doc = json.loads(result.stdout)
+        return next(c for c in doc["checks"] if c["name"] == "task t1: config")
+
+    def test_doctor_checks_the_profile_like_run(self, tmp_path):
+        args = self._task(tmp_path, self.PROFILES)
+        for flag in (["-m", "XYZ"], []):
+            check = self._doctor_config_check(args, flag)
+            assert check["status"] == "fail", (flag, check)
+            assert "not found" in check["detail"]
+        assert self._doctor_config_check(args, ["-m", "prod"])["status"] == "ok"
+        assert (
+            self._doctor_config_check(self._task(tmp_path / "np"), ["-m", "XYZ"])["status"] == "ok"
+        )

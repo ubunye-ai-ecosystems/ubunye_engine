@@ -169,7 +169,10 @@ replace it.
 - **Resuming a pipeline is asked for by name.** `run --resume` (`run_pipeline(...,
   resume=True)`) skips the tasks that finished the batch and runs the rest. Skipping
   by default was tried and rejected: in an hourly pipeline (same `dt`, `t1` appends,
-  `t2` overwrites) it dropped `t1`'s new rows and exited 0 (skeptic round 6).
+  `t2` overwrites) it dropped `t1`'s new rows and exited 0 (skeptic round 6). A task
+  that only overwrites is never refused, so only its run records say it finished: with
+  run records (`--lineage`) it is skipped when its latest run of the batch succeeded
+  (0.9.1, F-098); without them it runs again.
 - **The note is written before anything is replaced.** If it cannot be written (a
   reader has it open), the run keeps its lease as it is and removes nothing; the next
   run of the batch writes the note first, then removes the replaced files, or waits.
@@ -316,7 +319,11 @@ the batch's rows for a correctable one.** Under a run lease with a named batch:
   version, so a retry of the batch commits nothing (probed: path, new path, catalog
   table, new catalog table). The run compares the table version before and after;
   if it did not move, it warns that the batch was already there and how to replace
-  it. That answers F-071's objection that the skip is silent.
+  it. That answers F-071's objection that the skip is silent. Only a run that
+  may follow a run that committed the batch compares (0.9.1, F-100): one that took
+  over a dead run's lease, or one that finds the `<batch key>.tried` note a failed
+  run leaves beside the lease when it had committed a keyed write. A first run
+  makes no extra call.
 - An append with `replace_where` is written as `overwrite` with `replaceWhere`: one
   commit replaces the batch's rows, on every run, from the current data. It carries
   no `txnAppId`: a replace is idempotent by itself, and a key would skip a

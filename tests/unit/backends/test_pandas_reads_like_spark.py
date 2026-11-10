@@ -187,6 +187,17 @@ class TestJsonDefaults:
         assert list(frame.native.columns) == ["a", "b"]
         assert frame.count() == 2
 
+    def test_a_json_array_file_reads_without_multiline(self, tmp_path):
+        """F-105: a file holding one JSON array (across lines) failed without multiLine."""
+        text = json.dumps([{"b": 1}, {"a": 2}], indent=2)
+        frame = _read(tmp_path, "json", text)
+        assert list(frame.native.columns) == ["a", "b"]
+        assert frame.count() == 2
+
+    def test_lines_that_each_hold_an_array_stay_json_lines(self, tmp_path):
+        frame = _read(tmp_path, "json", '[{"a":1},{"a":2}]\n[{"a":3}]\n')
+        assert frame.count() == 3
+
     def test_explicit_schema_selects_and_casts(self, tmp_path):
         frame = _read(tmp_path, "json", '{"a":1,"b":"x"}\n', schema="a DOUBLE")
         assert list(frame.native.columns) == ["a"]

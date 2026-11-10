@@ -19,8 +19,6 @@ from __future__ import annotations
 import importlib.metadata as md
 import os
 import re
-import shutil
-import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -28,6 +26,13 @@ from typing import List, Optional
 
 import typer
 
+from ubunye.backends.spark_backend import (
+    JAVA_FOR_SPARK,
+    find_java,
+    java_banner,
+    java_major,
+    java_suits_spark,
+)
 from ubunye.cli import backend_choice as backends_view
 from ubunye.cli.output import emit, json_option
 from ubunye.cli.pipeline_flag import pipeline_option
@@ -55,25 +60,6 @@ class Check:
 # --- the pieces, each testable on its own ------------------------------------
 
 
-def java_major(banner: str) -> Optional[int]:
-    """The Java major version from ``java -version`` output (``1.8`` means 8)."""
-    found = re.search(r'version "(\d+)(?:\.(\d+))?', banner)
-    if not found:
-        return None
-    first = int(found.group(1))
-    if first == 1 and found.group(2):
-        return int(found.group(2))
-    return first
-
-
-def java_suits_spark(spark_version: str, java: int) -> bool:
-    """Spark 4 runs on Java 17 and 21; Spark 3.5 on Java 8, 11 and 17."""
-    major = int(spark_version.split(".")[0])
-    if major >= 4:
-        return java in (17, 21)
-    return java in (8, 11, 17)
-
-
 def delta_pairs_with_spark(spark_version: str, delta_version: str) -> bool:
     """delta-spark 3.x is built for Spark 3, 4.x for Spark 4.
 
@@ -88,25 +74,6 @@ def _version(package: str) -> Optional[str]:
         return md.version(package)
     except md.PackageNotFoundError:
         return None
-
-
-def _find_java() -> Optional[str]:
-    home = os.environ.get("JAVA_HOME")
-    if home:
-        exe = Path(home) / "bin" / ("java.exe" if os.name == "nt" else "java")
-        if exe.exists():
-            return str(exe)
-    return shutil.which("java")
-
-
-def _java_banner(java: str) -> str:
-    try:
-        done = subprocess.run(
-            [java, "-version"], capture_output=True, text=True, timeout=20, check=False
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return f"could not run: {exc}"
-    return (done.stderr or done.stdout).strip()
 
 
 # --- the checks ----------------------------------------------------------------
@@ -135,18 +102,18 @@ def environment_checks() -> List[Check]:
     if not spark:
         return checks
 
-    java = _find_java()
+    java = find_java()
     if not java:
         checks.append(
             Check(
                 "java",
                 WARN,
                 "pyspark is installed but no Java was found (JAVA_HOME or java on PATH)",
-                "Install Java 17 (Spark 4) or 11 (Spark 3.5), or run with --backend pandas.",
+                f"{JAVA_FOR_SPARK}. Install one, or run with --backend pandas.",
             )
         )
     else:
-        major = java_major(_java_banner(java))
+        major = java_major(java_banner(java))
         if major is None:
             checks.append(Check("java", WARN, f"{java}: could not read its version"))
         elif java_suits_spark(spark, major):
@@ -157,7 +124,7 @@ def environment_checks() -> List[Check]:
                     "java",
                     WARN,
                     f"Java {major} does not suit Spark {spark} ({java})",
-                    "Spark 4 needs Java 17 or 21; Spark 3.5 needs 8, 11 or 17. Set JAVA_HOME.",
+                    f"{JAVA_FOR_SPARK}. Set JAVA_HOME.",
                 )
             )
 
@@ -194,6 +161,14 @@ def environment_checks() -> List[Check]:
     return checks
 
 
+def _suggest(usable: List[str]) -> str:
+    """A backend to suggest off a platform: databricks only attaches to a cluster's
+    session, so it is the last choice on a laptop."""
+    if "pandas" in usable:
+        return "pandas"
+    return next((n for n in usable if n != "databricks"), usable[0])
+
+
 def _backend_checks() -> List[Check]:
     checks: List[Check] = []
     rows = backends_view.describe_all()
@@ -219,7 +194,7 @@ def _backend_checks() -> List[Check]:
                 WARN,
                 f"a run without --backend uses '{default['name']}', which cannot run here "
                 "(on Databricks the platform's own backend is used instead)",
-                f"Pass --backend {usable[0]}, or install what '{default['name']}' needs.",
+                f"Pass --backend {_suggest(usable)}, or install what '{default['name']}' needs.",
             )
         )
     if not usable:
@@ -261,8 +236,13 @@ def plugin_checks() -> List[Check]:
     return checks
 
 
-def task_checks(task_dir: Path, task: str, variables: dict) -> List[Check]:
-    """The environment variables a task needs, and whether its config loads."""
+def task_checks(
+    task_dir: Path, task: str, variables: dict, profile: Optional[str] = None
+) -> List[Check]:
+    """The environment variables a task needs, and whether its config loads.
+
+    With *profile*, the config must define it, as ``run`` checks.
+    """
     from ubunye.config import load_config
     from ubunye.config.resolver import required_env_references
 
@@ -288,7 +268,7 @@ def task_checks(task_dir: Path, task: str, variables: dict) -> List[Check]:
     checks += _secret_checks(task, raw)
 
     try:
-        load_config(str(config_path), variables)
+        load_config(str(config_path), variables).check_profile(profile)
     except Exception as exc:
         first = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
         checks.append(Check(f"task {task}: config", FAIL, first))
@@ -354,7 +334,7 @@ def doctor_command(
         else:
             variables = cli_variables(dt=data_timestamp, dtf=None, mode=mode, var=var)
             for task in task_list:
-                checks += task_checks(usecase_dir / usecase / package / task, task, variables)
+                checks += task_checks(usecase_dir / usecase / package / task, task, variables, mode)
 
     ok = not any(c.status == FAIL for c in checks)
     if as_json:

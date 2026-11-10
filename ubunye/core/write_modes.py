@@ -32,9 +32,10 @@ one they cannot do is a config error, raised before a single row is written.
 
 from __future__ import annotations
 
+import importlib
 import warnings
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from ubunye.core.errors import SinkWriteError
 
@@ -185,6 +186,46 @@ def resolve(
         )
 
     return ResolvedWriteMode(mode=mode, save_mode=mode)
+
+
+def writer_modes(writer_cls: Any) -> Tuple[Optional[Iterable[str]], str]:
+    """The modes a writer declares (``None`` when it declares none) and its default.
+
+    Asked the way writers declare them: ``SUPPORTED_MODES`` / ``DEFAULT_MODE`` in the
+    writer's module, else ``SUPPORTED_MODES`` on the class.
+    """
+    supported: Any = None
+    default = "append"
+    module_name = getattr(writer_cls, "__module__", None)
+    if module_name:
+        try:
+            module = importlib.import_module(module_name)
+            supported = getattr(module, "SUPPORTED_MODES", None)
+            default = getattr(module, "DEFAULT_MODE", default)
+        except Exception:  # a plugin that will not import is reported elsewhere
+            pass
+    if supported is None:
+        supported = getattr(writer_cls, "SUPPORTED_MODES", None)
+    return supported, default
+
+
+def resolve_for(
+    writer_cls: Any, cfg: Dict[str, Any], supported: Optional[Iterable[str]] = None
+) -> ResolvedWriteMode:
+    """:func:`resolve` for one output, with what its writer declares.
+
+    ``ubunye plan`` and config validation both ask this, so they give one answer.
+    ``supported`` is used when the writer declares no modes.
+    """
+    declared, default = writer_modes(writer_cls)
+    return resolve(
+        cfg,
+        connector=str(cfg.get("format", "")),
+        supported=declared if declared is not None else (supported or NATIVE_SAVE_MODES),
+        default=default,
+        file_format=(cfg.get("file_format") or "").lower() or None,
+        merge_formats=getattr(writer_cls, "MERGE_FILE_FORMATS", None) or None,
+    )
 
 
 def _resolve_merge(

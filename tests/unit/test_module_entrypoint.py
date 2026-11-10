@@ -58,3 +58,19 @@ def test_it_does_not_build_a_spark_session():
     source = inspect.getsource(entry)
     assert "getOrCreate" not in source
     assert "SparkSession.builder" not in source
+
+
+def test_its_docs_show_only_commands_that_work():
+    """No remote --task-dir and no `spark-submit -m ubunye` (F-114): neither works."""
+    from pathlib import Path
+
+    import ubunye.__main__ as entry
+
+    docs = Path(__file__).parents[2] / "docs" / "deployment" / "anywhere.md"
+    for text in (entry.__doc__ or "", docs.read_text(encoding="utf-8")):
+        words = " ".join(text.replace("\\", " ").split()).split(" ")
+        for i, word in enumerate(words):
+            if word == "--task-dir" and i + 1 < len(words):
+                assert "://" not in words[i + 1] and "bucket" not in words[i + 1], words[i + 1]
+            if word == "-m" and words[i + 1 : i + 2] == ["ubunye"]:
+                assert words[i - 1].strip("`") == "python", " ".join(words[i - 4 : i + 2])

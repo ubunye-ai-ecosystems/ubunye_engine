@@ -404,21 +404,8 @@ def _build_workflow(
             lines.append(
                 f"          ubunye deploy databricks \\\n"
                 f"            -d {usecase_dir} -u {usecase} -p {package} -t {task} \\\n"
-                f"            --target {target}"
+                f"            --target {target} --run"
             )
-
-        lines.append("")
-        lines.append("      - name: Notebook output link")
-        lines.append(
-            "        if: "
-            "${{ steps.check_secrets.outputs.has_secrets == 'true' "
-            "&& github.event_name == 'workflow_dispatch' "
-            "&& inputs.run_after_deploy }}"
-        )
-        lines.append(
-            '        run: echo "::notice::Notebook cell output is only visible in the '
-            'Databricks job UI. Visit ${DATABRICKS_HOST}/#job/list to find the run."'
-        )
 
     lines.append("")
     return "\n".join(lines)

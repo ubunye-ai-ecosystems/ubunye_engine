@@ -45,12 +45,18 @@ class PaidOrders(Task):
             )
         )
 
-        summary = lines.group_by("country", drop_null_keys=False).agg(
-            orders=nw.len().cast(nw.Int64),
-            customers=nw.col("customer_id").n_unique().cast(nw.Int64),
-            revenue_cents=nw.col("amount_cents").sum().cast(nw.Int64),
-            first_order=nw.col("ordered_at").min(),
-            last_order=nw.col("ordered_at").max(),
+        # Cast after the aggregation: a cast inside it makes Narwhals fall back to a
+        # slow per-group apply on pandas, with a "complex group-by" warning.
+        summary = (
+            lines.group_by("country", drop_null_keys=False)
+            .agg(
+                orders=nw.len(),
+                customers=nw.col("customer_id").n_unique(),
+                revenue_cents=nw.col("amount_cents").sum(),
+                first_order=nw.col("ordered_at").min(),
+                last_order=nw.col("ordered_at").max(),
+            )
+            .with_columns(nw.col("orders", "customers", "revenue_cents").cast(nw.Int64))
         )
 
         return {"order_lines": lines, "country_summary": summary}

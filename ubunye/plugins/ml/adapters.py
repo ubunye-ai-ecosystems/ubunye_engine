@@ -9,11 +9,27 @@ from typing import Tuple
 
 
 def to_numpy_from_pandas(pdf, features):
+    """Deprecated: unused; :func:`ensure_Xy_numpy` does this for pandas and Spark."""
+    import warnings
+
+    warnings.warn(
+        "to_numpy_from_pandas() is deprecated and will be removed in 1.0; use ensure_Xy_numpy().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     X = pdf[features].to_numpy(copy=False)
     return X
 
 
 def to_numpy_from_spark(sdf, features):
+    """Deprecated: unused; :func:`ensure_Xy_numpy` does this for pandas and Spark."""
+    import warnings
+
+    warnings.warn(
+        "to_numpy_from_spark() is deprecated and will be removed in 1.0; use ensure_Xy_numpy().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     rows = sdf.select(
         *features
     ).toPandas()  # simple baseline; for large data prefer vectorized UDFs

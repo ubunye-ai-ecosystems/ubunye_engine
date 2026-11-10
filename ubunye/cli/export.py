@@ -17,12 +17,14 @@ from typing import Any, Dict, List, Optional
 
 import typer
 
+from ubunye.cli.output import CleanErrors
 from ubunye.cli.variables import cli_variables, var_option
 from ubunye.config import load_config
 from ubunye.orchestration import AirflowExporter, DatabricksExporter
 
 export_app = typer.Typer(
     name="export",
+    cls=CleanErrors,
     help="Export a task to an orchestrator: Airflow DAG, Databricks job, Spark pipeline.",
     add_completion=False,
 )
@@ -117,7 +119,12 @@ def export_spark_pipeline(
     name: Optional[str] = typer.Option(None, "--name", help="Pipeline name."),
     catalog: Optional[str] = typer.Option(None, "--catalog"),
     database: Optional[str] = typer.Option(None, "--database"),
-    mode: str = typer.Option("PROD", "-m", "--mode"),
+    mode: str = typer.Option(
+        "PROD",
+        "-m",
+        "--mode",
+        help="Config profile (mode). Default PROD, not the DEV that `ubunye run` uses.",
+    ),
     dt: Optional[str] = typer.Option(None, "-dt", "--data-timestamp"),
     var: Optional[List[str]] = var_option(),
 ):

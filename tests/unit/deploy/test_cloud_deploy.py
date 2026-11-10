@@ -395,9 +395,8 @@ def test_a_job_that_exits_1_without_a_record_still_raises(tmp_path, monkeypatch)
             "-t", "t", "-t", "t2", "--project", "p", "--region", "r", "--bucket", "b",
             "--image", "i"]  # fmt: skip
     result = runner.invoke(app, args)
-    assert result.exit_code != 0
-    assert isinstance(result.exception, cloud.DeployError)
-    assert "quota exceeded" in str(result.exception)
+    assert result.exit_code == 1
+    assert "[ERROR]" in result.output and "quota exceeded" in result.output
 
 
 @pytest.mark.parametrize("tasks", [["t", "t"], ["t", "sub/t2"], ["t", "a,b"]])
@@ -409,8 +408,8 @@ def test_bad_task_lists_are_refused_before_anything_runs(tmp_path, monkeypatch, 
         args += ["-t", t]
     args += ["--project", "p", "--region", "r", "--bucket", "b", "--image", "i"]
     result = runner.invoke(app, args)
-    assert result.exit_code != 0
-    assert isinstance(result.exception, ValueError)
+    assert result.exit_code == 1
+    assert "[ERROR] a task" in result.output  # one line, no traceback (F-096)
 
 
 def test_several_tasks_always_name_records_by_task(tmp_path, monkeypatch):
