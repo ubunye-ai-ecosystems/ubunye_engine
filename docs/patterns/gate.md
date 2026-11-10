@@ -4,6 +4,8 @@
 regresses. In CI the baseline is the task run on the pull request's base, the
 candidate the same task on its head.
 
+![Every run leaves a receipt with a hash of every row; ubunye gate compares two receipts](../assets/diagrams/run-record.svg)
+
 ```bash
 ubunye gate -d pipelines -u shop -p orders -t clean                     # previous run vs latest
 ubunye gate --baseline base.json --candidate head.json                  # two exported records

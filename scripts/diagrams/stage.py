@@ -60,6 +60,8 @@ BRAND = {
     "apachehive": "#D4A900",
     "json": "#0f172a",
     "python": "#3776AB",
+    "scikitlearn": "#F7931E",
+    "pytorch": "#EE4C2C",
 }
 
 # Glyphs for marks Simple Icons does not carry, in a 24x24 box.
@@ -80,6 +82,17 @@ GLYPHS = {
     "openlineage": '<circle cx="5" cy="12" r="3" fill="#1e88e5"/><circle cx="19" cy="6" r="3" '
     'fill="#1e88e5"/><circle cx="19" cy="18" r="3" fill="#1e88e5"/><path d="M5 12 19 6M5 12 19 18" '
     'stroke="#1e88e5" stroke-width="2"/>',
+    "table": '<rect x="2" y="3" width="20" height="18" rx="2.5" fill="#0f766e"/>'
+    '<path d="M2 9h20M2 15h20M9 9v12M15.5 9v12" stroke="#fff" stroke-width="1.6"/>',
+    "bin": '<path d="M4 7h16l-1.6 14H5.6z" fill="#d97706"/><rect x="2.5" y="3.5" width="19" height="3.5" '
+    'rx="1.2" fill="#f59e0b"/>',
+    "log": '<path d="M5 2h10l4 4v16H5z" fill="#64748b"/><path d="M8 10h8M8 14h8M8 18h5" stroke="#fff" '
+    'stroke-width="1.6"/>',
+    "stop": '<path d="M7.6 2h8.8L22 7.6v8.8L16.4 22H7.6L2 16.4V7.6z" fill="#dc2626"/>'
+    '<path d="M7.5 12h9" stroke="#fff" stroke-width="3" stroke-linecap="round"/>',
+    "shield": '<path d="M12 2 21 5.5v6c0 5.4-3.8 9.3-9 10.5C6.8 20.8 3 16.9 3 11.5v-6z" fill="#6366f1"/>'
+    '<path d="M8 12l3 3 5-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" '
+    'stroke-linejoin="round"/>',
     "laptop": '<rect x="4" y="5" width="16" height="11" rx="1.5" fill="none" stroke="#475569" '
     'stroke-width="2"/><path d="M2 19h20" stroke="#475569" stroke-width="2.4" stroke-linecap="round"/>',
 }

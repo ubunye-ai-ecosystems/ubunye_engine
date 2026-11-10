@@ -2,6 +2,8 @@
 
 **Status:** accepted, 0.7.0
 
+![Every run leaves a receipt with a hash of every row; ubunye gate compares two receipts](../assets/diagrams/run-record.svg)
+
 ## Context
 
 `--lineage` leaves a record of every run: what was read, what was written, and
