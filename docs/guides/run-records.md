@@ -56,6 +56,7 @@ instead (`--lineage-backend delta`). Every store and its flags:
 | Inputs and outputs | `name`, `location`, `row_count`, `schema_hash`, `data_hash` | What was read and written, and a hash over every row |
 | Code and config | `code_hash`, `config_hash`, `variables` (`dt`, `--var`, `mode`) | Whether the code or config changed |
 | Environment | `environment` (Python, platform, package versions), `environment_hash`, `backend`, `engine_version` | What it ran on |
+| Who and where ran it | `environment.identity`: `platform`, `workspace`, `job_id`, `job_run_id`, `task_key`, `run_by`, `git_commit`, `git_branch`, `deploy_target` (a field that was not found is left out) | Which job, run, person and commit, so a table leads back to the deploy that wrote it. Not part of `environment_hash`. See [ADR 015](../architecture/adr-015-run-identity-and-job-settings.md) and [Databricks job parameters](../deployment/databricks.md#job-parameters-ubunye-reads) |
 | Other | `expectations`, `llm_calls`, `llm_budget`, `model_runs`, `time_zone` | Data checks, model calls and model training, when the task has them |
 
 ## Read one

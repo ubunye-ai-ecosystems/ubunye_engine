@@ -513,6 +513,16 @@ with ubunye.notebook(task_dir) as run:
     run.write(outputs)
 ```
 
+Find the record of a deployed commit later in the run record table:
+
+```sql
+SELECT run_id, task_path, status,
+       get_json_object(record, '$.environment.identity.git_commit') AS git_commit,
+       get_json_object(record, '$.environment.identity.job_run_id') AS job_run_id
+FROM main.ops.ubunye_runs
+WHERE get_json_object(record, '$.environment.identity.git_commit') = '<sha>'
+```
+
 From Python, `ubunye.core.settings.job_settings()` gives the settings and
 where each came from, and `ubunye.core.identity.collect_identity()` gives the
 identity. Both work off Databricks and never fail a run. How it works:
