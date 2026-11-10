@@ -182,7 +182,36 @@ def test_delta_append_carries_the_batch_key(tmp_path, monkeypatch):
     lease.release()
 
 
+def _failed_after_its_write(tmp_path):
+    """A run that committed its keyed write of the batch, then failed."""
+    lease = _lease(tmp_path)
+    lease.writing("events", appends=True, exact=False)
+    lease.batch_write(replaces=False)
+    lease.written("events")
+    lease.rollback()
+    lease.release()
+
+
+def test_a_first_run_makes_no_history_lookup(tmp_path, monkeypatch):
+    lease = _held(tmp_path, monkeypatch)
+    spark = _Spark([3, 4])
+    assert delta_batch.append(
+        spark=spark, table="db.t", path=None, opts={}, batch_where=None, save=lambda m, o: None
+    )
+    assert spark.versions == [3, 4]  # no DESCRIBE HISTORY
+    lease.release()
+
+
+def test_a_run_after_a_failed_run_that_wrote_the_batch_is_a_retry(tmp_path):
+    _failed_after_its_write(tmp_path)
+    lease = _lease(tmp_path)
+    lease.writing("events", appends=True, exact=False)
+    assert lease.batch_write(replaces=False).retry
+    lease.release()
+
+
 def test_delta_append_skipped_by_delta_is_reported(tmp_path, monkeypatch, caplog):
+    _failed_after_its_write(tmp_path)
     lease = _held(tmp_path, monkeypatch)
     with caplog.at_level(logging.WARNING):
         delta_batch.append(

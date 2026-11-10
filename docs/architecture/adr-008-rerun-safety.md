@@ -286,7 +286,11 @@ the batch's rows for a correctable one.** Under a run lease with a named batch:
   version, so a retry of the batch commits nothing (probed: path, new path, catalog
   table, new catalog table). The run compares the table version before and after;
   if it did not move, it warns that the batch was already there and how to replace
-  it. That answers F-071's objection that the skip is silent.
+  it. That answers F-071's objection that the skip is silent. Only a run that
+  may follow a run that committed the batch compares (0.9.1, F-100): one that took
+  over a dead run's lease, or one that finds the `<batch key>.tried` note a failed
+  run leaves beside the lease when it had committed a keyed write. A first run
+  makes no extra call.
 - An append with `replace_where` is written as `overwrite` with `replaceWhere`: one
   commit replaces the batch's rows, on every run, from the current data. It carries
   no `txnAppId`: a replace is idempotent by itself, and a key would skip a

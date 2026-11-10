@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   An existing table is used as it is; `docs/cli.md` shows the three statements
   that turn the same on for it.
 
+### Changed
+
+- **A first Delta append of a named batch makes no history lookups** (F-100).
+  The two `DESCRIBE HISTORY` calls around each keyed append, there only to warn
+  that Delta skipped a batch an earlier run had committed, now run only when an
+  earlier run of the batch could have: the run took over a dead run's lease, or a
+  failed run that wrote the batch left a note beside it. Same warning, fewer steps.
+
 ## [0.9.0] (2026-11-10)
 
 ### Added

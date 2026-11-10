@@ -18,7 +18,10 @@ So, under a run lease with a named batch:
 * otherwise: the append carries ``txnAppId`` = task, output and batch, and
   ``txnVersion`` 0. A run killed or failed after its commit leaves the rows; the
   rerun commits nothing. If the table version did not move, the run says the batch
-  was already there, so rows removed by hand are not lost in silence.
+  was already there, so rows removed by hand are not lost in silence. Only a run
+  that follows such a run checks that (two ``DESCRIBE HISTORY`` calls): the lease
+  knows (it took over a dead run, or a failed run left a note). A first run makes
+  no extra call.
 * ``--rerun`` of a finished batch with no ``replace_where``: a plain append, as
   before; the run warned at its start that the batch is added again.
 
@@ -75,7 +78,7 @@ def append(
     batch = runs.batch_write(replaces=False)
     if batch is None or batch.how != "once":
         return False
-    before = _version(spark, table, path)
+    before = _version(spark, table, path) if batch.retry else None
     save("append", {**opts, "txnAppId": batch.app_id, "txnVersion": batch.version})
     if before is not None and _version(spark, table, path) == before:
         logger.warning(

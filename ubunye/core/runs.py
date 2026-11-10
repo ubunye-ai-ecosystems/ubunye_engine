@@ -47,6 +47,7 @@ by it. ``UBUNYE_RUN_LEASE=off`` turns it off.
 
 from __future__ import annotations
 
+import contextlib
 import contextvars
 import copy
 import hashlib
@@ -786,6 +787,9 @@ class RunLease:
             version=0,
             how=how,
             run_id=self.run_id,
+            # An earlier run of the batch may have committed it: a dead run this one
+            # took over, or a failed run that wrote it (F-100).
+            retry=how == "once" and (bool(self.recovered) or self._tried_path().exists()),
         )
 
     def landed(self, path: str) -> None:
@@ -868,6 +872,10 @@ class RunLease:
             if o.get("appends") and o.get("idempotent") and o.get("state") == "done"
         )
         if once:
+            if any(outputs[n]["idempotent"] == "once" for n in once):
+                # So the next run of the batch checks whether its write was skipped.
+                with contextlib.suppress(OSError):
+                    self._tried_path().write_text(self.run_id, encoding="utf-8")
             logger.warning(
                 "Run %s failed after writing %s in one transaction of the batch; a rerun "
                 "of the batch %s.",
@@ -949,6 +957,10 @@ class RunLease:
 
     def _finished_path(self) -> Path:
         return self.leases_dir / f"{self.path.stem}.finished.json"
+
+    def _tried_path(self) -> Path:
+        """Left by a failed run that committed a write of the batch keyed by its app id."""
+        return self.leases_dir / f"{self.path.stem}.tried"
 
     def _done_mark(self, run_id: str) -> Path:
         return self.leases_dir / f"{self.path.stem}.done-{run_id}"
@@ -1184,6 +1196,8 @@ class BatchWrite:
     version: int
     how: str
     run_id: str
+    #: An earlier run of the batch may have committed this write (``"once"`` only).
+    retry: bool = False
 
 
 class _InUse(Exception):
