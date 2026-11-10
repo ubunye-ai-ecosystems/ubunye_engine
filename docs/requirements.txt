@@ -4,3 +4,8 @@ mkdocstrings[python]>=0.25
 mkdocs-git-revision-date-localized-plugin>=1.2
 pymdown-extensions>=10.8
 mkdocs-macros-plugin>=0.7.0
+# Tap an image to see it full screen.
+mkdocs-glightbox>=0.4
+# Link preview cards (Material's social plugin): cairosvg and pillow. Also needs
+# the system libcairo; the docs workflow installs it.
+mkdocs-material[imaging]>=9.5
