@@ -78,7 +78,7 @@ The job uses **serverless compute** — no `new_cluster` block in
 `databricks.yml`. This is required on Databricks Free Edition (which does
 not allow classic-cluster creation) and works identically on paid
 workspaces. The job installs the engine through its environment
-(`environments` in `databricks.yml`, pinned to `ubunye-engine==0.9.2`), not
+(`environments` in `databricks.yml`, pinned to `ubunye-engine==0.9.3`), not
 with `%pip` in the notebook. The notebook runs the task as one `with` block:
 
 ```python

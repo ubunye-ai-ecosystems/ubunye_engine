@@ -28,7 +28,7 @@ writes to `titanic_cleaned`, task 2 reads the same table via the unity reader.
   the job parameter `ubunye_run_records` (`<catalog>.<schema>.ubunye_runs`),
   with the git commit, branch and deploy target the job passes.
 - **The engine installed by the job**: `environments` in `databricks.yml`
-  pins `ubunye-engine==0.9.2`; the notebook has no `%pip`.
+  pins `ubunye-engine==0.9.3`; the notebook has no `%pip`.
 - **Quoted catalog names**: `config.yaml` passes the catalog and schema
   through `| ident`, so a catalog with a hyphen works.
 - **Unity Catalog readers/writers**: intermediate and final outputs are managed

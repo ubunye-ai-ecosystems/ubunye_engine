@@ -127,7 +127,7 @@ bundles work on a paid workspace with small changes.
 | **Compute**          | Serverless only. The bundles have no cluster block, so tasks run on serverless. | Same bundles work. Add a cluster block only if you need classic compute. |
 | **Catalog**          | `workspace` (the bundle default).                        | Usually `main`: `databricks bundle deploy --target nonprod --var="titanic_catalog=main"`. |
 | **Input files**      | UC volumes (`/Volumes/...`). Serverless blocks `file:///tmp/...`. | Same.                                                        |
-| **Engine install**   | The job's environment (`environments` in `databricks.yml`) installs `ubunye-engine==0.9.2`; no `%pip`. | Same. Pin a newer version when you upgrade.                           |
+| **Engine install**   | The job's environment (`environments` in `databricks.yml`) installs `ubunye-engine==0.9.3`; no `%pip`. | Same. Pin a newer version when you upgrade.                           |
 
 The `databricks.yml` in each example is a reference bundle. `ubunye deploy
 databricks` can build an equivalent job for one task instead; add `--dry-run`

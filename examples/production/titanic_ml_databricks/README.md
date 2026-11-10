@@ -31,7 +31,7 @@ catalog). On paid workspaces, override `titanic_catalog=main`.
 
 ```
 titanic_ml_train (Job)
-├── environment "ubunye": ubunye-engine[ml]==0.9.2   # installed by the job, no %pip
+├── environment "ubunye": ubunye-engine[ml]==0.9.3   # installed by the job, no %pip
 ├── parameters: dt, ubunye_mode=PROD,
 │               ubunye_run_records=workspace.titanic_ml.ubunye_runs,
 │               git_commit, git_branch, deploy_target

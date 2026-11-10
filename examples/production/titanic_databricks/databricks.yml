@@ -66,7 +66,7 @@ resources:
           spec:
             environment_version: "3"
             dependencies:
-              - "ubunye-engine==0.9.2"
+              - "ubunye-engine==0.9.3"
       tasks:
         - task_key: run_pipeline
           environment_key: ubunye
