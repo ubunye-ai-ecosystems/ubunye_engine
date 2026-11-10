@@ -42,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`hooks=` adds to the engine's hooks, it does not replace them** (F-101).
+  `ubunye.run_task(..., hooks=[...])`, `run_pipeline` and `notebook` dropped the run
+  record (`lineage=True`) and the `CONFIG.monitors` hook when given hooks. Your hooks
+  now run with them. `Engine(hooks=...)` is unchanged.
+
 - Registering with `promotion_gates={}` clears a model's stored gates on every
   backend. Before, only the default filesystem path cleared them; MLflow and the
   others kept the old gates.

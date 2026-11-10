@@ -73,9 +73,9 @@ Explicit hooks **replace** the default set. Add `LegacyMonitorsHook(cfg)`
 yourself if you still want user monitors from `CONFIG.monitors`. To keep the
 default set and add yours to it, pass `Engine(extra_hooks=[MyHook()])` instead.
 
-From the Python API, `run_task(task_dir, hooks=[...])` also replaces the
-default set. Note that the run record (`lineage=True`) is itself added as an
-extra hook, so it is not written when you pass `hooks=`.
+From the Python API, `run_task(task_dir, hooks=[...])`, `run_pipeline` and
+`notebook` add your hooks to the default set. They never replace it: the
+`CONFIG.monitors` hook and the run record (`lineage=True`) still run.
 
 ### Environment (default set)
 
