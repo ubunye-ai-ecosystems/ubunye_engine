@@ -5,8 +5,7 @@ pipeline holds **tasks** that run in order. A task is one folder with a `config.
 to read and write) and a `transformations.py` (how to change the data). The folder path and
 the `ubunye run` flags name the same task.
 
-![A use case holds pipelines, a pipeline runs its tasks in order, a task is config.yaml plus transformations.py](../assets/diagrams/project-structure-light.svg#only-light)
-![A use case holds pipelines, a pipeline runs its tasks in order, a task is config.yaml plus transformations.py](../assets/diagrams/project-structure-dark.svg#only-dark)
+![A use case holds pipelines, a pipeline runs its tasks in order, a task is config.yaml plus transformations.py](../assets/diagrams/project-structure.svg)
 
 ---
 
