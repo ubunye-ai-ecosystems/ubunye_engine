@@ -197,6 +197,7 @@ class DeltaLineageBackend:
     def _session(self) -> Any:
         """The active SparkSession, or a local one with Delta, started here."""
         try:
+            from pyspark import SparkContext
             from pyspark.sql import SparkSession
         except ImportError as exc:
             raise ImportError(
@@ -215,6 +216,16 @@ class DeltaLineageBackend:
             .config("spark.sql.extensions", _DELTA_EXTENSION)
             .config("spark.sql.catalog.spark_catalog", _DELTA_CATALOG)
         )
+        if SparkContext._active_spark_context is None:
+            # Only a session started here: a running context means getOrCreate hands
+            # back someone else's session, which is never changed. Delta reads the
+            # small run record log in one task, not 50 (F-116); no UI, no progress bar.
+            for key, value in (
+                ("spark.databricks.delta.snapshotPartitions", "1"),
+                ("spark.ui.enabled", "false"),
+                ("spark.ui.showConsoleProgress", "false"),
+            ):
+                builder = builder.config(key, value)
         try:
             from delta import configure_spark_with_delta_pip
 

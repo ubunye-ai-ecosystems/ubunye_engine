@@ -42,6 +42,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Saving a Delta run record from a CLI or pandas run is about twice as fast**
+  (F-116). With no active SparkSession the Delta run record store starts a local
+  one, and Delta read the run record log in 50 tasks on every save. That session,
+  and only that one, now sets `spark.databricks.delta.snapshotPartitions=1` and
+  turns off the Spark UI and console progress bar. Measured on the dev box (16 cores,
+  8 saves): about 1.35 s to 0.72 s per save. A session the user or the platform
+  started is never changed.
+
 - **Each command's help says its default profile plainly** (F-115). `ubunye export`
   defaults to production (`--profile prod` for `airflow` and `databricks`, `-m PROD`
   for `spark-pipeline`) and `ubunye run` to `DEV`. The defaults are unchanged; the

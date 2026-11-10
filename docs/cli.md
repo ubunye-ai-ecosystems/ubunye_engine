@@ -547,7 +547,7 @@ Run records go to a store, chosen by name (ADR 011), in this order:
 | Store | `--lineage-dir` is | Needs |
 |---|---|---|
 | `filesystem` (default) | a directory under `--usecase-dir`: `<usecase_dir>/.ubunye/lineage/<usecase>/<pipeline>/<task>/<run_id>.json` | nothing |
-| `delta` | a Delta table name (`main.ops.ubunye_runs`) or path (`s3://bucket/ubunye/runs`), used as given | `pip install 'ubunye-engine[delta]'`, a SparkSession with Delta (the active one, or a local one it starts) |
+| `delta` | a Delta table name (`main.ops.ubunye_runs`) or path (`s3://bucket/ubunye/runs`), used as given | `pip install 'ubunye-engine[delta]'`, a SparkSession with Delta (the active one, or a local one it starts and tunes for its small table) |
 | a plugin | whatever that store takes, as given | its package, registered in `ubunye.lineage_backends` |
 
 Jobs that share no disk can share a table:
