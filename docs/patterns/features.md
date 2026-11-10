@@ -1,13 +1,41 @@
 # Pattern: Feature Store Pipeline
 
-A feature store pipeline reads raw events, computes features, and writes them
-to a Delta table (or Unity Catalog) that training and scoring jobs share.
+For anyone who trains and scores models on Spark and wants both to use the same
+features, computed once.
+
+- **The problem:** the training job and the scoring job each compute "amount
+  spent in the last 30 days" in their own way, and the numbers drift apart. Or
+  training uses values from after the event it is learning about.
+- **When to use it:** more than one model or job needs the same features, or you
+  need training sets that only use what was known at the time.
+- **The one command:** `ubunye run -d pipelines -u fraud -p features -t transaction -m PROD`
+
+A **feature** is one input column for a model, such as a customer's spend over
+30 days. A **feature store** here is just a table of features (Delta, or Unity
+Catalog) that training and scoring both read.
 
 ---
 
 ## Architecture
 
 ![Raw events from Hive or S3, a task that aggregates and encodes them into a point-in-time Delta feature table, read by a training task and a scoring task](../assets/diagrams/features.svg)
+
+Three tasks in one pipeline, `features`:
+
+```
+pipelines/                         # the pipelines folder (-d)
+└── fraud/                         # use case (-u)
+    └── features/                  # pipeline (-p)
+        ├── transaction/           # task: raw events -> feature table
+        │   ├── config.yaml
+        │   └── transformations.py
+        ├── training_set/          # task: features as of each label's time
+        │   ├── config.yaml
+        │   └── transformations.py
+        └── score_features/        # task: each customer's latest features
+            ├── config.yaml
+            └── transformations.py
+```
 
 ---
 
@@ -20,10 +48,10 @@ VERSION: "1.0.0"
 
 ENGINE:
   profiles:
-    dev:
+    DEV:
       spark_conf:
         spark.sql.shuffle.partitions: "4"
-    prod:
+    PROD:
       spark_conf:
         spark.sql.shuffle.partitions: "400"
 
@@ -83,11 +111,57 @@ class FeatureTask(Task):
         return {"transaction_features": features}
 ```
 
+Check it, then run it:
+
+```bash
+ubunye plan -d pipelines -u fraud -p features -t transaction
+ubunye run  -d pipelines -u fraud -p features -t transaction           # DEV profile
+ubunye run  -d pipelines -u fraud -p features -t transaction -m PROD   # PROD profile
+```
+
+`-m` picks the profile, and with it the Spark settings above (see
+[Engine](../config/engine.md)). What success looks like:
+
+```
+Task fraud/features/transaction
+  Inputs
+    customer_profiles hive           raw.customers
+                 not checked (not a local path)
+    raw_transactions hive           raw.transactions
+                 not checked (not a local path)
+  Transform  FeatureTask  (transformations.py), written for pyspark
+  Outputs
+    transaction_features delta          s3://datalake/features/transaction/
+                 mode overwrite
+
+Plan OK: 1 task(s) can run.
+Starting task: transaction (Mode: DEV, Deploy: client)
+[OK] Run complete for transaction
+```
+
+The feature table has one row per transaction, with that moment's 30-day numbers:
+
+```
+customer_id            event_ts  amount_sum_30d  txn_count_30d  avg_amount_30d  risk_encoded
+         c1 2026-10-03 11:51:20          427.41              1      427.410000             2
+         c1 2026-10-03 18:15:18          576.43              2      288.215000             2
+         c1 2026-10-06 22:00:18         1089.37              3      363.123333             2
+```
+
+!!! tip "Try it on your laptop"
+    The output above came from a local Spark run with the two Hive inputs and the
+    Delta output swapped for Parquet files (`format: s3`, `file_format: parquet`,
+    a local `path:`). The transform did not change. `event_ts` must be a Spark
+    `TIMESTAMP`: a `TIMESTAMP_NTZ` column (what pandas writes for a time with no
+    time zone) cannot be cast to `long` for the 30-day window.
+
 ---
 
 ## Point-in-time correct feature lookup
 
-For training, join features to labels **as of the label timestamp**:
+For training, join features to labels **as of the label timestamp**: each label
+gets the features as they were just before it, never values from later. This is
+what **point-in-time correct** means.
 
 ```yaml
 # pipelines/fraud/features/training_set/config.yaml
@@ -132,6 +206,22 @@ class TrainingSetTask(Task):
         return {"training_set": training_set}
 ```
 
+Run it after `transaction`:
+
+```bash
+ubunye run -d pipelines -u fraud -p features -t training_set
+```
+
+What success looks like: one row per label, with the features from the latest
+transaction before `label_ts`:
+
+```
+customer_id            event_ts   label_ts  is_fraud  amount_sum_30d  txn_count_30d  avg_amount_30d  risk_encoded
+         c1 2026-11-04 10:49:55 2026-11-05         1         8584.19             21      408.770952             2
+         c2 2026-11-04 22:24:43 2026-11-06         0         5231.07             13      402.390000             1
+         c3 2026-11-03 14:24:42 2026-11-07         0         9248.64             18      513.813333             0
+```
+
 ---
 
 ## Serving latest features for scoring
@@ -160,15 +250,35 @@ from ubunye.core.interfaces import Task
 class LatestFeaturesTask(Task):
     def transform(self, sources: dict) -> dict:
         df = sources["features"]
+        values = [c for c in df.columns if c != "customer_id"]
         latest = df.groupBy("customer_id").agg(
-            F.max_by(F.struct(df.columns), "event_ts").alias("latest")
+            F.max_by(F.struct(*values), "event_ts").alias("latest")
         ).select("customer_id", "latest.*")
         return {"latest_features": latest}
+```
+
+`values` leaves out `customer_id`: it is already the group key, and selecting it
+twice fails with `COLUMN_ALREADY_EXISTS`.
+
+```bash
+ubunye run -d pipelines -u fraud -p features -t score_features
+```
+
+What success looks like: one row per customer:
+
+```
+customer_id            event_ts  amount_sum_30d  txn_count_30d  avg_amount_30d  risk_encoded
+         c1 2026-11-05 01:28:32         9059.56             22      411.798182             2
+         c2 2026-11-09 05:42:13         6207.21             14      443.372143             1
+         c3 2026-11-03 14:24:42         9248.64             18      513.813333             0
 ```
 
 ---
 
 ## Schedule with Airflow
+
+Add an `ORCHESTRATION` block to the task's `config.yaml` and export a DAG. Every
+key and flag is on [Orchestration](../config/orchestration.md).
 
 ```yaml
 ORCHESTRATION:
@@ -181,5 +291,5 @@ ORCHESTRATION:
 ```bash
 ubunye export airflow \
     -c pipelines/fraud/features/transaction/config.yaml \
-    -o dags/fraud_features.py --profile prod
+    -o dags/fraud_features.py --profile PROD
 ```

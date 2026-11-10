@@ -1,9 +1,18 @@
 # Agents over MCP
 
-`ubunye mcp` serves the engine to agents over the
-[Model Context Protocol](https://modelcontextprotocol.io): Claude, IDE assistants and
-any MCP client can list tasks, plan them, run them and check the result, with the
-same rules a person works under.
+For anyone who wants an AI agent (Claude, an IDE assistant) to plan, run and
+check Ubunye tasks for them.
+
+- **The problem:** an agent that runs shell commands can do anything. You want it
+  to work on your tasks with the same rules a person works under, and no more.
+- **When to use it:** you use an agent that speaks MCP and want it to list,
+  plan, run and check your tasks.
+- **The one command:** `ubunye mcp -d pipelines`
+
+`ubunye mcp` serves the engine over the
+[Model Context Protocol](https://modelcontextprotocol.io) (MCP, a standard way for
+agents to call tools). Any MCP client can list tasks, plan them, run them and
+check the result.
 
 ![An MCP client talks to ubunye mcp: nine read-only tools always on, run only with --allow-run, tasks by name, paths like ../../etc refused](../assets/diagrams/mcp.svg)
 
@@ -13,21 +22,21 @@ ubunye mcp -d pipelines                 # read-only tools
 ubunye mcp -d pipelines --allow-run     # also the `run` tool
 ```
 
-`-d` defaults to the current folder. `--lineage-dir` (default `.ubunye/lineage`)
-is where run records are read and written, and `--allow-live-llm` lets `run` call
-models live (see below).
+`-d` defaults to the current folder. `--lineage-dir` picks where run records are
+read and written (see [Where run records are stored](../cli.md#where-run-records-are-stored)),
+and `--allow-live-llm` lets `run` call models live (see below).
 
 ## Tools
 
 | Tool | What it does |
 | --- | --- |
-| `tasks` | The tasks under the folder, as `usecase/package/task`. |
+| `tasks` | The tasks under the folder, as `usecase/pipeline/task`. |
 | `doctor` | What will fail on this machine, and why; with tasks, their configs and env vars too. |
 | `plan` | What a task will read and write, the model bill, and what will stop it. Reads no data. |
 | `runs` | A task's recorded runs, newest first. |
 | `record` | A full run record: outputs and hashes, code, environment, timings, model calls. |
 | `gate` | A run against a baseline (default: latest against previous), rule by rule. |
-| `focus` | A run's model calls as FOCUS 1.4 cost rows. |
+| `focus` | A run's model calls as FOCUS 1.4 cost rows (a standard format for cloud bills; see [LLM calls](llm.md#costs-as-focus-rows)). |
 | `health` | Job health per task: last status, last success, failures in a row, runs likely dead ([Job health](job-health.md)). |
 | `upstream` | Whether a task succeeded for a batch (`variables` such as `dt` or `month`). |
 | `run` | Runs a task and records it. Only with `--allow-run`. |

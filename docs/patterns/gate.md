@@ -1,8 +1,18 @@
-# Gate pull requests on the run receipt
+# Gate pull requests on the run record
 
-`ubunye gate` compares a run's receipt with a baseline and fails when it
-regresses. In CI the baseline is the task run on the pull request's base, the
-candidate the same task on its head.
+For anyone who reviews changes to tasks and wants CI to catch a change that
+quietly alters the data.
+
+- **The problem:** a small code change can change a task's output, its row
+  count or its speed, and nobody notices in review.
+- **When to use it:** on every pull request that touches a task, or any time you
+  want to compare two runs of the same task.
+- **The one command:** `ubunye gate -d pipelines -u shop -p orders -t clean`
+
+`ubunye gate` compares a run's [run record](../guides/run-records.md) (the
+record a run leaves with `--lineage`) with a baseline run, and fails when the
+new run is worse. In CI the baseline is the task run on the pull request's base
+branch, and the candidate is the same task run on its head.
 
 ![Every run leaves a receipt with a hash of every row; ubunye gate compares two receipts](../assets/diagrams/run-record.svg)
 
@@ -15,17 +25,9 @@ ubunye gate ... --max-slowdown 0.5 --max-row-change 0.1 --summary "$GITHUB_STEP_
 `--baseline` and `--candidate` take a run record file (`ubunye lineage show
 --json` writes one), a run id (or its first characters), `previous` or `latest`.
 
-Stored runs are read from the run record store: files under
-`<usecase_dir>/.ubunye/lineage` by default, or a shared one named with
-`--lineage-backend` (or `UBUNYE_LINEAGE_BACKEND`) and `--lineage-dir`, such as
-a Delta table every job writes to:
-
-```bash
-ubunye gate -d pipelines -u shop -p orders -t clean \
-  --lineage-backend delta --lineage-dir main.ops.ubunye_runs
-```
-
-See [Where run records are stored](../cli.md#where-run-records-are-stored).
+Stored runs are read from the same run record store `ubunye run --lineage`
+wrote to, set with the same `--lineage-backend` and `--lineage-dir` flags. See
+[Where run records are stored](../cli.md#where-run-records-are-stored).
 
 ## What fails the gate
 
@@ -64,11 +66,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ubunye-ai-ecosystems/ubunye_engine/.github/actions/gate@v0.8.0
+      - uses: ubunye-ai-ecosystems/ubunye_engine/.github/actions/gate@v0.9.0
         with:
           usecase-dir: pipelines
           usecase: shop
-          package: orders
+          package: orders      # the pipeline (-p)
           task: clean
           gate-args: --max-slowdown 0.5
 ```
@@ -77,7 +79,9 @@ It installs the engine, runs the task on the pull request's base and on its head
 (pandas by default, no Java needed), gates head against base, and writes the
 table to the job summary. Inputs: `backend`, `engine` (a pip requirement),
 `extra-packages`, `baseline-ref` (default: the pull request's base), `gate-args`,
-`python-version`. Output: `passed`.
+`llm-mode` (see [Tasks that call a model](#tasks-that-call-a-model)),
+`python-version`. Output: `passed`. The `package` input names the pipeline; it
+keeps its old name.
 
 ## Gate on a number: accuracy, agreement, error rate
 

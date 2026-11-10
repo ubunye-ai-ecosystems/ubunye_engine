@@ -1,13 +1,148 @@
 # Pattern: REST API Ingestion
 
-Pull data from third-party APIs, normalise it, and land it in your data lake.
-This pattern covers single-request, paginated, and incremental ingestion strategies.
+For anyone who needs to pull data from a web API (a shop, a CRM, an exchange
+rate service) into their lake on a schedule. Each section is one common case,
+with a config you can copy.
+
+- **The problem:** the data you need sits behind an HTTP API, spread over many
+  pages, behind a token, with rate limits.
+- **When to use it:** the API returns JSON and you want it as a table. No code is
+  needed for the request itself: the `rest_api` connector does the paging, the
+  login and the retries.
+- **The one command:** `ubunye run -d pipelines -u shop -p ingest -t orders --lineage`
+
+Every `rest_api` key is listed on [REST API Connector](../connectors/rest_api.md).
+This page shows how to put them together.
 
 ---
 
-## Single-request ingestion
+## A full example you can run
 
-For small payloads that fit in one response:
+A task that reads every order from a shop API, a page of 3 at a time, and lands
+them as Parquet:
+
+```
+pipelines/                    # the pipelines folder (-d)
+└── shop/                     # use case
+    └── ingest/               # pipeline
+        └── orders/           # task
+            ├── config.yaml
+            └── transformations.py
+```
+
+```yaml
+# pipelines/shop/ingest/orders/config.yaml
+MODEL: etl
+VERSION: "1.0.0"
+
+CONFIG:
+  inputs:
+    orders:
+      format: rest_api
+      url: "{{ env.SHOP_API | default('https://api.shop.example.com') }}/v1/orders"
+      auth:
+        type: api_key_header
+        header: X-Shop-Access-Token
+        key: "secret://env/SHOP_TOKEN"
+      params:
+        limit: 3                # the API's own page size parameter
+      pagination:
+        type: offset
+        page_size: 3
+        max_pages: 200
+      response:
+        root_key: orders
+      schema:
+        - name: id
+          type: long
+        - name: created_at
+          type: string          # text; convert it in the transform
+        - name: total_price
+          type: double
+        - name: currency
+          type: string
+        - name: status
+          type: string
+
+  outputs:
+    raw_orders:
+      format: s3
+      path: lake/shop/raw_orders
+      file_format: parquet
+      mode: overwrite
+```
+
+```python
+# pipelines/shop/ingest/orders/transformations.py
+from ubunye.core.interfaces import Task
+
+
+class IngestOrders(Task):
+    def transform(self, sources: dict) -> dict:
+        return {"raw_orders": sources["orders"]}
+```
+
+- `auth` sends the token in the `X-Shop-Access-Token` header. The token comes
+  from the `SHOP_TOKEN` environment variable through a
+  [secret reference](../config/secrets.md), so it is never in the file, the plan
+  or the run record.
+- `pagination: offset` asks for `offset=0`, then `3`, then `6`, until a page
+  comes back empty.
+- `schema` fixes the column types, so an empty or odd page cannot change them.
+
+Check it, then run it:
+
+```bash
+export SHOP_TOKEN=...        # your token
+ubunye plan -d pipelines -u shop -p ingest -t orders --backend pandas
+ubunye run  -d pipelines -u shop -p ingest -t orders --backend pandas --lineage
+```
+
+What success looks like (here against a small local test server that holds 7
+orders, with `SHOP_API` pointing at it):
+
+```
+Task shop/ingest/orders   (backend: pandas)
+  Inputs
+    orders       rest_api       http://127.0.0.1:38031/v1/orders
+                 not checked (not a local path)
+  Transform  IngestOrders  (transformations.py)
+  Outputs
+    raw_orders   s3 parquet     lake/shop/raw_orders
+                 mode overwrite
+
+Plan OK: 1 task(s) can run.
+Starting task: orders (Mode: DEV, Deploy: client)
+[OK] Run complete for orders
+```
+
+`lake/shop/raw_orders` holds all 7 orders from the 3 pages:
+
+```
+ id           created_at  total_price currency   status
+  1 2026-11-01T09:01:00Z        120.5      ZAR     paid
+  2 2026-11-01T09:02:00Z        241.0      ZAR     paid
+  3 2026-11-02T09:03:00Z        361.5      ZAR refunded
+  4 2026-11-02T09:04:00Z        482.0      ZAR     paid
+  5 2026-11-02T09:05:00Z        602.5      ZAR     paid
+  6 2026-11-03T09:06:00Z        723.0      ZAR refunded
+  7 2026-11-03T09:07:00Z        843.5      ZAR     paid
+```
+
+`ubunye lineage trace -d pipelines -u shop -p ingest -t orders` shows the API
+as the input, with `rows : 7`. A wrong token fails the run at once:
+
+```
+[ERROR] Run failed for orders: 401 Client Error: Unauthorized for url: http://127.0.0.1:38031/v1/orders?limit=3&offset=0
+```
+
+The same task runs on Spark with no change: drop `--backend pandas`.
+
+---
+
+## Single request
+
+For a small answer that fits in one response, leave `pagination` out:
 
 ```yaml
 MODEL: etl
@@ -24,8 +159,6 @@ CONFIG:
       response:
         root_key: rates
 
-  transform: {}
-
   outputs:
     rates:
       format: delta
@@ -35,51 +168,15 @@ CONFIG:
 
 ---
 
-## Paginated ingestion (offset)
-
-For APIs that return large datasets across multiple pages:
-
-```yaml
-CONFIG:
-  inputs:
-    orders:
-      format: rest_api
-      url: "https://api.shopify.example.com/v1/orders"
-      auth:
-        type: api_key_header
-        header: X-Shopify-Access-Token
-        key: "{{ env.SHOPIFY_TOKEN }}"
-      params:
-        limit: 250              # the API's own page size parameter
-      pagination:
-        type: offset
-        page_size: 250
-        max_pages: 200
-      response:
-        root_key: orders
-      schema:
-        - name: id
-          type: long
-        - name: created_at
-          type: string          # text; convert it in the transform
-        - name: total_price
-          type: double
-        - name: currency
-          type: string
-        - name: status
-          type: string
-```
-
----
-
 ## Incremental ingestion (cursor / date filter)
 
-Pass the last-seen cursor or date as a Jinja variable:
+Fetch only what changed since the last run: pass the last-seen date as a
+variable with `--var`, and use it in the config with [Jinja](../config/jinja.md):
 
 ```bash
 ubunye run -d pipelines -u crm -p ingest -t contacts \
-    --var since=2024-06-01 \
-    --mode prod \
+    --var since=2026-11-01 \
+    -m PROD \
     --lineage
 ```
 
@@ -93,7 +190,7 @@ CONFIG:
         updated_after: "{{ since | default('2020-01-01') }}"
       auth:
         type: bearer
-        token: "{{ env.CRM_TOKEN }}"
+        token: "secret://env/CRM_TOKEN"
       pagination:
         type: next_link
         next_key: next          # a top level key of the response; dotted paths are not read
@@ -116,7 +213,7 @@ CONFIG:
       auth:
         type: basic
         username: "{{ env.MP_USER }}"
-        password: "{{ env.MP_SECRET }}"
+        password: "secret://env/MP_SECRET"
       pagination:
         type: cursor
         cursor_response_key: next_page_token
@@ -135,8 +232,10 @@ CONFIG:
     github_repos:
       format: rest_api
       url: "https://api.github.com/orgs/my-org/repos"
+      auth:
+        type: bearer
+        token: "secret://env/GITHUB_TOKEN"
       headers:
-        Authorization: "Bearer {{ env.GITHUB_TOKEN }}"
         X-GitHub-Api-Version: "2022-11-28"
       pagination:
         type: next_link
@@ -160,8 +259,9 @@ CONFIG:
       format: rest_api
       url: "https://api.elastic.example.com/search"
       method: POST
-      headers:
-        Authorization: "Bearer {{ env.ES_TOKEN }}"
+      auth:
+        type: bearer
+        token: "secret://env/ES_TOKEN"
       body:                     # sent as the JSON body; params would go in the URL
         query: "fraud risk"
         size: 100
@@ -182,7 +282,7 @@ CONFIG:
       method: POST
       auth:
         type: bearer
-        token: "{{ env.CRM_TOKEN }}"
+        token: "secret://env/CRM_TOKEN"
       batch_size: 200
       rate_limit:
         requests_per_second: 10
@@ -194,7 +294,8 @@ CONFIG:
 
 ## Handling nested JSON
 
-The `response.root_key` only extracts one level. For deeply nested responses,
+The `response.root_key` only extracts one level (see
+[Response extraction](../connectors/rest_api.md#response-extraction)). For deeply nested responses,
 use a transform to flatten:
 
 ```python
@@ -218,7 +319,8 @@ class FlattenTask(Task):
 
 ## Scheduling
 
-Run nightly via Airflow:
+Run nightly via Airflow. Every key and flag is on
+[Orchestration](../config/orchestration.md):
 
 ```yaml
 ORCHESTRATION:
@@ -231,5 +333,5 @@ ORCHESTRATION:
 ```bash
 ubunye export airflow \
     -c pipelines/crm/ingest/contacts/config.yaml \
-    -o dags/crm_contacts.py --profile prod
+    -o dags/crm_contacts.py --profile PROD
 ```
