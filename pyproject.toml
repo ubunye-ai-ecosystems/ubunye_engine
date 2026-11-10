@@ -170,7 +170,7 @@ file = "ubunye.models.artifact_store:LocalArtifactStore"
 
 [project.entry-points."ubunye.registry_backends"]
 filesystem = "ubunye.models.registry:FilesystemRegistryBackend"
-mlflow = "ubunye.models.mlflow_registry:MLflowRegistryBackend"
+mlflow = "ubunye.models.mlflow_registry:MLflowModelRegistryBackend"
 
 [project.entry-points."ubunye.lineage_backends"]
 filesystem = "ubunye.lineage.storage:FileSystemLineageStore"

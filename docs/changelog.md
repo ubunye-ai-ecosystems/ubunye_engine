@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   changes. A backend implements six methods; rollback, archive, compare,
   version numbers, stored promotion gates and one production version at a time
   are done by Ubunye on top of them, for every backend.
+- **`--backend mlflow` now uses the MLflow Model Registry** (ADR 014). Before,
+  the `mlflow` backend kept models in a folder and only logged a best effort
+  MLflow run. Now each version is a registered model version
+  (`{use_case}.{model_name}`, or the `UBUNYE_MLFLOW_MODEL_NAME` template), the
+  saved model is the version's artifact, and the stage, metrics, metadata,
+  gates and lineage run id are version tags. `staging` and `production` are
+  MLflow aliases, so `models:/<name>@production` works. The MLflow stage API is
+  never called, so the backend fits Unity Catalog. MLflow is found through
+  `MLFLOW_TRACKING_URI` / `MLFLOW_REGISTRY_URI`; `--store` names the experiment.
+  The old class, `MLflowRegistryBackend`, still works from Python and warns that
+  it is deprecated.
 - **`ubunye.testing.registry_conformance`**, the suite a registry backend runs to
   prove itself. The filesystem and MLflow backends pass it, and so does a third
   party one installed through a real entry point.

@@ -59,7 +59,7 @@ class RegistryBackend(Protocol):
     """Structural interface for model registries.
 
     Concrete implementations: ``FilesystemRegistryBackend`` (built-in),
-    ``MLflowRegistryBackend`` (Phase 2).
+    ``MLflowModelRegistryBackend`` (``mlflow``, ADR 014).
     """
 
     def register(
