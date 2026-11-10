@@ -129,16 +129,17 @@
       opacity 0.25s;
   }
 
-  /* 6. The table of contents stays put, but must clear the taller header. */
+  /* 6. The table of contents stays put, but must clear the taller header and
+        the sticky tabs bar under it. */
   .md-sidebar--secondary {
-    top: var(--ubunye-header-height);
+    top: calc(var(--ubunye-header-height) + 2.4rem);
   }
 }
 
 /* ---------------------------------------------------------------------------
    Collapsible sections
-   navigation.tabs / .sections / .expand are off in mkdocs.yml, so Material's
-   default collapsing applies. These only make the affordance legible.
+   navigation.sections / .expand are off in mkdocs.yml, so Material's default
+   collapsing applies inside each tab. These only make the affordance legible.
    --------------------------------------------------------------------------- */
 
 .md-nav__item--nested > .md-nav__link {

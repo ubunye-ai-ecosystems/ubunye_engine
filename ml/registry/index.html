@@ -1,12 +1,9 @@
-
-<!doctype html>
-<html lang="en" class="no-js">
-  <head>
+<!DOCTYPE html><html lang="en" class="no-js"><head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Config-first, Spark-native framework for ETL + ML pipelines powering intelligent systems">
+        <meta name="description" content="Config-first framework for data and ML pipelines. Write a task once, run it on pandas, Spark or Databricks, and prove every run gives the same rows.">
       
       
       
@@ -47,15 +44,19 @@
       
         
         
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
     
       <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
     
+      <link rel="stylesheet" href="../../stylesheets/palette.css">
+    
       <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/home.css">
     
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -63,7 +64,30 @@
 
     
     
-  </head>
+  
+<meta property="og:type" content="website">
+<meta property="og:title" content="Model Registry - Ubunye Engine">
+<meta property="og:description" content="Config-first framework for data and ML pipelines. Write a task once, run it on pandas, Spark or Databricks, and prove every run gives the same rows.">
+<meta property="og:image" content="https://ubunye-ai-ecosystems.github.io/ubunye_engine/assets/images/social/ml/registry.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://ubunye-ai-ecosystems.github.io/ubunye_engine/ml/registry/">
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:title" content="Model Registry - Ubunye Engine">
+<meta property="twitter:description" content="Config-first framework for data and ML pipelines. Write a task once, run it on pandas, Spark or Databricks, and prove every run gives the same rows.">
+<meta property="twitter:image" content="https://ubunye-ai-ecosystems.github.io/ubunye_engine/assets/images/social/ml/registry.png">
+<link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
   
   
     
@@ -73,7 +97,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -96,7 +120,7 @@
 
   
 
-<header class="md-header md-header--shadow" data-md-component="header">
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="Ubunye Engine" class="md-header__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
       
@@ -105,7 +129,7 @@
     </a>
     <label class="md-header__button md-icon" for="__drawer">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
     </label>
     <div class="md-header__title" data-md-component="header-title">
       <div class="md-header__ellipsis">
@@ -130,20 +154,20 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"></path></svg>
       </label>
     
   
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"></path></svg>
       </label>
     
   
@@ -159,30 +183,30 @@
       
         <label class="md-header__button md-icon" for="__search">
           
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
         </label>
         <div class="md-search" data-md-component="search" role="dialog">
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required="">
       <label class="md-search__icon md-icon" for="__search">
         
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
         
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
       </label>
       <nav class="md-search__options" aria-label="Search">
         
         <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
         </button>
       </nav>
       
     </form>
     <div class="md-search__output">
-      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix="">
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
             Initializing search
@@ -200,7 +224,7 @@
         <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
   </div>
   <div class="md-source__repository">
     ubunye-ai-ecosystems/ubunye_engine
@@ -210,13 +234,243 @@
     
   </nav>
   
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting_started/install/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../config/overview/" class="md-tabs__link">
+          
+  
+  
+  Writing Tasks
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../connectors/overview/" class="md-tabs__link">
+          
+  
+  
+  Connectors
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../model_contract/" class="md-tabs__link">
+          
+  
+  
+  Machine Learning
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../examples/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/run-records/" class="md-tabs__link">
+          
+  
+  
+  How-to Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../cli/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../proving-ground/" class="md-tabs__link">
+          
+  
+  
+  Proving Ground
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dev_guide/" class="md-tabs__link">
+          
+  
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
-        
-          
         
       
       <main class="md-main" data-md-component="main">
@@ -224,14 +478,16 @@
           
             
               
-              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
                     
 
 
+  
 
-<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="Ubunye Engine" class="md-nav__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
       
@@ -245,7 +501,7 @@
       <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
   </div>
   <div class="md-source__repository">
     ubunye-ai-ecosystems/ubunye_engine
@@ -253,7 +509,7 @@
 </a>
     </div>
   
-  <ul class="md-nav__list" data-md-scrollfix>
+  <ul class="md-nav__list" data-md-scrollfix="">
     
       
       
@@ -292,12 +548,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2">
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -327,7 +586,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -392,6 +651,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../getting_started/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../getting_started/structure/" class="md-nav__link">
         
   
@@ -400,6 +687,62 @@
     
   
     Project Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/01-local-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial 1: pandas and Spark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/02-olist-multi-table/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial 2: nine tables, checked
   
 
     
@@ -430,12 +773,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3">
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -445,7 +791,7 @@
   <span class="md-ellipsis">
     
   
-    Writing Pipelines
+    Writing Tasks
   
 
     
@@ -461,11 +807,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Writing Pipelines
+    Writing Tasks
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -708,12 +1054,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4">
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -743,7 +1092,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -871,7 +1220,7 @@
   <span class="md-ellipsis">
     
   
-    S3 and Delta
+    Files and Delta (s3, delta, binary)
   
 
     
@@ -960,15 +1309,21 @@
     
     
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked="">
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -995,7 +1350,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -1089,7 +1444,7 @@
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
       
         <li class="md-nav__item">
   <a href="#lifecycle-stages" class="md-nav__link">
@@ -1231,10 +1586,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#store-gates-with-the-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example
+        Store gates with the model
       
     </span>
   </a>
@@ -1242,10 +1597,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#cli-promote-with-gates" class="md-nav__link">
+  <a href="#gates-for-one-promotion" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CLI promote with gates
+        Gates for one promotion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-a-gate-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When a gate fails
       
     </span>
   </a>
@@ -1383,12 +1749,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6">
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -1418,7 +1787,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -1605,12 +1974,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7">
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
@@ -1640,7 +2012,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -1817,6 +2189,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../deployment/azure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../deployment/serverless/" class="md-nav__link">
         
   
@@ -1883,12 +2283,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8">
         
           
           <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
@@ -1918,7 +2321,91 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Records
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/safe-reruns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safe Reruns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/portable-transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing portable transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -2273,12 +2760,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9">
         
           
           <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
@@ -2308,7 +2798,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -2457,6 +2947,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../changelog/" class="md-nav__link">
         
   
@@ -2495,12 +3041,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10">
         
           
           <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
@@ -2530,7 +3079,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -2588,118 +3137,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../tutorials/01-local-parity/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tutorial 1: pandas and Spark
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../tutorials/02-olist-multi-table/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tutorial 2: nine tables, checked
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/portable-transforms/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Writing portable transforms
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../research/proving-ground/current-state/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Where it starts from
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -2717,12 +3154,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11">
         
           
           <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
@@ -2752,7 +3192,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -2792,12 +3232,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_2">
         
           
           <label class="md-nav__link" for="__nav_11_2" id="__nav_11_2_label" tabindex="0">
@@ -2827,7 +3270,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -3300,7 +3743,7 @@
             
             
               
-              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
                     
@@ -3316,7 +3759,7 @@
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
       
         <li class="md-nav__item">
   <a href="#lifecycle-stages" class="md-nav__link">
@@ -3458,10 +3901,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#store-gates-with-the-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example
+        Store gates with the model
       
     </span>
   </a>
@@ -3469,10 +3912,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#cli-promote-with-gates" class="md-nav__link">
+  <a href="#gates-for-one-promotion" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CLI promote with gates
+        Gates for one promotion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-a-gate-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When a gate fails
       
     </span>
   </a>
@@ -3603,18 +4057,35 @@
   
     <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/ml/registry.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
     </a>
   
   
 
 
-<h1 id="model-registry">Model Registry<a class="headerlink" href="#model-registry" title="Permanent link">&para;</a></h1>
-<p>The Ubunye model registry manages the full ML lifecycle (versioning, promotion,
-demotion, rollback, and gated releases) without coupling to any specific ML library.</p>
-<hr />
-<h2 id="lifecycle-stages">Lifecycle stages<a class="headerlink" href="#lifecycle-stages" title="Permanent link">&para;</a></h2>
-<p><img alt="A version moves development, staging, production by promote through gates; demote moves it back; promoting to production archives the old one; rollback brings an archived one back" src="../../assets/diagrams/model-registry.svg" /></p>
+<h1 id="model-registry">Model Registry<a class="headerlink" href="#model-registry" title="Permanent link">¶</a></h1>
+<p>For anyone who trains models with Ubunye and needs to keep versions, move them
+from test to live, and roll back. The registry works with any ML library.</p>
+<ul>
+<li><strong>The problem:</strong> you train a new model every week. You need to know which
+  version is live, which data made it, and you need a safe way to swap it.</li>
+<li><strong>When to use it:</strong> as soon as a model leaves your laptop.</li>
+<li><strong>The one command:</strong> <code>ubunye models list --use-case fraud_detection --model FraudRiskModel --store .ubunye/model_store</code></li>
+</ul>
+<div class="admonition info">
+<p class="admonition-title">How a task uses the registry</p>
+<p>A task always runs its <code>transformations.py</code>. You train and register a model
+there, in Python: see <a href="../../config/transform/#training-a-model">Transform: Training a model</a>,
+the page that owns that topic.
+Naming <code>type: model</code> under <code>transform:</code> in <code>config.yaml</code> does <strong>not</strong> run a
+model: <code>ubunye run</code> warns (<code>FutureWarning</code>) and still runs <code>transformations.py</code>.
+The <code>transform.params</code> block (with its <code>registry:</code> settings) is read only when
+your <code>transformations.py</code> hands it to <code>ModelTransform</code>, as shown in
+<a href="#registry-settings-for-a-model-transform">Registry settings for a model transform</a>.</p>
+</div>
+<hr>
+<h2 id="lifecycle-stages">Lifecycle stages<a class="headerlink" href="#lifecycle-stages" title="Permanent link">¶</a></h2>
+<p><a class="glightbox" data-type="image" data-width="100%" data-height="auto" href="../../assets/diagrams/model-registry.svg" data-desc-position="bottom"><img alt="A version moves development, staging, production by promote through gates; demote moves it back; promoting to production archives the old one; rollback brings an archived one back" src="../../assets/diagrams/model-registry.svg"></a></p>
 <table>
 <thead>
 <tr>
@@ -3643,8 +4114,8 @@ demotion, rollback, and gated releases) without coupling to any specific ML libr
 </table>
 <p>Every <code>register()</code> call creates a <code>development</code> version.
 Promotion moves a version up the chain; demotion moves it down or to <code>archived</code>.</p>
-<hr />
-<h2 id="storage-layout">Storage layout<a class="headerlink" href="#storage-layout" title="Permanent link">&para;</a></h2>
+<hr>
+<h2 id="storage-layout">Storage layout<a class="headerlink" href="#storage-layout" title="Permanent link">¶</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{store_path}/
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>└── {use_case}/
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    └── {model_name}/
@@ -3656,9 +4127,9 @@ Promotion moves a version up the chain; demotion moves it down or to <code>archi
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                └── metrics.json   ← train() metrics
 </code></pre></div>
 <p>The engine calls <code>model.save(path)</code>. The artifact format (pickle, ONNX, pt, …) is yours.</p>
-<hr />
-<h2 id="cli-commands">CLI commands<a class="headerlink" href="#cli-commands" title="Permanent link">&para;</a></h2>
-<h3 id="list-versions">List versions<a class="headerlink" href="#list-versions" title="Permanent link">&para;</a></h3>
+<hr>
+<h2 id="cli-commands">CLI commands<a class="headerlink" href="#cli-commands" title="Permanent link">¶</a></h2>
+<h3 id="list-versions">List versions<a class="headerlink" href="#list-versions" title="Permanent link">¶</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
@@ -3674,15 +4145,15 @@ Promotion moves a version up the chain; demotion moves it down or to <code>archi
 <p>Add <code>--json</code> to <code>list</code> (and to <code>compare</code>) for one JSON document, for scripts and
 agents. Every <code>models</code> command takes <code>--backend</code> / <code>-b</code> (see
 <a href="#choosing-a-backend">Choosing a backend</a>).</p>
-<h3 id="show-version-details">Show version details<a class="headerlink" href="#show-version-details" title="Permanent link">&para;</a></h3>
+<h3 id="show-version-details">Show version details<a class="headerlink" href="#show-version-details" title="Permanent link">¶</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.3.0<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
-<p>Returns full JSON including timestamps, metrics, metadata, lineage run ID.</p>
-<h3 id="promote">Promote<a class="headerlink" href="#promote" title="Permanent link">&para;</a></h3>
+<p>Prints the version as JSON: timestamps, metrics, metadata and the id of the run that registered it.</p>
+<h3 id="promote">Promote<a class="headerlink" href="#promote" title="Permanent link">¶</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>promote<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
@@ -3695,7 +4166,7 @@ agents. Every <code>models</code> command takes <code>--backend</code> / <code>-
 <code>--to</code> takes <code>staging</code> or <code>production</code>. The version must pass the promotion gates
 stored with the model (see below); <code>--force</code> skips them, prints a warning and
 records on the version that it was forced.</p>
-<h3 id="demote">Demote<a class="headerlink" href="#demote" title="Permanent link">&para;</a></h3>
+<h3 id="demote">Demote<a class="headerlink" href="#demote" title="Permanent link">¶</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>demote<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
@@ -3707,7 +4178,7 @@ records on the version that it was forced.</p>
 down: <code>staging</code> only from <code>production</code>, and never to <code>production</code>. Moving up is
 a promotion, so it goes through <code>promote</code> and its gates. The Python API
 (<code>ModelRegistry.demote</code>) refuses the same moves with a <code>RegistryError</code>.</p>
-<h3 id="rollback">Rollback<a class="headerlink" href="#rollback" title="Permanent link">&para;</a></h3>
+<h3 id="rollback">Rollback<a class="headerlink" href="#rollback" title="Permanent link">¶</a></h3>
 <p>Restores a previous version to production and archives the current one:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>rollback<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
@@ -3715,14 +4186,14 @@ a promotion, so it goes through <code>promote</code> and its gates. The Python A
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
-<h3 id="archive">Archive<a class="headerlink" href="#archive" title="Permanent link">&para;</a></h3>
+<h3 id="archive">Archive<a class="headerlink" href="#archive" title="Permanent link">¶</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>archive<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span>--version<span class="w"> </span><span class="m">1</span>.1.0<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span>--store<span class="w"> </span>.ubunye/model_store
 </code></pre></div>
-<h3 id="compare-metrics">Compare metrics<a class="headerlink" href="#compare-metrics" title="Permanent link">&para;</a></h3>
+<h3 id="compare-metrics">Compare metrics<a class="headerlink" href="#compare-metrics" title="Permanent link">¶</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>compare<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span>--use-case<span class="w"> </span>fraud_detection<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span>--model<span class="w"> </span>FraudRiskModel<span class="w"> </span><span class="se">\</span>
@@ -3739,70 +4210,87 @@ a promotion, so it goes through <code>promote</code> and its gates. The Python A
 <a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  f1                   0.8700             0.8800             +0.0100
 <a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  accuracy             0.9400             0.9500             +0.0100
 </code></pre></div>
-<hr />
-<h2 id="promotion-gates">Promotion gates<a class="headerlink" href="#promotion-gates" title="Permanent link">&para;</a></h2>
-<p>Gates block promotion unless all thresholds are satisfied.</p>
-<h3 id="gate-types">Gate types<a class="headerlink" href="#gate-types" title="Permanent link">&para;</a></h3>
+<hr>
+<h2 id="promotion-gates">Promotion gates<a class="headerlink" href="#promotion-gates" title="Permanent link">¶</a></h2>
+<p>A gate is a rule a version must pass before it moves up (to <code>staging</code> or
+<code>production</code>). If any gate fails, the version does not move.</p>
+<h3 id="gate-types">Gate types<a class="headerlink" href="#gate-types" title="Permanent link">¶</a></h3>
 <table>
 <thead>
 <tr>
 <th>Key pattern</th>
-<th>Description</th>
+<th>Passes when</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>min_&lt;metric&gt;</code></td>
-<td>Metric value must be <code>&gt;=</code> threshold</td>
+<td>The metric is <code>&gt;=</code> the threshold</td>
 </tr>
 <tr>
 <td><code>max_&lt;metric&gt;</code></td>
-<td>Metric value must be <code>&lt;=</code> threshold</td>
+<td>The metric is <code>&lt;=</code> the threshold</td>
 </tr>
 <tr>
 <td><code>require_drift_check</code></td>
-<td><code>metadata["drift_check_passed"]</code> must be <code>True</code></td>
+<td><code>metadata()["drift_check_passed"]</code> is <code>True</code> (see <a href="../../patterns/drift/">Drift Detection</a>)</td>
 </tr>
 </tbody>
 </table>
-<h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">registry</span><span class="o">.</span><span class="n">promote</span><span class="p">(</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="s2">"fraud_detection"</span><span class="p">,</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="s2">"FraudRiskModel"</span><span class="p">,</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">mv</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">ModelStage</span><span class="o">.</span><span class="n">STAGING</span><span class="p">,</span>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">gates</span><span class="o">=</span><span class="p">{</span><span class="s2">"min_auc"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"min_f1"</span><span class="p">:</span> <span class="mf">0.80</span><span class="p">,</span> <span class="s2">"max_loss"</span><span class="p">:</span> <span class="mf">0.20</span><span class="p">,</span> <span class="s2">"require_drift_check"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="p">)</span>
+<p><code>&lt;metric&gt;</code> is a name your model's <code>train()</code> returns. The model on
+<a href="../model_contract/">Model Contract</a> returns <code>auc</code> and <code>f1</code>, so its gates are
+<code>min_auc</code> and <code>min_f1</code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Three rules that surprise people</p>
+<ul>
+<li><strong>A missing metric blocks.</strong> A gate on a metric the model never returned
+  (say <code>max_loss</code> when <code>train()</code> returns only <code>auc</code> and <code>f1</code>) fails every time,
+  with <code>Metric 'loss' not found in model metrics.</code></li>
+<li><strong>Stored gates cover every version of the model.</strong> Gates you pass to
+  <code>register(..., promotion_gates=...)</code> are stored with the model, not with that
+  one version. The newest stored set is checked for every later promotion of
+  any version, including older ones, and including <code>ubunye models promote</code>.
+  Registering 1.0.1 with gates also blocks 1.0.0 if 1.0.0 fails them.</li>
+<li><strong><code>gates=</code> on one <code>promote()</code> call replaces the stored gates</strong> for that one
+  promotion only.</li>
+</ul>
+</div>
+<h3 id="store-gates-with-the-model">Store gates with the model<a class="headerlink" href="#store-gates-with-the-model" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">mv</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">promotion_gates</span><span class="o">=</span><span class="p">{</span><span class="s2">"min_auc"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"min_f1"</span><span class="p">:</span> <span class="mf">0.80</span><span class="p">},</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="p">)</span>
 </code></pre></div>
-<p>When a gate fails, <code>promote</code> raises <code>PromotionBlockedError</code> naming each failing gate with
-its actual value and threshold, and does <strong>not</strong> promote. The version remains in
-<code>development</code>. Gates passed to <code>register(..., promotion_gates=...)</code> are stored with the
-model and checked again by every later promotion, including <code>ubunye models promote</code>.</p>
-<h3 id="cli-promote-with-gates">CLI promote with gates<a class="headerlink" href="#cli-promote-with-gates" title="Permanent link">&para;</a></h3>
-<p><code>ubunye models promote</code> has no flag for gates. It checks the gates stored with
-the model, which you set when you register it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">mv</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">promotion_gates</span><span class="o">=</span><span class="p">{</span><span class="s2">"min_auc"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"min_f1"</span><span class="p">:</span> <span class="mf">0.80</span><span class="p">},</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="p">)</span>
+<p><code>ubunye models promote</code> has no flag for gates. It checks the stored ones.</p>
+<h3 id="gates-for-one-promotion">Gates for one promotion<a class="headerlink" href="#gates-for-one-promotion" title="Permanent link">¶</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelRegistry</span><span class="p">,</span> <span class="n">ModelStage</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">ModelRegistry</span><span class="p">(</span><span class="s2">".ubunye/model_store"</span><span class="p">)</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">mv</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">promote</span><span class="p">(</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">use_case</span><span class="o">=</span><span class="s2">"fraud_detection"</span><span class="p">,</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">"FraudRiskModel"</span><span class="p">,</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="n">version</span><span class="o">=</span><span class="s2">"1.3.0"</span><span class="p">,</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    <span class="n">to_stage</span><span class="o">=</span><span class="n">ModelStage</span><span class="o">.</span><span class="n">STAGING</span><span class="p">,</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    <span class="n">gates</span><span class="o">=</span><span class="p">{</span><span class="s2">"min_auc"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"min_f1"</span><span class="p">:</span> <span class="mf">0.80</span><span class="p">,</span> <span class="s2">"require_drift_check"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    <span class="n">promoted_by</span><span class="o">=</span><span class="s2">"alice"</span><span class="p">,</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="p">)</span>
 </code></pre></div>
-<p><code>gates=</code> on <code>registry.promote()</code> checks these gates instead of the stored ones,
-for that one promotion:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.models.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelRegistry</span><span class="p">,</span> <span class="n">ModelStage</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">ModelRegistry</span><span class="p">(</span><span class="s2">".ubunye/model_store"</span><span class="p">)</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="n">gates</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"min_auc"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"min_f1"</span><span class="p">:</span> <span class="mf">0.80</span><span class="p">}</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">mv</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">promote</span><span class="p">(</span>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">use_case</span><span class="o">=</span><span class="s2">"fraud_detection"</span><span class="p">,</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">"FraudRiskModel"</span><span class="p">,</span>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    <span class="n">version</span><span class="o">=</span><span class="s2">"1.3.0"</span><span class="p">,</span>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    <span class="n">to_stage</span><span class="o">=</span><span class="n">ModelStage</span><span class="o">.</span><span class="n">PRODUCTION</span><span class="p">,</span>
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    <span class="n">gates</span><span class="o">=</span><span class="n">gates</span><span class="p">,</span>
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    <span class="n">promoted_by</span><span class="o">=</span><span class="s2">"alice"</span><span class="p">,</span>
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="p">)</span>
+<h3 id="when-a-gate-fails">When a gate fails<a class="headerlink" href="#when-a-gate-fails" title="Permanent link">¶</a></h3>
+<p><code>promote</code> raises <code>PromotionBlockedError</code> (a kind of <code>ValueError</code>, importable from
+<code>ubunye.core.errors</code>). It names each failing gate with its actual value and
+threshold. The version stays where it was. The CLI prints the same message as an
+<code>[ERROR]</code> and exits 1:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>Promotion blocked — 1 gate(s) failed:
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>  - require_drift_check: Drift check: not found or failed in metadata.
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>  Version:      1.0.1
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>  Target stage: staging
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>  Hint: Fix the failing gates or adjust thresholds in promotion_gates config.
 </code></pre></div>
-<hr />
-<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
+<p><code>ubunye models promote --force</code> skips the gates, prints a warning and records on
+the version that it was forced.</p>
+<hr>
+<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">¶</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelRegistry</span><span class="p">,</span> <span class="n">ModelStage</span><span class="p">,</span> <span class="n">ModelVersion</span>
 <a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
 <a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">ModelRegistry</span><span class="p">(</span><span class="s2">".ubunye/model_store"</span><span class="p">)</span>
@@ -3828,10 +4316,9 @@ for that one promotion:</p>
 <a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a><span class="n">diff</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">compare_versions</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="s2">"1.2.0"</span><span class="p">,</span> <span class="s2">"1.3.0"</span><span class="p">)</span>
 <a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a><span class="c1"># Returns: {"auc": {"a": 0.91, "b": 0.93, "delta": 0.02}, ...}</span>
 </code></pre></div>
-<hr />
-<h2 id="choosing-a-backend">Choosing a backend<a class="headerlink" href="#choosing-a-backend" title="Permanent link">&para;</a></h2>
-<p>Where models live is a plugin: a <strong>registry backend</strong> (ADR 010). Two ship with
-Ubunye:</p>
+<hr>
+<h2 id="choosing-a-backend">Choosing a backend<a class="headerlink" href="#choosing-a-backend" title="Permanent link">¶</a></h2>
+<p>Where models live is a plugin: a <strong>registry backend</strong>. Two ship with Ubunye:</p>
 <table>
 <thead>
 <tr>
@@ -3861,8 +4348,8 @@ Ubunye:</p>
 <code>--store</code> (or <code>registry.store</code>) is handed to the backend as it is.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>ubunye<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>-u<span class="w"> </span>fraud_detection<span class="w"> </span>-m<span class="w"> </span>FraudRiskModel<span class="w"> </span>-s<span class="w"> </span>.ubunye/model_store<span class="w"> </span>-b<span class="w"> </span>filesystem
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nt">transform</span><span class="p">:</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># config.yaml: read by ModelTransform, called from your transformations.py</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nt">transform</span><span class="p">:</span>
 <a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span><span class="nt">params</span><span class="p">:</span>
 <a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train</span>
 <a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">    </span><span class="nt">model_class</span><span class="p">:</span><span class="w"> </span><span class="s">"model.FraudRiskModel"</span>
@@ -3877,8 +4364,9 @@ Ubunye:</p>
 <a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">backend</span> <span class="o">=</span> <span class="n">resolve_registry</span><span class="p">(</span><span class="s2">"filesystem"</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="s2">".ubunye/model_store"</span><span class="p">)</span>  <span class="c1"># the raw backend</span>
 </code></pre></div>
 <p><code>ubunye.models.backends.available()</code> lists the installed names. Asking for one that is not installed fails with that list.</p>
-<h3 id="mlflow-model-registry">MLflow Model Registry<a class="headerlink" href="#mlflow-model-registry" title="Permanent link">&para;</a></h3>
-<p><code>--backend mlflow</code> keeps models in the MLflow Model Registry (ADR 014).</p>
+<p>Why it works this way: <a href="../../architecture/adr-010-registry-backends/">ADR 010</a>.</p>
+<h3 id="mlflow-model-registry">MLflow Model Registry<a class="headerlink" href="#mlflow-model-registry" title="Permanent link">¶</a></h3>
+<p><code>--backend mlflow</code> keeps models in the MLflow Model Registry.</p>
 <ul>
 <li><strong>Where MLflow is</strong> is MLflow's business: <code>MLFLOW_TRACKING_URI</code> and
   <code>MLFLOW_REGISTRY_URI</code>, read the way MLflow reads them.</li>
@@ -3910,7 +4398,8 @@ none, so the same backend works there.</p>
 logged a best effort MLflow run. It still works when you build it in Python,
 and warns that it is deprecated. Models it stored stay in their folder; read
 them with <code>--backend filesystem</code>.</p>
-<h3 id="writing-a-backend">Writing a backend<a class="headerlink" href="#writing-a-backend" title="Permanent link">&para;</a></h3>
+<p>Why it works this way: <a href="../../architecture/adr-014-mlflow-registry-aliases/">ADR 014</a>.</p>
+<h3 id="writing-a-backend">Writing a backend<a class="headerlink" href="#writing-a-backend" title="Permanent link">¶</a></h3>
 <p>A backend is a class with six methods, the
 <a href="../../interfaces/"><code>RegistryBackend</code></a> protocol: <code>register</code>, <code>get</code>,
 <code>list_versions</code>, <code>promote</code>, <code>demote</code> and <code>delete</code>. Its constructor takes the
@@ -3946,8 +4435,8 @@ archive and compare. Your backend must:</p>
 <a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">backend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmp_path</span><span class="p">):</span>
 <a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>        <span class="k">return</span> <span class="n">MyRegistryBackend</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">"store"</span><span class="p">))</span>
 </code></pre></div>
-<hr />
-<h2 id="auto-versioning">Auto-versioning<a class="headerlink" href="#auto-versioning" title="Permanent link">&para;</a></h2>
+<hr>
+<h2 id="auto-versioning">Auto-versioning<a class="headerlink" href="#auto-versioning" title="Permanent link">¶</a></h2>
 <p>When <code>register()</code> is given <code>version=None</code>, the registry bumps the <strong>patch</strong>
 component of the highest existing version:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>(no versions yet) → 1.0.0
@@ -3958,8 +4447,8 @@ component of the highest existing version:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">"fraud_detection"</span><span class="p">,</span> <span class="s2">"FraudRiskModel"</span><span class="p">,</span> <span class="s2">"2.0.0"</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
 </code></pre></div>
 <p>A version that already exists is refused with <code>VersionExistsError</code>.</p>
-<hr />
-<h2 id="lineage-integration">Lineage integration<a class="headerlink" href="#lineage-integration" title="Permanent link">&para;</a></h2>
+<hr>
+<h2 id="lineage-integration">Lineage integration<a class="headerlink" href="#lineage-integration" title="Permanent link">¶</a></h2>
 <p>A model registered inside a run (from a task's <code>transformations.py</code>) gets that
 run's ID in <code>ModelVersion.lineage_run_id</code>, unless you pass <code>lineage_run_id=</code>
 yourself. Run with <code>--lineage</code> so there is a run record to look the ID up in:</p>
@@ -3971,9 +4460,9 @@ yourself. Run with <code>--lineage</code> so there is a run record to look the I
 <a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>ubunye<span class="w"> </span>lineage<span class="w"> </span>show<span class="w"> </span>-d<span class="w"> </span>pipelines<span class="w"> </span>-u<span class="w"> </span>fraud<span class="w"> </span>-p<span class="w"> </span>ml<span class="w"> </span>-t<span class="w"> </span>train<span class="w"> </span>--run-id<span class="w"> </span>abc123...
 </code></pre></div>
 <p>This lets you trace exactly which data, config hash, and code produced each model version.</p>
-<h3 id="the-run-record-names-the-model-09">The run record names the model (0.9)<a class="headerlink" href="#the-run-record-names-the-model-09" title="Permanent link">&para;</a></h3>
+<h3 id="the-run-record-names-the-model-09">The run record names the model (0.9)<a class="headerlink" href="#the-run-record-names-the-model-09" title="Permanent link">¶</a></h3>
 <p>The link also goes the other way. When a <code>ModelTransform</code> trains or scores, the run
-record gets a <code>model_runs</code> entry (ADR 012):</p>
+record gets a <code>model_runs</code> entry:</p>
 <ul>
 <li><strong>train:</strong> the model, the version registered, the stage it reached (or
   <code>development</code>), and the gate result: <code>passed</code>, <code>blocked</code> with the gate, metric,
@@ -3984,8 +4473,9 @@ record gets a <code>model_runs</code> entry (ADR 012):</p>
 <a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="c1">#   MODELS</span>
 <a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="c1">#     train FraudRiskModel 1.3.0 -&gt; staging (gates passed)</span>
 </code></pre></div>
-<p><code>ubunye lineage show</code> prints the same entries as JSON.</p>
-<h3 id="registry-settings-for-a-model-transform">Registry settings for a model transform<a class="headerlink" href="#registry-settings-for-a-model-transform" title="Permanent link">&para;</a></h3>
+<p><code>ubunye lineage show</code> prints the same entries as JSON. Why it works this way:
+<a href="../../architecture/adr-012-model-runs-and-feature-contract/">ADR 012</a>.</p>
+<h3 id="registry-settings-for-a-model-transform">Registry settings for a model transform<a class="headerlink" href="#registry-settings-for-a-model-transform" title="Permanent link">¶</a></h3>
 <table>
 <thead>
 <tr>
@@ -4023,7 +4513,8 @@ record gets a <code>model_runs</code> entry (ADR 012):</p>
 <a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="w">      </span><span class="nt">stamp_columns</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="w">      </span><span class="nt">check_features</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
-<p><code>ubunye run</code> always runs the task's <code>transformations.py</code>, so call the transform from it:</p>
+<p><code>ubunye run</code> always runs the task's <code>transformations.py</code> (see the box at the top
+of this page), so call the transform from it:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.core.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">Task</span>
 <a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ubunye.plugins.transforms.model_transform</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelTransform</span>
 <a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>
@@ -4053,9 +4544,9 @@ record gets a <code>model_runs</code> entry (ADR 012):</p>
       
   <span class="md-source-file__fact">
     <span class="md-icon" title="Last update">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 09:25:49 UTC">November 10, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 11:32:15 UTC">November 10, 2026</span>
   </span>
 
     
@@ -4063,7 +4554,7 @@ record gets a <code>model_runs</code> entry (ADR 012):</p>
       
   <span class="md-source-file__fact">
     <span class="md-icon" title="Created">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"></path></svg>
     </span>
     <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="March 3, 2026 00:27:51 UTC">March 3, 2026</span>
   </span>
@@ -4087,9 +4578,9 @@ record gets a <code>model_runs</code> entry (ADR 012):</p>
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
         
-          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden="">
   
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
   Back to top
 </button>
         
@@ -4124,7 +4615,7 @@ record gets a <code>model_runs</code> entry (ADR 012):</p>
       
     
     <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine" target="_blank" rel="noopener" title="github.com" class="md-social__link">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
     </a>
   
 </div>
@@ -4142,11 +4633,13 @@ record gets a <code>model_runs</code> entry (ADR 012):</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
-  </body>
-</html>
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

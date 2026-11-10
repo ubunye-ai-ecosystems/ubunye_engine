@@ -45,6 +45,14 @@
          <lastmod>2026-11-10</lastmod>
     </url>
     <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/troubleshooting/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/upgrading/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/architecture/</loc>
          <lastmod>2026-11-10</lastmod>
     </url>
@@ -173,6 +181,10 @@
          <lastmod>2026-11-10</lastmod>
     </url>
     <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/azure/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/deployment/databricks/</loc>
          <lastmod>2026-11-10</lastmod>
     </url>
@@ -213,6 +225,10 @@
          <lastmod>2026-11-10</lastmod>
     </url>
     <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/getting_started/concepts/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/getting_started/install/</loc>
          <lastmod>2026-11-10</lastmod>
     </url>
@@ -226,6 +242,14 @@
     </url>
     <url>
          <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/guides/portable-transforms/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/guides/run-records/</loc>
+         <lastmod>2026-11-10</lastmod>
+    </url>
+    <url>
+         <loc>https://ubunye-ai-ecosystems.github.io/ubunye_engine/guides/safe-reruns/</loc>
          <lastmod>2026-11-10</lastmod>
     </url>
     <url>

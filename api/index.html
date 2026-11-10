@@ -1,12 +1,9 @@
-
-<!doctype html>
-<html lang="en" class="no-js">
-  <head>
+<!DOCTYPE html><html lang="en" class="no-js"><head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Config-first, Spark-native framework for ETL + ML pipelines powering intelligent systems">
+        <meta name="description" content="Config-first framework for data and ML pipelines. Write a task once, run it on pandas, Spark or Databricks, and prove every run gives the same rows.">
       
       
       
@@ -47,15 +44,19 @@
       
         
         
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
         <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
       
     
     
       <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
+      <link rel="stylesheet" href="../stylesheets/palette.css">
+    
       <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="../stylesheets/home.css">
     
     <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -63,7 +64,30 @@
 
     
     
-  </head>
+  
+<meta property="og:type" content="website">
+<meta property="og:title" content="Python API - Ubunye Engine">
+<meta property="og:description" content="Config-first framework for data and ML pipelines. Write a task once, run it on pandas, Spark or Databricks, and prove every run gives the same rows.">
+<meta property="og:image" content="https://ubunye-ai-ecosystems.github.io/ubunye_engine/assets/images/social/api.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://ubunye-ai-ecosystems.github.io/ubunye_engine/api/">
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:title" content="Python API - Ubunye Engine">
+<meta property="twitter:description" content="Config-first framework for data and ML pipelines. Write a task once, run it on pandas, Spark or Databricks, and prove every run gives the same rows.">
+<meta property="twitter:image" content="https://ubunye-ai-ecosystems.github.io/ubunye_engine/assets/images/social/api.png">
+<link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
   
   
     
@@ -73,7 +97,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -96,7 +120,7 @@
 
   
 
-<header class="md-header md-header--shadow" data-md-component="header">
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Ubunye Engine" class="md-header__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
       
@@ -105,7 +129,7 @@
     </a>
     <label class="md-header__button md-icon" for="__drawer">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
     </label>
     <div class="md-header__title" data-md-component="header-title">
       <div class="md-header__ellipsis">
@@ -130,20 +154,20 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"></path></svg>
       </label>
     
   
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"></path></svg>
       </label>
     
   
@@ -159,30 +183,30 @@
       
         <label class="md-header__button md-icon" for="__search">
           
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
         </label>
         <div class="md-search" data-md-component="search" role="dialog">
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required="">
       <label class="md-search__icon md-icon" for="__search">
         
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
         
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
       </label>
       <nav class="md-search__options" aria-label="Search">
         
         <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
         </button>
       </nav>
       
     </form>
     <div class="md-search__output">
-      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix="">
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
             Initializing search
@@ -200,7 +224,7 @@
         <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
   </div>
   <div class="md-source__repository">
     ubunye-ai-ecosystems/ubunye_engine
@@ -210,13 +234,243 @@
     
   </nav>
   
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../getting_started/install/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../config/overview/" class="md-tabs__link">
+          
+  
+  
+  Writing Tasks
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../connectors/overview/" class="md-tabs__link">
+          
+  
+  
+  Connectors
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ml/model_contract/" class="md-tabs__link">
+          
+  
+  
+  Machine Learning
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../deployment/" class="md-tabs__link">
+          
+  
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../guides/run-records/" class="md-tabs__link">
+          
+  
+  
+  How-to Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../cli/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../proving-ground/" class="md-tabs__link">
+          
+  
+  
+  Proving Ground
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../dev_guide/" class="md-tabs__link">
+          
+  
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
-        
-          
         
       
       <main class="md-main" data-md-component="main">
@@ -224,14 +478,16 @@
           
             
               
-              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
                     
 
 
+  
 
-<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Ubunye Engine" class="md-nav__button md-logo" aria-label="Ubunye Engine" data-md-component="logo">
       
@@ -245,7 +501,7 @@
       <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
   </div>
   <div class="md-source__repository">
     ubunye-ai-ecosystems/ubunye_engine
@@ -253,7 +509,7 @@
 </a>
     </div>
   
-  <ul class="md-nav__list" data-md-scrollfix>
+  <ul class="md-nav__list" data-md-scrollfix="">
     
       
       
@@ -292,12 +548,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2">
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -327,7 +586,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -392,6 +651,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../getting_started/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../getting_started/structure/" class="md-nav__link">
         
   
@@ -400,6 +687,62 @@
     
   
     Project Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/01-local-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial 1: pandas and Spark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/02-olist-multi-table/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial 2: nine tables, checked
   
 
     
@@ -430,12 +773,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3">
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -445,7 +791,7 @@
   <span class="md-ellipsis">
     
   
-    Writing Pipelines
+    Writing Tasks
   
 
     
@@ -461,11 +807,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Writing Pipelines
+    Writing Tasks
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -708,12 +1054,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4">
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -743,7 +1092,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -871,7 +1220,7 @@
   <span class="md-ellipsis">
     
   
-    S3 and Delta
+    Files and Delta (s3, delta, binary)
   
 
     
@@ -958,12 +1307,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5">
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -993,7 +1345,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -1068,12 +1420,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6">
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -1103,7 +1458,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -1290,12 +1645,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7">
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
@@ -1325,7 +1683,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -1502,6 +1860,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../deployment/azure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../deployment/serverless/" class="md-nav__link">
         
   
@@ -1568,12 +1954,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8">
         
           
           <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
@@ -1603,7 +1992,91 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/run-records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Records
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/safe-reruns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safe Reruns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/portable-transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing portable transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1960,15 +2433,21 @@
     
     
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked="">
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -1995,7 +2474,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -2089,7 +2568,18 @@
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#which-api-do-i-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which API do I use?
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#python-api" class="md-nav__link">
@@ -3158,6 +3648,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#ubunye.config.schema.UbunyeConfig.check_profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check_profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ubunye.config.schema.UbunyeConfig.merged_spark_conf" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3379,18 +3880,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#sparkbackend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SparkBackend
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="SparkBackend">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#ubunye.backends.spark_backend.SparkBackend" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3545,23 +4034,6 @@
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#databricksbackend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DatabricksBackend
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="DatabricksBackend">
-      <ul class="md-nav__list">
-        
           <li class="md-nav__item">
   <a href="#ubunye.backends.databricks_backend.DatabricksBackend" class="md-nav__link">
     <span class="md-ellipsis">
@@ -3655,23 +4127,6 @@
     </nav>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pandasbackend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PandasBackend
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="PandasBackend">
-      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#ubunye.backends.pandas_backend.PandasBackend" class="md-nav__link">
@@ -3770,11 +4225,6 @@
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -4723,6 +5173,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../changelog/" class="md-nav__link">
         
   
@@ -4761,12 +5267,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10">
         
           
           <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
@@ -4796,7 +5305,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -4854,118 +5363,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../tutorials/01-local-parity/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tutorial 1: pandas and Spark
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../tutorials/02-olist-multi-table/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tutorial 2: nine tables, checked
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../guides/portable-transforms/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Writing portable transforms
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../research/proving-ground/current-state/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Where it starts from
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -4983,12 +5380,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11">
         
           
           <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
@@ -5018,7 +5418,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -5058,12 +5458,15 @@
     
     
     
+      
+      
+    
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_2">
         
           
           <label class="md-nav__link" for="__nav_11_2" id="__nav_11_2_label" tabindex="0">
@@ -5093,7 +5496,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list" data-md-scrollfix="">
             
               
                 
@@ -5566,7 +5969,7 @@
             
             
               
-              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
                     
@@ -5582,7 +5985,18 @@
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#which-api-do-i-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which API do I use?
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#python-api" class="md-nav__link">
@@ -6651,6 +7065,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#ubunye.config.schema.UbunyeConfig.check_profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check_profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ubunye.config.schema.UbunyeConfig.merged_spark_conf" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6872,18 +7297,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#sparkbackend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SparkBackend
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="SparkBackend">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#ubunye.backends.spark_backend.SparkBackend" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7038,23 +7451,6 @@
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#databricksbackend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DatabricksBackend
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="DatabricksBackend">
-      <ul class="md-nav__list">
-        
           <li class="md-nav__item">
   <a href="#ubunye.backends.databricks_backend.DatabricksBackend" class="md-nav__link">
     <span class="md-ellipsis">
@@ -7148,23 +7544,6 @@
     </nav>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pandasbackend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PandasBackend
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="PandasBackend">
-      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#ubunye.backends.pandas_backend.PandasBackend" class="md-nav__link">
@@ -7263,11 +7642,6 @@
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -8135,37 +8509,73 @@
   
     <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine/edit/master/docs/api.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
     </a>
   
   
 
 
-<h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
-<p>Auto-generated from docstrings via <a href="https://mkdocstrings.github.io/">mkdocstrings</a>.</p>
-<hr />
-<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
-<p>The public Python API for running Ubunye tasks without the CLI.
-Primary use case: Databricks notebooks and jobs where a SparkSession already exists.</p>
+<h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">¶</a></h1>
+<p>Run Ubunye tasks from Python instead of the CLI: in a notebook, a job, or a test.
+This page lists the public classes and functions, generated from their docstrings.</p>
+<h2 id="which-api-do-i-use">Which API do I use?<a class="headerlink" href="#which-api-do-i-use" title="Permanent link">¶</a></h2>
+<table>
+<thead>
+<tr>
+<th>You want to</th>
+<th>Use</th>
+<th>It returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Run one task, end to end</td>
+<td><code>ubunye.run_task(task_dir, ...)</code></td>
+<td><code>{output name: frame}</code>: what the task wrote, as the backend's own frames (a pandas DataFrame on pandas, a Spark DataFrame on Spark)</td>
+</tr>
+<tr>
+<td>Run several tasks of one pipeline, in order</td>
+<td><code>ubunye.run_pipeline(usecase_dir, usecase, pipeline, tasks, ...)</code></td>
+<td><code>{task name: {output name: frame}}</code>, without the tasks <code>resume=True</code> skipped</td>
+</tr>
+<tr>
+<td>Step through a task in a notebook: read, look, transform, look, write</td>
+<td><code>ubunye.notebook(task_dir, ...)</code></td>
+<td>A <code>NotebookContext</code>: <code>read()</code> gives <code>{input name: frame}</code>, <code>transform()</code> gives <code>{output name: frame}</code>, <code>write()</code> writes them, <code>run()</code> does all three</td>
+</tr>
+<tr>
+<td>Drive the engine yourself from a parsed config</td>
+<td><code>ubunye.core.runtime.Engine</code></td>
+<td><code>Engine.run(cfg)</code> gives <code>{output name: frame}</code> (<code>None</code> with <code>dry_run=True</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Most people want <code>run_task</code>. All of them take <code>mode</code> (the profile: <code>DEV</code>,
+<code>PROD</code>, ...; default <code>DEV</code>) and <code>backend</code> (<code>"pandas"</code>, <code>"spark"</code>, ...). See
+<a href="../backends/">Execution backends</a> and <a href="../config/engine/">Profiles</a>.</p>
+<hr>
+<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">¶</a></h2>
+<p>The main use: Databricks notebooks and jobs, where a SparkSession already exists
+and the engine attaches to it.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ubunye</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Run a single task</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">task_dir</span><span class="o">=</span><span class="s2">"pipelines/fraud_detection/ingestion/claim_etl"</span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">"nonprod"</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">"PROD"</span><span class="p">,</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">"202510"</span><span class="p">,</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># The same task with no Spark and no Java</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">outputs</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_task</span><span class="p">(</span><span class="s2">"pipelines/sales/etl/daily"</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">"pandas"</span><span class="p">)</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># Run multiple tasks sequentially</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># Run multiple tasks in order</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="n">results</span> <span class="o">=</span> <span class="n">ubunye</span><span class="o">.</span><span class="n">run_pipeline</span><span class="p">(</span>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">usecase_dir</span><span class="o">=</span><span class="s2">"pipelines"</span><span class="p">,</span>
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">usecase</span><span class="o">=</span><span class="s2">"fraud_detection"</span><span class="p">,</span>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">pipeline</span><span class="o">=</span><span class="s2">"ingestion"</span><span class="p">,</span>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">tasks</span><span class="o">=</span><span class="p">[</span><span class="s2">"claim_etl"</span><span class="p">,</span> <span class="s2">"feature_engineering"</span><span class="p">],</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">"nonprod"</span><span class="p">,</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">"PROD"</span><span class="p">,</span>
 <a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">dt</span><span class="o">=</span><span class="s2">"202510"</span><span class="p">,</span>
 <a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="p">)</span>
 </code></pre></div>
@@ -8178,14 +8588,14 @@ Primary use case: Databricks notebooks and jobs where a SparkSession already exi
             <span class="doc doc-object-name doc-function-name">ubunye.api.run_task</span>
 
 
-<a href="#ubunye.api.run_task" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.api.run_task" class="headerlink" title="Permanent link">¶</a></h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_task</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">'DEV'</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">'.ubunye/lineage'</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rerun</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_backend</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
 
         <p>Run a single Ubunye task and return the outputs map.</p>
-<h5 id="ubunye.api.run_task--parameters">Parameters<a class="headerlink" href="#ubunye.api.run_task--parameters" title="Permanent link">&para;</a></h5>
+<h5 id="ubunye.api.run_task--parameters">Parameters<a class="headerlink" href="#ubunye.api.run_task--parameters" title="Permanent link">¶</a></h5>
 <p>task_dir : str
     Path to the task directory containing <code>config.yaml</code> and
     <code>transformations.py</code>.
@@ -8226,7 +8636,7 @@ lineage_backend : str, optional
     The run record store, by name (ADR 011): <code>"filesystem"</code>, <code>"delta"</code> or
     an installed plugin. If <em>None</em>: <code>$UBUNYE_LINEAGE_BACKEND</code>, else
     <code>"filesystem"</code>.</p>
-<h5 id="ubunye.api.run_task--returns">Returns<a class="headerlink" href="#ubunye.api.run_task--returns" title="Permanent link">&para;</a></h5>
+<h5 id="ubunye.api.run_task--returns">Returns<a class="headerlink" href="#ubunye.api.run_task--returns" title="Permanent link">¶</a></h5>
 <p>Dict[str, Any]
     Mapping of output name → DataFrame.</p>
 
@@ -8242,14 +8652,14 @@ lineage_backend : str, optional
             <span class="doc doc-object-name doc-function-name">ubunye.api.run_pipeline</span>
 
 
-<a href="#ubunye.api.run_pipeline" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.api.run_pipeline" class="headerlink" title="Permanent link">¶</a></h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run_pipeline</span><span class="p">(</span><span class="n">usecase_dir</span><span class="p">,</span> <span class="n">usecase</span><span class="p">,</span> <span class="n">pipeline</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tasks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">'DEV'</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">'.ubunye/lineage'</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rerun</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">package</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
 
         <p>Run multiple tasks sequentially and return all outputs.</p>
-<h5 id="ubunye.api.run_pipeline--parameters">Parameters<a class="headerlink" href="#ubunye.api.run_pipeline--parameters" title="Permanent link">&para;</a></h5>
+<h5 id="ubunye.api.run_pipeline--parameters">Parameters<a class="headerlink" href="#ubunye.api.run_pipeline--parameters" title="Permanent link">¶</a></h5>
 <p>usecase_dir : str
     Root directory for use cases (e.g. <code>"./pipelines"</code>).
 usecase : str
@@ -8267,14 +8677,14 @@ resume : bool
     Without it, such a task is refused (:class:<code>~ubunye.core.runs.BatchFinished</code>).
 package : str, optional
     Old name of <code>pipeline</code>. Still works, with a DeprecationWarning; removed in 1.0.</p>
-<h5 id="ubunye.api.run_pipeline--returns">Returns<a class="headerlink" href="#ubunye.api.run_pipeline--returns" title="Permanent link">&para;</a></h5>
+<h5 id="ubunye.api.run_pipeline--returns">Returns<a class="headerlink" href="#ubunye.api.run_pipeline--returns" title="Permanent link">¶</a></h5>
 <p>Dict[str, Dict[str, Any]]
     Mapping of task name → outputs map (without tasks skipped by <code>resume</code>).</p>
 
 
     </div>
 
-</div><h3 id="job-health-and-upstream-checks">Job health and upstream checks<a class="headerlink" href="#job-health-and-upstream-checks" title="Permanent link">&para;</a></h3>
+</div><h3 id="job-health-and-upstream-checks">Job health and upstream checks<a class="headerlink" href="#job-health-and-upstream-checks" title="Permanent link">¶</a></h3>
 <p>Queries over run records (<a href="../architecture/adr-013-receipt-queries/">ADR 013</a>).</p>
 
 
@@ -8285,7 +8695,7 @@ package : str, optional
             <span class="doc doc-object-name doc-function-name">ubunye.api.job_health</span>
 
 
-<a href="#ubunye.api.job_health" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.api.job_health" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">job_health</span><span class="p">(</span><span class="n">usecase_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">usecase</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pipeline</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tasks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_age</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stuck_after</span><span class="o">=</span><span class="s1">'6h'</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">'.ubunye/lineage'</span><span class="p">,</span> <span class="n">lineage_backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">package</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -8310,7 +8720,7 @@ with <code>max_age</code>, has not succeeded recently enough.</p>
             <span class="doc doc-object-name doc-function-name">ubunye.api.wait_for_upstream</span>
 
 
-<a href="#ubunye.api.wait_for_upstream" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.api.wait_for_upstream" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">wait_for_upstream</span><span class="p">(</span><span class="n">usecase_dir</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">poll</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">'.ubunye/lineage'</span><span class="p">,</span> <span class="n">lineage_backend</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -8325,8 +8735,8 @@ What <code>ubunye runs wait-for</code> does; a task can ask the same in its conf
 
     </div>
 
-</div><hr />
-<h2 id="notebook-api-interactive">Notebook API (Interactive)<a class="headerlink" href="#notebook-api-interactive" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="notebook-api-interactive">Notebook API (Interactive)<a class="headerlink" href="#notebook-api-interactive" title="Permanent link">¶</a></h2>
 <p>Step-by-step execution for prototyping in Databricks notebooks.
 Environment variables referenced via <code>{{ env.VAR }}</code> in config.yaml are
 auto-resolved from widgets and secrets, with no manual <code>os.environ</code> setup.</p>
@@ -8355,7 +8765,7 @@ auto-resolved from widgets and secrets, with no manual <code>os.environ</code> s
             <span class="doc doc-object-name doc-function-name">ubunye.notebook.notebook</span>
 
 
-<a href="#ubunye.notebook.notebook" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.notebook.notebook" class="headerlink" title="Permanent link">¶</a></h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">notebook</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">'DEV'</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">secrets_scope</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">secrets_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lineage_dir</span><span class="o">=</span><span class="s1">'.ubunye/lineage'</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auto_env</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage_backend</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -8382,7 +8792,7 @@ name (<code>"pandas"</code>) or an instance; by default the notebook's session.
             <span class="doc doc-object-name doc-class-name">ubunye.notebook.NotebookContext</span>
 
 
-<a href="#ubunye.notebook.NotebookContext" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.notebook.NotebookContext" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -8421,7 +8831,7 @@ name (<code>"pandas"</code>) or an instance; by default the notebook's session.
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.notebook.NotebookContext.config" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.config" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">config</span>
 </code></pre></div>
 
@@ -8445,7 +8855,7 @@ name (<code>"pandas"</code>) or an instance; by default the notebook's session.
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.notebook.NotebookContext.config_dict" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.config_dict" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">config_dict</span>
 </code></pre></div>
 
@@ -8469,7 +8879,7 @@ name (<code>"pandas"</code>) or an instance; by default the notebook's session.
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.notebook.NotebookContext.env_vars" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.env_vars" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">env_vars</span>
 </code></pre></div>
 
@@ -8493,7 +8903,7 @@ name (<code>"pandas"</code>) or an instance; by default the notebook's session.
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.notebook.NotebookContext.spark" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.spark" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">spark</span>
 </code></pre></div>
 
@@ -8517,7 +8927,7 @@ name (<code>"pandas"</code>) or an instance; by default the notebook's session.
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.notebook.NotebookContext.task_name" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.task_name" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">task_name</span>
 </code></pre></div>
 
@@ -8539,7 +8949,7 @@ name (<code>"pandas"</code>) or an instance; by default the notebook's session.
             <span class="doc doc-object-name doc-function-name">read</span>
 
 
-<a href="#ubunye.notebook.NotebookContext.read" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.read" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">read</span><span class="p">()</span>
 </code></pre></div>
 
@@ -8559,7 +8969,7 @@ name (<code>"pandas"</code>) or an instance; by default the notebook's session.
             <span class="doc doc-object-name doc-function-name">transform</span>
 
 
-<a href="#ubunye.notebook.NotebookContext.transform" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.transform" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">transform</span><span class="p">(</span><span class="n">sources</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -8581,7 +8991,7 @@ name (<code>"pandas"</code>) or an instance; by default the notebook's session.
             <span class="doc doc-object-name doc-function-name">write</span>
 
 
-<a href="#ubunye.notebook.NotebookContext.write" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.write" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">write</span><span class="p">(</span><span class="n">outputs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -8604,7 +9014,7 @@ call. With <code>lineage=True</code> every write leaves a run record, exactly as
             <span class="doc doc-object-name doc-function-name">run</span>
 
 
-<a href="#ubunye.notebook.NotebookContext.run" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.run" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run</span><span class="p">()</span>
 </code></pre></div>
 
@@ -8624,7 +9034,7 @@ call. With <code>lineage=True</code> every write leaves a run record, exactly as
             <span class="doc doc-object-name doc-function-name">close</span>
 
 
-<a href="#ubunye.notebook.NotebookContext.close" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.notebook.NotebookContext.close" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">close</span><span class="p">()</span>
 </code></pre></div>
 
@@ -8643,8 +9053,8 @@ call. With <code>lineage=True</code> every write leaves a run record, exactly as
 
     </div>
 
-</div><hr />
-<h2 id="core-engine">Core Engine<a class="headerlink" href="#core-engine" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="core-engine">Core Engine<a class="headerlink" href="#core-engine" title="Permanent link">¶</a></h2>
 
 
 <div class="doc doc-object doc-class">
@@ -8655,7 +9065,7 @@ call. With <code>lineage=True</code> every write leaves a run record, exactly as
             <span class="doc doc-object-name doc-class-name">ubunye.core.runtime.Engine</span>
 
 
-<a href="#ubunye.core.runtime.Engine" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.core.runtime.Engine" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -8665,7 +9075,7 @@ call. With <code>lineage=True</code> every write leaves a run record, exactly as
         <p>Executes a task by reading inputs, applying one or more transforms, and writing outputs.</p>
 
 
-<details class="minimal-required-config-structure" open>
+<details class="minimal-required-config-structure" open="">
   <summary>Minimal required config structure</summary>
   <p>cfg[<code>CONFIG</code>][<code>inputs</code>]   : mapping input_name -&gt; reader cfg (must include 'format')
 cfg[<code>CONFIG</code>][<code>outputs</code>]  : mapping output_name -&gt; writer cfg (must include 'format')
@@ -8706,7 +9116,7 @@ default set.</p>
       <small class="doc doc-label doc-label-writable"><code>writable</code></small>
   </span>
 
-<a href="#ubunye.core.runtime.Engine.backend" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.runtime.Engine.backend" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">backend</span>
 </code></pre></div>
 
@@ -8728,13 +9138,13 @@ default set.</p>
             <span class="doc doc-object-name doc-function-name">__init__</span>
 
 
-<a href="#ubunye.core.runtime.Engine.__init__" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.runtime.Engine.__init__" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">__init__</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">extra_hooks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">manage_backend</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <h6 id="ubunye.core.runtime.Engine.__init__--parameters">Parameters<a class="headerlink" href="#ubunye.core.runtime.Engine.__init__--parameters" title="Permanent link">&para;</a></h6>
+        <h6 id="ubunye.core.runtime.Engine.__init__--parameters">Parameters<a class="headerlink" href="#ubunye.core.runtime.Engine.__init__--parameters" title="Permanent link">¶</a></h6>
 <p>hooks : iterable of Hook, optional
     Replace the default hook set entirely.
 extra_hooks : iterable of Hook, optional
@@ -8757,7 +9167,7 @@ manage_backend : bool, default True
             <span class="doc doc-object-name doc-function-name">apply_transforms</span>
 
 
-<a href="#ubunye.core.runtime.Engine.apply_transforms" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.runtime.Engine.apply_transforms" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">apply_transforms</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
 </code></pre></div>
 
@@ -8782,7 +9192,7 @@ the frames the transform actually got.</p>
             <span class="doc doc-object-name doc-function-name">read_inputs</span>
 
 
-<a href="#ubunye.core.runtime.Engine.read_inputs" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.runtime.Engine.read_inputs" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">read_inputs</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 </code></pre></div>
 
@@ -8808,19 +9218,19 @@ contracts) are checked here, as in :meth:<code>run</code>, and the inputs a
             <span class="doc doc-object-name doc-function-name">run</span>
 
 
-<a href="#ubunye.core.runtime.Engine.run" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.runtime.Engine.run" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">run</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Run a task using the provided config mapping.</p>
-<h6 id="ubunye.core.runtime.Engine.run--parameters">Parameters<a class="headerlink" href="#ubunye.core.runtime.Engine.run--parameters" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.core.runtime.Engine.run--parameters">Parameters<a class="headerlink" href="#ubunye.core.runtime.Engine.run--parameters" title="Permanent link">¶</a></h6>
 <p>cfg : dict
     Parsed task configuration (already rendered/validated).
 dry_run : bool, default False
     If True, validates and returns without executing readers/writers.</p>
-<h6 id="ubunye.core.runtime.Engine.run--returns">Returns<a class="headerlink" href="#ubunye.core.runtime.Engine.run--returns" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.core.runtime.Engine.run--returns">Returns<a class="headerlink" href="#ubunye.core.runtime.Engine.run--returns" title="Permanent link">¶</a></h6>
 <p>Optional[Dict[str, Any]]
     Optionally returns the outputs map (None if dry_run).</p>
 
@@ -8836,7 +9246,7 @@ dry_run : bool, default False
             <span class="doc doc-object-name doc-function-name">write_outputs</span>
 
 
-<a href="#ubunye.core.runtime.Engine.write_outputs" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.runtime.Engine.write_outputs" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">write_outputs</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -8862,8 +9272,8 @@ the transform: a transform that changed them in place hides its loss.</p>
 
     </div>
 
-</div><hr />
-<h2 id="interfaces-protocols">Interfaces (Protocols)<a class="headerlink" href="#interfaces-protocols" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="interfaces-protocols">Interfaces (Protocols)<a class="headerlink" href="#interfaces-protocols" title="Permanent link">¶</a></h2>
 <p>See the full <a href="../interfaces/">Interfaces</a> page for design principles,
 discovery, and auto-detection.</p>
 
@@ -8876,7 +9286,7 @@ discovery, and auto-detection.</p>
             <span class="doc doc-object-name doc-module-name">ubunye.interfaces</span>
 
 
-<a href="#ubunye.interfaces" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.interfaces" class="headerlink" title="Permanent link">¶</a></h3>
 
     <div class="doc doc-contents first">
 
@@ -8914,7 +9324,7 @@ depend on a concrete backend's internal types.</p>
             <span class="doc doc-object-name doc-class-name">AuthBackend</span>
 
 
-<a href="#ubunye.interfaces.AuthBackend" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.AuthBackend" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -8955,22 +9365,22 @@ depend on a concrete backend's internal types.</p>
             <span class="doc doc-object-name doc-function-name">resolve</span>
 
 
-<a href="#ubunye.interfaces.AuthBackend.resolve" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.AuthBackend.resolve" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">resolve</span><span class="p">(</span><span class="n">workspace_url</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Resolve credentials for the given workspace.</p>
-<h6 id="ubunye.interfaces.AuthBackend.resolve--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.AuthBackend.resolve--parameters" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.AuthBackend.resolve--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.AuthBackend.resolve--parameters" title="Permanent link">¶</a></h6>
 <p>workspace_url:
     The Databricks (or other) workspace host URL.
 **kwargs:
     Backend-specific hints (e.g. <code>token_env="MY_TOKEN"</code>).</p>
-<h6 id="ubunye.interfaces.AuthBackend.resolve--returns">Returns<a class="headerlink" href="#ubunye.interfaces.AuthBackend.resolve--returns" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.AuthBackend.resolve--returns">Returns<a class="headerlink" href="#ubunye.interfaces.AuthBackend.resolve--returns" title="Permanent link">¶</a></h6>
 <p>Credentials
     Populated credentials ready for client construction.</p>
-<h6 id="ubunye.interfaces.AuthBackend.resolve--raises">Raises<a class="headerlink" href="#ubunye.interfaces.AuthBackend.resolve--raises" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.AuthBackend.resolve--raises">Raises<a class="headerlink" href="#ubunye.interfaces.AuthBackend.resolve--raises" title="Permanent link">¶</a></h6>
 <p>ubunye.core.errors.AuthNotFoundError
     When credentials cannot be located (missing env var, etc.).</p>
 
@@ -8986,7 +9396,7 @@ depend on a concrete backend's internal types.</p>
             <span class="doc doc-object-name doc-function-name">validate</span>
 
 
-<a href="#ubunye.interfaces.AuthBackend.validate" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.AuthBackend.validate" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">validate</span><span class="p">(</span><span class="n">credentials</span><span class="p">)</span>
 </code></pre></div>
 
@@ -8994,7 +9404,7 @@ depend on a concrete backend's internal types.</p>
 
         <p>Validate that credentials are accepted by the workspace.</p>
 <p>Returns <code>True</code> on success.</p>
-<h6 id="ubunye.interfaces.AuthBackend.validate--raises">Raises<a class="headerlink" href="#ubunye.interfaces.AuthBackend.validate--raises" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.AuthBackend.validate--raises">Raises<a class="headerlink" href="#ubunye.interfaces.AuthBackend.validate--raises" title="Permanent link">¶</a></h6>
 <p>ubunye.core.errors.AuthInvalidError
     When the workspace rejects the credentials.</p>
 
@@ -9023,7 +9433,7 @@ depend on a concrete backend's internal types.</p>
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#ubunye.interfaces.Credentials" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.Credentials" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -9072,7 +9482,7 @@ scope, tenant ID) without polluting the core fields.</p>
             <span class="doc doc-object-name doc-class-name">DeployAdapter</span>
 
 
-<a href="#ubunye.interfaces.DeployAdapter" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.DeployAdapter" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -9120,7 +9530,7 @@ scope, tenant ID) without polluting the core fields.</p>
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.interfaces.DeployAdapter.name" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.DeployAdapter.name" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">name</span>
 </code></pre></div>
 
@@ -9142,14 +9552,14 @@ scope, tenant ID) without polluting the core fields.</p>
             <span class="doc doc-object-name doc-function-name">deploy</span>
 
 
-<a href="#ubunye.interfaces.DeployAdapter.deploy" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.DeployAdapter.deploy" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">deploy</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Deploy a task to the target environment.</p>
-<h6 id="ubunye.interfaces.DeployAdapter.deploy--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.DeployAdapter.deploy--parameters" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.DeployAdapter.deploy--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.DeployAdapter.deploy--parameters" title="Permanent link">¶</a></h6>
 <p>ctx:
     Task metadata, config dict, and filesystem paths.
 target:
@@ -9158,7 +9568,7 @@ target:
 dry_run:
     If <code>True</code>, build and return the job spec without making
     any remote API calls.</p>
-<h6 id="ubunye.interfaces.DeployAdapter.deploy--returns">Returns<a class="headerlink" href="#ubunye.interfaces.DeployAdapter.deploy--returns" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.DeployAdapter.deploy--returns">Returns<a class="headerlink" href="#ubunye.interfaces.DeployAdapter.deploy--returns" title="Permanent link">¶</a></h6>
 <p>DeployResult
     Job metadata including name, id, spec, and workspace path.</p>
 
@@ -9174,14 +9584,14 @@ dry_run:
             <span class="doc doc-object-name doc-function-name">get_job_url</span>
 
 
-<a href="#ubunye.interfaces.DeployAdapter.get_job_url" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.DeployAdapter.get_job_url" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get_job_url</span><span class="p">(</span><span class="n">job_id</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Return a browser URL to the deployed job.</p>
-<h6 id="ubunye.interfaces.DeployAdapter.get_job_url--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.DeployAdapter.get_job_url--parameters" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.DeployAdapter.get_job_url--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.DeployAdapter.get_job_url--parameters" title="Permanent link">¶</a></h6>
 <p>job_id:
     The job identifier returned by :meth:<code>deploy</code>.
 target:
@@ -9199,14 +9609,14 @@ target:
             <span class="doc doc-object-name doc-function-name">validate_target</span>
 
 
-<a href="#ubunye.interfaces.DeployAdapter.validate_target" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.DeployAdapter.validate_target" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">validate_target</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Validate adapter-specific target config.</p>
-<h6 id="ubunye.interfaces.DeployAdapter.validate_target--raises">Raises<a class="headerlink" href="#ubunye.interfaces.DeployAdapter.validate_target--raises" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.DeployAdapter.validate_target--raises">Raises<a class="headerlink" href="#ubunye.interfaces.DeployAdapter.validate_target--raises" title="Permanent link">¶</a></h6>
 <p>ubunye.core.errors.TargetNotFoundError
     When required keys are missing or values are invalid.</p>
 
@@ -9235,7 +9645,7 @@ target:
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#ubunye.interfaces.DeployContext" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.DeployContext" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -9287,7 +9697,7 @@ adapter never derives task identity from filesystem paths.</p>
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#ubunye.interfaces.DeployResult" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.DeployResult" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -9335,7 +9745,7 @@ id, etc.) without polluting the core fields.</p>
             <span class="doc doc-object-name doc-class-name">LineageBackend</span>
 
 
-<a href="#ubunye.interfaces.LineageBackend" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.LineageBackend" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -9376,7 +9786,7 @@ id, etc.) without polluting the core fields.</p>
             <span class="doc doc-object-name doc-function-name">compact</span>
 
 
-<a href="#ubunye.interfaces.LineageBackend.compact" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.LineageBackend.compact" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">compact</span><span class="p">()</span>
 </code></pre></div>
 
@@ -9398,14 +9808,14 @@ this triggers <code>OPTIMIZE</code> on the lineage table.</p>
             <span class="doc doc-object-name doc-function-name">get_run</span>
 
 
-<a href="#ubunye.interfaces.LineageBackend.get_run" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.LineageBackend.get_run" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get_run</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Load a single run record by ID.</p>
-<h6 id="ubunye.interfaces.LineageBackend.get_run--raises">Raises<a class="headerlink" href="#ubunye.interfaces.LineageBackend.get_run--raises" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.LineageBackend.get_run--raises">Raises<a class="headerlink" href="#ubunye.interfaces.LineageBackend.get_run--raises" title="Permanent link">¶</a></h6>
 <p>ubunye.core.errors.LineageRecordNotFoundError
     When no record exists for <code>run_id</code>.</p>
 
@@ -9421,7 +9831,7 @@ this triggers <code>OPTIMIZE</code> on the lineage table.</p>
             <span class="doc doc-object-name doc-function-name">record</span>
 
 
-<a href="#ubunye.interfaces.LineageBackend.record" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.LineageBackend.record" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">record</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9435,7 +9845,7 @@ or <code>"error"</code>).</p>
 <p>The actual write is dispatched to a background worker thread.
 On failure, the record is written to a fallback manifest
 (Decision 2).</p>
-<h6 id="ubunye.interfaces.LineageBackend.record--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.LineageBackend.record--parameters" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.LineageBackend.record--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.LineageBackend.record--parameters" title="Permanent link">¶</a></h6>
 <p>record:
     The lineage record to persist.  Callers construct this
     with the current engine version and task metadata.</p>
@@ -9452,14 +9862,14 @@ On failure, the record is written to a fallback manifest
             <span class="doc doc-object-name doc-function-name">search</span>
 
 
-<a href="#ubunye.interfaces.LineageBackend.search" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.LineageBackend.search" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">search</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">usecase</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pipeline</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">since</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Search across recorded runs with optional filters.</p>
-<h6 id="ubunye.interfaces.LineageBackend.search--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.LineageBackend.search--parameters" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.LineageBackend.search--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.LineageBackend.search--parameters" title="Permanent link">¶</a></h6>
 <p>task:
     Filter by task name.
 usecase:
@@ -9498,7 +9908,7 @@ limit:
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#ubunye.interfaces.LineageRecord" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.LineageRecord" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -9551,7 +9961,7 @@ writer version.</p>
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#ubunye.interfaces.ModelVersionInfo" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.ModelVersionInfo" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -9600,7 +10010,7 @@ filter by writer version.</p>
             <span class="doc doc-object-name doc-class-name">RegistryBackend</span>
 
 
-<a href="#ubunye.interfaces.RegistryBackend" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.RegistryBackend" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -9641,7 +10051,7 @@ filter by writer version.</p>
             <span class="doc doc-object-name doc-function-name">delete</span>
 
 
-<a href="#ubunye.interfaces.RegistryBackend.delete" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RegistryBackend.delete" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">delete</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9661,7 +10071,7 @@ filter by writer version.</p>
             <span class="doc doc-object-name doc-function-name">demote</span>
 
 
-<a href="#ubunye.interfaces.RegistryBackend.demote" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RegistryBackend.demote" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">demote</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">to_stage</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9684,19 +10094,19 @@ filter by writer version.</p>
             <span class="doc doc-object-name doc-function-name">get</span>
 
 
-<a href="#ubunye.interfaces.RegistryBackend.get" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RegistryBackend.get" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Retrieve a model version by exact version or active stage.</p>
-<h6 id="ubunye.interfaces.RegistryBackend.get--returns">Returns<a class="headerlink" href="#ubunye.interfaces.RegistryBackend.get--returns" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.RegistryBackend.get--returns">Returns<a class="headerlink" href="#ubunye.interfaces.RegistryBackend.get--returns" title="Permanent link">¶</a></h6>
 <p>tuple of (artifact_path, ModelVersionInfo)
     <code>artifact_path</code> is an opaque string — it may be a local
     path, an MLflow artifact URI, or a cloud storage URL.
     Callers pass it to <code>ModelClass.load(artifact_path)</code>.</p>
-<h6 id="ubunye.interfaces.RegistryBackend.get--raises">Raises<a class="headerlink" href="#ubunye.interfaces.RegistryBackend.get--raises" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.RegistryBackend.get--raises">Raises<a class="headerlink" href="#ubunye.interfaces.RegistryBackend.get--raises" title="Permanent link">¶</a></h6>
 <p>ubunye.core.errors.VersionNotFoundError
     When no matching version exists.</p>
 
@@ -9712,7 +10122,7 @@ filter by writer version.</p>
             <span class="doc doc-object-name doc-function-name">list_versions</span>
 
 
-<a href="#ubunye.interfaces.RegistryBackend.list_versions" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RegistryBackend.list_versions" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">list_versions</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9732,7 +10142,7 @@ filter by writer version.</p>
             <span class="doc doc-object-name doc-function-name">promote</span>
 
 
-<a href="#ubunye.interfaces.RegistryBackend.promote" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RegistryBackend.promote" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">promote</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">to_stage</span><span class="p">,</span> <span class="n">gates</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">promoted_by</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9758,7 +10168,7 @@ failures must propagate).</p>
             <span class="doc doc-object-name doc-function-name">register</span>
 
 
-<a href="#ubunye.interfaces.RegistryBackend.register" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RegistryBackend.register" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">register</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineage_run_id</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9768,7 +10178,7 @@ failures must propagate).</p>
 <p>Artifact writes are synchronous — the method returns only after
 the model is safely persisted.  Index/metadata updates are
 non-blocking per Decision 1.</p>
-<h6 id="ubunye.interfaces.RegistryBackend.register--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.RegistryBackend.register--parameters" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.interfaces.RegistryBackend.register--parameters">Parameters<a class="headerlink" href="#ubunye.interfaces.RegistryBackend.register--parameters" title="Permanent link">¶</a></h6>
 <p>use_case:
     Logical namespace (e.g. <code>"fraud_detection"</code>).
 model_name:
@@ -9806,7 +10216,7 @@ lineage_run_id:
             <span class="doc doc-object-name doc-class-name">RunRecordStore</span>
 
 
-<a href="#ubunye.interfaces.RunRecordStore" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.interfaces.RunRecordStore" class="headerlink" title="Permanent link">¶</a></h4>
 
 
     <div class="doc doc-contents ">
@@ -9848,7 +10258,7 @@ argument, its location (a directory, a table name, a URL), given unchanged.</p>
             <span class="doc doc-object-name doc-function-name">list_runs</span>
 
 
-<a href="#ubunye.interfaces.RunRecordStore.list_runs" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RunRecordStore.list_runs" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">list_runs</span><span class="p">(</span><span class="n">task_path</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9868,7 +10278,7 @@ argument, its location (a directory, a table name, a URL), given unchanged.</p>
             <span class="doc doc-object-name doc-function-name">load</span>
 
 
-<a href="#ubunye.interfaces.RunRecordStore.load" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RunRecordStore.load" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">load</span><span class="p">(</span><span class="n">task_path</span><span class="p">,</span> <span class="n">run_id</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9890,7 +10300,7 @@ task has no run with that id.</p>
             <span class="doc doc-object-name doc-function-name">save</span>
 
 
-<a href="#ubunye.interfaces.RunRecordStore.save" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RunRecordStore.save" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">save</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9910,7 +10320,7 @@ task has no run with that id.</p>
             <span class="doc doc-object-name doc-function-name">search</span>
 
 
-<a href="#ubunye.interfaces.RunRecordStore.search" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.interfaces.RunRecordStore.search" class="headerlink" title="Permanent link">¶</a></h5>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">search</span><span class="p">(</span><span class="n">task_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">since</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -9939,8 +10349,8 @@ and <code>started_at &gt;= since</code>, at most <code>limit</code> of them.</p>
 
     </div>
 
-</div><hr />
-<h2 id="config">Config<a class="headerlink" href="#config" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="config">Config<a class="headerlink" href="#config" title="Permanent link">¶</a></h2>
 
 
 <div class="doc doc-object doc-class">
@@ -9951,7 +10361,7 @@ and <code>started_at &gt;= since</code>, at most <code>limit</code> of them.</p>
             <span class="doc doc-object-name doc-class-name">ubunye.config.schema.UbunyeConfig</span>
 
 
-<a href="#ubunye.config.schema.UbunyeConfig" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.config.schema.UbunyeConfig" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -9990,11 +10400,33 @@ registry, orchestrator metadata).</p>
 <div class="doc doc-object doc-function">
 
 
+<h4 id="ubunye.config.schema.UbunyeConfig.check_profile" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">check_profile</span>
+
+
+<a href="#ubunye.config.schema.UbunyeConfig.check_profile" class="headerlink" title="Permanent link">¶</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">check_profile</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Raise ConfigProfileError when <em>profile</em> names no profile of this config.</p>
+<p>A config with no <code>ENGINE.profiles</code> accepts any mode. <code>run</code>,
+<code>validate</code> and the Python API all go through this one rule.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h4 id="ubunye.config.schema.UbunyeConfig.merged_spark_conf" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">merged_spark_conf</span>
 
 
-<a href="#ubunye.config.schema.UbunyeConfig.merged_spark_conf" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.config.schema.UbunyeConfig.merged_spark_conf" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">merged_spark_conf</span><span class="p">(</span><span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10014,7 +10446,7 @@ registry, orchestrator metadata).</p>
             <span class="doc doc-object-name doc-function-name">resolved_catalog</span>
 
 
-<a href="#ubunye.config.schema.UbunyeConfig.resolved_catalog" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.config.schema.UbunyeConfig.resolved_catalog" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">resolved_catalog</span><span class="p">(</span><span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10034,7 +10466,7 @@ registry, orchestrator metadata).</p>
             <span class="doc doc-object-name doc-function-name">resolved_schema</span>
 
 
-<a href="#ubunye.config.schema.UbunyeConfig.resolved_schema" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.config.schema.UbunyeConfig.resolved_schema" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">resolved_schema</span><span class="p">(</span><span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10063,7 +10495,7 @@ registry, orchestrator metadata).</p>
             <span class="doc doc-object-name doc-class-name">ubunye.config.schema.TaskConfig</span>
 
 
-<a href="#ubunye.config.schema.TaskConfig" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.config.schema.TaskConfig" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -10111,7 +10543,7 @@ registry, orchestrator metadata).</p>
             <span class="doc doc-object-name doc-class-name">ubunye.config.schema.IOConfig</span>
 
 
-<a href="#ubunye.config.schema.IOConfig" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.config.schema.IOConfig" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -10162,7 +10594,7 @@ unchanged via <code>model_dump()</code>.</p>
             <span class="doc doc-object-name doc-class-name">ubunye.config.schema.EngineConfig</span>
 
 
-<a href="#ubunye.config.schema.EngineConfig" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.config.schema.EngineConfig" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -10210,7 +10642,7 @@ unchanged via <code>model_dump()</code>.</p>
             <span class="doc doc-object-name doc-class-name">ubunye.config.schema.RegistryConfig</span>
 
 
-<a href="#ubunye.config.schema.RegistryConfig" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.config.schema.RegistryConfig" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -10258,7 +10690,7 @@ unchanged via <code>model_dump()</code>.</p>
             <span class="doc doc-object-name doc-class-name">ubunye.config.schema.ModelTransformParams</span>
 
 
-<a href="#ubunye.config.schema.ModelTransformParams" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.config.schema.ModelTransformParams" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -10296,8 +10728,8 @@ unchanged via <code>model_dump()</code>.</p>
 
     </div>
 
-</div><hr />
-<h2 id="backends">Backends<a class="headerlink" href="#backends" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="backends">Backends<a class="headerlink" href="#backends" title="Permanent link">¶</a></h2>
 <p>Backends are plugins, chosen by name. See <a href="../backends/">Execution backends</a> for
 how to choose one and write your own.</p>
 
@@ -10310,7 +10742,7 @@ how to choose one and write your own.</p>
             <span class="doc doc-object-name doc-module-name">ubunye.core.backends</span>
 
 
-<a href="#ubunye.core.backends" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.core.backends" class="headerlink" title="Permanent link">¶</a></h3>
 
     <div class="doc doc-contents first">
 
@@ -10362,7 +10794,7 @@ backend that can do what it asks.</p>
       <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
   </span>
 
-<a href="#ubunye.core.backends.DEFAULT_BACKEND" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.backends.DEFAULT_BACKEND" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">DEFAULT_BACKEND</span> <span class="o">=</span> <span class="s1">'spark'</span>
 </code></pre></div>
 
@@ -10382,7 +10814,7 @@ backend that can do what it asks.</p>
             <span class="doc doc-object-name doc-function-name">resolve</span>
 
 
-<a href="#ubunye.core.backends.resolve" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.backends.resolve" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">resolve</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">app_name</span><span class="o">=</span><span class="s1">'ubunye'</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10402,7 +10834,7 @@ backend that can do what it asks.</p>
             <span class="doc doc-object-name doc-function-name">create</span>
 
 
-<a href="#ubunye.core.backends.create" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.backends.create" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">create</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">app_name</span><span class="o">=</span><span class="s1">'ubunye'</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10425,7 +10857,7 @@ here, with the install that fixes it, not on the first frame.</p>
             <span class="doc doc-object-name doc-function-name">load_class</span>
 
 
-<a href="#ubunye.core.backends.load_class" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.backends.load_class" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">load_class</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10445,7 +10877,7 @@ here, with the install that fixes it, not on the first frame.</p>
             <span class="doc doc-object-name doc-function-name">available</span>
 
 
-<a href="#ubunye.core.backends.available" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.backends.available" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">available</span><span class="p">()</span>
 </code></pre></div>
 
@@ -10478,7 +10910,7 @@ here, with the install that fixes it, not on the first frame.</p>
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#ubunye.core.capabilities.Capabilities" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.core.capabilities.Capabilities" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -10518,7 +10950,7 @@ passes them through to an engine that knows its own formats (Spark reads
             <span class="doc doc-object-name doc-function-name">describe</span>
 
 
-<a href="#ubunye.core.capabilities.Capabilities.describe" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.capabilities.Capabilities.describe" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">describe</span><span class="p">()</span>
 </code></pre></div>
 
@@ -10542,7 +10974,7 @@ passes them through to an engine that knows its own formats (Spark reads
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-<a href="#ubunye.core.capabilities.Capabilities.unknown" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.core.capabilities.Capabilities.unknown" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">unknown</span><span class="p">()</span>
 </code></pre></div>
 
@@ -10561,19 +10993,19 @@ passes them through to an engine that knows its own formats (Spark reads
 
     </div>
 
-</div><h3 id="sparkbackend">SparkBackend<a class="headerlink" href="#sparkbackend" title="Permanent link">&para;</a></h3>
-<p>Creates and manages a new SparkSession. Use for local development, CI, and non-Databricks environments.</p>
+</div><p>The shipped backends (<code>spark</code>, <code>databricks</code>, <code>pandas</code>): what each is for and
+how each reads and writes is on <a href="../backends/">Execution backends</a>.</p>
 
 
 <div class="doc doc-object doc-class">
 
 
 
-<h4 id="ubunye.backends.spark_backend.SparkBackend" class="doc doc-heading">
+<h3 id="ubunye.backends.spark_backend.SparkBackend" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">ubunye.backends.spark_backend.SparkBackend</span>
 
 
-<a href="#ubunye.backends.spark_backend.SparkBackend" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.spark_backend.SparkBackend" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -10583,12 +11015,12 @@ passes them through to an engine that knows its own formats (Spark reads
 
 
         <p>Creates and manages a SparkSession for a Ubunye run.</p>
-<h6 id="ubunye.backends.spark_backend.SparkBackend--parameters">Parameters<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend--parameters" title="Permanent link">&para;</a></h6>
+<h5 id="ubunye.backends.spark_backend.SparkBackend--parameters">Parameters<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend--parameters" title="Permanent link">¶</a></h5>
 <p>app_name : str
     Spark application name (appears in Spark UI/history server).
 conf : Optional[Dict[str, str]]
     Spark configuration key-values (e.g., {"spark.master": "yarn"}).</p>
-<h6 id="ubunye.backends.spark_backend.SparkBackend--notes">Notes<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend--notes" title="Permanent link">&para;</a></h6>
+<h5 id="ubunye.backends.spark_backend.SparkBackend--notes">Notes<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend--notes" title="Permanent link">¶</a></h5>
 <ul>
 <li>pyspark is imported lazily inside <code>start()</code> to keep installation lightweight.</li>
 <li><code>spark</code> property is only valid after <code>start()</code> (or inside the context manager).</li>
@@ -10616,7 +11048,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h5 id="ubunye.backends.spark_backend.SparkBackend.app_name" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend.app_name" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">app_name</span>
 
 
@@ -10624,7 +11056,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.app_name" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.spark_backend.SparkBackend.app_name" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">app_name</span>
 </code></pre></div>
 
@@ -10640,7 +11072,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h5 id="ubunye.backends.spark_backend.SparkBackend.conf_effective" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend.conf_effective" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">conf_effective</span>
 
 
@@ -10648,7 +11080,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.conf_effective" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.spark_backend.SparkBackend.conf_effective" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">conf_effective</span>
 </code></pre></div>
 
@@ -10665,7 +11097,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h5 id="ubunye.backends.spark_backend.SparkBackend.conf_input" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend.conf_input" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">conf_input</span>
 
 
@@ -10673,7 +11105,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.conf_input" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.spark_backend.SparkBackend.conf_input" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">conf_input</span>
 </code></pre></div>
 
@@ -10689,7 +11121,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h5 id="ubunye.backends.spark_backend.SparkBackend.is_spark" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend.is_spark" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">is_spark</span>
 
 
@@ -10697,7 +11129,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.is_spark" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.spark_backend.SparkBackend.is_spark" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">is_spark</span>
 </code></pre></div>
 
@@ -10713,7 +11145,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h5 id="ubunye.backends.spark_backend.SparkBackend.spark" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend.spark" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">spark</span>
 
 
@@ -10721,14 +11153,14 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.spark" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.spark_backend.SparkBackend.spark" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">spark</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Return the active SparkSession (after <code>start()</code>).</p>
-<h6 id="ubunye.backends.spark_backend.SparkBackend.spark--raises">Raises<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend.spark--raises" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.backends.spark_backend.SparkBackend.spark--raises">Raises<a class="headerlink" href="#ubunye.backends.spark_backend.SparkBackend.spark--raises" title="Permanent link">¶</a></h6>
 <p>RuntimeError
     If <code>start()</code> has not been called.</p>
 
@@ -10740,7 +11172,7 @@ conf : Optional[Dict[str, str]]
 
 
 
-<h5 id="ubunye.backends.spark_backend.SparkBackend.timezone" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend.timezone" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">timezone</span>
 
 
@@ -10748,7 +11180,7 @@ conf : Optional[Dict[str, str]]
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.timezone" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.spark_backend.SparkBackend.timezone" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">timezone</span>
 </code></pre></div>
 
@@ -10768,11 +11200,11 @@ session's (which this backend would reuse, unchanged), else UTC.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.spark_backend.SparkBackend.materialise" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend.materialise" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">materialise</span>
 
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.materialise" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.spark_backend.SparkBackend.materialise" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">materialise</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10788,11 +11220,11 @@ session's (which this backend would reuse, unchanged), else UTC.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.spark_backend.SparkBackend.start" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend.start" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">start</span>
 
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.start" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.spark_backend.SparkBackend.start" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">start</span><span class="p">()</span>
 </code></pre></div>
 
@@ -10809,11 +11241,11 @@ session's (which this backend would reuse, unchanged), else UTC.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.spark_backend.SparkBackend.stop" class="doc doc-heading">
+<h4 id="ubunye.backends.spark_backend.SparkBackend.stop" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">stop</span>
 
 
-<a href="#ubunye.backends.spark_backend.SparkBackend.stop" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.spark_backend.SparkBackend.stop" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">stop</span><span class="p">()</span>
 </code></pre></div>
 
@@ -10834,19 +11266,17 @@ user's own, or a notebook's) is left running.</p>
 
     </div>
 
-</div><h3 id="databricksbackend">DatabricksBackend<a class="headerlink" href="#databricksbackend" title="Permanent link">&para;</a></h3>
-<p>Reuses an active SparkSession instead of creating one. Use on Databricks where a session already exists.</p>
-
+</div>
 
 <div class="doc doc-object doc-class">
 
 
 
-<h4 id="ubunye.backends.databricks_backend.DatabricksBackend" class="doc doc-heading">
+<h3 id="ubunye.backends.databricks_backend.DatabricksBackend" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">ubunye.backends.databricks_backend.DatabricksBackend</span>
 
 
-<a href="#ubunye.backends.databricks_backend.DatabricksBackend" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -10856,7 +11286,7 @@ user's own, or a notebook's) is left running.</p>
 
 
         <p>Backend that reuses the existing Databricks SparkSession.</p>
-<h6 id="ubunye.backends.databricks_backend.DatabricksBackend--parameters">Parameters<a class="headerlink" href="#ubunye.backends.databricks_backend.DatabricksBackend--parameters" title="Permanent link">&para;</a></h6>
+<h5 id="ubunye.backends.databricks_backend.DatabricksBackend--parameters">Parameters<a class="headerlink" href="#ubunye.backends.databricks_backend.DatabricksBackend--parameters" title="Permanent link">¶</a></h5>
 <p>spark : Optional[SparkSession]
     An explicit session to wrap. If <em>None</em> (the default), the active
     session is retrieved via <code>SparkSession.getActiveSession()</code>.</p>
@@ -10883,7 +11313,7 @@ user's own, or a notebook's) is left running.</p>
 
 
 
-<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.timezone" class="doc doc-heading">
+<h4 id="ubunye.backends.databricks_backend.DatabricksBackend.timezone" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">timezone</span>
 
 
@@ -10891,7 +11321,7 @@ user's own, or a notebook's) is left running.</p>
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.databricks_backend.DatabricksBackend.timezone" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.timezone" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">timezone</span>
 </code></pre></div>
 
@@ -10909,7 +11339,7 @@ user's own, or a notebook's) is left running.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.create" class="doc doc-heading">
+<h4 id="ubunye.backends.databricks_backend.DatabricksBackend.create" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">create</span>
 
 
@@ -10917,7 +11347,7 @@ user's own, or a notebook's) is left running.</p>
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-<a href="#ubunye.backends.databricks_backend.DatabricksBackend.create" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.create" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">create</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">app_name</span><span class="o">=</span><span class="s1">'ubunye'</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10933,7 +11363,7 @@ user's own, or a notebook's) is left running.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.from_platform" class="doc doc-heading">
+<h4 id="ubunye.backends.databricks_backend.DatabricksBackend.from_platform" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">from_platform</span>
 
 
@@ -10941,7 +11371,7 @@ user's own, or a notebook's) is left running.</p>
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-<a href="#ubunye.backends.databricks_backend.DatabricksBackend.from_platform" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.from_platform" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_platform</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">app_name</span><span class="o">=</span><span class="s1">'ubunye'</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10959,11 +11389,11 @@ platform set up, and never stops a session it did not start.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.materialise" class="doc doc-heading">
+<h4 id="ubunye.backends.databricks_backend.DatabricksBackend.materialise" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">materialise</span>
 
 
-<a href="#ubunye.backends.databricks_backend.DatabricksBackend.materialise" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.materialise" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">materialise</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 </code></pre></div>
 
@@ -10979,11 +11409,11 @@ platform set up, and never stops a session it did not start.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.start" class="doc doc-heading">
+<h4 id="ubunye.backends.databricks_backend.DatabricksBackend.start" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">start</span>
 
 
-<a href="#ubunye.backends.databricks_backend.DatabricksBackend.start" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.start" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">start</span><span class="p">()</span>
 </code></pre></div>
 
@@ -10999,11 +11429,11 @@ platform set up, and never stops a session it did not start.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.databricks_backend.DatabricksBackend.stop" class="doc doc-heading">
+<h4 id="ubunye.backends.databricks_backend.DatabricksBackend.stop" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">stop</span>
 
 
-<a href="#ubunye.backends.databricks_backend.DatabricksBackend.stop" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.databricks_backend.DatabricksBackend.stop" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">stop</span><span class="p">()</span>
 </code></pre></div>
 
@@ -11022,20 +11452,17 @@ platform set up, and never stops a session it did not start.</p>
 
     </div>
 
-</div><h3 id="pandasbackend">PandasBackend<a class="headerlink" href="#pandasbackend" title="Permanent link">&para;</a></h3>
-<p>Runs a task with pandas and pyarrow: no Spark and no Java. Reads and writes local
-csv, json and parquet exactly as Spark does.</p>
-
+</div>
 
 <div class="doc doc-object doc-class">
 
 
 
-<h4 id="ubunye.backends.pandas_backend.PandasBackend" class="doc doc-heading">
+<h3 id="ubunye.backends.pandas_backend.PandasBackend" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">ubunye.backends.pandas_backend.PandasBackend</span>
 
 
-<a href="#ubunye.backends.pandas_backend.PandasBackend" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.backends.pandas_backend.PandasBackend" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -11068,7 +11495,7 @@ csv, json and parquet exactly as Spark does.</p>
 
 
 
-<h5 id="ubunye.backends.pandas_backend.PandasBackend.timezone" class="doc doc-heading">
+<h4 id="ubunye.backends.pandas_backend.PandasBackend.timezone" class="doc doc-heading">
             <span class="doc doc-object-name doc-attribute-name">timezone</span>
 
 
@@ -11076,7 +11503,7 @@ csv, json and parquet exactly as Spark does.</p>
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.backends.pandas_backend.PandasBackend.timezone" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.pandas_backend.PandasBackend.timezone" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">timezone</span>
 </code></pre></div>
 
@@ -11094,7 +11521,7 @@ csv, json and parquet exactly as Spark does.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.pandas_backend.PandasBackend.check_io" class="doc doc-heading">
+<h4 id="ubunye.backends.pandas_backend.PandasBackend.check_io" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">check_io</span>
 
 
@@ -11102,7 +11529,7 @@ csv, json and parquet exactly as Spark does.</p>
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-<a href="#ubunye.backends.pandas_backend.PandasBackend.check_io" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.pandas_backend.PandasBackend.check_io" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">check_io</span><span class="p">(</span><span class="n">direction</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11120,11 +11547,11 @@ already reports it.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.pandas_backend.PandasBackend.frame_from_records" class="doc doc-heading">
+<h4 id="ubunye.backends.pandas_backend.PandasBackend.frame_from_records" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">frame_from_records</span>
 
 
-<a href="#ubunye.backends.pandas_backend.PandasBackend.frame_from_records" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.pandas_backend.PandasBackend.frame_from_records" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">frame_from_records</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11140,11 +11567,11 @@ already reports it.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.pandas_backend.PandasBackend.iter_records" class="doc doc-heading">
+<h4 id="ubunye.backends.pandas_backend.PandasBackend.iter_records" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">iter_records</span>
 
 
-<a href="#ubunye.backends.pandas_backend.PandasBackend.iter_records" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.pandas_backend.PandasBackend.iter_records" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">iter_records</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11160,11 +11587,11 @@ already reports it.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.pandas_backend.PandasBackend.start" class="doc doc-heading">
+<h4 id="ubunye.backends.pandas_backend.PandasBackend.start" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">start</span>
 
 
-<a href="#ubunye.backends.pandas_backend.PandasBackend.start" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.pandas_backend.PandasBackend.start" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">start</span><span class="p">()</span>
 </code></pre></div>
 
@@ -11184,11 +11611,11 @@ environment that was assembled by hand.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.pandas_backend.PandasBackend.stop" class="doc doc-heading">
+<h4 id="ubunye.backends.pandas_backend.PandasBackend.stop" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">stop</span>
 
 
-<a href="#ubunye.backends.pandas_backend.PandasBackend.stop" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.pandas_backend.PandasBackend.stop" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">stop</span><span class="p">()</span>
 </code></pre></div>
 
@@ -11204,11 +11631,11 @@ environment that was assembled by hand.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.pandas_backend.PandasBackend.to_native" class="doc doc-heading">
+<h4 id="ubunye.backends.pandas_backend.PandasBackend.to_native" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">to_native</span>
 
 
-<a href="#ubunye.backends.pandas_backend.PandasBackend.to_native" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.pandas_backend.PandasBackend.to_native" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">to_native</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11224,11 +11651,11 @@ environment that was assembled by hand.</p>
 <div class="doc doc-object doc-function">
 
 
-<h5 id="ubunye.backends.pandas_backend.PandasBackend.to_port" class="doc doc-heading">
+<h4 id="ubunye.backends.pandas_backend.PandasBackend.to_port" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">to_port</span>
 
 
-<a href="#ubunye.backends.pandas_backend.PandasBackend.to_port" class="headerlink" title="Permanent link">&para;</a></h5>
+<a href="#ubunye.backends.pandas_backend.PandasBackend.to_port" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">to_port</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11247,8 +11674,8 @@ environment that was assembled by hand.</p>
 
     </div>
 
-</div><hr />
-<h2 id="models-ubunyemodel-contract">Models (UbunyeModel contract)<a class="headerlink" href="#models-ubunyemodel-contract" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="models-ubunyemodel-contract">Models (UbunyeModel contract)<a class="headerlink" href="#models-ubunyemodel-contract" title="Permanent link">¶</a></h2>
 
 
 <div class="doc doc-object doc-class">
@@ -11259,7 +11686,7 @@ environment that was assembled by hand.</p>
             <span class="doc doc-object-name doc-class-name">ubunye.models.base.UbunyeModel</span>
 
 
-<a href="#ubunye.models.base.UbunyeModel" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.models.base.UbunyeModel" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -11348,7 +11775,7 @@ class FraudRiskModel(UbunyeModel):
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
 
-<a href="#ubunye.models.base.UbunyeModel.load" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.base.UbunyeModel.load" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11399,7 +11826,7 @@ class FraudRiskModel(UbunyeModel):
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>&#39;UbunyeModel&#39;</code>
+                  <code>'UbunyeModel'</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -11426,7 +11853,7 @@ class FraudRiskModel(UbunyeModel):
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#ubunye.models.base.UbunyeModel.metadata" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.base.UbunyeModel.metadata" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">metadata</span><span class="p">()</span>
 </code></pre></div>
 
@@ -11456,7 +11883,7 @@ class FraudRiskModel(UbunyeModel):
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#ubunye.models.base.UbunyeModel.predict" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.base.UbunyeModel.predict" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">predict</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11534,7 +11961,7 @@ class FraudRiskModel(UbunyeModel):
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#ubunye.models.base.UbunyeModel.save" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.base.UbunyeModel.save" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">save</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11591,7 +12018,7 @@ The engine only provides the path — it never inspects the saved files.</p>
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
   </span>
 
-<a href="#ubunye.models.base.UbunyeModel.train" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.base.UbunyeModel.train" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">train</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11675,7 +12102,7 @@ The engine only provides the path — it never inspects the saved files.</p>
             <span class="doc doc-object-name doc-function-name">validate</span>
 
 
-<a href="#ubunye.models.base.UbunyeModel.validate" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.base.UbunyeModel.validate" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">validate</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11749,7 +12176,7 @@ The engine only provides the path — it never inspects the saved files.</p>
             <span class="doc doc-object-name doc-function-name">ubunye.models.loader.load_model_class</span>
 
 
-<a href="#ubunye.models.loader.load_model_class" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.models.loader.load_model_class" class="headerlink" title="Permanent link">¶</a></h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">load_model_class</span><span class="p">(</span><span class="n">task_dir</span><span class="p">,</span> <span class="n">class_name</span><span class="p">)</span>
 </code></pre></div>
 
@@ -11896,8 +12323,8 @@ file (e.g. the pipeline task directory). Pass <code>None</code> to rely on
 
     </div>
 
-</div><hr />
-<h2 id="model-registry">Model Registry<a class="headerlink" href="#model-registry" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="model-registry">Model Registry<a class="headerlink" href="#model-registry" title="Permanent link">¶</a></h2>
 
 
 <div class="doc doc-object doc-class">
@@ -11908,7 +12335,7 @@ file (e.g. the pipeline task directory). Pass <code>None</code> to rely on
             <span class="doc doc-object-name doc-class-name">ubunye.models.registry.ModelRegistry</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.models.registry.ModelRegistry" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -11999,7 +12426,7 @@ backend gets this whole API built on its six protocol methods
             <span class="doc doc-object-name doc-function-name">archive</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry.archive" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelRegistry.archive" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">archive</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12047,7 +12474,7 @@ backend gets this whole API built on its six protocol methods
             <span class="doc doc-object-name doc-function-name">compare_versions</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry.compare_versions" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelRegistry.compare_versions" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">compare_versions</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version_a</span><span class="p">,</span> <span class="n">version_b</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12100,7 +12527,7 @@ backend gets this whole API built on its six protocol methods
             <span class="doc doc-object-name doc-function-name">demote</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry.demote" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelRegistry.demote" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">demote</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">to_stage</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12205,7 +12632,7 @@ backend gets this whole API built on its six protocol methods
             <span class="doc doc-object-name doc-function-name">get_model</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry.get_model" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelRegistry.get_model" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get_model</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">task_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12382,7 +12809,7 @@ backend gets this whole API built on its six protocol methods
             <span class="doc doc-object-name doc-function-name">list_versions</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry.list_versions" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelRegistry.list_versions" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">list_versions</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12425,7 +12852,7 @@ backend gets this whole API built on its six protocol methods
             <span class="doc doc-object-name doc-function-name">promote</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry.promote" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelRegistry.promote" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">promote</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">to_stage</span><span class="p">,</span> <span class="n">promoted_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gates</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12612,7 +13039,7 @@ archived.</p>
             <span class="doc doc-object-name doc-function-name">promotion_gates</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry.promotion_gates" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelRegistry.promotion_gates" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">promotion_gates</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12632,7 +13059,7 @@ archived.</p>
             <span class="doc doc-object-name doc-function-name">register</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry.register" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelRegistry.register" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">register</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">lineage_run_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">registered_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">promotion_gates</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12831,7 +13258,7 @@ pass. Given, they replace the model's stored gates.</p>
             <span class="doc doc-object-name doc-function-name">rollback</span>
 
 
-<a href="#ubunye.models.registry.ModelRegistry.rollback" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelRegistry.rollback" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">rollback</span><span class="p">(</span><span class="n">use_case</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">to_version</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12927,7 +13354,7 @@ pass. Given, they replace the model's stored gates.</p>
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#ubunye.models.registry.ModelVersion" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.models.registry.ModelVersion" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -12964,7 +13391,7 @@ pass. Given, they replace the model's stored gates.</p>
             <span class="doc doc-object-name doc-function-name">to_info</span>
 
 
-<a href="#ubunye.models.registry.ModelVersion.to_info" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.registry.ModelVersion.to_info" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">to_info</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">''</span><span class="p">,</span> <span class="n">artifact_path</span><span class="o">=</span><span class="s1">''</span><span class="p">)</span>
 </code></pre></div>
 
@@ -12993,7 +13420,7 @@ pass. Given, they replace the model's stored gates.</p>
             <span class="doc doc-object-name doc-class-name">ubunye.models.registry.ModelStage</span>
 
 
-<a href="#ubunye.models.registry.ModelStage" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.models.registry.ModelStage" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -13029,8 +13456,8 @@ pass. Given, they replace the model's stored gates.</p>
 
     </div>
 
-</div><hr />
-<h2 id="promotion-gates">Promotion Gates<a class="headerlink" href="#promotion-gates" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="promotion-gates">Promotion Gates<a class="headerlink" href="#promotion-gates" title="Permanent link">¶</a></h2>
 
 
 <div class="doc doc-object doc-class">
@@ -13041,7 +13468,7 @@ pass. Given, they replace the model's stored gates.</p>
             <span class="doc doc-object-name doc-class-name">ubunye.models.gates.PromotionGate</span>
 
 
-<a href="#ubunye.models.gates.PromotionGate" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.models.gates.PromotionGate" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -13112,7 +13539,7 @@ pass. Given, they replace the model's stored gates.</p>
             <span class="doc doc-object-name doc-function-name">all_passed</span>
 
 
-<a href="#ubunye.models.gates.PromotionGate.all_passed" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.gates.PromotionGate.all_passed" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">all_passed</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13179,7 +13606,7 @@ pass. Given, they replace the model's stored gates.</p>
             <span class="doc doc-object-name doc-function-name">evaluate</span>
 
 
-<a href="#ubunye.models.gates.PromotionGate.evaluate" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.gates.PromotionGate.evaluate" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">evaluate</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13289,7 +13716,7 @@ pass. Given, they replace the model's stored gates.</p>
             <span class="doc doc-object-name doc-function-name">failed_gates</span>
 
 
-<a href="#ubunye.models.gates.PromotionGate.failed_gates" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.models.gates.PromotionGate.failed_gates" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">failed_gates</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13322,7 +13749,7 @@ pass. Given, they replace the model's stored gates.</p>
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#ubunye.models.gates.GateResult" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.models.gates.GateResult" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -13358,8 +13785,8 @@ pass. Given, they replace the model's stored gates.</p>
 
     </div>
 
-</div><hr />
-<h2 id="lineage">Lineage<a class="headerlink" href="#lineage" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="lineage">Lineage<a class="headerlink" href="#lineage" title="Permanent link">¶</a></h2>
 
 
 <div class="doc doc-object doc-class">
@@ -13370,7 +13797,7 @@ pass. Given, they replace the model's stored gates.</p>
             <span class="doc doc-object-name doc-class-name">ubunye.lineage.recorder.LineageRecorder</span>
 
 
-<a href="#ubunye.lineage.recorder.LineageRecorder" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.lineage.recorder.LineageRecorder" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -13378,7 +13805,7 @@ pass. Given, they replace the model's stored gates.</p>
 
 
         <p>Monitor plugin that persists run lineage as structured JSON.</p>
-<h5 id="ubunye.lineage.recorder.LineageRecorder--parameters">Parameters<a class="headerlink" href="#ubunye.lineage.recorder.LineageRecorder--parameters" title="Permanent link">&para;</a></h5>
+<h5 id="ubunye.lineage.recorder.LineageRecorder--parameters">Parameters<a class="headerlink" href="#ubunye.lineage.recorder.LineageRecorder--parameters" title="Permanent link">¶</a></h5>
 <p>store:
     The old name for <code>backend</code>, kept with a DeprecationWarning (<code>"s3"</code>
     still gives the stub store, without a warning).
@@ -13423,7 +13850,7 @@ backend:
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.lineage.recorder.LineageRecorder.reads_inputs" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.recorder.LineageRecorder.reads_inputs" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">reads_inputs</span>
 </code></pre></div>
 
@@ -13445,7 +13872,7 @@ backend:
             <span class="doc doc-object-name doc-function-name">shared_store</span>
 
 
-<a href="#ubunye.lineage.recorder.LineageRecorder.shared_store" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.recorder.LineageRecorder.shared_store" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">shared_store</span><span class="p">()</span>
 </code></pre></div>
 
@@ -13467,7 +13894,7 @@ filesystem store it reads the record files directly, as before.</p>
             <span class="doc doc-object-name doc-function-name">task_end</span>
 
 
-<a href="#ubunye.lineage.recorder.LineageRecorder.task_end" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.recorder.LineageRecorder.task_end" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">task_end</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">duration_sec</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">expectations</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">llm_calls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">llm_budget</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_runs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hash_basis</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source_versions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13500,7 +13927,7 @@ so <code>lineage show</code>, OpenLineage and <code>ubunye prove</code> can say 
             <span class="doc doc-object-name doc-function-name">task_start</span>
 
 
-<a href="#ubunye.lineage.recorder.LineageRecorder.task_start" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.recorder.LineageRecorder.task_start" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">task_start</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13533,7 +13960,7 @@ so <code>lineage show</code>, OpenLineage and <code>ubunye prove</code> can say 
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#ubunye.lineage.context.RunContext" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.lineage.context.RunContext" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -13579,7 +14006,7 @@ so <code>lineage show</code>, OpenLineage and <code>ubunye prove</code> can say 
             <span class="doc doc-object-name doc-class-name">ubunye.lineage.storage.FileSystemLineageStore</span>
 
 
-<a href="#ubunye.lineage.storage.FileSystemLineageStore" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.lineage.storage.FileSystemLineageStore" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -13623,7 +14050,7 @@ so <code>lineage show</code>, OpenLineage and <code>ubunye prove</code> can say 
             <span class="doc doc-object-name doc-function-name">compact</span>
 
 
-<a href="#ubunye.lineage.storage.FileSystemLineageStore.compact" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.storage.FileSystemLineageStore.compact" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">compact</span><span class="p">()</span>
 </code></pre></div>
 
@@ -13643,7 +14070,7 @@ so <code>lineage show</code>, OpenLineage and <code>ubunye prove</code> can say 
             <span class="doc doc-object-name doc-function-name">flush</span>
 
 
-<a href="#ubunye.lineage.storage.FileSystemLineageStore.flush" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.storage.FileSystemLineageStore.flush" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">flush</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13664,7 +14091,7 @@ so <code>lineage show</code>, OpenLineage and <code>ubunye prove</code> can say 
             <span class="doc doc-object-name doc-function-name">get_run</span>
 
 
-<a href="#ubunye.lineage.storage.FileSystemLineageStore.get_run" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.storage.FileSystemLineageStore.get_run" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get_run</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13685,7 +14112,7 @@ so <code>lineage show</code>, OpenLineage and <code>ubunye prove</code> can say 
             <span class="doc doc-object-name doc-function-name">load</span>
 
 
-<a href="#ubunye.lineage.storage.FileSystemLineageStore.load" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.storage.FileSystemLineageStore.load" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">load</span><span class="p">(</span><span class="n">task_path</span><span class="p">,</span> <span class="n">run_id</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13707,7 +14134,7 @@ is refused, never guessed.</p>
             <span class="doc doc-object-name doc-function-name">record</span>
 
 
-<a href="#ubunye.lineage.storage.FileSystemLineageStore.record" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.storage.FileSystemLineageStore.record" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">record</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13729,7 +14156,7 @@ the record is written to a fallback manifest (Decision 2).</p>
             <span class="doc doc-object-name doc-function-name">search_records</span>
 
 
-<a href="#ubunye.lineage.storage.FileSystemLineageStore.search_records" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.lineage.storage.FileSystemLineageStore.search_records" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">search_records</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">usecase</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pipeline</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">since</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 </code></pre></div>
 
@@ -13748,8 +14175,8 @@ the record is written to a fallback manifest (Decision 2).</p>
 
     </div>
 
-</div><hr />
-<h2 id="plugins-readers">Plugins: Readers<a class="headerlink" href="#plugins-readers" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="plugins-readers">Plugins: Readers<a class="headerlink" href="#plugins-readers" title="Permanent link">¶</a></h2>
 
 
 <div class="doc doc-object doc-class">
@@ -13760,7 +14187,7 @@ the record is written to a fallback manifest (Decision 2).</p>
             <span class="doc doc-object-name doc-class-name">ubunye.plugins.readers.rest_api.RestApiReader</span>
 
 
-<a href="#ubunye.plugins.readers.rest_api.RestApiReader" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.plugins.readers.rest_api.RestApiReader" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -13803,14 +14230,14 @@ side is the same on every backend; the backend builds the frame
             <span class="doc doc-object-name doc-function-name">read</span>
 
 
-<a href="#ubunye.plugins.readers.rest_api.RestApiReader.read" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.plugins.readers.rest_api.RestApiReader.read" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">read</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">backend</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Fetch all pages from the API and return the backend's frame.</p>
-<h6 id="ubunye.plugins.readers.rest_api.RestApiReader.read--parameters">Parameters<a class="headerlink" href="#ubunye.plugins.readers.rest_api.RestApiReader.read--parameters" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.plugins.readers.rest_api.RestApiReader.read--parameters">Parameters<a class="headerlink" href="#ubunye.plugins.readers.rest_api.RestApiReader.read--parameters" title="Permanent link">¶</a></h6>
 <p>cfg : dict
     Reader configuration. Required key: <code>url</code>.
     See module docstring for full reference.
@@ -13828,8 +14255,8 @@ backend : Backend
 
     </div>
 
-</div><hr />
-<h2 id="plugins-writers">Plugins: Writers<a class="headerlink" href="#plugins-writers" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="plugins-writers">Plugins: Writers<a class="headerlink" href="#plugins-writers" title="Permanent link">¶</a></h2>
 
 
 <div class="doc doc-object doc-class">
@@ -13840,7 +14267,7 @@ backend : Backend
             <span class="doc doc-object-name doc-class-name">ubunye.plugins.writers.rest_api.RestApiWriter</span>
 
 
-<a href="#ubunye.plugins.writers.rest_api.RestApiWriter" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.plugins.writers.rest_api.RestApiWriter" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -13882,14 +14309,14 @@ logs success/failure counts per batch.</p>
             <span class="doc doc-object-name doc-function-name">write</span>
 
 
-<a href="#ubunye.plugins.writers.rest_api.RestApiWriter.write" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.plugins.writers.rest_api.RestApiWriter.write" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">write</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">backend</span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>POST the frame's rows to a REST endpoint in batches.</p>
-<h6 id="ubunye.plugins.writers.rest_api.RestApiWriter.write--parameters">Parameters<a class="headerlink" href="#ubunye.plugins.writers.rest_api.RestApiWriter.write--parameters" title="Permanent link">&para;</a></h6>
+<h6 id="ubunye.plugins.writers.rest_api.RestApiWriter.write--parameters">Parameters<a class="headerlink" href="#ubunye.plugins.writers.rest_api.RestApiWriter.write--parameters" title="Permanent link">¶</a></h6>
 <p>df : frame
     The output, as the engine hands it to writers.
 cfg : dict
@@ -13909,8 +14336,8 @@ backend : Backend
 
     </div>
 
-</div><hr />
-<h2 id="plugins-transforms">Plugins: Transforms<a class="headerlink" href="#plugins-transforms" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="plugins-transforms">Plugins: Transforms<a class="headerlink" href="#plugins-transforms" title="Permanent link">¶</a></h2>
 
 
 <div class="doc doc-object doc-class">
@@ -13921,7 +14348,7 @@ backend : Backend
             <span class="doc doc-object-name doc-class-name">ubunye.plugins.transforms.model_transform.ModelTransform</span>
 
 
-<a href="#ubunye.plugins.transforms.model_transform.ModelTransform" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.plugins.transforms.model_transform.ModelTransform" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -13962,7 +14389,7 @@ existing engine dispatch with zero changes to the core runtime.</p>
             <span class="doc doc-object-name doc-function-name">apply</span>
 
 
-<a href="#ubunye.plugins.transforms.model_transform.ModelTransform.apply" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.plugins.transforms.model_transform.ModelTransform.apply" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">apply</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">backend</span><span class="p">)</span>
 </code></pre></div>
 
@@ -14077,8 +14504,8 @@ existing engine dispatch with zero changes to the core runtime.</p>
 
     </div>
 
-</div><hr />
-<h2 id="internal-ml-wrappers">Internal ML wrappers<a class="headerlink" href="#internal-ml-wrappers" title="Permanent link">&para;</a></h2>
+</div><hr>
+<h2 id="internal-ml-wrappers">Internal ML wrappers<a class="headerlink" href="#internal-ml-wrappers" title="Permanent link">¶</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>These are internal wrappers used by Ubunye's own sklearn/Spark ML adapters.
@@ -14094,7 +14521,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
             <span class="doc doc-object-name doc-class-name">ubunye.plugins.ml.base.BaseModel</span>
 
 
-<a href="#ubunye.plugins.ml.base.BaseModel" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.plugins.ml.base.BaseModel" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -14106,7 +14533,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
         <p>Framework-agnostic estimator interface.</p>
 
 
-<details class="subclasses-must-implement" open>
+<details class="subclasses-must-implement" open="">
   <summary>Subclasses must implement</summary>
   <ul>
 <li>_fit_core(X, y)</li>
@@ -14146,7 +14573,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#ubunye.plugins.ml.base.BaseModel.params" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.plugins.ml.base.BaseModel.params" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">params</span>
 </code></pre></div>
 
@@ -14168,7 +14595,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
             <span class="doc doc-object-name doc-function-name">fit</span>
 
 
-<a href="#ubunye.plugins.ml.base.BaseModel.fit" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.plugins.ml.base.BaseModel.fit" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -14188,7 +14615,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
             <span class="doc doc-object-name doc-function-name">load</span>
 
 
-<a href="#ubunye.plugins.ml.base.BaseModel.load" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.plugins.ml.base.BaseModel.load" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 </code></pre></div>
 
@@ -14208,7 +14635,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
             <span class="doc doc-object-name doc-function-name">metrics</span>
 
 
-<a href="#ubunye.plugins.ml.base.BaseModel.metrics" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.plugins.ml.base.BaseModel.metrics" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">metrics</span><span class="p">()</span>
 </code></pre></div>
 
@@ -14228,7 +14655,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
             <span class="doc doc-object-name doc-function-name">predict</span>
 
 
-<a href="#ubunye.plugins.ml.base.BaseModel.predict" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.plugins.ml.base.BaseModel.predict" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">predict</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">proba</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 
@@ -14248,7 +14675,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
             <span class="doc doc-object-name doc-function-name">save</span>
 
 
-<a href="#ubunye.plugins.ml.base.BaseModel.save" class="headerlink" title="Permanent link">&para;</a></h4>
+<a href="#ubunye.plugins.ml.base.BaseModel.save" class="headerlink" title="Permanent link">¶</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">save</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 </code></pre></div>
 
@@ -14277,7 +14704,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
             <span class="doc doc-object-name doc-class-name">ubunye.plugins.ml.sklearn.SklearnModel</span>
 
 
-<a href="#ubunye.plugins.ml.sklearn.SklearnModel" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.plugins.ml.sklearn.SklearnModel" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -14325,7 +14752,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
             <span class="doc doc-object-name doc-class-name">ubunye.plugins.ml.pysparkml.SparkMLModel</span>
 
 
-<a href="#ubunye.plugins.ml.pysparkml.SparkMLModel" class="headerlink" title="Permanent link">&para;</a></h3>
+<a href="#ubunye.plugins.ml.pysparkml.SparkMLModel" class="headerlink" title="Permanent link">¶</a></h3>
 
 
     <div class="doc doc-contents first">
@@ -14384,9 +14811,9 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
       
   <span class="md-source-file__fact">
     <span class="md-icon" title="Last update">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 09:25:49 UTC">November 10, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 10, 2026 11:32:15 UTC">November 10, 2026</span>
   </span>
 
     
@@ -14394,7 +14821,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
       
   <span class="md-source-file__fact">
     <span class="md-icon" title="Created">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"></path></svg>
     </span>
     <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 11, 2025 11:46:07 UTC">September 11, 2025</span>
   </span>
@@ -14418,9 +14845,9 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
         
-          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden="">
   
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
   Back to top
 </button>
         
@@ -14455,7 +14882,7 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
       
     
     <a href="https://github.com/ubunye-ai-ecosystems/ubunye_engine" target="_blank" rel="noopener" title="github.com" class="md-social__link">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
     </a>
   
 </div>
@@ -14473,11 +14900,13 @@ User-defined models should implement <code>UbunyeModel</code>, not these classes
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "toc.follow", "content.code.copy", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
-  </body>
-</html>
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
