@@ -1,6 +1,6 @@
 # ADR 013: Job health and upstream checks are receipt queries
 
-**Status:** accepted, unreleased (0.9)
+**Status:** accepted, 0.9.0
 
 ## Context
 

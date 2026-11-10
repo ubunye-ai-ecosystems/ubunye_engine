@@ -1,6 +1,6 @@
 # ADR 014: The MLflow registry backend uses aliases
 
-**Status:** accepted, unreleased (0.9)
+**Status:** accepted, 0.9.0
 
 ## Context
 

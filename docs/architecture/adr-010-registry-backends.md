@@ -1,6 +1,6 @@
 # ADR 010: Registry backends are plugins, found by name
 
-**Status:** accepted, unreleased (0.9)
+**Status:** accepted, 0.9.0
 
 ## Context
 

@@ -1,6 +1,6 @@
 # ADR 012: Model runs on the receipt; features checked at predict
 
-**Status:** accepted, unreleased (0.9)
+**Status:** accepted, 0.9.0
 
 ## Context
 
